@@ -7,7 +7,8 @@ extends RefCounted
 ## action &"dash" starts the juggernaut dash on the Player itself (PowerupTuning's duration and speed, as
 ## DashPowerup.trigger does, with no cooldown); any other is pressed.
 ## `probes`: distances at which to record the player's state in result["at"][distance].
-## The result also holds how many times zone doodads pushed the player ("pushes") and how many things the dash
+## The result also holds how many times zone doodads pushed the player ("pushes") or stopped them ("stops", where the
+## layout's doodads stop the runner: task O2) and how many things the dash
 ## smashed ("smashes"), and the dash walls they crashed through without it ("crashes") or passed on a side wall
 ## ("wall_passes"; task H7a), and the zone doodads by a side wall that broke as a wall runner reached them
 ## ("doodad_passes"; task L3).
@@ -63,6 +64,7 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	player.wall_gaps = p_layout.wall_gaps
 	player.dash_walls = p_layout.dash_walls
 	player.wall_running = p_layout.wall_running
+	player.doodads_stop = p_layout.doodads_stop
 	var result := {"cause": "", "max_wall_h": 0.0, "events": [], "at": {}, "trace": []}
 	player.died.connect(func(cause: String) -> void: result["cause"] = cause)
 	player.movement_event.connect(func(kind: StringName) -> void: result["events"].append(kind))
@@ -94,6 +96,7 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	result["distance"] = player.distance
 	result["grounded"] = player.grounded
 	result["pushes"] = player.pushes
+	result["stops"] = player.stops
 	result["smashes"] = player.smashes
 	result["crashes"] = player.crashes
 	result["wall_passes"] = player.wall_passes
@@ -173,4 +176,4 @@ static func _sample(player: Player) -> Dictionary:
 	return {"t": player.elapsed, "d": player.distance, "x": player.position.x, "h": player.h,
 		"speed": player.speed, "surface": player.surface_name(), "lane": player.lane, "alive": player.alive,
 		"lean": int(player.call(&"_switch_dir")), "dashing": player.dashing, "smashes": player.smashes,
-		"doodad_passes": player.doodad_passes}
+		"doodad_passes": player.doodad_passes, "stopped": player.stopped}

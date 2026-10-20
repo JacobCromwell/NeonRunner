@@ -30,10 +30,13 @@ const BOARD_MOBILE: String = "mobile"
 ##   The Terminal's rules (task O1; GDD §5, Zone 8) are its zone's too: no wall running (`wall_running`, with its
 ##   arches, `wall_gap_tuning`, and its own patterns, `patterns_path`) and every ceiling one lane wide
 ##   (`narrow_ceiling_share` and `one_lane_ceiling_share`, which every other zone's level has as Sentinel Row does, so
-##   their weeks are as before).
+##   their weeks are as before), and its debris maze (task O2): debris that stops the runner (`doodads_stop`), lower
+##   than other zones' (`doodad_height`), and the maze's numbers (`debris_maze_tuning`), which every other zone's level
+##   leaves off, as Sentinel Row does.
 const ZONE_FIELDS: PackedStringArray = [
 	"features", "feature_weights", "patterns_path", "skin", "skin_path", "sky", "darkness", "wall_gap_tuning", "doodad_wall_lane_share",
-	"wall_hop_lines", "wall_running", "narrow_ceiling_share", "one_lane_ceiling_share",
+	"wall_hop_lines", "wall_running", "narrow_ceiling_share", "one_lane_ceiling_share", "doodads_stop", "doodad_height",
+	"debris_maze_tuning",
 ]
 ## - The WEEK's: what a week sets itself: which level it is (id, name, seed, lanes), that it is no level of the campaign's
 ##   curve or a mini-game, that every feature is there from the start (no `feature_starts`, as in endless mode) with no

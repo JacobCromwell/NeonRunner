@@ -124,6 +124,21 @@ var stashes: Array[Dictionary] = []
 ## (WallRunGapPlacement), the track builder builds the holes like any and the skin lights the wall
 ## (ZoneSkin.wall_run_guide). Sorted by start.
 var wall_run_gaps: Array[Dictionary] = []
+## Whether this level's zone doodads stop the runner instead of pushing (LevelConfig.doodads_stop, which the generator
+## copies here; task O2, GDD §5 Zone 8: the Terminal's debris): the Player stops at one's front (Player.doodads_stop,
+## which RunWorld sets from this). Left out of to_dict() while false, so every other level's dictionary is as before.
+var doodads_stop: bool = false
+## The debris maze's blocks (task O2; GDD §5, Zone 8: "doodads stand so thickly that the empty space between them forms
+## a maze"; DebrisMaze, which places them and answers questions about them: its cells, which connect without a dash),
+## in order, each {entry, start, end, exit, walls, rooms, breaks}: open floor in every lane from `entry` (its run-in) to
+## its first wall's front at `start`, its walls and rooms to its last wall's back at `end`, and open floor again to
+## `exit` (its breather). `walls`: {start, end, size, open} each, a wall of debris across every lane but its `open`
+## lanes (its openings), `size` the size class of its pieces; `rooms`: {start, end, dividers} each, between one wall's
+## back and the next one's front, every lane but its `dividers` (debris along it the room's whole length) open, so
+## the open lanes between dividers are its cells. `breaks`: the least dashes its way through takes (DebrisMaze
+## .min_breaks). Its debris are ordinary `doodads` entries marked "maze" (the block's index), "part" ("wall" or
+## "divider") and "index" (the wall's or the room's). Left out of to_dict() while empty.
+var maze: Array[Dictionary] = []
 ## {side, entry, start, end, gems_from, gems_to}: a line of wall-hop credits (task N1; GDD §7, "Wall-hop credits",
 ## owner, October 9, 2026: "some long walls carry high-value credits further along than one wall run reaches, so only
 ## a player inventive enough to wall hop collects them"): on wall `side` (-1 left, 1 right), laid out for a runner who
@@ -139,8 +154,9 @@ var wall_hops: Array[Dictionary] = []
 ## "wall_gaps" key, one without dash walls no "dash_walls" key, one without ceiling scenarios (task I4)
 ## no "ceiling_fences", "return_pads" or "stashes" key, one without wall-run gaps (task J2) no "wall_run_gaps" key,
 ## one without wall-hop credits (task N1) no "wall_hops" key, one without wall stumps (task O1) no "wall_stumps" key,
-## and one whose walls can be run on (every level but the Terminal's) no "wall_running" key, so its dictionary (and
-## every hash or dump of it) is the same as before those existed.
+## one whose walls can be run on (every level but the Terminal's) no "wall_running" key, and one whose doodads push and
+## that has no debris maze (task O2) no "doodads_stop" or "maze" key, so its dictionary (and every hash or dump of it) is
+## the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -179,13 +195,17 @@ func to_dict() -> Dictionary:
 		out["wall_running"] = false
 	if not wall_stumps.is_empty():
 		out["wall_stumps"] = wall_stumps
+	if doodads_stop:
+		out["doodads_stop"] = true
+	if not maze.is_empty():
+		out["maze"] = maze
 	return out
 
 
 ## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps,
-## dash walls, the ceiling scenarios' pieces, wall-run gaps, wall-hop lines and wall stumps included, whether or not
-## this layout has any yet), and moves its end to other's if that's further. Whether its walls can be run on stays this
-## layout's own.
+## dash walls, the ceiling scenarios' pieces, wall-run gaps, wall-hop lines, wall stumps and the debris maze's blocks
+## included, whether or not this layout has any yet), and moves its end to other's if that's further. Whether its walls
+## can be run on and whether its doodads stop the runner stay this layout's own.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
@@ -215,6 +235,8 @@ func append_pieces(other: LevelLayout) -> void:
 		wall_hops.append_array(other.wall_hops)
 	if not lists.has("wall_stumps"):
 		wall_stumps.append_array(other.wall_stumps)
+	if not lists.has("maze"):
+		maze.append_array(other.maze)
 	length = maxf(length, other.length)
 
 
@@ -243,6 +265,8 @@ func copy() -> LevelLayout:
 	out.wall_hops = wall_hops.duplicate(true)
 	out.wall_running = wall_running
 	out.wall_stumps = wall_stumps.duplicate(true)
+	out.doodads_stop = doodads_stop
+	out.maze = maze.duplicate(true)
 	return out
 
 
@@ -350,6 +374,21 @@ static func doodad_extent(d: Dictionary) -> Vector2:
 		var row: Array = d["row"]
 		return Vector2(float(row[0]), float(row[1]))
 	return Vector2(float(d["start"]), float(d["end"]))
+
+
+## True if doodad entry `d` (one of `doodads`) is a piece of the debris maze (task O2: marked "maze", its block's
+## index): placed by DebrisMaze to its own rules, not the zone doodads' (LevelGenerator._place_doodads).
+static func is_maze_debris(d: Dictionary) -> bool:
+	return d.has("maze")
+
+
+## The debris maze's block (maze) whose stretch, from its run-in's start to its breather's end ([entry, exit]), reaches
+## [from, to]; {} if none does.
+func maze_block_between(from: float, to: float) -> Dictionary:
+	for b: Dictionary in maze:
+		if float(b["entry"]) <= to and float(b["exit"]) >= from:
+			return b
+	return {}
 
 
 ## True if a fenced ceiling's pick (task I4: its hull's "pick", from its first pad's run-up to its last safe pad,

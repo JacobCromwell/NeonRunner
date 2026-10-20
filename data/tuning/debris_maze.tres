@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="DebrisMazeTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/debris_maze_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+level_share = 0.5
+block_seconds = 12.0
+run_in_seconds = 1.0
+breather_seconds = 2.4
+exit_clear_seconds = 0.5
+room_seconds = 1.4
+min_rooms = 2
+large_wall_share = 0.25
+divider_share = 0.35
+opening_share = 0.3
+breaks_min = 1
+breaks_max = 2
+ceiling_share = 0.35
