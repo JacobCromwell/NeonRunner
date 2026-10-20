@@ -22,6 +22,10 @@ extends Node3D
 ##     --close                a close camera low behind the runner
 ##     --god                  god mode
 ##     --first=M              where the first one's clear run-in starts (metres, default 90)
+##     --runs=N               extended wall runs (task O1: 2 a double, 3 a triple; LevelConfig.extended_wall_runs) with a
+##                            platform between two holes; with one lit wall the other is open over the crossing. With
+##                            --take=cross the runner lands on each platform and steps back on from its last stretch
+##     --both                 with --runs, both walls lit, platforms on both sides
 ## Each scripted action and movement event is printed with its time and distance, to find the frames
 ## (frame = time x render fps).
 
@@ -38,6 +42,8 @@ var close: bool = false
 var take: String = "cross"
 var _pending: Array = []
 var _first: float = 90.0
+var _runs: int = 1
+var _both: bool = false
 
 
 func _ready() -> void:
@@ -61,6 +67,10 @@ func _ready() -> void:
 			god = true
 		elif arg.begins_with("--first="):
 			_first = maxf(float(v), 40.0)
+		elif arg.begins_with("--runs="):
+			_runs = clampi(int(v), 1, WallRunGapPlacement.MAX_RUNS)
+		elif arg == "--both":
+			_both = true
 	var skin: ZoneSkin = GreyboxSkin.new()
 	var skin_path: String = "res://data/skins/%s_skin.tres" % skin_id
 	if ResourceLoader.exists(skin_path):
@@ -80,7 +90,7 @@ func _ready() -> void:
 		if zone != null:
 			config.run_speed = zone.run_speed
 	var t: MovementTuning = config.movement_for(tuning)
-	var shape: WallRunGapPlacement.Shape = WallRunGapPlacement.shape_for(t, t.run_speed)
+	var shape: WallRunGapPlacement.Shape = WallRunGapPlacement.shape_for(t, t.run_speed, null, null, _runs)
 	var layout := LevelLayout.new()
 	layout.lane_count = lanes
 	var mid: int = lanes / 2
@@ -90,11 +100,14 @@ func _ready() -> void:
 		"pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0})
 	for k: int in 2:
 		var side: int = 1 if k == 0 else -1
-		var w: Dictionary = WallRunGapPlacement.make(shape, _first + k * SPACING, side)
+		var w: Dictionary = WallRunGapPlacement.make(shape, _first + k * SPACING, side, _both and _runs > 1)
 		for lane: int in lanes:
-			layout.gaps.append({"lane": lane, "start": float(w["start"]), "end": float(w["end"]),
-				LevelLayout.WALL_RUN_HOLE: true})
+			for h: Vector2 in WallRunGapPlacement.lane_holes(layout, w, lane):
+				layout.gaps.append({"lane": lane, "start": h.x, "end": h.y, LevelLayout.WALL_RUN_HOLE: true})
 		layout.wall_run_gaps.append(w)
+		var open: Dictionary = WallRunGapPlacement.open_wall_of(w)
+		if not open.is_empty():
+			layout.wall_gaps.append(open)
 		if take == "cross":
 			# Across to the lit wall's outer lane in the run-in, one lane a beat, then onto the wall midway along the lit
 			# stretch.
@@ -103,12 +116,14 @@ func _ready() -> void:
 			var target: int = lanes - 1 if side > 0 else 0
 			for n: int in absi(target - lane_now):
 				_pending.append([float(w["approach"]) + 1.0 + n * 3.0, toward])
-			_pending.append([(float(w["entry"]) + float(w["start"])) * 0.5, toward])
+			for c: Vector3 in WallRunGapPlacement.crossings_of(w):
+				_pending.append([(c.x + c.y) * 0.5, toward])
 		print("wall-run gap %s wall: run-in from %.1f m, lit from %.1f m, gap %.1f-%.1f m, landing floor to %.1f m" % [
 			"right" if side > 0 else "left", float(w["approach"]), float(w["entry"]), float(w["start"]), float(w["end"]),
 			float(w["landing"])])
 	_pending.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
-	layout.length = _first + 2.0 * SPACING + 60.0
+	layout.length = _first + 2.0 * SPACING + 60.0 + shape.span()
+	layout.wall_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 
 	var sfx := load("res://data/audio/sfx_library.tres") as SfxLibrary
 	var loadout := Loadout.new()
