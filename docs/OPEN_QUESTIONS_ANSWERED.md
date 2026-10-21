@@ -1711,3 +1711,16 @@ Captain Cogs).
 1049. **Ordinary wall-run gaps beside them.** The Hush keeps its ordinary wall-run gaps where they fit around the extended
    ones (0 or 1 a build), and needs none of its own.
    **Answered (owner, October 20, 2026):** approved as built.
+
+**The Cybernetic Centipede** (task O3 of the Terminal workstream, October 20, 2026; from `docs/questions/o3.md`; GDD §9.15)
+1081. **Its body is harmless; only its bite hurts.** (GDD §9.15: "it hurts only on contact. One bite is one hit".)
+   Placeholder (`Hazard.harmless` on its head and body boxes): touching or landing on its body does nothing, only its
+   jaws while they strike are a hit. Should running into its body hurt too?
+   **Answered (owner, October 21, 2026):** keep it, only the bite hurts. Recorded in GDD §9.15.
+1091. **Its reared head can hide the runner.** When it bites a runner stopped at debris from behind, it's between the
+   runner and the camera, and its head, reared for each bite (item 1080), hides most of the runner for as long as it
+   keeps biting them from behind: it rears again for every bite, and stopping 1.3 m short of them
+   (`Centipede.STANDOFF`) doesn't keep it out of the way. Its warning is plain (its head rearing right in front of the
+   camera, the hiss), and a stopped runner's choices (dash, switch) need no sight of themselves. Placeholder: drawn
+   solid. Should it turn see-through between the camera and the runner, or bite from lower?
+   **Answered (owner, October 21, 2026):** leave it as built. Recorded in GDD §9.15.
