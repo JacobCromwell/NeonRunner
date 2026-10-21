@@ -129,7 +129,8 @@ its couple of holes (`wide_gaps`), no dash walls, every ceiling one lane wide (`
 **no wall running** (`LevelConfig.wall_running` off: The generator, Side wall gaps, Arches and boundary walls). Its
 `debris_maze` (task O2: The generator, The debris maze; its own numbers per level, `debris_maze_tuning`), with doodads
 that stop the runner (`doodads_stop`: Damage and interactions) and stand lower (`doodad_height` 1.7 m), and its
-`centipede` (task O3, a planned feature that does nothing yet); the Golden Zone leaves both out. A save from before the Terminal keeps the Golden Zone open (Economy and saving, Saves from before the
+`centipede` (task O3: the Cybernetic Centipede, which waits in the maze: In the debris maze); the Golden Zone leaves
+both out. A save from before the Terminal keeps the Golden Zone open (Economy and saving, Saves from before the
 Terminal). `test_campaign` checks the Terminal's steps, numbers and content, and `test_terminal_levels` its levels at
 3, 5 and 6 lanes (arches, stumps, no wall running in the run). DESIGN-TBD (`docs/questions/o1.md`): all the numbers.
 

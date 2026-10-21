@@ -365,6 +365,25 @@ other seeds at 3, 5 and 6 lanes (`check_layout`'s `check_debris_maze`, determini
 breaks, dead ends, ceilings, the O3 API's sections and links against the debris); a block of each level, and each
 whole level at 3, 5 and 6 lanes, run by `MazeBot` on the route `MazeRoute` finds with the dash at 8 s
 (`tests/helpers/maze_route.gd`, `maze_bot.gd`); the first-encounter hint.
+`test_centipede` checks the Cybernetic Centipede on its own (task O3; Enemies, In the debris maze; Damage and
+interactions, Wounds and harmless parts): its data, sounds and declared properties on its real hitboxes (weapons, stomps
+and claws do nothing; its live bite a hit the armor takes), its model's budget, glow and hitboxes within what's drawn
+(its bite's within its jaws and under its head as drawn through whole strikes, a god-mode runner's), its warm-up look;
+on real physics in hand-made blocks (`tests/helpers/maze_kit.gd`) at 3, 5 and 6 lanes: its wake (never before the runner
+is in its block; still, then the warning and `wake_time`), its chase (open floor only, never over its speed), every bite
+after its telegraph and each one hit (a claw runner too), the head-on dash (one wound, the wound shown, sparks off with
+Reduced flashing, the stun, turning to chase from behind, giving up past the block and leaving play), a walled-in one
+asleep as the runner passes and released by a dash that opens its cell, the second dash's kill and score, and a runner
+on a ceiling getting away. `test_centipede_maze` checks where it waits and the proof (task O3): the generator over the
+Terminal's levels and other seeds at 3, 5 and 6 lanes (`check_layout`'s `check_centipedes`, determinism, all three
+places, its introduction), `CentipedeEscape` on hand-made blocks, `CentipedeMaze` against DebrisMaze's sections and
+links, endless mode, a level without it, `CentipedeBot` (`tests/helpers/centipede_bot.gd`) running the proof's way out
+of every block with centipedes on physics past live ones (from 25 m before the run-in, the dash just used there;
+unbitten; the centipedes' invariants; the runner out of every awake one's bound by a field of the bot's own), and the
+hint. `test_centipede_fuzz` (slow, a few minutes) runs the bot on many more: over the same sweep, the levels' own
+placements at the other seeds, and every spot the rules may offer a block's centipede, alone and in pairs spaced as the
+rules space two, wherever the proof's way out wakes them (unbitten, the invariants, the bound, and most of the woken
+spots' centipedes waking as the proof has them).
 `test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
 gaps): the zone and level data and its place in the campaign (zone 6, its steps, slots and music stand-in, its
 volleyball match second); both generated levels (Tiki Tides and Sunset Strip, beach/1 and beach/3) at 3, 5 and 6 lanes

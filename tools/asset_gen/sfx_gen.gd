@@ -55,6 +55,8 @@ extends SceneTree
 ##   sfx_bank_casino_boss_intro.gd  Casino boss intro's: the roulette wheel's ball, a crowd cheering, the floor's
 ##                        bustle, the golden door, the wall's tremor and collapse, a cyborg guard's shout
 ##   sfx_bank_casino_intro.gd  Casino intro's: the violet sports car cruising down the casino street and pulling up
+##   sfx_bank_centipede.gd  the Cybernetic Centipede: its wake (the warning: a hiss and a clatter of legs), a bite's
+##                        warning (its mandibles ratcheting open, a rising hiss), the snap, a wound and its death
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -92,6 +94,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_gangland_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_casino_boss_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_casino_intro.gd"),
+	preload("res://tools/asset_gen/sfx_bank_centipede.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

@@ -33,14 +33,23 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   the hazard layer with properties: `is_electrical`, `is_enemy_attack`, `is_solid`, `armor_blocks_solid`
   (a solid hit armor absorbs all the same: a dash wall's crash and a sign, below, and a fence generator's
   body), `passes_after_block` (once armor or the shield took its hit, the runner goes on through the rest of
-  it: a sign, below), `breakable` (what any contact breaks: a dash wall), `dash_passes`, `steals_share` (a
-  thief's touch, below), `enemy` (owning enemy or null) and `part` (`&"body"`, `&"top"`, `&"weak_point"`,
-  `&"attack"`).
+  it: a sign, below), `breakable` (what any contact breaks: a dash wall), `dash_passes`, `harmless` (nothing but
+  a dash's contact counts, below), `steals_share` (a thief's touch, below), `enemy` (owning enemy or null) and
+  `part` (`&"body"`, `&"top"`, `&"weak_point"`, `&"attack"`).
 - The player checks contacts each frame (a swept shape query) and calls `Player.receive_hit(hazard,
   stomping)`, which asks `DamageRules.resolve()` and applies the outcome: `IGNORE`,
   `BLOCKED_ARMOR`, `BLOCKED_SHIELD` (then ~1 s invulnerability), `KILL`, `DEFEAT_ENEMY` (claws or
-  dash), `STOMP` (enemy defeated, player bounces), `ROBBED` (a thief's touch, below). Nothing else
-  hurts the player.
+  dash), `WOUND_ENEMY` (a dash short of an enemy's last, below), `STOMP` (enemy defeated, player bounces),
+  `ROBBED` (a thief's touch, below). Nothing else hurts the player.
+- **Wounds and harmless parts** (task O3; GDD §9.15: "two dashes kill" the Cybernetic Centipede, "a dash passes
+  through it safely and wounds it"). An enemy that takes more than one dash declares `Enemy.dash_hits` (1 for every
+  other enemy); with `dash_kills` on, each dash before its last resolves to `WOUND_ENEMY` (`dash_wounds + 1 <
+  dash_hits`) and its last to `DEFEAT_ENEMY`. The Player applies a wound once a dash: it notes the enemy
+  (`_dash_wounded`, cleared by `start_dash`) and passes its other hitboxes, and the same one on later frames, for the
+  rest of that dash (`IGNORE`), and calls `Enemy.wound(&"dash")` (`dash_wounds`, `health_changed`, the enemy's
+  `_on_wounded`). A dash meets an enemy through any of its hitboxes, its attack's too, whichever way the runner
+  dashes. A hitbox marked `Hazard.harmless` (the centipede's head and body) resolves to `IGNORE` for every contact but
+  a dash's: landing on it is no stomp and no bounce, the claws kill nothing through it, and it never hurts.
 - **Thefts: the robbed hit** (GDD §9.12, the Tithe Collector; task B6 built the mechanism, task C5 the
   collector). The game's first non-lethal hit:
   - *The rule.* A hazard with `steals_share` > 0 resolves to `ROBBED` instead of hurting: after the

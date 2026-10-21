@@ -105,9 +105,11 @@ the player on clear floor), the Barnacle Turret (GDD §9.8, from Marketplace 1: 
 below), the Buzz Overdrive (GDD §9.9, from Corporate 1: a buzzsaw tank that cuts its lane's floor into
 a gap, see below), the Tithe Collector (GDD §9.12, from Corporate 2, skipping the Dead Zone, back in
 the Golden Zone: see Thefts above), the Gilded Sentinels (GDD §9.11, from Golden 2: live statues in
-wall niches whose halberd cuts their wall section and the outer lane, see below), and the Enforcer Truck
+wall niches whose halberd cuts their wall section and the outer lane, see below), the Enforcer Truck
 (GDD §9.13, from Corporate 2: an armoured truck chasing the runner from behind that only other enemies'
-charges, a floor cut or a too-wide gap destroy, see below).
+charges, a floor cut or a too-wide gap destroy, see below), and the Cybernetic Centipede (GDD §9.15, the Terminal's
+only enemy: it waits in the debris maze's cells, chases along its open paths and takes two dashes; its placements
+proven escapable, `enemy-centipede.md`).
 `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to keep draw
 calls down.
 

@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="CentipedeTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/centipede_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 130.0
+score_value = 500
+health_early = 1.0
+health_late = 1.0
+uses_floor = true
+floor_reach_before = 2.0
+floor_reach_after = 8.0
+speed_share = 0.85
+acceleration = 32.0
+turn_rate = 7.0
+turn_slow_share = 0.15
+wake_distance = 30.0
+wake_time = 0.6
+bite_telegraph = 0.45
+bite_window = 0.3
+bite_rest = 0.55
+bite_length = 0.6
+bite_width = 0.8
+bite_height = 1.75
+lunge_reach = 0.5
+dash_hits = 2
+wound_stun = 0.45
+give_up_distance = 45.0
+leave_margin = 3.0
+retire_behind = 20.0
+block_share_easy = 0.45
+block_share_hard = 0.9
+second_share_easy = 0.0
+second_share_hard = 0.35
+max_per_block = 2
+near_weight = 0.45
+way_weight = 0.3
+trapped_weight = 0.25
+min_spacing = 20.0

@@ -612,7 +612,9 @@ wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a
 look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
 them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), the Terminal's arches (`arch_wall_review`) and
 debris maze seen from the game camera on the way in, stopped at a wall and inside it (`debris_maze_review`,
-`--level=terminal/1 --block=N --out=build/maze`), a
+`--level=terminal/1 --block=N --out=build/maze`), the Cybernetic Centipede's model in each pose and an encounter with
+it in a maze block, a head-on dash through it and its bites (`centipede_showcase`, `--scenario=chase|model
+--pose=walk|sleep|wake|bite|wounded`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
 `--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), a campaign level's line
 of wall-hop credits ridden by a wall hopper (`wall_hop_review`, `--level=<id> --take=hop|run --camera=game|side`), an

@@ -2059,9 +2059,14 @@ static func _first_from(spans: Array[Vector2], d: Dictionary) -> float:
 ## further out may hold things beside it (it hides only its own lane), and what every lane keeps (an enemy's
 ## attack, a ceiling, a floor cut's window, a Bad Dream's chase) keeps a lane switch's room past its end: printed
 ## (the first of it from its end, at the dash's speed), not held to the dash's reaction, as each comes with its own
-## warning and is in full view. Prints the spread at each lane count.
+## warning and is in full view. A waiting Cybernetic Centipede (task O3, the Terminal's) isn't such a thing: its body
+## is harmless, and from the moment a runner comes on it (the smash shows its cell) it keeps still for its wake time and
+## then telegraphs every bite, more than the reaction and switch together (checked here); its block's ways past it are
+## CentipedeEscape's (test_centipede_maze). Prints the spread at each lane count.
 func _test_dash_fairness() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var centipede := EnemyDirector.tuning_for("centipede") as CentipedeTuning
+	var warned: float = centipede.wake_time + centipede.bite_telegraph if centipede != null else 0.0
 	for lanes: int in [3, 5, 6]:
 		var lane_times: Array[float] = []
 		var side_times: Array[float] = []
@@ -2109,6 +2114,10 @@ func _test_dash_fairness() -> void:
 						mine.append(FloorCutPlan.lane_window(c))
 				for e: Dictionary in layout.enemies:
 					if int(e.get("lane", -1)) == lane:
+						if String(e.get("type", "")) == "centipede":
+							check(warned >= need, "a centipede a dash comes on keeps still and telegraphs its bite for longer than a reaction and a switch (%.2f s, %.2f s)"
+								% [warned, need])
+							continue
 						var span: Vector2 = LevelGenerator.enemy_floor_span(e, fast.pace())
 						if span.y >= span.x:
 							mine.append(span)

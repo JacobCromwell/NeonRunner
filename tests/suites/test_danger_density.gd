@@ -22,8 +22,8 @@ const OTHER_SEEDS: Array[int] = [9001, 9002]
 ## The sampled levels by band: the first levels (dials 0.15 to 0.20), the middle ones (0.26 to 0.28)
 ## and the final ones (0.37 to 0.39). The Hush (dead_zone/2) is checked for fairness only: its quiet
 ## stretches stay quiet by design, so it gains less than its dial. So are the Terminal's levels (task O1): none of the
-## usual enemies and only its own patterns (GDD §5, Zone 8), so the pass has nothing of theirs to add until the debris
-## maze and the centipede come in (tasks O2, O3).
+## usual enemies and only its own patterns (GDD §5, Zone 8), and its debris maze and the centipedes in it (tasks O2, O3)
+## keep to blocks the pass keeps off, so it has nothing of theirs to add.
 const BANDS: Dictionary = {
 	"early": ["city/1", "city/2", "gangland/2"],
 	"middle": ["marketplace/2", "corporate/1"],
