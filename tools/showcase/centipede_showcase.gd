@@ -5,8 +5,9 @@ extends Node3D
 ## The encounter: the runner comes in through the block's first wall in the middle lane; the centipede waits ahead in the
 ## same lane, wakes (the hiss), rears and comes at them; with --dash the runner dashes through it head-on (it's wounded:
 ## the cracked tube, the leak, sparks) and it turns and chases from behind; the runner stops at the closed wall at the
-## room's end and it catches them up and bites (its head rearing, its jaws open and glowing red first). God mode keeps the
-## run going (the bites show as armor-less hits that nothing applies).
+## room's end and it catches them up and bites (its head rearing, its jaws open and glowing red first); after its second
+## bite the runner dashes on through the wall (meeting its jaws, the dash's second contact kills it). God mode keeps the
+## run going (the bites land on nothing).
 ##
 ##   Render:  godot --path . --resolution 960x540 --fixed-fps 10 --write-movie build/centipede/f.png --quit-after 120
 ##            res://tools/showcase/centipede_showcase.tscn -- [options]
