@@ -173,8 +173,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   20. Ice Lab 1 *Frost Foundry*: a frozen laboratory (task Q1), nothing new yet: the cyborgs (window cyborgs too),
       Octodogs and heli drones, and none of the other earlier enemies; the usual holes, fences, signs, ceilings and
       pads, the zone doodads (they push, as everywhere but the Terminal) and wall running, and no dash walls. It
-      wears the Corporate zone's look and plays its song until its own come (task Q2). Its falling gantryways, its
-      teleporters (levels 2 and 3), its Octodog jars and its two new enemies are still to come.
+      wears the Corporate zone's look until its own comes (task Q2), and plays the Corporate zone's song. Its falling
+      gantryways, its teleporters (levels 2 and 3), its Octodog jars and its two new enemies are still to come.
   21. Ice Lab 2 *Relay Station*: the same set.
   22. Ice Lab 3 *Specimen Vault*: the same set, then straight on to the Golden Zone (no boss). Like the Terminal's, the
       Ice Lab's levels sit between their neighbours in difficulty, off the campaign's curve.

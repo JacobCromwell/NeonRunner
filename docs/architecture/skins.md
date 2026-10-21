@@ -406,8 +406,8 @@ the runner leaves the screen up there.
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
 Corporate), `BeachSkin` (Zone 6, the Beach; task D10, in the campaign since D10c), `DeadZoneSkin` (Zone 7, the
-Dead Zone), `TerminalSkin` (Zone 8, the Terminal, task O4) and `GoldenSkin` (Zone 9, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
-look (every zone has one now). A
+Dead Zone), `TerminalSkin` (Zone 8, the Terminal, task O4) and `GoldenSkin` (Zone 10, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+look (every zone has one now; Zone 9, the Ice Lab, wears `CorporateSkin` until task Q2's). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is named in its
 `data/zones/<zone id>.tres` by path (`skin_path`; the same for a level's or a boss arena's own skin): the campaign
 loads every zone at start, so `ZoneDef.skin` and `LevelConfig.skin` load the skin, and compile its scripts, only
