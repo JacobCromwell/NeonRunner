@@ -27,19 +27,15 @@ const TURN_RATE: float = 3.0
 const DECEL_SECONDS: float = 1.4
 ## The door's closing (s).
 const CLOSE_SECONDS: float = 0.9
-## An arm's reach eases in and out over this long (s).
-const ARM_BLEND: float = 0.35
-## The bar the hands hold is a hand's length further than the wrist, and the hands hold it this far apart (m).
+## A hand's fist is this far beyond the wrist (m): the arm's reach ends there. The hands hold the bar this far apart (m).
 const HAND_GRIP: float = 0.05
 const HAND_GAP: float = 0.2
-## Running from the screech (model space, +z into the train): where it sits in the vestibule, how far from the doorway
-## it vanishes into the dark saloon, and its trot (m/s).
+## The screech's places (model space, +z into the train): how far in it sits in the vestibule, how far inside the door's
+## glass it pops up (m: its head fills the window), and its trot into the saloon (m/s).
 const SCREECH_DEPTH: float = 0.55
-## How deep inside the door's glass it pops up (m), so its head fills the window.
 const POP_DEPTH: float = 0.3
 const SCREECH_TROT: float = 1.7
-## Metres from a stop the runner takes to step up onto the plate and in.
-const STEP_UP: float = 0.17
+## How far in past the door's sill the runner steps, and how far into the vestibule they walk (metres).
 const INSIDE: float = 0.38
 const VESTIBULE_STOP: float = 1.4
 
@@ -110,14 +106,14 @@ func _plan() -> void:
 	nose_z = tail_z + train_length
 	run_x = minf(train_x + n.run_side, stage.wall_x(1) - 0.8)
 	stop_z = tail_z - n.stop_short
-	# At the door: a little right of its middle, so the handle (on the right stile) is between their hands.
-	stand = Vector3(train_x + 0.3, 0.0, nose_z + n.stand_off)
+	# At the door, on its step plate, the handle (on the left stile) straight in front of them, between their shoulders.
+	stand = Vector3(train_x + TerminalTrainModel.handle_point().x, TerminalTrainModel.STEP_TOP, nose_z + n.stand_off)
 	cam_x = minf(train_x + TerminalTrainModel.WALL + n.pan_distance, stage.wall_x(1) + 0.8)
 	var walk: float = n.walk_in_speed
 	t_gone = n.leave_shot_at
-	if n.walk_in_at + (n.stand_off + INSIDE + VESTIBULE_STOP) / walk > n.leave_shot_at:
-		push_warning("TerminalOutro: the runner is not in the train (%.2f s) by the cut to its leaving (%.2f s)" % [
-			n.walk_in_at + (n.stand_off + INSIDE + VESTIBULE_STOP) / walk, n.leave_shot_at])
+	var in_by: float = n.walk_in_at + (n.stand_off + INSIDE + VESTIBULE_STOP + 0.2) / walk
+	if in_by > n.leave_shot_at:
+		push_warning("TerminalOutro: the runner is not in the train (%.2f s) by the cut to its leaving (%.2f s)" % [in_by, n.leave_shot_at])
 
 
 # --- The train ----------------------------------------------------------------------------------------------
@@ -144,7 +140,7 @@ func lights_level(t: float, delay: float = 0.0) -> float:
 	if u <= 0.0:
 		return 0.0
 	if Settings.flashing_reduced:
-		return smoothstep(0.0, 1.4, u)
+		return smoothstep(0.0, 1.0, u)
 	if u < 0.1:
 		return 1.0
 	if u < 0.2:
@@ -223,8 +219,8 @@ func _drive_train() -> void:
 
 # --- The screech --------------------------------------------------------------------------------------------
 
-## Where the camera sits for the close shot of the window (track space): to the right of the runner, over their raised
-## hands, looking across at the window.
+## Where the camera sits for the close shot of the window (track space): to the right of the runner (who stands to the
+## left of the window), so the line to the window passes clear of their head, looking across at it.
 func window_camera() -> Vector3:
 	return Vector3(train_x + 2.1, 1.5, nose_z + 2.1)
 
@@ -283,10 +279,9 @@ func _place_screech() -> void:
 	var doorway_z: float = TerminalTrainModel.VESTIBULE_DEPTH
 	screech.visible = z < doorway_z + 1.4 and time < n.leave_shot_at
 	screech.run(0.25)
-	var basis := Basis(Vector3.UP, PI)
 	# It turns round to face in over the first stride.
 	var turn: float = smoothstep(0.0, 0.35, time - trot_at)
-	basis = Basis(Vector3.UP, PI * turn)
+	var basis := Basis(Vector3.UP, PI * turn)
 	screech.global_transform = Transform3D(basis, model_to_world * Vector3(floor_point.x, floor_point.y, z))
 
 
@@ -315,12 +310,13 @@ func _runner(t: CineTimeline) -> void:
 	k = r.at(n.pan_shot_at - 0.3, stopped)
 	k.look = 34.0
 	k.look_up = 12.0
-	# Cut: walking up to the front door.
-	var dir := Vector3(0.38, 0.0, 0.93)
-	var walk_from: Vector3 = stand + dir * (n.walk_speed * (n.arrive_at - n.door_shot_at))
+	# Cut: walking up to the front door and onto its step plate.
+	var dir := Vector3(-0.38, 0.0, 0.93)
+	var ground := Vector3(stand.x, 0.0, stand.z)
+	var walk_from: Vector3 = ground + dir * (n.walk_speed * (n.arrive_at - n.door_shot_at))
 	r.at(n.door_shot_at, walk_from, &"walk", CinePath.Move.CUT)
-	var near: Vector3 = stand + dir * 0.45
-	r.at(n.arrive_at - 0.3, near)
+	var near: Vector3 = ground + dir * 0.55
+	GanglandOutro._turned(r.at(n.arrive_at - 0.5, near), 180.0, 0.0)
 	GanglandOutro._turned(GanglandOutro._eased(r.at(n.arrive_at, stand, &"walk"), Tween.TRANS_QUAD, Tween.EASE_OUT), 180.0, 0.0).look_up = 6.0
 	# Bracing against the door: gripping the handle, the small shake, the pause, the violent one, the bangs.
 	var brace: Array = [
@@ -332,25 +328,25 @@ func _runner(t: CineTimeline) -> void:
 		key.progress = float(brace[i][1])
 		key.look_up = 10.0
 	# Hands up in frustration, held, slumping; staring at the window as the screech pops up in it.
-	var up: Array = [[0.0, 0.0], [0.5, 0.35], [1.4, 0.6], [1.9, 0.85], [2.3, 1.0]]
-	var pace: float = n.hands_up_seconds / 2.3
+	var up: Array = [[0.0, 0.0], [0.5, 0.35], [1.4, 0.6], [1.75, 0.85], [2.15, 1.0]]
+	var pace: float = n.hands_up_seconds / 2.15
 	for i: int in up.size():
 		var at: float = n.hands_up_at + float(up[i][0]) * pace
 		var key: CineActorKey = GanglandOutro._turned(r.at(at, stand, &"hands_up" if i == 0 else &""), 180.0, 0.0)
 		key.progress = float(up[i][1])
 		var raise: float = smoothstep(n.pop_at - 0.2, n.pop_at + 0.3, at)
 		key.look_up = lerpf(4.0, 22.0, raise)
-	# The door opens: they step up onto the plate, in, and toward the doorway behind the screech.
+	# The door opens: they step up from the plate into the cab and toward the doorway behind the screech.
 	var s: float = n.walk_in_speed
-	var step_p := Vector3(train_x + 0.3 - 0.1, TerminalTrainModel.STEP_TOP, nose_z + STEP_UP)
-	var in_p := Vector3(train_x + 0.1, TerminalTrainModel.FLOOR, nose_z - INSIDE)
+	var step_p := Vector3(train_x - 0.1, TerminalTrainModel.STEP_TOP, nose_z + 0.05)
+	var in_p := Vector3(train_x, TerminalTrainModel.FLOOR, nose_z - INSIDE)
 	var vest_p := Vector3(train_x, TerminalTrainModel.FLOOR, nose_z - INSIDE - VESTIBULE_STOP)
 	var t0: float = n.walk_in_at
 	var wait: CineActorKey = GanglandOutro._turned(r.at(t0, stand, &"walk"), 180.0, 0.0)
 	wait.look_up = 8.0
-	var t1: float = t0 + stand.distance_to(Vector3(step_p.x, stand.y, step_p.z)) / s
+	var t1: float = t0 + stand.distance_to(step_p) / s
 	r.at(t1, step_p)
-	var t2: float = t1 + Vector2(in_p.x - step_p.x, in_p.z - step_p.z).length() / s
+	var t2: float = t1 + step_p.distance_to(in_p) / s
 	r.at(t2, in_p)
 	var t3: float = t2 + Vector2(vest_p.x - in_p.x, vest_p.z - in_p.z).length() / s
 	r.at(t3, vest_p)
@@ -391,16 +387,23 @@ func _camera(t: CineTimeline) -> void:
 		var rise: float = float(keys[i][3])
 		t.shot(at, Vector3(cam_x, y * rise, z), Vector3(train_x + 0.2, 1.7 + 0.3 * rise, z + lead),
 			CinePath.Move.CUT if i == 0 else CinePath.Move.SMOOTH, fov + 4.0 * (1.0 - float(i) / float(keys.size())))
-	# Cut: the front door, from behind and to the right of the runner as they walk up and grip it.
-	var door_c := Vector3(train_x + 0.1, 1.3, nose_z)
-	t.shot(n.door_shot_at, Vector3(train_x + 2.8, 1.15, nose_z + 3.7), door_c, CinePath.Move.CUT, 50.0)
-	t.shot(n.arrive_at + 0.6, Vector3(train_x + 2.3, 1.2, nose_z + 3.0), door_c, CinePath.Move.SMOOTH, 45.0)
-	t.shot(n.window_shot_at - 0.004, Vector3(train_x + 2.0, 1.25, nose_z + 2.7), door_c + Vector3(0.0, 0.05, 0.0), CinePath.Move.SMOOTH, 42.0)
+	# Cut: the front door, from behind and to the right of the runner as they walk up and grip it; closer for the violent
+	# shaking; a close three-quarter view from their right as they bang on it (the fist, the door's face) and throw up their
+	# hands.
+	var door_c := Vector3(train_x - 0.1, 1.3, nose_z)
+	t.shot(n.door_shot_at, Vector3(train_x - 2.8, 1.15, nose_z + 3.7), door_c, CinePath.Move.CUT, 50.0)
+	t.shot(n.shake_b_at - 0.4, Vector3(train_x - 2.4, 1.2, nose_z + 2.6), door_c, CinePath.Move.SMOOTH, 46.0)
+	var medium := Vector3(train_x - 0.35, 1.3, nose_z + 0.2)
+	t.shot(n.shake_b_at - 0.396, Vector3(train_x - 2.4, 1.4, nose_z + 1.3), medium, CinePath.Move.CUT, 46.0)
+	t.shot(n.bang_at - 0.5, Vector3(train_x - 2.25, 1.35, nose_z + 1.1), medium, CinePath.Move.SMOOTH, 44.0)
+	var fist := Vector3(train_x - 0.45, 1.2, nose_z + 0.15)
+	t.shot(n.bang_at - 0.496, Vector3(train_x - 2.1, 1.3, nose_z + 0.9), fist, CinePath.Move.CUT, 42.0)
+	t.shot(n.window_shot_at - 0.004, Vector3(train_x - 2.0, 1.3, nose_z + 0.8), fist + Vector3(0.0, 0.1, 0.0), CinePath.Move.SMOOTH, 42.0)
 	# Cut: close on the window as the screech pops up in it, over the runner's raised hands; then wider as the door slides
 	# open and the runner, following the screech, goes in.
-	var window := Vector3(train_x - 0.02, 1.52, nose_z)
-	t.shot(n.window_shot_at, window_camera(), window, CinePath.Move.CUT, 34.0)
-	t.shot(n.open_at - 0.2, window_camera() + Vector3(0.1, -0.05, 0.1), window, CinePath.Move.SMOOTH, 36.0)
+	var window := Vector3(train_x + 0.02, 1.45, nose_z)
+	t.shot(n.window_shot_at, window_camera(), window, CinePath.Move.CUT, 33.0)
+	t.shot(n.open_at - 0.2, window_camera() + Vector3(0.1, -0.05, 0.1), window, CinePath.Move.SMOOTH, 35.0)
 	t.shot(n.walk_in_at + 0.4, Vector3(train_x + 1.9, 1.35, nose_z + 3.0), Vector3(train_x - 0.1, 1.15, nose_z - 0.3),
 		CinePath.Move.SMOOTH, 48.0)
 	t.shot(n.leave_shot_at - 0.004, Vector3(train_x + 2.4, 1.5, nose_z + 3.4), Vector3(train_x - 0.1, 1.1, nose_z - 0.6),
@@ -483,25 +486,28 @@ func _pose_runner(runner: CineActorNode) -> void:
 	var bang: float = bang_at(time)
 	var h: float = heave_at(time)
 	# The body heaves back and forth along the door's axis (back is +z along the track = -z world).
-	var back: float = 0.075 * h * grip
+	var back: float = 0.07 * h * grip
 	runner.avatar.position = Vector3(0.0, 0.0, -back)
 	var chest: Node3D = rig.joint(&"chest")
 	if chest != null and grip > 0.0:
-		chest.rotate_object_local(Vector3.RIGHT, 0.16 * h * grip)
-	var left_pole := Vector3(-0.5, -1.0, 0.3)
-	var right_pole := Vector3(0.5, -1.0, 0.3)
+		chest.rotate_object_local(Vector3.RIGHT, 0.26 * h * grip)
+		chest.rotate_object_local(Vector3.UP, 0.1 * sin(TAU * 3.1 * time) * absf(h) * grip)
+	# The runner faces the train: their right hand is on the train's left (-x), their elbows down, out and back.
+	var left_pole := Vector3(0.5, -1.0, -0.3)
+	var right_pole := Vector3(-0.5, -1.0, -0.3)
 	if grip > 0.0:
+		# Both hands on the bar, one above the other.
 		var handle: Vector3 = TerminalTrainModel.handle_point()
-		# The runner faces the train: their left hand is the train's right side (+x).
-		reach_arm(rig, &"l", door * (handle + Vector3(0.0, HAND_GAP * 0.5, 0.0)), grip, left_pole)
-		reach_arm(rig, &"r", door * (handle - Vector3(0.0, HAND_GAP * 0.5, 0.0)), grip, right_pole)
+		reach_arm(rig, &"r", door * (handle + Vector3(0.0, HAND_GAP * 0.5, 0.0)), grip, right_pole)
+		reach_arm(rig, &"l", door * (handle - Vector3(0.0, HAND_GAP * 0.5, 0.0)), grip, left_pole)
 	if bang > 0.0:
 		# The left hand flat on the door, the right fist drawn back and thrown at it, again and again.
-		var panel: Vector3 = TerminalTrainModel.panel_point(0.95, 0.12)
+		var handle_x: float = TerminalTrainModel.handle_point().x
+		var panel: Vector3 = TerminalTrainModel.panel_point(0.95, handle_x + 0.15)
 		reach_arm(rig, &"l", door * (panel + Vector3(0.0, 0.1, -0.025)), bang, left_pole)
 		var u: float = fposmod((time - n.bang_at) / n.bang_gap, 1.0)
 		var cock: float = smoothstep(0.0, 0.62, u) * (1.0 - smoothstep(0.62, 0.72, u))
-		var fist: Vector3 = TerminalTrainModel.panel_point(0.9 + 0.18 * cock, -0.12) + Vector3(0.0, 0.0, -0.03 - 0.26 * cock)
+		var fist: Vector3 = TerminalTrainModel.panel_point(0.9 + 0.18 * cock, handle_x - 0.12) + Vector3(0.0, 0.0, -0.03 - 0.26 * cock)
 		reach_arm(rig, &"r", door * fist, bang, right_pole)
 		runner.avatar.position += Vector3(0.0, 0.0, 0.02 * cock * bang)
 		if chest != null:

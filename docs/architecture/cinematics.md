@@ -29,7 +29,7 @@ never ends, and a level never starts, unattended.
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
-| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`), bracing against something in front of it (`brace`) and throwing its hands up in frustration (`hands_up`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
 | `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level, but without the alley a level's wall gaps get: the stage's track is built with a copy of the skin whose `wall_gap_recess_on` is off, task L4, since the set builds what the opening shows); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
@@ -44,6 +44,7 @@ never ends, and a level never starts, unattended.
 | `beach_outro/` (`BeachOutro`, `BeachOutroTuning`, `BeachOutroBar`, `BeachOutroScreech`, `BeachOutroPalace`, `BeachOutroRaid`), `scenes/cinematics/beach_outro.tscn`, `data/cinematics/beach_outro_tuning.tres`, `tools/asset_gen/sfx_bank_beach_outro.gd` | the Beach's outro, the owner's beats (below), its props and its two sounds |
 | `casino_boss_intro/` (`CasinoBossIntro`, `CasinoBossIntroTuning`, `CasinoHall`, `CasinoRoulette`, `CasinoHolo`, `CasinoGoldenDoor`, `CasinoWallBreak`, `CasinoCrowd`, `CasinoPeople`, `CasinoPerson`, `casino_carpet.gdshader`, `casino_holo.gdshader`, `casino_dust.gdshader`), `scenes/cinematics/casino_boss_intro.tscn`, `data/cinematics/casino_boss_intro_tuning.tres`, `tools/asset_gen/sfx_bank_casino_boss_intro.gd`, `tools/showcase/casino_people_showcase.tscn` | the Casino's boss intro, the owner's beats (below): the casino hall, its patrons and crowd, the Chairman, the golden door and The House bursting through the wall |
 | `casino_intro/` (`CasinoIntro`, `CasinoIntroTuning`, `CasinoIntroLotus`), `scenes/cinematics/casino_intro.tscn`, `data/cinematics/casino_intro_tuning.tres`, `tools/asset_gen/sfx_bank_casino_intro.gd` | the Casino's intro, the owner's beats (below): the Brass Lotus's front and grand staircase, the violet car pulling up, the Chairman greeting people at the top |
+| `terminal_outro/` (`TerminalOutro`, `TerminalOutroTuning`, `TerminalTrainModel`, `terminal_train.gdshader`, `terminal_train_glass.gdshader`), `scenes/cinematics/terminal_outro.tscn`, `data/cinematics/terminal_outro_tuning.tres`, `tools/asset_gen/sfx_bank_terminal_outro.gd` | the Terminal's outro, the owner's beats (below): the abandoned metro train, the runner at its front door, the screech that opens it, the train leaving |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -79,7 +80,7 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
 keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
-(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`) take the keys' `progress` (0-1, sampled like the position; a key below 0
+(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`, `brace`, `hands_up`) take the keys' `progress` (0-1, sampled like the position; a key below 0
 keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
 hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises; not while it
 gets in, whose legs are its key poses); and while it
@@ -546,3 +547,41 @@ them, and black. Its sounds: `car_cruise` and `car_arrive` (`tools/asset_gen/sfx
 engine) and the game's `car_door`, `screech_chirp` and `casino_bustle`. Everything is worked out from the time, so stepping or
 skipping shows the same. Cost (headless, `test_casino_intro`): about 45 ms to set up (about 350 ms the first time, with cold
 mesh caches), about 0.6 ms a step and at most about 3 ms; its props add about 97 draw calls (the people on the rig most of it).
+
+**The Terminal's outro** (`TerminalOutro`, task F2k; the owner's beats and follow-up, October 21, 2026, GDD §6 Cinematics, "Terminal
+outro"; what they leave open is DESIGN-TBD, `docs/questions/f2k.md`; numbers in `data/cinematics/terminal_outro_tuning.tres`): 28.0 s
+after Terminal 2 (the Terminal has no boss), before the Golden Zone's intro, on one stretch of the Terminal's own street in the level's
+lanes, the zone's music (none until its own track exists) fading in. **The set.** `TerminalTrainModel` is the abandoned metro train: a
+modern one (the owner: "more modern looking, but just dirty and run down, not a steam train"), built by code from the cross-section
+lofted along four articulated cars (two cabs, about 60 m): smooth boxy-streamlined bodies, flat sides with tall windows and double-leaf
+doors as decals, a stripe, a rain gutter, rubber bellows between cars, bogies and a skirt, roof units and a folded pantograph, vine strands
+off the roof; a cab's tapered, raked nose has two windscreens either side of the central front door (a leaf with a window and a handle bar
+on its left stile, sliding toward the train's left behind the face on a recessed track, a tread-plate step under it, a dark wordless
+destination board over it) onto a vestibule (floor, ceiling, walls, a back wall with a doorway, a dark saloon beyond, a strip light, a
+pole) lit by a warm omni. The tail's cab is the head's mirrored, with red lamps and a shut leaf. Four draw calls: the body, the leaf,
+its window's glass and the glow cards (the headlights' pools on the track, halos, the tail lights'). `terminal_train.gdshader` is
+unshaded and faceted like the kit (the sports car's way), painting its dirt from the position on the train (it travels with it: faded
+paint, rain streaks from the roof line, grime thickening toward the foot, rust blooms, flaked paint, soot on the roof; rubber, steel,
+foliage, glass and the cab's inside as finishes) and lit like the hall (`tm_burn`, `tm_pool` and `tm_lit` copied from
+`kit_terminal.gdshaderinc`: the work lamps' pools slide over it as it drives, and the lamps' colours come from the skin's solid
+material); `terminal_train_glass.gdshader` is the door window's clear, dirty glass (alpha-blended, never flickering) so the cab and the
+screech show through. Its lights are instance uniforms: `lights` (head and tail lamps), `interior` (the saloon's windows and the
+windscreens glowing, the cab's light) and `emergency` (the cab's dim light until the lights come on). It stands in the left track-bed
+lane (the start lane on a street under five lanes wide), nose toward the Golden Zone. **The beats.** Low behind the runner as they jog
+in (7 m/s, easing to a stop 11 m short of its tail); cut: from beside them, looking up at its tail on the picture's right; cut: the
+pan, a smooth flight along its side from tail to nose, its target leading (the camera 5.2 m out, or at the kerb's edge on a narrow
+street); cut: the front door from the runner's left as they walk up onto the step plate and grip the handle (`brace`, both hands on the
+bar by two-bone IK, `TerminalOutro.reach_arm`: the rig's own arm lengths, the elbow toward a pole): one small firm shake (the leaf
+rattling a centimetre, a rattle), a pause, then the violent one (five heaves a second, the body heaving about its hands and the chest
+twisting, the leaf rattling six centimetres, the camera shaking by Screen shake, the clatter), a profile shot as they bang on it three
+times (the right fist cocked and thrown at the leaf, the left hand flat on it) and throw their hands up (`hands_up`); cut: close on the
+window from their right (the line to it clear of their head) as the screech (`BeachOutroScreech`, the Gangland and Beach outros'
+screech friend) hops up in it, turning to face the camera, and squeaks; it drops out of sight, the door slides open with a hiss and the
+runner steps from the plate into the vestibule behind the screech (trotting ahead of them into the dark saloon), the door shutting
+behind them with them still seen through its window; cut: behind the tail, low, the camera pulling back 22 m and rising 5 m as the
+lights come on (a failing strip's stutter, one slow glow with Reduced flashing) and the train starts 1.2 s later and pulls away at up to
+14 m/s², past the haze (`fog_end`) by the end: out of sight; black. Everything is worked out from the time (`_on_advance`), so stepping
+or skipping shows the same; the runner's arms, chest and body offset are layered on their pose each step. Its sounds are nine new ones
+(`tools/asset_gen/sfx_bank_terminal_outro.gd`: `door_rattle`, `door_rattle_hard`, `door_bang`, `screech_squeak`, `train_door_open`,
+`train_door_close`, `train_start`, `train_depart`, `train_rush`). Cost (headless, `test_terminal_outro`): about 20 ms to set up (about
+140 ms the first time, with cold mesh caches), about 0.25 ms a step, and five draw calls for its props.

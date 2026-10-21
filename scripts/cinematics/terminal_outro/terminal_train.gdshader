@@ -178,7 +178,7 @@ void fragment() {
 			vec3 p3 = v_world * 6.0;
 			float leaf = value_noise(p3.xy + p3.z * 0.7) * 0.6 + value_noise(p3.zy * 2.1 + p3.x) * 0.4;
 			float gap = smoothstep(0.7, 0.8, value_noise(p3.xy * 1.4 + p3.z * 0.6 + 7.0) * 0.6 + value_noise(p3.zy * 3.1 + p3.x) * 0.4);
-			c = base * (0.36 + 0.7 * leaf);
+			c = base * (0.22 + 0.45 * leaf);
 			c = mix(c, vec3(0.03, 0.045, 0.025), gap * 0.8);
 			c = mix(c, tm_vine * 1.0, smoothstep(0.65, 0.9, leaf) * 0.4);
 			c = tm_lit(c, lit);

@@ -6,7 +6,7 @@ extends Node3D
 ## with smooth boxy-streamlined bodies, big flat windows, double-leaf sliding doors, a rain gutter and a stripe, rubber
 ## gangway bellows between the cars, a skirt over the bogies, air-conditioning units and a folded pantograph on the
 ## roof; the cab's front is a raked, tapered nose with two windscreens either side of a central front door (a leaf
-## with a window in it, a handle bar, a step plate under it), headlights and a destination board (dark, wordless).
+## with a window in it, a handle bar on its left stile, a step plate under it), headlights and a destination board (dark, wordless).
 ## It is dirty and run down (terminal_train.gdshader: faded paint, rain streaks, rust, flaked paint, grimed glass,
 ## a few vines hanging off the roof) but intact. Its front door slides open (set_door) onto a cab vestibule (dim with
 ## the emergency light, then lit), and the door's window is clear glass (terminal_train_glass.gdshader) so what is
@@ -63,11 +63,12 @@ const DOOR_TOP: float = 2.62
 const LEAF_HALF: float = 0.46
 const LEAF_BACK: float = 0.07
 const LEAF_THICK: float = 0.07
-const WINDOW_HALF: float = 0.34
+const WINDOW_HALF: float = 0.28
 const WINDOW_LOW: float = 1.12
-const WINDOW_HIGH: float = 2.0
+const WINDOW_HIGH: float = 1.92
 const STEP_TOP: float = 0.2
-const STEP_DEPTH: float = 0.34
+const STEP_DEPTH: float = 0.5
+const STEP_WIDTH: float = 2.2
 ## How far the leaf slides open (metres, toward the train's left).
 const SLIDE: float = 0.95
 ## The cab vestibule behind the door: its half-width, its depth to the back wall, and the floor it stands on.
@@ -242,9 +243,9 @@ func draw_call_count() -> int:
 
 # --- Where things are (model space) -------------------------------------------------------------------------
 
-## The door handle's middle (a vertical bar on the leaf's right-hand stile, standing proud of it).
+## The door handle's middle (a vertical bar on the leaf's left-hand stile, standing proud of it).
 static func handle_point() -> Vector3:
-	return Vector3(0.4, 0.96, LEAF_BACK - 0.09)
+	return Vector3(-0.4, 1.05, LEAF_BACK - 0.09)
 
 
 ## Where the door's window shows, its middle.
@@ -485,9 +486,10 @@ static func _nose(m: MeshLayer, rear: bool, p_paint: Color, p_stripe: Color, dar
 	_face(m, Vector3(-h, FLOOR, 0.0), Vector3(h, FLOOR, 0.0), Vector3(h, FLOOR, depth), Vector3(-h, FLOOR, depth),
 		Vector3.UP, Color(0.3, 0.28, 0.26), 0.0, STEEL)
 	# The step plate under it: tread plate on two brackets.
-	m.box(Vector3(0.0, STEP_TOP - 0.04, -STEP_DEPTH * 0.5), Vector3(h * 2.0, 0.08, STEP_DEPTH), Color(0.34, 0.33, 0.31), 0.0, STEEL)
+	m.box(Vector3(0.0, STEP_TOP - 0.04, -STEP_DEPTH * 0.5), Vector3(STEP_WIDTH, 0.08, STEP_DEPTH), Color(0.34, 0.33, 0.31), 0.0, STEEL)
 	for side: float in [-1.0, 1.0]:
-		m.box(Vector3(side * (h - 0.06), 0.11, -0.04), Vector3(0.05, 0.12, 0.08), dark, 0.0, TRIM)
+		m.box(Vector3(side * (STEP_WIDTH * 0.5 - 0.08), 0.11, -0.04), Vector3(0.05, 0.12, 0.08), dark, 0.0, TRIM)
+		m.box(Vector3(side * (STEP_WIDTH * 0.5 - 0.08), 0.1, -STEP_DEPTH + 0.05), Vector3(0.05, 0.1, 0.08), dark, 0.0, TRIM)
 	# A bumper under the face, with a coupler cover.
 	m.box(Vector3(0.0, 0.22, -0.08), Vector3(2.5, 0.16, 0.16), dark, 0.0, TRIM)
 	m.box(Vector3(0.0, 0.32, -0.14), Vector3(0.34, 0.22, 0.1), Color(0.3, 0.27, 0.24), 0.0, STEEL)
@@ -526,7 +528,7 @@ static func _quad_z(m: MeshLayer, z: float, x0: float, x1: float, y0: float, y1:
 
 ## The door leaf, in the nose's space (a flat panel `LEAF_BACK` behind the face): the lower and upper panels and the
 ## stiles round its window (an opening: the door's glass fills it, or, shut at the tail, the nose's own), the stripe
-## across its lower panel, rubber at its edges, and a handle bar standing off its right-hand stile.
+## across its lower panel, rubber at its edges, and a handle bar standing off its left-hand stile.
 static func _leaf(m: MeshLayer, p_paint: Color, p_stripe: Color) -> void:
 	var z: float = LEAF_BACK
 	var c: Color = p_paint.darkened(0.06)

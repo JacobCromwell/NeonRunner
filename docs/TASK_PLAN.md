@@ -627,6 +627,19 @@ runner finds an abandoned metro train (modern, dirty and run down, not a steam t
 runner shakes the front door (once, then violently and noisily), bangs on it and throws their hands up; the screech pops
 up in the door's window on the other side, squeaks, opens the door; the runner goes in and the camera pulls back as the
 train speeds away out of sight.
+**Done:** `TerminalOutro` (`scripts/cinematics/terminal_outro/`) in the Terminal's outro slot, which was a placeholder card:
+28.0 s on the zone's street. The runner jogs in and eases to a stop short of the tail of a dark, modern metro train
+(`TerminalTrainModel`, built by code: four articulated cars with two cabs, faded cream paint with a blue stripe under rain
+streaks, grime, rust, flaked paint and a few vines, rubber gangway bellows, a folded pantograph, a cab nose with two
+windscreens either side of a front door that has a window and a handle bar; `terminal_train.gdshader` paints the dirt and
+the hall's work-lamp pools over it, `terminal_train_glass.gdshader` is the door window's clear glass), and looks up at it;
+the camera pans along its length; at the front door they shake the handle once (firm), pause, then violently (the leaf
+rattling, the camera shaking with Screen shake, a clatter), bang on it three times and throw their hands up (two new
+generic poses in `CinePoses`, `brace` and `hands_up`; the arms' reach is two-bone IK in the script); the screech
+(`BeachOutroScreech`) pops up in the door's window and squeaks, the door slides open with a hiss and they go in behind it; the
+camera pulls back behind the tail as the train's lights come on (a stutter, one slow glow with Reduced flashing) and it
+pulls away out of sight. Nine new sounds (`tools/asset_gen/sfx_bank_terminal_outro.gd`), `test_terminal_outro`. The staging
+choices are `docs/questions/f2k.md`.
 
 ### H. The owner's requests (October 8, 2026)
 

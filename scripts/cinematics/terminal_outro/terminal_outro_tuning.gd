@@ -58,8 +58,8 @@ extends Resource
 @export_range(0.5, 3.0, 0.05, "suffix:m") var pan_height: float = 1.5
 
 @export_group("The front door")
-## The runner is walking up to the door as its shot opens; they stand `stand_off` metres in front of the nose.
-@export_range(0.3, 2.0, 0.01, "suffix:m") var stand_off: float = 0.4
+## The runner is walking up to the door as its shot opens; they stand on its step plate, `stand_off` metres in front of the nose.
+@export_range(0.2, 0.5, 0.01, "suffix:m") var stand_off: float = 0.3
 @export_range(0.3, 3.0, 0.05, "suffix:m/s") var walk_speed: float = 1.3
 @export_range(0.0, 60.0, 0.05, "suffix:s") var arrive_at: float = 11.2
 ## They grip the handle and shake the door once, small and firm; pause; then shake it violently (the door rattling, the
@@ -73,12 +73,12 @@ extends Resource
 @export_range(1, 8) var bangs: int = 3
 @export_range(0.15, 1.0, 0.01, "suffix:s") var bang_gap: float = 0.34
 @export_range(0.0, 60.0, 0.05, "suffix:s") var hands_up_at: float = 16.1
-@export_range(0.5, 4.0, 0.05, "suffix:s") var hands_up_seconds: float = 2.3
+@export_range(0.5, 4.0, 0.05, "suffix:s") var hands_up_seconds: float = 2.15
 ## How far the door's leaf rattles at the first shake and the second (metres), and the camera's shake with the second
 ## (CineEvent.SHAKE's strength, scaled by Settings > Screen shake).
 @export_range(0.0, 0.1, 0.002, "suffix:m") var rattle_small: float = 0.012
-@export_range(0.0, 0.1, 0.002, "suffix:m") var rattle_big: float = 0.045
-@export_range(0.0, 0.5, 0.01) var camera_shake: float = 0.07
+@export_range(0.0, 0.1, 0.002, "suffix:m") var rattle_big: float = 0.06
+@export_range(0.0, 0.5, 0.01) var camera_shake: float = 0.08
 
 @export_group("The screech")
 ## It is the screech friend from the other outros (BeachOutroScreech: the Gangland car's passenger, in the scavengers'
