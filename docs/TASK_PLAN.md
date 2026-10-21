@@ -510,13 +510,14 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2h | **The Neon City's intro**, the game's first cinematic (the owner's beats, October 16, 2026) | F1 | M | T2 |
 | F2i | **The Casino's boss intro**, before The House (the owner's beats and reference, October 17, 2026) | F1 | L | T2 |
 | F2j | **The Casino's intro**, pulling up at the Brass Lotus (the owner's beats and reference, October 18, 2026) | F1 | M | T2 |
+| F2k | **The Terminal's outro**, the screech opens an abandoned metro train (the owner's beats, October 21, 2026) | F1, O4 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2j have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2k have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -619,6 +620,13 @@ from the passenger seat, and looks up the steps; at the top the Chairman shakes 
 a woman either side of him, and walks in past two cyborg guards; back to the runner and the zone's title card. A handshake
 on `CasinoPerson` (`shake_hand`), two new sounds (`tools/asset_gen/sfx_bank_casino_intro.gd`), `test_casino_intro`. The
 staging choices are `docs/questions/f2j.md`.
+
+**F2k: the Terminal's outro** (owner, October 21, 2026; GDD §6, Cinematics, "Terminal outro"). In the Terminal's
+outro slot, in place of its placeholder card (`data/cinematics/terminal_outro.tres`), on the Terminal's skin (task O4). The
+runner finds an abandoned metro train (modern, dirty and run down, not a steam train), the camera pans along it, the
+runner shakes the front door (once, then violently and noisily), bangs on it and throws their hands up; the screech pops
+up in the door's window on the other side, squeaks, opens the door; the runner goes in and the camera pulls back as the
+train speeds away out of sight.
 
 ### H. The owner's requests (October 8, 2026)
 
