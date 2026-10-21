@@ -39,8 +39,8 @@ extends Resource
 @export var paint: Color = Color(0.72, 0.68, 0.56)
 @export var stripe: Color = Color(0.2, 0.34, 0.4)
 ## How dirty it is: 0 clean to 1 filthy (streaks, grime at the foot, flaking paint), and how much rust shows.
-@export_range(0.0, 1.0, 0.01) var grime: float = 0.85
-@export_range(0.0, 1.0, 0.01) var rust: float = 0.45
+@export_range(0.0, 1.0, 0.01) var grime: float = 0.9
+@export_range(0.0, 1.0, 0.01) var rust: float = 0.5
 ## The vines hanging off its roof (a few strips down its sides and over its tail; 0 none).
 @export_range(0, 12) var vines: int = 6
 

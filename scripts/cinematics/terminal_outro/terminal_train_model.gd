@@ -81,8 +81,8 @@ const DECAL: float = 0.008
 var cars: int = 4
 var paint: Color = Color(0.72, 0.68, 0.56)
 var stripe: Color = Color(0.2, 0.34, 0.4)
-var grime: float = 0.7
-var rust: float = 0.45
+var grime: float = 0.9
+var rust: float = 0.5
 var vines: int = 6
 var body: MeshInstance3D
 ## The door leaf (it slides about its own node), its mesh, its glass and the glow cards.

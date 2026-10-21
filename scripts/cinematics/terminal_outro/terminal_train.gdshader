@@ -99,22 +99,26 @@ vec2 surface_coords(vec3 m, vec3 n) {
 vec3 weathered_paint(vec3 base, vec2 uv, vec3 m, vec3 n) {
 	float soot = 1.0 - smoothstep(0.0, 2.9, m.y);
 	float top = smoothstep(2.3, 3.5, m.y);
-	// Sun-faded: the paint is pale and chalky, blotched where something kept the weather off it.
-	vec3 col = mix(base, vec3(dot(base, vec3(0.33))), 0.2) * (0.62 + 0.3 * value_noise(uv * 1.3 + 4.0))
-		* (0.85 + 0.25 * value_noise(uv * 0.35 + 11.0));
+	// The panels have faded unevenly (each about 1.75 m wide): some paler, some dull, the odd one a repair in another batch.
+	float panel = hash12(vec2(floor(uv.x / 1.75), floor(uv.y / 1.2)));
+	vec3 col = mix(base, vec3(dot(base, vec3(0.33))), 0.2) * (0.6 + 0.3 * value_noise(uv * 1.3 + 4.0))
+		* (0.8 + 0.3 * value_noise(uv * 0.35 + 11.0)) * (0.9 + 0.2 * panel);
 	// Rain streaks down from the roof and the sills: long thin ones and broad stains.
 	float streak = value_noise(vec2(uv.x * 11.0, uv.y * 0.38 + floor(uv.x * 11.0) * 0.37));
 	float broad = value_noise(vec2(uv.x * 2.4 + 3.0, uv.y * 0.16));
-	float run = smoothstep(0.38, 0.84, streak) * (0.3 + 0.7 * smoothstep(0.3, 3.3, m.y));
-	col = mix(col, vec3(0.17, 0.12, 0.08) * (0.7 + 0.6 * streak), clamp(run * 0.75 + smoothstep(0.5, 0.85, broad) * 0.45, 0.0, 1.0) * grime);
+	float run = smoothstep(0.36, 0.82, streak) * (0.3 + 0.7 * smoothstep(0.3, 3.3, m.y));
+	col = mix(col, vec3(0.17, 0.12, 0.08) * (0.7 + 0.6 * streak), clamp(run * 0.75 + smoothstep(0.45, 0.8, broad) * 0.45, 0.0, 1.0) * grime);
+	// Dark stains running down from under the windows' sills (they stand at 1.22 m).
+	float sill = step(m.y, 1.22) * (1.0 - smoothstep(0.0, 0.6, 1.22 - m.y)) * smoothstep(0.3, 0.75, value_noise(vec2(uv.x * 6.0, uv.y * 0.5 + 2.0)));
+	col = mix(col, vec3(0.13, 0.095, 0.065), sill * 0.7 * grime);
 	// The foot is dirty with road grime and brake dust, thickly.
-	col = mix(col, vec3(0.1, 0.09, 0.08), clamp(soot * (0.75 + 0.4 * value_noise(uv * 3.1 + 9.0)), 0.0, 1.0) * grime);
+	col = mix(col, vec3(0.1, 0.09, 0.08), clamp(soot * (0.8 + 0.4 * value_noise(uv * 3.1 + 9.0)), 0.0, 1.0) * grime);
 	// Rust blooms in patches, thickest low down and along the top edge, running into the dirt.
 	float patch_n = value_noise(uv * vec2(0.9, 1.6) + 2.0) * 0.65 + value_noise(uv * vec2(3.4, 5.2) + 7.0) * 0.35;
-	float bloom = smoothstep(0.5, 0.78, patch_n) * rust_amount * (0.45 + 1.1 * soot + 0.5 * top);
+	float bloom = smoothstep(0.48, 0.76, patch_n) * rust_amount * (0.45 + 1.1 * soot + 0.5 * top);
 	col = mix(col, tm_rust * (0.55 + 0.6 * value_noise(uv * 6.0)), clamp(bloom, 0.0, 0.9));
 	// Paint flaking away: primer grey, a few small scabs.
-	float flake = step(0.82, value_noise(uv * 9.0 + 3.0)) * step(0.45, value_noise(uv * 1.4 + 6.0)) * grime;
+	float flake = step(0.8, value_noise(uv * 9.0 + 3.0)) * step(0.45, value_noise(uv * 1.4 + 6.0)) * grime;
 	col = mix(col, vec3(0.28, 0.27, 0.25), flake * 0.75);
 	// The roof: soot-dark and streaked.
 	col = mix(col, vec3(0.12, 0.11, 0.1) * (0.7 + 0.5 * value_noise(uv * 2.0)), top * step(0.5, n.y) * 0.7 * grime);
@@ -147,7 +151,7 @@ void fragment() {
 		float graze = pow(1.0 - facing, 3.0);
 		vec3 c;
 		if (finish == 0) {
-			c = weathered_paint(base, uv, v_model, n) * lambert * 1.3;
+			c = weathered_paint(base, uv, v_model, n) * lambert * 1.45;
 			c = tm_lit(c, lit);
 		} else if (finish == 1) {
 			// Dark glass, dirty: streaks of grime over it, the haze caught at a glance. A lit saloon glows behind it,
