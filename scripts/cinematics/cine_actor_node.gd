@@ -237,7 +237,7 @@ func _pose_runner(t: float, delta: float) -> void:
 			CinePoses.WALK_CYCLE / maxf(rig.scale.z, 0.01), rig.parts.thigh_length, rig.parts.shin_length)
 	else:
 		_gait = -1.0
-		CinePoses.runner(_cine_pose, pose, progress, t, rig.parts.pelvis_height())
+		CinePoses.runner(_cine_pose, pose, progress, t, rig.parts.pelvis_height(), _step_phase)
 	var hold: float = CinePoses.hand_hold(pose, progress)
 	# Moved along meanwhile (a stagger forward as it gets up), its legs step.
 	_step_phase = CinePoses.step_phase(_step_phase, speed * delta, speed, avatar.anim_tuning)

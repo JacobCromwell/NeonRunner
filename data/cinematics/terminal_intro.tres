@@ -6,5 +6,5 @@
 script = ExtResource("1_script")
 id = &"terminal_intro"
 title = "The Terminal"
-scene = "res://scenes/cinematics/arrival_flyover.tscn"
+scene = "res://scenes/cinematics/terminal_intro.tscn"
 placeholder_text = "DESIGN-TBD: a short scene arriving in the abandoned subway under the city, choked with debris, where the scavengers and the cybernetic centipedes are."
