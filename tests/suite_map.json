@@ -44,7 +44,7 @@
     {"match": "scripts/run/run_context.gd", "tier": "merge", "suites": ["weekly_challenge", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
     {"match": "scripts/run/loadout.gd", "tier": "merge", "suites": ["weekly_challenge", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
     {"match": "scripts/app/app.gd", "suites": ["weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
-    {"match": "scripts/app/profile.gd", "suites": ["weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
+    {"match": "scripts/app/profile.gd", "suites": ["campaign", "economy", "weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
     {"match": "scripts/platform/*", "suites": ["weekly_challenge", "web_demo", "app_flow", "screens"]},
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
     {"match": "scripts/world/debris_maze*.gd", "tier": "full", "suites": ["debris_maze", "terminal_levels", "campaign", "generator"]},

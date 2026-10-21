@@ -54,7 +54,7 @@ a feature once introduced stays in every later level, bar the exceptions the des
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
 Marketplace 1; the Tithe Collector skips the Dead Zone; Zone & Levels 2 excludes Octodogs from
 Golden 1–3, including the Golden Palace). Octodogs remain enabled from Gangland 2 through the
-Dead Zone, the Beach's remix included. Removing only `octodog` from the three Golden resources excludes both dog patterns and
+Dead Zone, the Beach's remix included, and again in the Ice Lab. Removing only `octodog` from the three Golden resources excludes both dog patterns and
 their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
 to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
 through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected), and in the Beach between

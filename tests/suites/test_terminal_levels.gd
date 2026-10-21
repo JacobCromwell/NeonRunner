@@ -93,7 +93,7 @@ func _test_data() -> void:
 		and campaign.zones[at + 1].id == &"ice_lab", "the campaign's zone %d, between the Dead Zone and the Ice Lab" % (at + 1))
 	check(zone.id == &"terminal" and zone.display_name == "The Terminal" and zone.tagline != "" and zone.music == &"terminal"
 		and not zone.in_demo and not zone.placeholder, "the Terminal's id, name, tagline and music track, outside the web demo")
-	check(zone.boss == null and zone.boss_intro == null, "no boss (owner, October 20, 2026): it leads straight into the Golden Zone")
+	check(zone.boss == null and zone.boss_intro == null, "no boss (owner, October 20, 2026): it leads straight into the next zone (the Ice Lab)")
 	check(zone.intro != null and zone.outro != null and String(zone.intro.id) == "terminal_intro"
 		and String(zone.outro.id) == "terminal_outro" and not zone.outro.is_built() and not zone.intro.is_skipped()
 		and not zone.outro.is_skipped(), "an intro slot (the placeholder flyover) and an outro slot (a placeholder card)")
