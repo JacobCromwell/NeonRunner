@@ -28,7 +28,9 @@ native layout through enemy and obstacle hooks around the filler pass. The per-l
 counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15; Gangland
 0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; the Terminal 0.37/0.38
 (task O1: none of the usual enemies and no fillers, so the pass adds nothing there yet; `test_danger_density` checks
-its levels for fairness only, as The Hush's); Golden
+its levels for fairness only, as The Hush's); the Ice Lab 0.38/0.38/0.38 (task Q1: between Terminal 2's and Golden 1's;
+its enemies only cyborgs, Octodogs and heli drones, a mix the bands don't sample, so `test_danger_density` checks its
+levels for fairness only too); Golden
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
 little, `docs/OPEN_QUESTIONS.md` §D, item 521). Merged with the Enforcer Truck's showing windows (task C6e,

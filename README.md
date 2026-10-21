@@ -4,7 +4,7 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- the whole campaign structure: seven zones and 17 levels
+- the whole campaign structure: ten zones and 25 levels
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
@@ -93,7 +93,8 @@ The owner-supplied MP3s are copied unmodified into `assets/music/`:
 | Zone 6 - Beach | Palms at Terminal Speed |
 | Zone 7 - Dead Zone | Beneath the Cracks |
 | Zone 8 - The Terminal | the Dead Zone's song (no new songs are generated; the owner may supply one) |
-| Zone 9 - Golden Zone | View from the Zenith |
+| Zone 9 - The Ice Lab | the Corporate zone's song, Concrete Fever (until the owner supplies or approves one) |
+| Zone 10 - Golden Zone | View from the Zenith |
 | Boss 1 - Floating Head | Apex Combat Maneuver |
 
 Menus, cutscenes (including the Boss 1 intro), and unmatched bosses keep their generated default
@@ -123,11 +124,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** 22 levels in nine zones, about 50 minutes of flawless running: the Neon City (the web demo's
+- **Campaign:** 25 levels in ten zones, about 57 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate and the Dead Zone with two, the
-  Beach with three (its second a volleyball mini-game), the Terminal with two, and the Golden Zone with three.
-  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino, and the Terminal, which
-  leads straight into the Golden Zone; the Beach's is Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
+  Beach with three (its second a volleyball mini-game), the Terminal with two, the Ice Lab with three, and the Golden
+  Zone with three.
+  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino, the Terminal, which leads
+  straight into the Ice Lab, and the Ice Lab, which leads straight into the Golden Zone; the Beach's is Mecha Guppy
+  and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
   (skippable), but Gangland's, the Marketplace's and the Dead Zone's, which play the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
@@ -165,11 +168,19 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       back yet; a few one-lane ceilings are shortcuts over a block's last wall. The Cybernetic Centipede is still to
       come.
       Like the Beach's, its levels sit between their neighbours in difficulty, off the campaign's curve.
-  19. Terminal 2 *Last Stop*: the same rules, a normal run with stretches of the maze, then straight on to the Golden
-      Zone (no boss).
-  20. Golden 1 *Gilded Canals*: the Resonator.
-  21. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
-  22. Golden 3 *The Golden Palace*, then the final boss.
+  19. Terminal 2 *Last Stop*: the same rules, a normal run with stretches of the maze, then straight on to the Ice
+      Lab (no boss).
+  20. Ice Lab 1 *Frost Foundry*: a frozen laboratory (task Q1), nothing new yet: the cyborgs (window cyborgs too),
+      Octodogs and heli drones, and none of the other earlier enemies; the usual holes, fences, signs, ceilings and
+      pads, the zone doodads (they push, as everywhere but the Terminal) and wall running, and no dash walls. It
+      wears the Corporate zone's look until its own comes (task Q2), and plays the Corporate zone's song. Its falling
+      gantryways, its teleporters (levels 2 and 3), its Octodog jars and its two new enemies are still to come.
+  21. Ice Lab 2 *Relay Station*: the same set.
+  22. Ice Lab 3 *Specimen Vault*: the same set, then straight on to the Golden Zone (no boss). Like the Terminal's, the
+      Ice Lab's levels sit between their neighbours in difficulty, off the campaign's curve.
+  23. Golden 1 *Gilded Canals*: the Resonator.
+  24. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  25. Golden 3 *The Golden Palace*, then the final boss.
 
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
@@ -521,7 +532,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - supplied music for every zone (the Terminal plays the Dead Zone's song)
+  - supplied music for every zone (the Terminal plays the Dead Zone's song, the Ice Lab the Corporate zone's)
     and Boss 1 (The House shares the Casino song), generated defaults
     for menus/cutscenes/unmatched bosses
     (music dips when the runner dies), and 76 sound

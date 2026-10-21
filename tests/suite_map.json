@@ -32,7 +32,7 @@
     "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache", "volleyball",
     "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite", "mecha_guppy_bite_water",
-    "zone_shaders", "weekly_challenge", "extended_wall_runs", "terminal_levels", "debris_maze", "centipede_maze"
+    "zone_shaders", "weekly_challenge", "extended_wall_runs", "terminal_levels", "debris_maze", "centipede_maze", "ice_lab_levels"
   ],
   "rules": [
     {"match": "scripts/weekly/*", "suites": ["weekly_challenge", "weekly_fairness", "app_flow", "screens", "phone_screens", "web_demo"]},
@@ -44,7 +44,7 @@
     {"match": "scripts/run/run_context.gd", "tier": "merge", "suites": ["weekly_challenge", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
     {"match": "scripts/run/loadout.gd", "tier": "merge", "suites": ["weekly_challenge", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
     {"match": "scripts/app/app.gd", "suites": ["weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
-    {"match": "scripts/app/profile.gd", "suites": ["weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
+    {"match": "scripts/app/profile.gd", "suites": ["campaign", "economy", "weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
     {"match": "scripts/platform/*", "suites": ["weekly_challenge", "web_demo", "app_flow", "screens"]},
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
     {"match": "scripts/world/debris_maze*.gd", "tier": "full", "suites": ["debris_maze", "terminal_levels", "campaign", "generator"]},
@@ -167,6 +167,7 @@
     {"match": "scripts/ui/*", "suites": ["screens", "phone_screens", "ui_kit", "app_flow", "hints", "credit_visibility", "last_hit_warning", "cosmetics"]},
     {"match": "scenes/*", "suites": ["main_scene", "bosses", "cinematics"]},
     {"match": "data/levels/terminal_*", "tier": "full", "suites": ["terminal_levels", "danger_density"]},
+    {"match": "data/levels/ice_lab_*", "tier": "full", "suites": ["ice_lab_levels", "danger_density", "campaign"]},
     {"match": "data/levels/*", "tier": "full", "suites": ["danger_density"]},
     {"match": "data/patterns/terminal/*", "tier": "full", "suites": ["terminal_levels", "campaign"]},
     {"match": "data/patterns/*", "tier": "full", "suites": ["sign_armor"]},
@@ -175,6 +176,7 @@
     {"match": "data/tuning/danger_density.tres", "tier": "full", "suites": ["danger_density"]},
     {"match": "data/tuning/*", "tier": "full"},
     {"match": "data/zones/terminal.tres", "tier": "full", "suites": ["terminal_levels", "campaign", "weekly_challenge"]},
+    {"match": "data/zones/ice_lab.tres", "tier": "full", "suites": ["ice_lab_levels", "campaign", "weekly_challenge"]},
     {"match": "data/zones/*", "tier": "full"},
     {"match": "data/campaign/*", "tier": "full"},
     {"match": "data/skins/ice_lab*", "suites": ["ice_lab_skin", "skin_budget"]},

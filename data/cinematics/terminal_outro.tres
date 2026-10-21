@@ -6,4 +6,4 @@
 script = ExtResource("1_script")
 id = &"terminal_outro"
 title = "Out of the tunnels"
-placeholder_text = "DESIGN-TBD: a short scene leaving the Terminal's tunnels, heading for the Golden Zone (the Terminal has no boss)."
+placeholder_text = "DESIGN-TBD: a short scene leaving the Terminal's tunnels, heading for the Ice Lab (since October 21, 2026; before, the Golden Zone; the Terminal has no boss)."

@@ -23,13 +23,15 @@ const OTHER_SEEDS: Array[int] = [9001, 9002]
 ## and the final ones (0.37 to 0.39). The Hush (dead_zone/2) is checked for fairness only: its quiet
 ## stretches stay quiet by design, so it gains less than its dial. So are the Terminal's levels (task O1): none of the
 ## usual enemies and only its own patterns (GDD §5, Zone 8), and its debris maze and the centipedes in it (tasks O2, O3)
-## keep to blocks the pass keeps off, so it has nothing of theirs to add.
+## keep to blocks the pass keeps off, so it has nothing of theirs to add. And the Ice Lab's (task Q1), which the bands
+## don't sample: a final zone's dial over a mix of its own (GDD §5, Zone 9: the cyborgs, the Octodogs and the heli drones,
+## none of the other earlier enemies), so the pass's fairness is checked on what it adds there.
 const BANDS: Dictionary = {
 	"early": ["city/1", "city/2", "gangland/2"],
 	"middle": ["marketplace/2", "corporate/1"],
 	"late": ["dead_zone/1", "golden/2", "golden/3"],
 }
-const FAIRNESS_ONLY: Array[String] = ["dead_zone/2", "terminal/1", "terminal/2"]
+const FAIRNESS_ONLY: Array[String] = ["dead_zone/2", "terminal/1", "terminal/2", "ice_lab/1", "ice_lab/2", "ice_lab/3"]
 ## Builds checked for fairness, as {id, lanes, seed}, where a zone doodad placed after the pass would stand
 ## right past a full row in the only lane the pass's rows leave open, so nothing gets past it: built without
 ## DangerDensity.doodad_ok (DoodadsUnchecked) the floor route through the level breaks there, and with it, it

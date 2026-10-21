@@ -15,7 +15,8 @@ extends RefCounted
 ## 3 (October 8, 2026): The House moved from the Marketplace to the new Casino zone (GDD §5, §10).
 ## 4 (October 10, 2026): a new Beach 2, the volleyball match, came in before Sunset Strip, now Beach 3 (GDD §5).
 ## 5 (October 20, 2026): the Terminal came in between the Dead Zone and the Golden Zone, now zone 9 (GDD §5).
-const VERSION: int = 5
+## 6 (October 21, 2026): the Ice Lab came in between the Terminal and the Golden Zone, now zone 10 (GDD §5).
+const VERSION: int = 6
 ## What one unit of armor cost while it was a breakable item (save version 1; the shop never priced it
 ## otherwise): a version 1 save's armor stock is paid back at this price. A record of the past, not a
 ## tunable.
@@ -34,6 +35,9 @@ const V4_SUNSET_STEP: String = "beach/3"
 ## place before the Golden Zone it was; _migrate): records of the past.
 const V4_GOLDEN_GATE: String = "dead_zone/outro"
 const V5_GOLDEN_GATE: String = "terminal/outro"
+## The outro save version 6 counts again (the Terminal's, which led to the Golden Zone, as the Ice Lab's, whose place
+## before the Golden Zone it was; _migrate): records of the past.
+const V6_GOLDEN_GATE: String = "ice_lab/outro"
 
 ## Credits earned in play and not spent (the wallet's part of the net worth, GDD §7).
 var earned: int = 0
@@ -430,6 +434,15 @@ static func from_dict(d: Dictionary) -> Profile:
 ##   own stays finished too), so the Golden Zone's intro stays open to a player who had reached it (App.step_unlocked).
 ##   The Terminal's intro is open too (the Dead Zone's outro is done) and is the first step not done, so Continue leads
 ##   into the Terminal. DESIGN-TBD (docs/questions/o1.md): that a save keeps the Golden Zone open.
+## - 5 → 6: the Ice Lab came in as zone 9, between the Terminal and the Golden Zone (owner, October 21, 2026), with no
+##   boss: its intro, three levels and outro. The Golden Zone's step ids stay as they were, and its intro's step before
+##   is now the Ice Lab's outro, no longer the Terminal's: the Terminal's outro led to the Golden Zone, the Ice Lab's
+##   outro's place now, so a finished one also counts as the Ice Lab's outro finished (the Terminal's own stays finished
+##   too), on every tier it was, and the Golden Zone's intro stays open to a player who had reached it
+##   (App.step_unlocked). The Ice Lab's intro is open too (the Terminal's outro is done) and is the first step not done,
+##   so Continue leads into the Ice Lab. A save from before the Terminal takes both steps: 4 → 5 counts its Dead Zone
+##   outro as the Terminal's, and this one that as the Ice Lab's. DESIGN-TBD (docs/questions/q1.md): that a save keeps
+##   the Golden Zone open.
 func _migrate(from: int) -> void:
 	if from < 2:
 		var refund: int = stock(&"armor") * V1_ARMOR_PRICE
@@ -461,6 +474,12 @@ func _migrate(from: int) -> void:
 			if key.trim_prefix(tier_prefix) == V4_GOLDEN_GATE and bool((records[key] as Dictionary).get("completed", false)) \
 					and not records.has(tier_prefix + V5_GOLDEN_GATE):
 				records[tier_prefix + V5_GOLDEN_GATE] = (records[key] as Dictionary).duplicate()
+	if from < 6:
+		for key: String in records.keys():
+			var tier_prefix: String = key.get_slice("/", 0) + "/"
+			if key.trim_prefix(tier_prefix) == V5_GOLDEN_GATE and bool((records[key] as Dictionary).get("completed", false)) \
+					and not records.has(tier_prefix + V6_GOLDEN_GATE):
+				records[tier_prefix + V6_GOLDEN_GATE] = (records[key] as Dictionary).duplicate()
 
 
 ## What the outfits owned cost at the catalog's prices, capped by what the save could have paid them with: never more than

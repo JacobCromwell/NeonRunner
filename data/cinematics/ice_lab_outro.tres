@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"ice_lab_outro"
+title = "Out of the cold"
+placeholder_text = "DESIGN-TBD: a short scene leaving the Ice Lab, heading for the Golden Zone (the Ice Lab has no boss)."
