@@ -73,9 +73,10 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   world space each frame (`pose()`), built once per look (static caches), every part warmed with the level
   (`Centipede.warm_up`). Spawned `spawn_lead` (130 m) ahead and retired behind the runner, at most two a block: a few
   are alive at once.
-- **Sounds** (`tools/asset_gen/sfx_bank_centipede.gd`, `tools/godot.sh sfx --only=centipede_wake,...`): `centipede_wake`,
-  `centipede_bite`, `centipede_snap`, `centipede_wound`, `centipede_death`; volumes in `data/audio/sfx_library.tres`.
-  It notes what it plays (`sounds_played`), and its states (`history`), bites (`bites`, `bite_contacts`) for tests.
+- **Sounds** (`tools/asset_gen/sfx_bank_centipede.gd`, `tools/godot.sh sfx --only=centipede_wake,...`):
+  `centipede_wake`, `centipede_bite`, `centipede_snap`, `centipede_wound`, `centipede_death`; volumes in
+  `data/audio/sfx_library.tres`. It notes what it plays (`sounds_played`), and its states (`history`), bites (`bites`,
+  `bite_contacts`) for tests.
 - **Review.** `tools/showcase/centipede_showcase.tscn` (Review tools): its model posed (`--scenario=model --pose=walk|
   sleep|wake|bite|wounded`, `--angle`, `--near`) or a scripted encounter in a MazeKit block on the Terminal's skin
   through the game's camera (a head-on dash through it, then its bites at a closed wall, god mode).
