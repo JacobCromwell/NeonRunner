@@ -602,7 +602,10 @@ feet, the arms reaching in turn with the leg phase) and `squeeze` (head first in
 the phase); `CinePoses.runner()` takes the leg phase (the cyclic poses use it; the others ignore it). Its sounds
 (`tools/asset_gen/sfx_bank_terminal_intro.gd`, none a warning): `waste_wind`, `sign_buzz`, `sign_zap`, `grime_wipe`,
 `rubble_scramble`, `landing_thud` and `station_hum`, with the game's `rubble_shift`; the zone's music fades in from the start.
-Everything is worked out from the time, so stepping or skipping shows the same. Cost (headless, `test_terminal_intro`): about 50 ms
-to set up (about 540 ms the first time, with cold mesh caches), about 0.7 ms a step and at most about 35 ms (the step that builds
-the Terminal stage); its props add about 61 draw calls outside, the runner's rig and the actors on top.
+Everything is worked out from the time, so stepping or skipping shows the same. Cost (headless, `test_terminal_intro`): about 45 ms
+to set up (350 to 540 ms the first time, with cold mesh caches), about 0.6 ms a step and at most about 22-35 ms (the step that builds
+the Terminal stage); its props add about 61 draw calls outside, the runner's rig and the actors on top. The cinematic's own
+materials (the letters', the shafts', the halos') are made with `TerminalIntroStation.own()`, which copies a skin's material by
+parameter: `Resource.duplicate()` on a ShaderMaterial drops a Vector3 held by a colour uniform (the skins' sRGB rule) from the source
+and the copy alike, which turned the Dead Zone's shared material's sheen the shader's purple for the rest of the session.
 

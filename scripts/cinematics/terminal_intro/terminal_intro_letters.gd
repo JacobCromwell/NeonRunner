@@ -13,7 +13,7 @@ extends Node3D
 
 const WORD_GAP: float = 0.9
 const FALLEN_SEED: int = 8801
-const GHOST := Color(0.088, 0.085, 0.08)
+const GHOST := Color(0.26, 0.25, 0.235)
 const SOOT_LETTER := Color(0.13, 0.12, 0.11)
 const SOOT_FRONT := Color(0.26, 0.235, 0.21)
 const RUST := Color(0.2, 0.12, 0.08)
