@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="LevelConfig" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
 [ext_resource type="Resource" path="res://data/tuning/terminal_wall_gaps.tres" id="2_wall_gaps"]
+[ext_resource type="Resource" path="res://data/tuning/terminal_maze_2.tres" id="3_maze"]
 
 [resource]
 script = ExtResource("1_level")
@@ -26,6 +27,9 @@ narrow_ceiling_share = 1.0
 one_lane_ceiling_share = 1.0
 doodad_share = 1.0
 doodad_row_chance = 0.7
+doodads_stop = true
+doodad_height = 1.7
+debris_maze_tuning = ExtResource("3_maze")
 credit_trail_chance = 0.6
 credit_trail_min = 5
 credit_wall_runs = false

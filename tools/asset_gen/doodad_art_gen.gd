@@ -8,7 +8,8 @@ extends SceneTree
 ##
 ## Each zone's pictures come from tools/asset_gen/doodad_art/<zone>_art.gd (`static func paint(s:
 ## DoodadArtSet)`), drawn on the CPU (DoodadPaint), so this runs headless. The boxes' sizes come from
-## data/tuning/movement.tres (MovementTuning.doodad_size): retune them, then regenerate. --review also
+## data/tuning/movement.tres (MovementTuning.doodad_size), at the zone's levels' own doodad height where they set
+## one (DoodadArtSet.zone_tuning: the Terminal's): retune them, then regenerate. --review also
 ## writes each zone's atlas on a grey backdrop to build/doodad_review/<zone>.png, to look at.
 
 const OUT_DIR: String = "res://assets/sprites/doodads"

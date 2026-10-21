@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**1051** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**1102** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, and the Terminal's O1–O4, so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -33,6 +33,9 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
+| 1053 | The Terminal's two levels (140 s and 145 s, like their neighbours) make a flawless run through every level about 49.6 minutes, against the GDD's "about 45". Shorten the levels, trim the others, or accept it? |
+| 1061 | The Terminal pays about half of what its neighbours do, yet the Heavy missile (line 15,800) now first fits at Terminal 1, a level earlier than the Golden Zone it was placed for, so Golden 1 gets easier for buyers. Raise the missile's price (8,000 puts it back), or let the Terminal pay like its neighbours? |
+| 1072 | A bot taking the quickest way through Rubble Line's maze finishes in 140 to 159 s (4 to 23 s of it waiting for the dash) on 138 s of track, so a run can outlast the level by up to 21 s. Are 1 or 2 breaks a block right, or should they scale with depth, difficulty or lane count? |
 
 ## The items in full
 
@@ -123,3 +126,26 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    first place, Leader of the Pack for the top three)?
    It also needs a rule for when the reward is granted: a week's rank is only final once the week is over, so the game
    would check it the next time it is online. Placeholder: none yet; work on the reward waits on this item.
+
+**The Terminal in the campaign** (task O1 of the Terminal workstream, October 20, 2026; from `docs/questions/o1.md`; GDD §5, Zone 8)
+1053. **The levels' lengths, and the campaign's total.** (GDD §5: "a flawless run through every level takes about 45
+   minutes".) Placeholder: Rubble Line 140 s and Last Stop 145 s (`duration_seconds`), like their neighbours'
+   (145-150 s). With them a flawless run through every level takes about 49.6 minutes (it was about 44.8). Should
+   the levels be shorter, or the other levels trimmed, to keep about 45?
+1061. **The Terminal's payouts, and the Heavy missile.** Placeholder: each Terminal level's completion bonus is Dead
+   Zone 2's (425; an off-curve level pays the last on-curve level's, as the Beach's do), and its credits are a trail
+   of six along one lane in each open stretch (`terminal_patterns.json`, the open track's credits) plus the usual
+   trails: 329 and 343 credits on the levels' own seeds at five lanes, so a typical finish pays 655 and 665, about
+   half of what its neighbours pay (960-1,332), until O2's maze changes where they lie. Even so the two levels add
+   1,320 to a typical playthrough, and the Heavy missile (line 15,800, placed to first fit at Golden 1) now first
+   fits at Terminal 1, by 90 credits (`tests/suites/test_economy.gd`, `FIRST_FIT`, moved there; still affordable
+   before Golden 2's Sentinels, as placed). Should the Terminal pay like its neighbours, and should the Heavy
+   missile cost more (8,000, a line of 16,800, would put it back at Golden 1)?
+
+**The Terminal's debris maze** (task O2 of the Terminal workstream, October 20, 2026; from `docs/questions/o2.md`; GDD §5, "The debris maze")
+1072. **How many breaks a block needs.** ("Can't get through without dashing ... choose where to break through.")
+   Placeholder: the least dashes a block takes is drawn per block in `breaks_min`..`breaks_max`: 1 or 2 in Rubble
+   Line, 1 in Last Stop; with the dash at its slowest recharge (8 s) a runner may wait for it. A bot taking the
+   quickest way with that dash (test_debris_maze) runs Rubble Line's 138 s of track in 140, 151 and 159 s at 3, 5 and 6
+   lanes (4, 15 and 23 s of it waiting for the dash), and Last Stop's 143 s in about 141 s (its dashes make up for its
+   stops). Should blocks need more breaks further into a level, or with the difficulty, or fewer at 6 lanes?

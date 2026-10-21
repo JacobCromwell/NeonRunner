@@ -43,7 +43,12 @@ work, `--skin=`, `--lanes=`, `--gap=N`, `--shot=a,b`, `--darkness=X`), the Termi
 a level's walls as its build places them, arches, the open space between them and a broken stump, in any skin, seen on
 the approach, from the outer lane, across the track, from the side and from above; a PNG per shot in `--out=DIR`,
 `--level=terminal/1`, `--skin=greybox|<zone>|<res path>`, `--lanes=N`, `--stump=N` (which stump to frame), `--shot=a,b`;
-it prints the walls' layout), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
+it prints the walls' layout), the Terminal's debris maze (`debris_maze_review`, task O2: a level's own build around one
+of its maze blocks, in its zone's look or another, seen from the game camera 60, 35 and 15 m before its first wall,
+stopped at that wall and just inside its first room, and from high behind, to judge what the runner reads of its
+openings and cells over the lower debris; a PNG per shot in `--out=DIR`, `--level=terminal/1`, `--skin=`, `--lanes=N`,
+`--block=N`, `--shot=a,b`, and what-ifs that leave the data alone: `--doodad_height=M`, `--camera_height=M`,
+`--camera_distance=M`; it prints the block's walls and rooms), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
 treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
 `--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`
 for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), the wall-hop credits
@@ -82,7 +87,11 @@ at once, it follows out unharmed), a Buzz Overdrive's charge left late or its cu
 too-wide gap (each ending in its blast), or its model on a plinth
 (`--scenario=chase|show|octodog|buzz|cut|gap|model`; showings only in `show` unless `--shows`), on any zone's
 skin, lane count, speed and rider count, through the game camera or one behind or beside it
-(`--camera=game|behind|side`, `--reduced-flashing`), the Golden Zone's statue
+(`--camera=game|behind|side`, `--reduced-flashing`), `centipede_showcase` (task O3): the Cybernetic Centipede's model
+posed (`--scenario=model --pose=walk|sleep|wake|bite|wounded`, `--angle=D` fixed, `--near` on its head or its cracked
+canister) or a scripted encounter in a hand-made maze block (MazeKit) on the Terminal's skin: it wakes, comes at the
+runner, who dashes through it head-on (`--dash=M` metres before it), turns and bites at a closed wall (god mode), then
+the runner dashes on (`--high`, `--side`, `--lanes=N`, `--skin=`, `--reduced-flashing`), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`, `sewer_swarm_showcase`),
 the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
 and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;
@@ -91,7 +100,7 @@ stars and the rule under them); `--screen=hud_armor [--tier=N]` takes the HUD's 
 filling, back; `--screen=hud_last_hit [--reduced-flashing] [--hold]` the "one hit from death" cue (the armor
 breaks with a shield still held: nothing; the shield breaks: the red edges pulse and settle; the armor returns:
 they fade; `--hold` stops with the edge steady, for a `--shot` at a phone's window size); `--phone --flavor=web_demo` with the engine's `--resolution 844x340` shows a screen as a
-phone's browser does, the menus magnified, and `--shot=<png>` saves it), the Terminal's skin (`terminal_review`: a stretch dressed as task O1's track builder will dress it, arches a space
+phone's browser does, the menus magnified, and `--shot=<png>` saves it), the Terminal's skin (`terminal_review`: a stretch laid out as O1's levels are (no wall running), arches a space
 long with the open space between and stumps, holes, one ceiling of each kind, debris, fences, signs, in 19 shots; `--shot=N`,
 `--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`, `--lanes`), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a

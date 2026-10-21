@@ -10,17 +10,16 @@ extends Resource
 ## EnemyDirector. So those tasks add their own files and never edit level data.
 ## - barnacle_turret: the Barnacle Turret, a ceiling hazard (GDD §9.8), from Marketplace 1
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
-## - debris_maze: the Terminal's debris maze (GDD §5, Zone 8; task O2), from Terminal 1: doodads that stop the runner,
-##   standing so thickly that the dash breaks the way through
-## - centipede: the Cybernetic Centipede (GDD §9.15; task O3), the Terminal's only enemy, from Terminal 1
 ## tithe_collector (GDD §9.12, Corporate 2, then the Golden Zone) is built (task C5): its own script,
 ## tuning and pattern (data/patterns/tithe_collector.json) place it, so it's out of this list. So are the
 ## wall fences, `wall_fences` and `wall_fences_partial` (task B5: the generator places them,
 ## WallFencePlacement), buzz_overdrive (GDD §9.9, from Corporate 1 through the Golden Zone; task C2:
-## its pattern, data/patterns/buzz_overdrive.json, and its rules, buzz_overdrive_rules.gd, place it), and
+## its pattern, data/patterns/buzz_overdrive.json, and its rules, buzz_overdrive_rules.gd, place it),
 ## gilded_sentinel (GDD §9.11, Golden 2 and the Golden Palace; task C4: data/patterns/gilded_sentinel.json
-## and its rules, gilded_sentinel_rules.gd).
-const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator", "debris_maze", "centipede"]
+## and its rules, gilded_sentinel_rules.gd), debris_maze (GDD §5, Zone 8, the Terminal's; task O2: its rules,
+## debris_maze_rules.gd, build it, DebrisMaze), and centipede (GDD §9.15, the Terminal's only enemy, from Terminal 1;
+## task O3: its rules, centipede_rules.gd, place it in the maze's cells; no pattern).
+const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 
 @export var id: StringName = &"prototype"
 ## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).
@@ -95,6 +94,13 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator", "de
 ##   every floor lane crossed by a wall run on its lit side wall, from Marketplace 1 (halfway in) on, never in
 ##   zone 1 or a boss arena (no patterns: their rules, wall_run_gaps_rules.gd, place them, WallRunGapPlacement;
 ##   tuning in data/tuning/wall_run_gaps.tres)
+## - debris_maze: the Terminal's debris maze (task O2; GDD §5, Zone 8, owner, October 20, 2026), from Terminal 1:
+##   stretches of the track where doodads stand so thickly that the open floor between them is a maze the runner
+##   breaks through with the dash (no patterns: its rules, debris_maze_rules.gd, build it, DebrisMaze; numbers in
+##   debris_maze_tuning). Its doodads stop the runner where the level says so (doodads_stop).
+## - centipede: the Cybernetic Centipede (task O3; GDD §9.15), the Terminal's only enemy, from Terminal 1: it waits in
+##   the debris maze's open cells and chases the runner along its open paths (no patterns: its rules,
+##   centipede_rules.gd, place it where the maze stays escapable, CentipedeEscape; it needs the debris_maze feature)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -399,6 +405,28 @@ var _skin: ZoneSkin
 ## cyborg's window, a wall vent, a Gilded Sentinel's niche, a ramp's longest wall run), at run speed.
 ## DESIGN-TBD (item 944 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.0, 3.0, 0.1, "suffix:s") var doodad_wall_clear_seconds: float = 1.0
+## Zone doodads that stop the runner instead of pushing (task O2; the owner, October 20, 2026, GDD §3 and §5 Zone 8: in
+## the Terminal "a doodad stops the runner here instead of pushing them aside (with doodads on both sides, a push would
+## usually land in another one)"): running into one's front brings the runner to a complete stop facing it, with no
+## damage; they set off again by switching into a lane open beside them or by dashing through it, and a stop costs only
+## time (Player.doodads_stop, which RunWorld sets from LevelLayout.doodads_stop). Every doodad of the level stops, the
+## debris maze's (debris_maze) and the scattered ones alike. The level's own rule (the Terminal's), never its skin's.
+## Off: every doodad pushes, as before. DESIGN-TBD (docs/questions/o2.md, question 13): whether the scattered ones in the
+## normal track between the maze's blocks should stop the runner too, or push as elsewhere.
+@export var doodads_stop: bool = false
+## How tall this level's zone doodads stand (task O2; GDD §5 Zone 8: the Terminal's are "lower than standard doodads, so
+## the player can see the maze's open paths over them", (proposed) still too tall to jump, and they read so; the owner,
+## October 20, 2026: lower still, so the player can plan further ahead): 0 takes the movement tuning's
+## (MovementTuning.doodad_height). It reaches the generator, the track, the runner and the camera through movement_for(),
+## and the zone's doodad pictures are painted to it (DoodadArtSet.zone_tuning). Keep it above a jump's reach: the feet
+## peak at MovementTuning.jump_height (1.6 m) in theory and about 1.53 m on the game's 60 Hz physics, and a doodad stops a
+## body whose feet are less than Player.DOODAD_FEET_CLEARANCE below its top. The Terminal's 1.7 m is the lowest with a
+## margin over both (test_debris_maze runs jumps at it). DESIGN-TBD (docs/questions/o2.md).
+@export_range(0.0, 3.0, 0.05, "suffix:m") var doodad_height: float = 0.0
+## The `debris_maze` feature's numbers (task O2; DebrisMaze): null takes data/tuning/debris_maze.tres. The Terminal's
+## levels take their own: Rubble Line's maze over most of the level (data/tuning/terminal_maze_1.tres), Last Stop's
+## stretches of maze (terminal_maze_2.tres). Without the feature it does nothing.
+@export var debris_maze_tuning: DebrisMazeTuning
 
 @export_group("Credits")
 ## Credit placement (GDD §7; FB 9): trails of small credits fill the clear stretches between
@@ -439,13 +467,21 @@ func plays_minigame() -> bool:
 
 
 ## The movement tuning this level runs on: `base` itself unless the level has a run speed of its own
-## (run_speed above 0, and not base's already), else a copy of `base` at that speed. The generator,
-## RunWorld and App all ask this, so a level is built and played at the same speed.
+## (run_speed above 0, and not base's already) or a doodad height of its own (doodad_height above 0, and not base's
+## already: the Terminal's lower debris, task O2), else a copy of `base` with them. The generator, RunWorld and App all
+## ask this, so a level is built and played at the same speed, with doodads of the same size.
 func movement_for(base: MovementTuning) -> MovementTuning:
-	if base == null or run_speed <= 0.0 or is_equal_approx(base.run_speed, run_speed):
+	if base == null:
+		return base
+	var own_speed: bool = run_speed > 0.0 and not is_equal_approx(base.run_speed, run_speed)
+	var own_height: bool = doodad_height > 0.0 and not is_equal_approx(base.doodad_height, doodad_height)
+	if not own_speed and not own_height:
 		return base
 	var out: MovementTuning = base.duplicate() as MovementTuning
-	out.run_speed = run_speed
+	if own_speed:
+		out.run_speed = run_speed
+	if own_height:
+		out.doodad_height = doodad_height
 	return out
 
 

@@ -2,8 +2,8 @@
 // (MeshKit.PAT_TERMINAL_*, task O4), in their own file so other zones' patterns never collide with them.
 // GDD §5, Zone 8: an abandoned subway under the city, wet black stone, rust and verdigris, vine green,
 // sodium lamplight through haze (docs/art/reference/terminal_zone.jpg). Nothing here is neon: the lamps
-// are the only thing that glows, warm-white sodium at a fraction of a gap edge's brightness, and the dead
-// boards and the red-orange plates are matte paint (GDD §5's colour rule).
+// are the only thing that glows, an orange sodium amber (GDD §5, looser in the later zones: as the owner asked) at a
+// fraction of a gap edge's brightness and up in the hall, and the dead boards and the red-orange plates are matte paint.
 // Each function takes the fragment's world position `w`, world normal `n`, the eye vector `eye` (world,
 // from the surface toward the camera), UV and the pattern parameter, and returns the albedo (sRGB, like
 // COLOR); the kit then lights it like any lit surface. Pixel footprints are taken at the top of each
@@ -18,13 +18,12 @@
 // light under it always agree.
 //
 // DESIGN-TBD (docs/questions/o4.md item 5): the palette, how dark the hall is and how bright and how many the lamps are
-// (the lamps' reach and falloff in tm_pool and tm_wall_pool, the dead and failing shares in tm_burn), and the colour of the
-// work lamps themselves: the owner asked for orange work lamps and these are warm-white sodium, to keep the orange for
-// the gap edges.
+// (the lamps' reach and falloff in tm_pool and tm_wall_pool, the dead and failing shares in tm_burn). The work lamps'
+// colour is the owner's: orange, with their light on the stone painted the same colour (tm_lit).
 //
 // The skin sets every colour below as an sRGB Vector3 (TerminalSkin.srgb()), like vertex colours: a Color
 // would arrive already linear on Forward+ but not on the Compatibility renderer.
-uniform vec3 tm_lamp = vec3(1.0, 0.74, 0.44);
+uniform vec3 tm_lamp = vec3(0.98, 0.6, 0.08);
 // What wet stone and puddles catch of the lamps' haze.
 uniform vec3 tm_haze = vec3(0.42, 0.26, 0.14);
 uniform vec3 tm_rust = vec3(0.4, 0.2, 0.09);
@@ -99,7 +98,7 @@ float tm_wall_pool(vec3 w, float t) {
 // A lit colour: the albedo warmed and brightened by the light that reaches it. Never past 0.9 (the kit's
 // glow threshold is above what a pool reaches, so a pool never blooms).
 vec3 tm_lit(vec3 base, float lit) {
-	vec3 warm = mix(vec3(1.0), mix(tm_lamp, vec3(1.0), 0.35) * 1.15, clamp(lit * 1.5, 0.0, 0.8));
+	vec3 warm = mix(vec3(1.0), mix(tm_lamp, vec3(1.0), 0.2) * 1.15, clamp(lit * 1.7, 0.0, 0.85));
 	return min(base * warm * (0.62 + 1.5 * lit), vec3(0.9));
 }
 
@@ -399,7 +398,7 @@ vec3 tm_car(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float param, float t) 
 	return col;
 }
 
-// PAT_TERMINAL_LAMP (106): a work lamp's tube and cage, glowing warm-white sodium by how that lamp burns
+// PAT_TERMINAL_LAMP (106): a work lamp's tube and cage, glowing sodium amber by how that lamp burns
 // (the same lamp the pools are painted from): dead ones are cold grey, failing ones dim, burning ones lit.
 // param 0 a crown lamp (lamp k at z = -(k + 0.5) * tm_pitch), 1 one of the far walls' (at z = -k * tm_pitch), 2 the embers of a
 // scavengers' fire barrel (always burning, steady, as dim as the lamps).

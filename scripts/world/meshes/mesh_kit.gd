@@ -279,7 +279,7 @@ const GLYPH_TIKI: int = 6
 const GLYPH_COUNT: int = 7
 
 ## The Terminal's surface patterns of the solid kit shader (kit_terminal.gdshaderinc), ids 100-108 (task O4): an
-## abandoned subway under the city (GDD §5, Zone 8). Only PAT_TERMINAL_LAMP glows (a work lamp's tube, warm-white sodium,
+## abandoned subway under the city (GDD §5, Zone 8). Only PAT_TERMINAL_LAMP glows (a work lamp's tube, a sodium amber,
 ## burning as that lamp does: dead, failing or steady, and holding still with Reduced flashing); give every other
 ## pattern's vertices COLOR.a = 0.
 ## A lane of track bed (world position; UV.x -1 to 1 across the lane): ballast, sleepers, a pair of rails, cables,

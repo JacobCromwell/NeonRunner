@@ -11,9 +11,9 @@ extends Node3D
 
 const POWERUPS_SCRIPT: String = "res://scripts/powerups/powerup_controller.gd"
 ## Player movement events that play a differently named sound. Every blocked move (a solid side, a
-## ceiling's edge) plays the blocked wall entry's clank.
+## ceiling's edge) plays the blocked wall entry's clank, and a doodad's stop (task O2) a push's thud.
 const EVENT_SOUNDS: Dictionary = {&"lane_blocked": &"wall_blocked", &"ceiling_blocked": &"wall_blocked",
-	&"speed_pad": &"ramp"}
+	&"speed_pad": &"ramp", &"doodad_stop": &"doodad_push"}
 
 var config: LevelConfig
 var layout: LevelLayout
@@ -79,6 +79,8 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	player.dash_walls = layout.dash_walls
 	# Task O1: a level whose walls are a boundary (the Terminal's) bumps a runner off them.
 	player.wall_running = layout.wall_running
+	# Task O2: and one whose doodads stop the runner (the Terminal's debris) holds them at a doodad's front.
+	player.doodads_stop = layout.doodads_stop
 	# Task J2: the grapple's or a revive's save from a fall into a wall-run gap puts the runner on its lit wall.
 	if config.has_feature(WallRunGapPlacement.FEATURE) or not layout.wall_run_gaps.is_empty():
 		player.grapple_save = Callable(WallRunGapPlacement, &"grapple_save").bind(layout)

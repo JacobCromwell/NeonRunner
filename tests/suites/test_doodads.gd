@@ -820,8 +820,9 @@ func _test_skins() -> void:
 
 ## The zones' picture cards (DoodadCards; owner's request October 9, 2026): every zone's manifest
 ## loads and gives each size class a look, was painted for today's box sizes (rerun `tools/godot.sh
-## doodads` after changing MovementTuning's doodad sizes), and every card shows a picture from its
-## atlas on a plane inside its box. The card shader never emits light.
+## doodads` after changing MovementTuning's doodad sizes, or a zone's levels' doodad height: the boxes are the zone's,
+## DoodadArtSet.zone_tuning, and every level of a zone has the one height its pictures were painted for), and every
+## card shows a picture from its atlas on a plane inside its box. The card shader never emits light.
 func _test_cards() -> void:
 	var shader := load(DoodadCards.SHADER_PATH) as Shader
 	check(shader != null and not shader.code.contains("EMISSION"), "the doodad card shader is lit scenery, never emissive")
@@ -830,6 +831,14 @@ func _test_cards() -> void:
 		check(cards.ok, "%s has doodad cards (tools/godot.sh doodads)" % zone)
 		if not cards.ok:
 			continue
+		var zone_tuning: MovementTuning = DoodadArtSet.zone_tuning(zone, tuning)
+		var def := load(DoodadArtSet.ZONES_DIR.path_join(zone + ".tres")) as ZoneDef
+		check(def != null, "%s has its zone data" % zone)
+		if def != null:
+			for level: LevelConfig in def.levels:
+				check(is_equal_approx(level.movement_for(tuning).doodad_height, zone_tuning.doodad_height),
+					"%s's doodads stand at the zone's one height, its pictures' (%.2f m, the zone's %.2f m)"
+					% [level.id, level.movement_for(tuning).doodad_height, zone_tuning.doodad_height])
 		var m: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DoodadCards.DIR.path_join(zone + ".json")))
 		var import := ConfigFile.new()
 		check(import.load(String(m["atlas"]) + ".import") == OK
@@ -838,7 +847,7 @@ func _test_cards() -> void:
 		var boxes: Dictionary = m["boxes"]
 		var images: Dictionary = m["images"]
 		for size: StringName in LevelLayout.DOODAD_SIZES:
-			var box: Vector3 = tuning.doodad_size(size)
+			var box: Vector3 = zone_tuning.doodad_size(size)
 			var drawn: Array = boxes.get(String(size), [])
 			check(drawn.size() == 3 and Vector3(float(drawn[0]), float(drawn[1]), float(drawn[2])).is_equal_approx(box),
 				"%s's %s pictures were painted for today's box %s (%s): rerun tools/godot.sh doodads" % [zone, size, box, drawn])
@@ -1114,12 +1123,14 @@ func _test_shots_pass() -> void:
 ## at least the reaction (LevelConfig.doodad_reaction_seconds, less FRAME_SLACK) before the end of that stretch and
 ## run on safely; and the first one of each level and lane count with a lane on its other side has its front corner
 ## caught by a switch from there (CORNER_SWITCH_SECONDS), which pushes the runner back the way they came, onto clear
-## floor, running on safely.
+## floor, running on safely. In a level whose doodads stop the runner (task O2: the Terminal's, LevelConfig.doodads_stop)
+## nothing pushes: its first few doodads, a row's first among them, stop the runner at their front instead (_check_stop).
 func _test_safe_floor_every_time() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var runs: int = 0
 	var jumps: int = 0
 	var corners: int = 0
+	var stops: int = 0
 	var least: float = INF
 	sim.trace = true
 	for s: CampaignStep in campaign.steps():
@@ -1136,13 +1147,22 @@ func _test_safe_floor_every_time() -> void:
 			var cornered: bool = false
 			for d: Dictionary in layout.doodads:
 				# A treasure stash's doodads stand together, under its ceiling (task I4): test_ceiling_scenarios runs them.
-				# A row's (task L3): _test_campaign_rows runs into each row as one.
-				if d.has("stash") or d.has("row"):
+				# A row's (task L3): _test_campaign_rows runs into each row as one (where doodads stop the runner, a row's
+				# first stops them like any: run here).
+				if d.has("stash") or (d.has("row") and not (layout.doodads_stop and _row_first(d))):
+					continue
+				# Where doodads stop the runner, only one whose front a runner in its lane can reach (a maze divider's later
+				# pieces stand right behind its first).
+				if layout.doodads_stop and not _front_reachable(layout, d, lead):
 					continue
 				if tried >= SAFE_RUNS_PER_LEVEL:
 					break
 				tried += 1
 				var tag: String = "(%s lanes=%d, doodad at %.0f in lane %d)" % [s.id, lanes, d["start"], d["lane"]]
+				if layout.doodads_stop:
+					await _check_stop(layout, d, fast, lead, geo, tag)
+					stops += 1
+					continue
 				var clear: float = _push_clear(config, fast, d)
 				var into: int = int(d["lane"]) + int(d["side"])
 				var r: Dictionary = await _run_into(layout, d, fast, lead, clear)
@@ -1177,10 +1197,46 @@ func _test_safe_floor_every_time() -> void:
 					% [from, c["cause"], c["lane"], tag])
 				corners += 1
 	sim.trace = false
-	print("  campaign doodads run into on physics: %d head-on, %d jumped at (the least left after coming down %.2f s), %d corners caught"
-		% [runs, jumps, least, corners])
-	check(runs >= 100 and jumps == runs * 2 and corners >= 25, "campaign doodads run into on physics: %d, jumped at %d, corners %d"
-		% [runs, jumps, corners])
+	print("  campaign doodads run into on physics: %d head-on, %d jumped at (the least left after coming down %.2f s), %d corners caught; %d stopping the runner"
+		% [runs, jumps, least, corners, stops])
+	check(runs >= 100 and jumps == runs * 2 and corners >= 25 and stops >= 12,
+		"campaign doodads run into on physics: %d, jumped at %d, corners %d, stopping the runner %d" % [runs, jumps, corners, stops])
+
+
+## True if doodad `d` is the first of its row (task L3), or in none.
+static func _row_first(d: Dictionary) -> bool:
+	return absf(LevelLayout.doodad_extent(d).x - float(d["start"])) < 0.01
+
+
+## True if no other doodad of `layout` in `d`'s lane reaches into the stretch from `lead` and a metre before `d`'s front
+## to its front: a runner coming along its lane meets `d` first (task O2, where doodads stop the runner).
+static func _front_reachable(layout: LevelLayout, d: Dictionary, lead: float) -> bool:
+	var front: float = float(d["start"])
+	for o: Dictionary in layout.doodads:
+		if o != d and int(o["lane"]) == int(d["lane"]) and float(o["end"]) > front - lead - 1.0 and float(o["start"]) < front:
+			return false
+	return true
+
+
+## Task O2: doodad `d` of a level whose doodads stop the runner (`layout`'s doodads_stop: the Terminal's), run into from
+## its lane on a cut of the level (_run_into), head-on and with a jump 0.5 m and 1 m before its front: it stops the
+## runner at its front (no push), standing in its lane, alive, the body never sinking into it, and the stop's thud plays
+## (doodad_stop). What sets them off, a wall's face and the maze are test_debris_maze's.
+func _check_stop(layout: LevelLayout, d: Dictionary, t: MovementTuning, lead: float, geo: TrackGeometry, tag: String) -> void:
+	for before: float in [-1.0, 0.5, 1.0]:
+		var actions: Array = [] if before < 0.0 else [[-before, &"jump"]]
+		var how: String = "head-on" if before < 0.0 else "jumping %.1f m before its front" % before
+		var r: Dictionary = await _run_into(layout, d, t, lead, 0.0, actions)
+		var front: float = float(d["start"]) + float(r["offset"])
+		var body_front: float = float(r["distance"]) + t.visual_size.z * 0.5
+		check(r["alive"] and int(r["pushes"]) == 0 and int(r["stops"]) >= 1 and (r["events"] as Array).has(&"doodad_stop")
+			and int(r["lane"]) == int(d["lane"]) and body_front <= front + 0.001 and body_front >= front - 0.25,
+			"%s, it stops the runner at its front, standing in its lane, never pushed (%s, %d pushes, lane %d, %.2f m short) %s"
+			% [how, r["cause"], r["pushes"], r["lane"], front - body_front, tag])
+		var moved: Dictionary = d.duplicate()
+		moved["start"] = front
+		moved["end"] = float(d["end"]) + float(r["offset"])
+		check(_sink(r["trace"], moved, geo, t) <= SINK_TOLERANCE, "%s, never sinking into it %s" % [how, tag])
 
 
 ## Where a run's first jump came down (task L6's review): Vector2(the distance, the lane) at the first frame back on
@@ -1370,6 +1426,7 @@ func _run_into(layout: LevelLayout, d: Dictionary, t: MovementTuning, lead: floa
 	var to: float = float(d["end"]) + after
 	var offset: float = 30.0 - from
 	var part := RunSim.layout(layout.lane_count, to - from + 120.0)
+	part.doodads_stop = layout.doodads_stop
 	var lists: Dictionary = layout.to_dict()
 	var into: Dictionary = part.to_dict()
 	var extent: Dictionary = {"fences": t.fence_depth * 0.5, "pads": t.pad_length, "ramps": t.ramp_length,
@@ -1930,7 +1987,9 @@ func _test_debris_colors() -> void:
 ## own speed, its first few doodads run into from their lane on a cut of the level (_run_into), with a
 ## dash started 6 m before, just ahead of where the push would come (so the runner comes through as fast
 ## as a dash goes): each smashed once, no push, the lane kept, the body never touching it, the runner on
-## safely to the level's spacing past it.
+## safely to the level's spacing past it. Where doodads stop the runner (task O2: the Terminal's, whose maze stands its
+## debris close behind each other), the dash smashes it and whatever else in its lane it reaches (Player._dash_claims),
+## and the runner goes on in its lane past it, stopping at the next one's front if it comes before the cut's end.
 func _test_dash_campaign() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var runs: int = 0
@@ -1957,9 +2016,16 @@ func _test_dash_campaign() -> void:
 				tried += 1
 				var tag: String = "(%s lanes=%d, doodad at %.0f in lane %d)" % [s.id, lanes, d["start"], d["lane"]]
 				var r: Dictionary = await _run_into(layout, d, fast, lead, after, [[-6.0, &"dash"]])
-				check(r["alive"] and int(r["smashes"]) == 1 and int(r["pushes"]) == 0 and r["reached"] and int(r["lane"]) == int(d["lane"]),
-					"dashed through: smashed once, no push, on safely in its lane (%s, %d smashed, lane %d) %s"
-					% [r["cause"], r["smashes"], r["lane"], tag])
+				if layout.doodads_stop:
+					var past: bool = float(r["distance"]) - fast.visual_size.z * 0.5 >= float(d["end"]) + float(r["offset"])
+					check(r["alive"] and int(r["smashes"]) >= 1 and int(r["pushes"]) == 0 and past and int(r["lane"]) == int(d["lane"])
+						and (r["reached"] or int(r["stops"]) >= 1),
+						"dashed through: smashed with what else the dash reaches, no push, on in its lane past it (%s, %d smashed, lane %d) %s"
+						% [r["cause"], r["smashes"], r["lane"], tag])
+				else:
+					check(r["alive"] and int(r["smashes"]) == 1 and int(r["pushes"]) == 0 and r["reached"] and int(r["lane"]) == int(d["lane"]),
+						"dashed through: smashed once, no push, on safely in its lane (%s, %d smashed, lane %d) %s"
+						% [r["cause"], r["smashes"], r["lane"], tag])
 				var moved: Dictionary = d.duplicate()
 				moved["start"] = float(d["start"]) + float(r["offset"])
 				moved["end"] = float(d["end"]) + float(r["offset"])
@@ -1993,9 +2059,14 @@ static func _first_from(spans: Array[Vector2], d: Dictionary) -> float:
 ## further out may hold things beside it (it hides only its own lane), and what every lane keeps (an enemy's
 ## attack, a ceiling, a floor cut's window, a Bad Dream's chase) keeps a lane switch's room past its end: printed
 ## (the first of it from its end, at the dash's speed), not held to the dash's reaction, as each comes with its own
-## warning and is in full view. Prints the spread at each lane count.
+## warning and is in full view. A waiting Cybernetic Centipede (task O3, the Terminal's) isn't such a thing: its body
+## is harmless, and from the moment a runner comes on it (the smash shows its cell) it keeps still for its wake time and
+## then telegraphs every bite, more than the reaction and switch together (checked here); its block's ways past it are
+## CentipedeEscape's (test_centipede_maze). Prints the spread at each lane count.
 func _test_dash_fairness() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var centipede := EnemyDirector.tuning_for("centipede") as CentipedeTuning
+	var warned: float = centipede.wake_time + centipede.bite_telegraph if centipede != null else 0.0
 	for lanes: int in [3, 5, 6]:
 		var lane_times: Array[float] = []
 		var side_times: Array[float] = []
@@ -2043,6 +2114,10 @@ func _test_dash_fairness() -> void:
 						mine.append(FloorCutPlan.lane_window(c))
 				for e: Dictionary in layout.enemies:
 					if int(e.get("lane", -1)) == lane:
+						if String(e.get("type", "")) == "centipede":
+							check(warned >= need, "a centipede a dash comes on keeps still and telegraphs its bite for longer than a reaction and a switch (%.2f s, %.2f s)"
+								% [warned, need])
+							continue
 						var span: Vector2 = LevelGenerator.enemy_floor_span(e, fast.pace())
 						if span.y >= span.x:
 							mine.append(span)
@@ -2059,7 +2134,8 @@ func _test_dash_fairness() -> void:
 				if from_end < INF:
 					side_times.append(from_end)
 				var anywhere: float = (_first_from(every, back) - extent.y) / dash_speed
-				if anywhere < INF:
+				# A debris maze's pieces stand inside its block's own keep-out (task O2): left out of the spread.
+				if anywhere < INF and not LevelLayout.is_maze_debris(d):
 					every_times.append(anywhere)
 				if from_end < worst_time:
 					worst_time = from_end
@@ -2447,7 +2523,9 @@ func _test_campaign_rows() -> void:
 			var lead: float = LevelGenerator.doodad_lead_for(fast)
 			var after: float = config.spacing_seconds_hard * fast.run_speed
 			var rows: Array[Array] = _rows_of(layout)
-			if not rows.is_empty():
+			# Task O2: where doodads stop the runner (the Terminal's), a row stops them like any doodad
+			# (_test_safe_floor_every_time's stop runs take its first one).
+			if not rows.is_empty() and not layout.doodads_stop:
 				var typed: Array[Dictionary] = []
 				typed.assign(rows[0])
 				var first: Dictionary = typed[0]

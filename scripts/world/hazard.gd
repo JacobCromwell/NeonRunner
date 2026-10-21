@@ -38,6 +38,12 @@ var passes_after_block: bool = false
 var breakable: DashBreakable = null
 ## The juggernaut dash passes through every hazard except falls unless this is false (FB 17).
 var dash_passes: bool = true
+## Touching it does nothing (DamageRules: IGNORE) but what the dash does: an enemy's body that hurts only through its
+## attack (task O3; GDD §9.15, the Cybernetic Centipede: "it hurts only on contact", its bite, which its head telegraphs
+## before each one). Its head and body carry harmless hitboxes, so a dash through any of it still meets it (and wounds
+## it), while a runner who brushes it, lands on it or swings claws at it is neither hurt nor helped. False for every
+## other hazard. DESIGN-TBD (docs/questions/o3.md 4): should running into the centipede's body hurt?
+var harmless: bool = false
 ## A thief's touch (GDD §9.12, the Tithe Collector): touching this robs instead of hurting
 ## (DamageRules.Outcome.ROBBED): it takes this share of the run's credits (ScoreKeeper.rob), held by its
 ## enemy. 0 for every other hazard. A thief sets it on its hitboxes from its data (ThiefTuning).

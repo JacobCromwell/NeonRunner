@@ -207,7 +207,12 @@ jump or a move back toward the lanes 0.25 to 4 m before a lone one or a spaced r
 end from 5 m before one, at the base speed and 25 m/s: it breaks as the body reaches it, never a push back through
 it), a floor runner by a wall pushed inward and blocked
 from its side, and the campaign's first row and first doodad by a wall of every level run into, dashed into (and,
-task L6's review, jumped at where the dash ended short of one) and met from the wall. `RunSim` reports `doodad_passes`. The simulated runs of
+task L6's review, jumped at where the dash ended short of one) and met from the wall. `RunSim` reports `doodad_passes`.
+Where doodads stop the runner (task O2: the Terminal's levels, `doodads_stop`), the campaign runs take stops instead of
+pushes: the first few doodads whose front a runner can reach (a row's first among them) stop the runner at their
+front head-on and from a jump 0.5 m and 1 m before it (`_check_stop`: no push, the lane kept, never sinking in), a
+dash goes through them and on in its lane (smashing what else it reaches), and the rows' and corners' push runs leave
+those levels out. The simulated runs of
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
 back after a doodad's push (`AttackWatch.keep_lane`).
 `test_dash_walls` checks dash walls (task H7a; GDD §9.14): the layout data (no key without them, copy and
@@ -350,6 +355,35 @@ truck (god mode, grapples): each destroyed by a charge it dodged or in a wider g
 its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
 alongside (the showings it makes are printed).
 
+`test_debris_maze` checks the debris maze (task O2; The generator, The debris maze; Damage and interactions, Where
+doodads stop the runner): the stop on real physics at 3, 5 and 6 lanes (a complete stop facing a doodad, costing
+nothing but time, the body never in it; set off by a switch into an open lane or the dash; a switch into a lane with
+debris beside the body or just ahead refused with the clank; along a wall's face to its opening; a jump or a slide in
+place, a jump into debris coming down before it; a caught corner backing out; pushes as before without the flag; a
+full world's thud and untouched score), the Terminal's lower doodads; the generator over the Terminal's levels and
+other seeds at 3, 5 and 6 lanes (`check_layout`'s `check_debris_maze`, determinism, the maze's share of each level,
+breaks, dead ends, ceilings, the O3 API's sections and links against the debris); a block of each level, and each
+whole level at 3, 5 and 6 lanes, run by `MazeBot` on the route `MazeRoute` finds with the dash at 8 s
+(`tests/helpers/maze_route.gd`, `maze_bot.gd`); the first-encounter hint.
+`test_centipede` checks the Cybernetic Centipede on its own (task O3; Enemies, In the debris maze; Damage and
+interactions, Wounds and harmless parts): its data, sounds and declared properties on its real hitboxes (weapons, stomps
+and claws do nothing; its live bite a hit the armor takes), its model's budget, glow and hitboxes within what's drawn
+(its bite's within its jaws and under its head as drawn through whole strikes, a god-mode runner's), its warm-up look;
+on real physics in hand-made blocks (`tests/helpers/maze_kit.gd`) at 3, 5 and 6 lanes: its wake (never before the runner
+is in its block; still, then the warning and `wake_time`), its chase (open floor only, never over its speed), every bite
+after its telegraph and each one hit (a claw runner too), the head-on dash (one wound, the wound shown, sparks off with
+Reduced flashing, the stun, turning to chase from behind, giving up past the block and leaving play), a walled-in one
+asleep as the runner passes and released by a dash that opens its cell, the second dash's kill and score, and a runner
+on a ceiling getting away. `test_centipede_maze` checks where it waits and the proof (task O3): the generator over the
+Terminal's levels and other seeds at 3, 5 and 6 lanes (`check_layout`'s `check_centipedes`, determinism, all three
+places, its introduction), `CentipedeEscape` on hand-made blocks, `CentipedeMaze` against DebrisMaze's sections and
+links, endless mode, a level without it, `CentipedeBot` (`tests/helpers/centipede_bot.gd`) running the proof's way out
+of every block with centipedes on physics past live ones (from 25 m before the run-in, the dash just used there;
+unbitten; the centipedes' invariants; the runner out of every awake one's bound by a field of the bot's own), and the
+hint. `test_centipede_fuzz` (slow, a few minutes) runs the bot on many more: over the same sweep, the levels' own
+placements at the other seeds, and every spot the rules may offer a block's centipede, alone and in pairs spaced as the
+rules space two, wherever the proof's way out wakes them (unbitten, the invariants, the bound, and most of the woken
+spots' centipedes waking as the proof has them).
 `test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
 gaps): the zone and level data and its place in the campaign (zone 6, its steps, slots and music stand-in, its
 volleyball match second); both generated levels (Tiki Tides and Sunset Strip, beach/1 and beach/3) at 3, 5 and 6 lanes

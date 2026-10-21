@@ -369,3 +369,21 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   1.2 s of run in the outer lane by the lit wall, its last half second the place to step back on; a short notch in the
   wall at each platform drops a runner with claws or the dash onto it. With the owner's leave (October 20, 2026), The
   Hush leaves out the heli drone to make room (endless keeps it). Every build at 3, 5 and 6 lanes has all three. Questions in items 1042-1050 in `docs/OPEN_QUESTIONS*.md`.
+
+## October 20, 2026
+
+- [x] **Add the Terminal, zone 8: an abandoned subway with a debris maze** (the owner, October 20, 2026; GDD §5, Zone 8;
+  reference `docs/art/reference/terminal_zone.jpg`). Slot it between the Dead Zone and the Golden Zone (now zone 9), two
+  levels, no boss. Build: the zone and its skin (subway tunnel, track bed, rusted trains, debris, cables, steam, orange
+  work lamps; scavengers as scenery); **narrow arch side walls** (one space wide, about six lengths apart, mostly
+  in pairs, a missing one shown as a stump broken off about halfway up) with **no wall running**; **lower debris doodads
+  that stop the runner** instead of pushing; **the debris maze** pattern (level 1 a maze that needs the dash to finish,
+  level 2 a normal run with stretches of maze); **few, single-lane ceilings** as shortcuts. **A couple of holes**, **no dash
+  walls**, time-based stars. **Enemies: only the Cybernetic Centipede** (GDD §9.15, reference
+  `docs/art/reference/centipede.jpg`): waits in open maze sections, wakes and chases along open paths when the runner
+  comes near, can't pass debris (a dash can release a trapped one), slightly slower than the runner, can't follow onto
+  a ceiling; a bite on contact is one hit; two dashes kill it, a dash passes through it safely; immune to weapons,
+  claws and stomps. The maze generator must place centipedes so every layout stays escapable. Core work (generator, player, campaign data): split into tasks by the orchestrator.
+  DONE (O1-O4): the Terminal is zone 8 with Rubble Line and Last Stop between the Dead Zone and the Golden Zone (zone 9),
+  arch walls with stumps, no wall running, debris that stops the runner, the debris maze, the Cybernetic Centipede, its own
+  skin with orange work lamps, and the Dead Zone's song for now. Questions in items 1051-1101 in `docs/OPEN_QUESTIONS*.md`.

@@ -97,6 +97,8 @@ func _test_campaign_relevance() -> void:
 		"corporate/1": ["buzz_overdrive", "wall_fence_low", "wall_fence_high", "dash_wall"],
 		"corporate/2": ["tithe_collector"],
 		"dead_zone/1": ["host", "bad_dream"],
+		# Task O2: the debris maze, where debris stops the runner; task O3: the Cybernetic Centipede that haunts it.
+		"terminal/1": ["debris_maze", "centipede"],
 		"golden/1": ["resonator"],
 		"golden/2": ["gilded_sentinel"],
 	}

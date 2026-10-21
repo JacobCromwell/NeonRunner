@@ -9,9 +9,11 @@ extends RefCounted
 ##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), the level's wider gaps
 ##   keep theirs (check_wide_gaps, task G7), every dash wall stands where it's fair (check_dash_walls,
 ##   task H7a), every ceiling scenario keeps its rules (check_scenarios, task I4), every wall-run gap keeps
-##   its (check_wall_run_gaps, task J2), every line of wall-hop credits keeps its (check_wall_hops, task N1), and a
+##   its (check_wall_run_gaps, task J2), every line of wall-hop credits keeps its (check_wall_hops, task N1), a
 ##   level without wall running has nothing on its walls, every broken stump standing opposite an arch
-##   (check_boundary_walls, task O1).
+##   (check_boundary_walls, task O1), every block of a debris maze keeps its rules and is finishable with the dash
+##   at its slowest recharge (check_debris_maze, task O2), and every Cybernetic Centipede waits where its rules allow, its
+##   block escapable past it (check_centipedes, task O3).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -35,6 +37,7 @@ const DashWallRulesScript = preload("res://scripts/enemies/dash_wall_rules.gd")
 const TreasureStashRules = preload("res://scripts/enemies/treasure_stash_rules.gd")
 const FencedCeilingRules = preload("res://scripts/enemies/fenced_ceiling_rules.gd")
 const DangerDensityScript = preload("res://scripts/world/danger_density.gd")
+const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
@@ -87,6 +90,8 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_wall_run_gaps(suite, layout, config, tag)
 	check_wall_hops(suite, layout, config, tag)
 	check_boundary_walls(suite, layout, config, tag)
+	check_debris_maze(suite, layout, config, tag)
+	check_centipedes(suite, layout, config, tag)
 
 
 ## A level whose walls are a boundary (task O1; LevelConfig.wall_running off, which its layout carries: the Terminal,
@@ -121,6 +126,325 @@ static func check_boundary_walls(suite: TestSuite, layout: LevelLayout, config: 
 		suite.check(in_gap and not layout.wall_gap_between(start + 0.001, end - 0.001, -side),
 			"a broken stump (wall %+d, %.1f-%.1f m) stands where its wall has no section, opposite the other wall's %s"
 			% [side, start, end, tag])
+
+
+## The debris maze (task O2; the owner, October 20, 2026, GDD §5 Zone 8: "doodads stand so thickly that the empty space
+## between them forms a maze, and the runner can't get through without dashing"; DebrisMaze), wherever the generator
+## builds one, at the level's own run speed and doodad height (level_tuning):
+## - the layout says whether its doodads stop the runner as its level does; a maze only in a level with the
+##   `debris_maze` feature (and there at least one block), whose doodads stop the runner; no maze piece elsewhere;
+## - each block (LevelLayout.maze) in order inside the level, from its run-in through its walls and rooms to its
+##   breather: walls and rooms alternating and touching, the walls of medium or large debris (DebrisMaze.WALL_SIZES),
+##   min_rooms rooms at least, openings only where the lanes either side are open and never every lane of a wall, never
+##   two dividers side by side nor every lane a divider, its run-in long enough to line up in any lane, its least dashes
+##   as its record says (DebrisMaze.min_breaks);
+## - its debris exactly its record: in each wall's closed lanes one piece of its size from its front to its back; along
+##   each divider pieces from the room's start to its end, DebrisMaze.TOUCH apart and from the walls; nothing in an
+##   opening, a cell, the run-in or the breather; every maze piece one of these;
+## - no hole and no other doodad anywhere from its run-in to its keep-out's end (DebrisMaze.keep_out: a dash's carry and
+##   exit_clear_seconds past its last wall), in any lane: a dash or a stop never lands a runner in a hole;
+## - its least dashes on the Player's moves (MazeRoute.least_dashes) as its record says and in [breaks_min, breaks_max],
+##   and, where breaks_min is 1 or more, no way through without a dash (MazeRoute.dash_free, optimistic);
+## - finishable with the dash at its slowest recharge (maze_recharge(): 8 s), waits included, from any lane at its run-in with
+##   the dash just used (MazeRoute.find);
+## - its ceilings (hulls marked "maze"): one lane wide, their pad in an open cell of its last room two lanes wide or more
+##   in a lane its last wall closes, a way from the run-in into the pad's lane before it (MazeRoute.find), the pad's
+##   lane clear of debris from a lane switch and DebrisMaze.PAD_LEAD before it to DebrisMaze.pad_rise past it and
+##   DebrisMaze.hidden_reach past the debris before it, the hull reaching past its last wall, and no debris in any lane
+##   from the hull's end to DebrisMaze.drop_room past it; no other ceiling (the patterns') reaching into a block's
+##   keep-out with its drop.
+## The floor route under a maze ceiling takes the dash, so check_ceilings leaves it to this (MazeRoute, which never steps
+## on a pad: a floor runner passes it in its cell).
+static func check_debris_maze(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	suite.check(layout.doodads_stop == config.doodads_stop, "the layout says whether its doodads stop the runner, as its level does " + tag)
+	var pieces: Array[Dictionary] = []
+	for d: Dictionary in layout.doodads:
+		if LevelLayout.is_maze_debris(d):
+			pieces.append(d)
+	if not config.has_feature(DebrisMaze.FEATURE):
+		suite.check(layout.maze.is_empty() and pieces.is_empty(), "no debris maze in a level without the feature " + tag)
+		return
+	suite.check(not layout.maze.is_empty() and layout.doodads_stop, "a level with the debris maze has blocks of it, and its debris stops the runner " + tag)
+	if layout.maze.is_empty():
+		return
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var t: DebrisMazeTuning = DebrisMaze.tuning_for(config)
+	var n: int = layout.lane_count
+	var speed: float = tuning.run_speed
+	var lo: int = mini(t.breaks_min, t.breaks_max)
+	var hi: int = maxi(t.breaks_min, t.breaks_max)
+	var route := MazeRoute.new(layout, tuning)
+	var recharge: float = maze_recharge()
+	var last_exit: float = config.start_clear_distance - 0.01
+	var keeps: Array[Vector2] = []
+	for i: int in layout.maze.size():
+		var b: Dictionary = layout.maze[i]
+		var x: String = "(maze block %d at %.0f) %s" % [i, float(b["start"]), tag]
+		var walls: Array = b["walls"]
+		var rooms: Array = b["rooms"]
+		var entry: float = float(b["entry"])
+		var start: float = float(b["start"])
+		var end: float = float(b["end"])
+		var exit: float = float(b["exit"])
+		var keep: Vector2 = DebrisMaze.keep_out(gen, b, t)
+		keeps.append(keep)
+		suite.check(entry >= last_exit and entry < start and start < end and end < exit
+			and exit <= layout.length - config.end_clear_distance + 0.01,
+			"a block lies in order inside the level: run-in, walls, breather (%.1f, %.1f, %.1f, %.1f) %s" % [entry, start, end, exit, x])
+		last_exit = exit
+		suite.check(start - entry >= (n - 1) * tuning.lane_switch_time * speed,
+			"a block's run-in is long enough to line up in any lane (%.1f m) %s" % [start - entry, x])
+		var shaped: bool = walls.size() == rooms.size() + 1 and rooms.size() >= maxi(t.min_rooms, 1)
+		if shaped:
+			shaped = absf(float(walls[0]["start"]) - start) < 0.01 and absf(float(walls[-1]["end"]) - end) < 0.01
+			for k: int in rooms.size():
+				shaped = shaped and absf(float(walls[k]["end"]) - float(rooms[k]["start"])) < 0.01 \
+					and absf(float(rooms[k]["end"]) - float(walls[k + 1]["start"])) < 0.01
+		suite.check(shaped, "a block is walls and rooms, touching, %d rooms at least (%d) %s" % [t.min_rooms, rooms.size(), x])
+		if not shaped:
+			continue
+		var walls_ok: bool = true
+		for k: int in walls.size():
+			var w: Dictionary = walls[k]
+			var size := StringName(w["size"])
+			var open: Array = w["open"]
+			walls_ok = walls_ok and DebrisMaze.WALL_SIZES.has(size) and open.size() < n \
+				and absf(float(w["end"]) - float(w["start"]) - tuning.doodad_size(size).z) < 0.01
+			for lane: Variant in open:
+				var l: int = int(lane)
+				walls_ok = walls_ok and l >= 0 and l < n and (k == 0 or not (rooms[k - 1]["dividers"] as Array).has(l)) \
+					and (k == rooms.size() or not (rooms[k]["dividers"] as Array).has(l))
+		suite.check(walls_ok, "every wall of medium or large debris, its openings where both sides are open, never every lane %s" % x)
+		var rooms_ok: bool = true
+		for room: Dictionary in rooms:
+			var dividers: Array = room["dividers"]
+			rooms_ok = rooms_ok and dividers.size() < n
+			for lane: Variant in dividers:
+				rooms_ok = rooms_ok and int(lane) >= 0 and int(lane) < n and not dividers.has(int(lane) + 1)
+		suite.check(rooms_ok, "no two dividers side by side, never every lane a divider %s" % x)
+		suite.check(int(b["breaks"]) == DebrisMaze.min_breaks(b, n), "a block's breaks are its least dashes %s" % x)
+		_check_maze_debris(suite, layout, tuning, i, b, pieces, x)
+		# No hole, and no doodad but its own, from its run-in to past a dash out of it.
+		for g: Dictionary in layout.gaps:
+			suite.check(float(g["start"]) > keep.y or float(g["end"]) < keep.x,
+				"no hole near a block (%.1f-%.1f, lane %d; keep %.1f-%.1f) %s" % [g["start"], g["end"], g["lane"], keep.x, keep.y, x])
+		for d: Dictionary in layout.doodads:
+			if int(d.get("maze", -1)) == i:
+				continue
+			suite.check(float(d["start"]) > keep.y or float(d["end"]) < keep.x,
+				"no other doodad near a block (%.1f, lane %d) %s" % [d["start"], d["lane"], x])
+		# Its way through, on the Player's moves.
+		var to: float = end + tuning.visual_size.z + MazeRoute.BODY_MARGIN + MazeRoute.STEP
+		var least: int = route.least_dashes(entry, to)
+		suite.check(least == int(b["breaks"]) and least >= lo and least <= hi,
+			"a block's way through takes %d to %d dashes at the least (%d, its record %d) %s" % [lo, hi, least, b["breaks"], x])
+		if lo >= 1:
+			suite.check(not route.dash_free(entry, to), "no way through a block without a dash %s" % x)
+		var found: Dictionary = route.find(entry, to, recharge)
+		suite.check(bool(found["ok"]), "a block is finishable with the dash at %.0f s, waits and all (%s) %s"
+			% [recharge, found["reason"], x])
+		# Its ceilings.
+		for h: Dictionary in layout.hulls:
+			if int(h.get("maze", -1)) == i:
+				_check_maze_ceiling(suite, layout, tuning, gen, route, recharge, b, h, x)
+	for h: Dictionary in layout.hulls:
+		if h.has("maze"):
+			continue
+		for k: Vector2 in keeps:
+			suite.check(float(h["start"]) > k.y or float(h["end"]) + DebrisMaze.drop_room(gen) < k.x,
+				"no other ceiling over a maze block (%.1f-%.1f) %s" % [h["start"], h["end"], tag])
+	for d: Dictionary in pieces:
+		suite.check(int(d["maze"]) >= 0 and int(d["maze"]) < layout.maze.size(), "every maze piece belongs to a block " + tag)
+
+
+## The Cybernetic Centipede (task O3; GDD §9.15: it "haunts the debris maze, waiting in the open sections between the
+## debris"; centipede_rules.gd), wherever the generator places one: only in a level with the feature and a maze; each in a
+## maze block from the feature's start (params.block naming it), its head and body in one open cell of a room (the rules'
+## margins), its floor span covering it; one in a cell joined to neither the block's run-in nor its breather is placed as
+## "trapped", and only such a one; at most max_per_block a block, min_spacing apart; and every block with centipedes
+## escapable past them (CentipedeEscape.find: from its run-in to past its last wall on the Player's moves, with the dash
+## at its slowest recharge and the waits that takes, never within any centipede's reach whatever it does).
+static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var feature: String = CentipedeRulesScript.FEATURE
+	var mine: Array[Dictionary] = []
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == feature:
+			mine.append(e)
+	if not config.has_feature(feature) or layout.maze.is_empty():
+		suite.check(mine.is_empty(), "no centipede without the feature and a maze to haunt " + tag)
+		return
+	suite.check(not mine.is_empty(), "a level with the centipede has some in its maze " + tag)
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var t: CentipedeTuning = CentipedeRulesScript.tuning()
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var start: float = gen.feature_start(feature)
+	var n: int = layout.lane_count
+	var by_block: Dictionary = {}
+	for e: Dictionary in mine:
+		var at: float = float(e["at"])
+		var lane: int = int(e["lane"])
+		var params: Dictionary = e.get("params", {})
+		var i: int = int(params.get("block", -1))
+		var x: String = "(a centipede at %.1f, lane %d) %s" % [at, lane, tag]
+		suite.check(i >= 0 and i < layout.maze.size() and CentipedeMaze.block_at(layout, at) == i and at >= start - 0.01
+			and lane >= 0 and lane < n, "it waits in the maze block it names, from the feature's start " + x)
+		if i < 0 or i >= layout.maze.size():
+			continue
+		var b: Dictionary = layout.maze[i]
+		var rooms: Array = b["rooms"]
+		var r: int = -1
+		for k: int in rooms.size():
+			if at >= float(rooms[k]["start"]) and at <= float(rooms[k]["end"]):
+				r = k
+		var in_cell: bool = r >= 0
+		if in_cell:
+			var room: Dictionary = rooms[r]
+			in_cell = at >= float(room["start"]) + CentipedeRulesScript.HEAD_MARGIN - 0.01 \
+				and at + Centipede.BODY_LENGTH + CentipedeRulesScript.TAIL_MARGIN <= float(room["end"]) + 0.01 \
+				and not (room["dividers"] as Array).has(lane)
+		suite.check(in_cell, "its head and body lie in an open cell of a room " + x)
+		var span: Variant = params.get("floor_span", null)
+		suite.check(span is Vector2 and (span as Vector2).x <= at + 0.01 and (span as Vector2).y >= at + Centipede.BODY_LENGTH,
+			"its floor span covers it (%s) %s" % [span, x])
+		if in_cell:
+			# Walled in: its cell's section joined to neither the run-in's nor the breather's along open paths.
+			var bl: LevelLayout = CentipedeMaze.for_block(layout, i, tuning).block_layout()
+			var secs: Array[Dictionary] = DebrisMaze.sections(bl)
+			var links: Array[Dictionary] = DebrisMaze.links(bl, secs)
+			var cell: int = DebrisMaze.cell_index(DebrisMaze.cells_of(rooms[r]["dividers"], n), lane)
+			var group: PackedInt32Array = DebrisMaze.open_group(links, DebrisMaze.section_id(secs, 0, r, lane))
+			var walled: bool = not group.has(DebrisMaze.section_id(secs, 0, -1, 0)) \
+				and not group.has(DebrisMaze.section_id(secs, 0, rooms.size(), 0))
+			var situation: String = String(params.get("situation", ""))
+			suite.check(CentipedeRulesScript.SITUATIONS.has(situation) and (situation == "trapped") == walled,
+				"it's placed as walled in exactly when its cell is (%s, cell %d) %s" % [situation, cell, x])
+		if not by_block.has(i):
+			by_block[i] = []
+		(by_block[i] as Array).append(e)
+	for i: int in by_block:
+		var list: Array = by_block[i]
+		var x: String = "(maze block %d at %.0f, %d centipedes) %s" % [i, float(layout.maze[i]["start"]), list.size(), tag]
+		suite.check(list.size() <= t.max_per_block, "at most %d centipedes a block %s" % [t.max_per_block, x])
+		var spots: Array = []
+		for e: Dictionary in list:
+			for o: Dictionary in spots:
+				suite.check(absf(float(o["at"]) - float(e["at"])) >= t.min_spacing - 0.01,
+					"two in a block wait %.0f m apart at least %s" % [t.min_spacing, x])
+			spots.append({"lane": int(e["lane"]), "at": float(e["at"])})
+		var found: Dictionary = CentipedeEscape.find(layout, tuning, i, spots)
+		suite.check(bool(found["ok"]), "its block stays escapable past its centipedes, the dash at %.0f s (%s) %s"
+			% [float(found["recharge"]), found["reason"], x])
+
+
+## Block `b`'s (the `index`th) debris, `pieces` every maze piece of the layout (check_debris_maze): exactly its walls'
+## closed lanes, one piece of the wall's size each, and its dividers, pieces TOUCH apart from the room's start to its end;
+## nothing in an opening, a cell, its run-in or its breather.
+static func _check_maze_debris(suite: TestSuite, layout: LevelLayout, tuning: MovementTuning, index: int, b: Dictionary,
+		pieces: Array[Dictionary], x: String) -> void:
+	var n: int = layout.lane_count
+	var walls: Array = b["walls"]
+	var rooms: Array = b["rooms"]
+	var mine: Array[Dictionary] = []
+	for d: Dictionary in pieces:
+		if int(d["maze"]) == index:
+			mine.append(d)
+	var walls_built: bool = true
+	var counted: int = 0
+	for k: int in walls.size():
+		var w: Dictionary = walls[k]
+		for lane: int in n:
+			var here: Array[Dictionary] = []
+			for d: Dictionary in mine:
+				if String(d["part"]) == "wall" and int(d["index"]) == k and int(d["lane"]) == lane:
+					here.append(d)
+			counted += here.size()
+			if (w["open"] as Array).has(lane):
+				walls_built = walls_built and here.is_empty()
+			else:
+				walls_built = walls_built and here.size() == 1 and StringName(here[0]["size"]) == StringName(w["size"]) \
+					and absf(float(here[0]["start"]) - float(w["start"])) < 0.01 and absf(float(here[0]["end"]) - float(w["end"])) < 0.01
+	suite.check(walls_built, "each wall is one piece of its size in every lane but its openings %s" % x)
+	var dividers_built: bool = true
+	for r: int in rooms.size():
+		var room: Dictionary = rooms[r]
+		for lane: int in n:
+			var here: Array[Dictionary] = []
+			for d: Dictionary in mine:
+				if String(d["part"]) == "divider" and int(d["index"]) == r and int(d["lane"]) == lane:
+					here.append(d)
+			counted += here.size()
+			if not (room["dividers"] as Array).has(lane):
+				dividers_built = dividers_built and here.is_empty()
+				continue
+			here.sort_custom(func(a: Dictionary, c: Dictionary) -> bool: return float(a["start"]) < float(c["start"]))
+			var at: float = float(room["start"])
+			for d: Dictionary in here:
+				dividers_built = dividers_built and absf(float(d["start"]) - at - DebrisMaze.TOUCH) < 0.01 \
+					and absf(float(d["end"]) - float(d["start"]) - tuning.doodad_size(StringName(d["size"])).z) < 0.01
+				at = float(d["end"])
+			dividers_built = dividers_built and not here.is_empty() and absf(float(room["end"]) - at - DebrisMaze.TOUCH) < 0.01
+	suite.check(dividers_built, "each divider is pieces a sliver apart from one wall to the next %s" % x)
+	suite.check(mine.size() == counted, "a block's debris is its walls and dividers and nothing else (%d of %d) %s"
+		% [counted, mine.size(), x])
+	# Nothing in the run-in or the breather, in any lane (the block's own debris lies between its first wall's front and
+	# its last wall's back).
+	for d: Dictionary in mine:
+		suite.check(float(d["start"]) >= float(b["start"]) - 0.01 and float(d["end"]) <= float(b["end"]) + 0.01,
+			"a block's debris stands between its first wall's front and its last wall's back %s" % x)
+
+
+## The dash's slowest recharge (PowerupTuning: its tier I cooldown and the upgrades', the longest; GDD §8: 8 s), which
+## every debris maze is finishable at (check_debris_maze).
+static func maze_recharge() -> float:
+	return DashWallRulesScript.longest_cooldown(DashWallRulesScript.powerups())
+
+
+## A maze block's ceiling `h` (check_debris_maze): one lane wide, its pad in an open cell of the block's last room in a
+## lane its last wall closes, the cell two lanes wide or more (a floor runner passes the pad beside it: MazeRoute never
+## steps on one), a way from the run-in into its lane before it, its lane clear of debris around the pad from a lane
+## switch before it to its rise past it, the hull reaching past the last wall, and its rider's drop clear of debris in
+## every lane.
+static func _check_maze_ceiling(suite: TestSuite, layout: LevelLayout, tuning: MovementTuning, gen: LevelGenerator,
+		route: MazeRoute, recharge: float, b: Dictionary, h: Dictionary, x: String) -> void:
+	var lanes: Vector2i = layout.hull_lanes(h)
+	var y: String = "(its ceiling at %.1f) %s" % [float(h["start"]), x]
+	suite.check(lanes.x == lanes.y, "a maze ceiling is one lane wide " + y)
+	var lane: int = lanes.x
+	var room: Dictionary = (b["rooms"] as Array)[-1]
+	var last: Dictionary = (b["walls"] as Array)[-1]
+	var pad_at: float = -1.0
+	for p: Dictionary in layout.pads:
+		if int(p["lane"]) == lane and float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]):
+			pad_at = float(p["at"])
+	suite.check(pad_at >= float(room["start"]) and pad_at <= float(last["start"]) and not (room["dividers"] as Array).has(lane)
+		and not (last["open"] as Array).has(lane),
+		"its pad lies in an open cell of the last room, in a lane the last wall closes (pad at %.1f, lane %d) %s" % [pad_at, lane, y])
+	var cells: Array[Vector2i] = DebrisMaze.cells_of(room["dividers"], layout.lane_count)
+	var cell: int = DebrisMaze.cell_index(cells, lane)
+	suite.check(cell >= 0 and cells[cell].y > cells[cell].x,
+		"its pad's cell is two lanes wide or more (lane %d, cells %s) %s" % [lane, cells, y])
+	# Into its lane before it: from there, running on takes the runner onto it.
+	var reach: float = route.pad_reach(pad_at) - MazeRoute.STEP
+	var reached: Dictionary = route.find(float(b["entry"]), reach, recharge, lane)
+	suite.check(bool(reached["ok"]), "the runner can reach its pad (%s) %s" % [reached["reason"], y])
+	var before: float = pad_at - tuning.lane_switch_time * tuning.run_speed - DebrisMaze.PAD_LEAD
+	suite.check(route.clear(lane, minf(before, reach), pad_at + DebrisMaze.pad_rise(gen), false),
+		"its pad's lane is clear of debris from a lane switch before it to its rise past it %s" % y)
+	# A dash through the debris before it in its lane shows it in time (DebrisMaze.hidden_reach).
+	var hid: float = -INF
+	for v: Vector2 in route.pieces[lane]:
+		if v.y <= pad_at:
+			hid = maxf(hid, v.y)
+	suite.check(pad_at - hid >= DebrisMaze.hidden_reach(gen) - 0.01,
+		"its pad lies far enough past the debris before it in its lane to be seen after a dash through it (%.1f m, %.1f m) %s"
+		% [pad_at - hid, DebrisMaze.hidden_reach(gen), y])
+	suite.check(float(h["end"]) >= float(last["end"]) + tuning.visual_size.z,
+		"the ceiling reaches past the last wall (%.1f, %.1f) %s" % [h["end"], last["end"], y])
+	var drop: float = float(h["end"]) + DebrisMaze.drop_room(gen)
+	for l: int in layout.lane_count:
+		suite.check(route.clear(l, float(h["end"]), drop, false),
+			"its rider's drop is clear of debris in every lane (lane %d, %.1f-%.1f) %s" % [l, h["end"], drop, y])
 
 
 ## Wall-hop credits (task N1; GDD §7, "Wall-hop credits": "some long walls carry high-value credits further along than
@@ -1009,7 +1333,8 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	var sorted: Array[Dictionary] = []
 	for d: Dictionary in layout.doodads:
-		if not d.has("stash"):
+		# A treasure stash's and the debris maze's (task O2: check_debris_maze) keep rules of their own.
+		if not d.has("stash") and not LevelLayout.is_maze_debris(d):
 			sorted.append(d)
 	if sorted.is_empty():
 		return
@@ -1098,7 +1423,7 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 	var bare: LevelLayout = layout.copy()
 	var stash_only: Array[Dictionary] = []
 	for d: Dictionary in bare.doodads:
-		if d.has("stash"):
+		if d.has("stash") or LevelLayout.is_maze_debris(d):
 			stash_only.append(d)
 	bare.doodads = stash_only
 	var grid_with: FloorRoute = null
@@ -1378,6 +1703,9 @@ static func check_ceilings(suite: TestSuite, layout: LevelLayout, config: LevelC
 			var span: Vector2 = LevelGenerator.enemy_floor_span(e, zones.pace)
 			suite.check(span.x > landing.y or span.y < landing.x,
 				"no floor enemy on the landing zone after the ceiling at %.1f (%s at %.1f) %s" % [h["end"], e["type"], e["at"], tag])
+		# A ceiling over the debris maze (task O2): its floor route takes the dash, which check_debris_maze proves.
+		if h.has("maze"):
+			continue
 		if grid == null:
 			grid = FloorRoute.new(layout, tuning)
 		var route: Dictionary = floor_route(grid, zones, h)
@@ -1398,7 +1726,15 @@ static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) ->
 	for p: Dictionary in grid.layout.pads:
 		if float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]):
 			from = minf(from, zones.pad_zone(float(p["at"])).x)
-	return grid.find(grid.clear_start(from - ROUTE_LEAD), zones.landing_zone(h).y)
+	var before: float = from - ROUTE_LEAD
+	# Task O2: the start's search never goes back into a debris maze's block, whose way through takes the dash
+	# (check_debris_maze proves it, and no ceiling of the patterns' reaches into a block): from past its last wall at
+	# the most, where every lane is open.
+	var search: float = 300.0
+	for b: Dictionary in grid.layout.maze:
+		if float(b["entry"]) < before:
+			search = minf(search, maxf(before - float(b["end"]), 0.0))
+	return grid.find(grid.clear_start(before, search), zones.landing_zone(h).y)
 
 
 ## The ceiling scenarios (task I4; GDD §3, "Ceiling scenarios"; CeilingScenarios), wherever the generator makes one,

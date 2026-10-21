@@ -18,10 +18,13 @@ extends RefCounted
 ## edge is the end toward the runner as seen from the x+ side (the x- side flips it), a top's top
 ## edge is the far end (the back).
 
-## Pixels per metre of every picture (a doodad's front is 2.6 m tall: 250 pixels).
+const ZONES_DIR: String = "res://data/zones"
+
+## Pixels per metre of every picture (a doodad's front is 2.6 m tall: 250 pixels; the Terminal's 1.9 m: 182).
 var px_per_m: float = 96.0
 var zone: String
-## The boxes' sizes by size class (MovementTuning.doodad_size): the pictures are drawn to fit them.
+## The boxes' sizes by size class (MovementTuning.doodad_size, at the zone's own doodad height: zone_tuning): the
+## pictures are drawn to fit them.
 var boxes: Dictionary = {}
 ## Finished pictures by name.
 var pictures: Dictionary = {}
@@ -29,10 +32,28 @@ var pictures: Dictionary = {}
 var designs: Dictionary = {}
 
 
+## `tuning`: the movement tuning (data/tuning/movement.tres); the boxes are the zone's (zone_tuning).
 func _init(p_zone: String, tuning: MovementTuning) -> void:
 	zone = p_zone
+	var own: MovementTuning = zone_tuning(zone, tuning)
 	for size: StringName in LevelLayout.DOODAD_SIZES:
-		boxes[String(size)] = tuning.doodad_size(size)
+		boxes[String(size)] = own.doodad_size(size)
+
+
+## The movement tuning `zone`'s doodads stand at (task O2: the Terminal's are lower than the rest): `tuning` with the
+## doodad height of the zone's levels (LevelConfig.doodad_height through movement_for, from the first of its levels in
+## data/zones/<zone>.tres that sets one; test_doodads checks a zone's levels agree), or `tuning` itself where none does.
+static func zone_tuning(zone: String, tuning: MovementTuning) -> MovementTuning:
+	var path: String = ZONES_DIR.path_join(zone + ".tres")
+	var def: ZoneDef = load(path) as ZoneDef if ResourceLoader.exists(path) else null
+	if def == null:
+		return tuning
+	for level: LevelConfig in def.levels:
+		if level != null and level.doodad_height > 0.0:
+			var own: MovementTuning = tuning.duplicate() as MovementTuning
+			own.doodad_height = level.doodad_height
+			return own
+	return tuning
 
 
 func box(size_class: String) -> Vector3:

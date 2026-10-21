@@ -427,16 +427,27 @@ the city: wet black stone, rust and verdigris, vine green, sodium lamplight thro
   work lamp hangs from every rib (lamp k at z = -(k + 0.5) x `lamp_pitch`, `lamp_height` up, in the middle of the street) and
   one on the far wall half a pitch off; each is dead (a fifth), failing (a third: dim, with one slow smooth brownout every
   few seconds, never a strobe) or burning, by a hash of its index, decided in the shader from where the fixture stands
-  (`PAT_TERMINAL_LAMP`), so a fixture and the pool of warm light under it always agree and the skin places fixtures without
-  hashing anything. Every lit pattern calls `tm_lit(albedo, light)`; the lamps' own glow is a dim warm white (`lamp_glow`
-  0.22: under the bloom threshold and far under a gap edge's). **Reduced flashing**: `tm_burn` mixes the brownout with a
+  (`PAT_TERMINAL_LAMP`), so a fixture and the pool of orange light under it always agree (`lamp_color`, a sodium amber,
+  and the same colour tints every pool: `tm_lit`) and the skin places fixtures without hashing anything. Every lit pattern
+  calls `tm_lit(albedo, light)`; the lamps' own glow is dim (`lamp_glow` 0.09, `lamp_glow_compat` 0.16 on the Compatibility
+  renderer, which scales emissive colours in sRGB space and would draw the lower number far dimmer: under the bloom
+  threshold and a fraction of a gap edge's, which blooms). **Reduced flashing**: `tm_burn` mixes the brownout with a
   steady dim level by the global `reduced_flashing`, so a failing lamp holds still (`test_terminal_skin` checks the shader
   source: the include never reads `TIME` itself, `tm_burn` reads `reduced_flashing`, the dip is a 0.31 Hz function of the time
   it is passed).
-- *The colour rule* (GDD §5): nothing glows but the work lamps (and the scavengers' dim embers, the same pattern), the
-  hazards, triggers and the orange ends of gaps and ceilings; the lamps are warm white or sodium (never a hazard's orange or
-  yellow), the red-orange enamel plates are matte and dull, dead boards are matte glass in a worn frame, nothing carries
-  words, nothing is striped but a hazard sign's frame. The steam plumes are soft alpha-blended smoke and glow not at all (the
+- *The colour rule* (GDD §5, **looser in the later zones**: the owner, October 20, 2026, "it's ok if the color palette conflicts
+  a bit with the rules"; the Terminal's work lamps are orange, as the owner first asked and the reference shows): nothing
+  glows but the work lamps (and the scavengers' dim embers, the same pattern), the hazards, triggers and the orange ends of
+  gaps and ceilings. The lamps are orange, so they are told from a gap edge (the red-orange lip, strip and halo, unchanged)
+  three ways, each a check in `test_terminal_skin`: hue (a lamp is amber, 35 degrees against the edge's 13 and short of the
+  hazard signs' yellow, 46), glow (a lamp's peak is a fifth of the edge's, under the bloom threshold, which the edge is over,
+  so edges bloom and lamps never do; the camps' embers dimmer still) and height (every lamp tube at least 4 m above the
+  street: the crown lamps 8.4 m, the far walls' 4.4 m; nothing orange glows at floor level but hazards). Measured in
+  rendered frames (the review tool's shots 1, 3 and 6, the brightest 1% of each patch; Forward+ then Compatibility): the
+  gap edge's lip (255, 138, 28) and (255, 213, 22), luma 155 and 208; a lamp tube (190, 119, 9) and (191, 123, 1), luma 126
+  and 129, value 0.75 against the edge's 1.0; the track bed under a lamp and the far walls lit by one saturation 0.33-0.63
+  and value 0.51-0.66. The red-orange enamel plates are matte and dull, dead boards are matte glass in a worn frame, nothing
+  carries words, nothing is striped but a hazard sign's frame. The steam plumes are soft alpha-blended smoke and glow not at all (the
   first draft's additive columns read as the anti-grav pads' light beams, which the pads must keep to themselves).
 - *Ceilings* (`TerminalCeilings`): a GIRDER (a plate girder fallen across the street: the underside its bottom flange, a web
   with stiffeners, the near end torn open with the flange bent up), a WALKWAY (a maintenance walkway hanging from the vault
@@ -467,14 +478,14 @@ the city: wet black stone, rust and verdigris, vine green, sodium lamplight thro
   vertices a chunk (5 lanes: 21.9 against the budget of 32). Kept down by quads and a few thin boxes instead of detail (the
   detail is in the patterns, which cost nothing to build), one mesh per run of cells, trains and camps built only where
   hashed, and no faces nobody sees.
-- *Tested and reviewed*: `test_terminal_skin` (the shared skin checks; the palette and colour rule; the lamps' glow; no sky;
+- *Tested and reviewed*: `test_terminal_skin` (the shared skin checks; the palette and colour rule; the lamps told from a gap edge by hue, glow and height, on both renderers; no sky;
   the shaders and Reduced flashing; holes read as holes, `hole_share` 0.70; the hall over a stretch with no wall at all and
   with holes in the outer lanes, and once per chunk over a floor cut and with arches crossing a chunk's edge (`_hall_once`:
   as many lamps, cars and dust as one fresh run of the hall draws, all hung from the chunk's root); the steam is smoke and
   the lane's width comes from the floor boxes; arches and stumps on both sides at 3, 5 and 6 lanes: inside the wall line, 5 cm proud at
   most, a stump about half the height with rubble; the play space; the ceilings; the doodads), and the shared suites that
   sweep every skin (`test_doodads`, `ceilings`, `floor_cuts`, `skin_budget`, `zone_shaders`). Review it with
-  `tools/showcase/terminal_review.tscn` (a stretch dressed as O1's track builder will dress it: arches a space long with the
-  open space between as wall gaps, stumps through the hook, holes, one ceiling of each kind, doodads, fences, signs; 19
+  `tools/showcase/terminal_review.tscn` (a stretch laid out as O1's levels are, `wall_running` off: arches a space long with the
+  open space between as wall gaps, which the track builder draws with `wall_opening`, stumps in `wall_stumps`, holes, one ceiling of each kind, doodads, fences, signs; 19
   shots, `--shot=N`, `--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`) and `skin_review --skin=terminal`, on both
   renderers.

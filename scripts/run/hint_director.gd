@@ -202,6 +202,10 @@ func _first_at(trigger: String) -> float:
 			# Task H7a (GDD §9.14): the first dash wall's face.
 			for dw: Dictionary in layout.dash_walls:
 				found.append(float(dw["start"]))
+		"debris_maze":
+			# Task O2 (GDD §5, Zone 8): the debris maze's first wall, where debris first stops the runner.
+			for b: Dictionary in layout.maze:
+				found.append(float(b["start"]))
 		"treasure_stash":
 			# Task I4 (GDD §3, "Ceiling scenarios"): the first treasure stash's start.
 			for st: Dictionary in layout.stashes:

@@ -5772,3 +5772,275 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    wall so a step back on as soon as the runner lands is never refused. It shows as a short break in the wall (the Dead
    Zone's wall-gap look). Is a visible notch the right cue, or should the platform hold a clawed runner some other way?
    (GDD §3, §8 Claws.)
+
+**The Terminal in the campaign** (task O1 of the Terminal workstream, October 20, 2026; from `docs/questions/o1.md`; GDD §5, Zone 8)
+1051. **Where the Terminal sits on the difficulty curve.** (GDD §6: each level slightly harder than the last; §5: the
+   Terminal comes between the Dead Zone and the Golden Zone.) Placeholder: both levels are off the curve, like the
+   Beach's (`off_curve` in `data/levels/terminal_1.tres` and `terminal_2.tres`), with their own numbers between
+   Dead Zone 2's and Golden 1's: difficulty 0.79 and 0.805 (Dead Zone 2 0.779, Golden 1 0.820), enemy scaling 0.83
+   and 0.85 (0.8125 and 0.875). Every other level keeps its numbers, so the Golden Zone plays exactly as before and
+   nothing gets easier. Putting the Terminal on the automatic curve instead would re-space the curve over 19 levels,
+   lowering the levels before it (against GDD §6's rule that no level gets easier when levels are added) unless the
+   curve were bent again, and would move the economy's numbers with them. The danger density dial follows the
+   campaign's too (0.37 and 0.38, `danger_density_increase`), though the pass has nothing of the Terminal's to add
+   (none of the usual enemies, no filler patterns), so it changes nothing there until the maze and the centipede.
+1052. **The Terminal's run speed.** (GDD §3: the run speed rises zone by zone.) Placeholder: 24.6 m/s
+   (`data/zones/terminal.tres`, `run_speed`), halfway between the Dead Zone's 24.2 and the Golden Zone's 25.0.
+1054. **The Terminal's holes.** ("A couple of holes, not many.") Placeholder: two wider gaps a level (`wide_gaps` 2, as
+   in every campaign level), rows of holes across every lane but one, jumpable, and no other holes: the Terminal's
+   own patterns (`data/patterns/terminal/terminal_patterns.json`) have none of the core patterns' holes.
+1055. **Fences and other obstacles.** The design names debris, ceilings and holes for the Terminal and no other
+   obstacle. Placeholder: none of the core patterns' fences, signs, speed pads or ramps, no wall fences and no dash
+   walls (`dash_walls` 0); the levels are open track with credits, the zone doodads, the ceilings and the two holes
+   until the maze (O2) and the centipede (O3) come in. Should any of the other obstacles (electric fences, say)
+   appear in the Terminal?
+1056. **The debris until the maze comes in.** ("Full of debris"; the maze is task O2.) Placeholder: the zone doodads as
+   in every level (`doodad_share` 1, `doodad_row_chance` 0.7, Dead Zone 2's and Golden 1's values), pushing as
+   everywhere. With so little else on the Terminal's track, nearly every spot has room for one, so a build has about
+   190 doodads (about 2-20 elsewhere), most of them in rows. Is that the right feel until O2 makes them stop the runner?
+1057. **How few ceilings, and how long.** ("Very few", "little shortcuts over part of the maze".) Placeholder: the
+   ceiling pattern weighs 1 against the open track's 13 (`terminal_patterns.json`), about 2-7 ceilings a level
+   (measured on the levels' own seeds and three others, at 3, 5 and 6 lanes), each 1.6 s of run long
+   (`length_seconds`) and one lane wide (`narrow_ceiling_share` and `one_lane_ceiling_share` 1). O2 places them over
+   the maze.
+1058. **The arches' numbers.** ("Each wall section is one space wide (about a standard doodad's width), with about six
+   lengths of open space before the next one", "mostly symmetrical", "a missing one is a broken stump ... cut off
+   about halfway up".) Placeholder (`data/tuning/terminal_wall_gaps.tres`, group Arches): each arch 3.6 m along the
+   track (a standard doodad's length), 21.6 m of open wall to the next (six lengths) varying by up to 15% either way,
+   and 15% of the places have one side's arch missing (that side at random) and a stump there instead. The default
+   stump is half the wall's height (`ZoneSkin.wall_stump`); the Terminal's skin (O4) draws its own.
+1059. **Telling the player the walls are a boundary.** ("No wall running ... (proposed) moving past the outer lane bumps
+   the runner back, like a sign's blocked entry, without damage.") Placeholder: built as proposed (the sign's bump
+   and its clank, every time; `Player.wall_running`, from `LevelConfig.wall_running`), and the hint about wall gaps
+   stays out of the Terminal. A runner who has wall-run since the Gangland may try it on the first arch: should a
+   hint say the tunnel walls can't be run?
+1060. **Saves from before the Terminal.** The Golden Zone opened after the Dead Zone's outro; now it opens after the
+   Terminal's. Placeholder: a save that had finished the Dead Zone keeps the Golden Zone open (`Profile` version 5
+   marks the Terminal's outro done for it), so its player keeps their place and can play the Terminal from level
+   select; it doesn't send them back through the Terminal. Should it?
+1062. **When the maze and the centipede first come in.** Placeholder: in Rubble Line the debris maze from 5% of the
+   level and the centipede from 35% (`feature_starts`), and both in Last Stop from the start; both are planned
+   features (`LevelConfig.PLANNED_FEATURES`) with nothing to place until O2 and O3. Neither appears in the Golden
+   Zone: is the centipede the Terminal's alone (GDD §9.15 calls it "the Terminal's only enemy"), and does any of the
+   maze come back later?
+1063. **The weekly challenge.** Placeholder: the Terminal joins the weekly rotation like every zone, its week built on
+   Last Stop's rules (`data/weekly/weekly_challenge.tres`), so a Terminal week has no wall running and few,
+   one-lane ceilings (`WeeklyChallenge.ZONE_FIELDS`), and no wall-hop credits. The seed list is re-picked for nine
+   zones by its rule (`data/weekly/weekly_seeds.json`): the Terminal's seeds from 9800, and the Golden Zone's moved to
+   its new block, 9900.
+1064. **The zone's cinematics and the Dead Zone's last words.** Placeholder: the Terminal's intro is the arrival
+   flyover with a placeholder title ("The Terminal"), its outro a placeholder card ("Out of the tunnels"), like the
+   other zones' unbuilt ones (`data/cinematics/terminal_intro.tres`, `terminal_outro.tres`); the Dead Zone's outro
+   placeholder now heads down into the Terminal.
+
+**The Terminal's debris maze** (task O2 of the Terminal workstream, October 20, 2026; from `docs/questions/o2.md`; GDD §5, "The debris maze")
+1065. **How a stop feels.** (GDD §5: "a complete stop, facing it".) Placeholder: the runner stops at once at the
+   doodad's front (no slowing down) and sets off at once at the run speed; the stop plays the push's thud and its
+   small shake (`doodad_stop` in `scripts/run/run_world.gd` EVENT_SOUNDS, `scripts/run/run_effects.gd`;
+   `SpeedFxTuning.push_shake_*`). Should a stop have its own sound or a stumble?
+1066. **Lane switches while stopped.** (GDD §5: "the runner sets off again by switching into an open lane or by
+   dashing through".) Placeholder (`scripts/player/player.gd`, `_lane_blocked`, `_stop_motion`): a switch into a lane
+   that's open beside the body sets the runner off; one into a lane with debris beside them is a blocked move (the
+   clank and bump of a solid side) and they stay stopped; against a wall of debris whose piece in the next lane has
+   its front level with this one's, the switch slides them along the wall's face, still stopped, so they can work
+   along a wall to its opening. Is that right?
+1067. **Jump and slide while stopped.** Placeholder: they play out where the runner stands (no forward motion), and a
+   jump into debris stops in the air at its front and comes down there (debris stands 1.7 m, out of a jump's reach:
+   item 1073). Should a jump or a slide do anything else?
+1068. **A switch that would meet debris's side.** Placeholder: a switch toward a lane whose debris starts within the
+   switch's run ahead is refused like a blocked move (`Player._stop_switch_ahead`); one further ahead lets the
+   switch go and the runner stops at that debris's front; a body caught in a doodad's side by an odd frame's timing
+   moves back out the way it came (`Player._start_bounce`, with the clank). Is that the right call?
+1069. **What one dash breaks.** Placeholder: the dash breaks every piece in its lane whose front it reaches while it
+   lasts (`Player._dash_claims`, as everywhere), so a dash through a wall also breaks the start of a divider right
+   behind it, and the runner runs on to the next piece's front. Should a dash break only the first piece it meets?
+1070. **The maze's shape.** ("Doodads stand so thickly that the empty space between them forms a maze.") Placeholder
+   (`scripts/world/debris_maze.gd`, header): blocks of debris, each a row of walls (debris across every lane but
+   its openings, medium or large pieces, fronts level) with rooms between them (lanes open from one wall to the next
+   but its dividers: debris along a lane the room's whole length), so the open floor is cells joined through the
+   walls' openings; a block has open floor in every lane before it (its run-in) and after it (its breather), and
+   normal track between blocks. Is this the maze the owner pictured, or should it be freer (debris scattered with
+   no rows)?
+1071. **How much maze, and how hard.** Every number in `DebrisMazeTuning` (`scripts/world/debris_maze_tuning.gd`) is a
+   placeholder. Rubble Line (`data/tuning/terminal_maze_1.tres`): eight blocks over about two thirds of the level,
+   blocks up to 14 s long (about 11 s once each slot's run-in, breather and room for a wider gap are taken), a 1 s
+   run-in, a 3.8 s breather after each, rooms 1.4 s apart, a quarter of the walls large, a lane of a room a divider
+   with chance 0.35, a lane of a wall open with chance 0.3. Last Stop (`terminal_maze_2.tres`): four blocks of 12 s
+   over about a third of the level, 2.4 s breathers. Is that the right amount of maze for "the debris maze" and "a
+   normal run with stretches of maze"?
+1073. **The Terminal's doodad height.** (GDD §5: "lower than standard doodads ... still too tall to jump"; the owner,
+   October 20, 2026: lower still, so the player can plan further ahead.) Placeholder: 1.7 m (`doodad_height` in
+   `data/levels/terminal_1.tres` and `terminal_2.tres`; standard 2.6 m, and 1.9 m before the owner's answer), the
+   lowest with a margin over a jump. The feet peak at 1.53 m on the game's 60 Hz physics (1.6 m in theory,
+   `MovementTuning.jump_height`; a buffered jump and a jump from a stop peak the same, one off a hole's edge lower), and
+   a doodad stops a body whose feet are less than 5 cm under its top, so debris of about 1.58 m or less could be jumped
+   (1.65 m in theory). At 1.7 m test_debris_maze runs jumps from running at every half metre before a front, from a
+   stop and from the jump buffer, at every size, and none gets past. Next to the 1.28 m runner it stands a third
+   taller (a jumpable fence is 1.05 m). From the game camera (4.2 m up, 7.5 m behind), a runner stopped at a wall of
+   the Terminal's mazes (288 stops over both levels at 3, 5 and 6 lanes) sees the next wall as a row of its own every
+   time, and the one after it, with floor showing before it, at 17% of stops (never at 1.9 m, where it always started
+   in the next wall's shadow, so from there on the rows merged into one mass); typically its foot is still hidden by
+   a few tenths of a metre. A camera about 1.3 m higher in Terminal levels (5.5 m:
+   `tools/showcase/debris_maze_review.tscn -- --camera_height=5.5`) would show that second wall ahead as a row of its
+   own at 88% of stops: more than the height can still give. Is 1.7 m right, and should the Terminal's camera sit
+   higher?
+1074. **The maze's ceilings.** ("Little shortcuts over part of the maze.") Placeholder (`DebrisMaze._add_ceiling`): a
+   block gets one with `ceiling_share` (0.35 in Rubble Line, 0.5 in Last Stop): a one-lane ceiling over its last
+   wall, its pad in a cell of the last room the runner can reach, a dead end where there is one (so it saves a
+   dash), the cell two lanes wide or more (a runner who'd rather stay on the floor passes beside the pad), far
+   enough past the wall before it to be seen after a dash through it; the rider comes down in the breather, clear
+   of debris. About one or two a level. Is a ceiling that skips the last wall the shortcut the owner meant?
+1075. **A runner without the dash.** (GDD §5: "a player without it can't finish a maze level and has to go back and
+   buy it. The owner accepts this.") Placeholder: nothing tells them; they stand at a wall with no open way until
+   they quit from the pause menu. Should the game say so (a note on the level's intro, or a message when a runner
+   without the dash stops where no lane is open)?
+1076. **The maze's first-encounter hint.** Placeholder (`data/hints/hints.json`, `debris_maze`, shown on Rubble Line's
+   intro): "Debris here stops you in your tracks instead of pushing you aside. Look ahead for the way through:
+   switch into an open lane ({move_left} / {move_right}) or dash through the debris ({dash}). If the dash isn't back
+   yet, you wait for it." The wording is open.
+1077. **The Terminal's other doodads.** Placeholder: every doodad of a Terminal level stops the runner
+   (`LevelConfig.doodads_stop`), the zone doodads in the normal track between blocks too (most of Last Stop), placed
+   by the same rules as a pushing doodad's (both lanes beside one clear). Should those push as elsewhere, so only the
+   maze's debris stops the runner?
+
+**The Cybernetic Centipede** (task O3 of the Terminal workstream, October 20, 2026; from `docs/questions/o3.md`; GDD §9.15)
+1078. **What "close to it" is: when it wakes.** (GDD §9.15: "when the runner enters a section of the maze close to it, it
+   wakes and chases".) Placeholder (`Centipede._should_wake`, `wake_distance` 30 m at the reference speed, 41 m at the
+   Terminal's): the runner, on the floor, in its own section of the maze (DebrisMaze's sections: a room's cell, a
+   block's run-in or breather) or one joined to it along open paths (through a wall's opening, or where this attempt's
+   dashes smashed debris), within that distance along the track, and never before the runner is in its block (from its
+   run-in on). A runner who keeps out of its corridor and the cells it opens onto passes it by. Is that the right
+   reading, or should it hear the runner through debris (a plain distance)?
+1079. **Its numbers.** Placeholders: top speed 0.85 of the run speed ("slightly faster": the runner), acceleration
+   32 m/s², turns at 7 rad/s, slows to 0.15 of its speed facing away; still for `wake_time` 0.6 s after waking (its
+   warning); a bite's telegraph 0.45 s, live 0.3 s, rest 0.55 s between bites; the bite reaches 0.35 + 0.5 (lunge) +
+   0.6 m in front of its head's middle at most (its hitbox reaches to 0.05 m short of its jaws' tips as drawn), 0.8 m
+   wide and 1.75 m tall, and only with no debris between its head and the runner; stops 1.3 m short of the runner
+   (`Centipede.STANDOFF`; item 1091); a wound stuns it 0.45 s. Right feel?
+1080. **A jump doesn't clear its bite.** Placeholder (`bite_height` 1.75 m, over a jump's 1.6 m peak): it rears its head
+   0.8 m to snap (`CentipedeModel.REAR_HEIGHT`), so the bite's hitbox stays inside what's drawn. GDD §9.15 says a
+   trapped runner "will likely take two or more bites", which a jump that dodged every bite would undo. Should a timed
+   jump clear it instead?
+1082. **Giving up.** Placeholder (`Centipede._gives_up`, `give_up_distance` 45 m, `leave_margin` 3 m, `retire_behind`
+   20 m): it gives up on a runner who rides a ceiling (GDD §9.15: it "can't follow onto a ceiling"), who is 45 m ahead
+   of it along its way, or who is 3 m past its block's last wall (it never leaves its block's stretch); given up, it
+   slows to a stop, legs folding, and leaves play once the runner is 20 m on. Should it follow the runner out of the
+   maze, or come back to life if the runner drops off a ceiling inside its block?
+1083. **How many, and where.** Placeholders (`centipede_rules.gd`): each maze block from the feature's start (35% into
+   Rubble Line) gets one with a chance from 0.45 at difficulty 0 to 0.9 at 1, a second from 0 to 0.35, at most two a
+   block and 20 m apart; GDD §9.15's three places by weight: near the way 0.45, in the block's quickest way 0.3 (read
+   as "in the only way through": the cell the way a runner would take crosses, so they must find another path and the
+   dashes for it), walled in 0.25; the level's first block that can take one gets one (its introduction, in an
+   ordinary cell first), and a level where no block took one gets one where any spot fits. Over the Terminal's levels
+   (test_centipede_maze's sweep) that is 4–7 a build in Rubble Line and 2–6 in Last Stop, in about two blocks in three.
+   Endless mode copies Last Stop, so it has them all along. Right density?
+1084. **What "escapable" means.** (The brief: every maze stays escapable.) Placeholder (`CentipedeEscape`, its header;
+   `LayoutChecks.check_centipedes` proves every built level): from the block's run-in to past its last wall, a way on
+   the Player's moves with the dash at its slowest recharge (8 s), waits and all, on which the runner never comes within
+   a centipede's bite whatever it does (it can be nowhere further along open floor from its spot than it could run from
+   a standstill since its wake, with margins: its bite, the runner's half depth, two 1 m grid bins and 0.5 m; the debris
+   its dashes smash taken open to it as far as a dash could smash, its whole run and 1 m). The dash is taken as just
+   used as the runner reaches the block's run-in (`CentipedeEscape.entry_ready`: the whole 8 s before it's ready, as the
+   debris maze's own check, task O2, takes it at every block), so a runner who dashed through a doodad just before the
+   block, as Terminal runners often do, still has a way out. The way keeps off anti-grav pads (a ride on a maze ceiling
+   would escape too). So a runner taking the way out needs no armor and no luck. Is that the right bar, or may a
+   placement ask for a dash through it (GDD §9.15: "met head-on in a path, the runner dashes through it")? Taken this
+   way, at 3 lanes most kept spots are walled-in cells (there is little room to get past one in the open).
+1085. **A trapped one released.** (GDD §9.15: "a dash that opens their debris can release one by accident".)
+   Placeholder: a dash that smashes a piece walling its cell joins the cell to the runner's section (DebrisMaze.links
+   with this attempt's smashes), and it wakes like any other if the runner is in a joined section within its wake
+   distance. Right?
+1086. **A dash that meets its live bite.** Placeholder (the shared rule, `DamageRules`): a dash meets it through any of
+   its hitboxes, its striking jaws too, so a runner it's biting from behind who dashes away through the debris ahead
+   wounds it (or kills it, the second time). Should only a dash through its head or body count?
+1087. **Not a big attack.** Placeholder (`is_major_attack_active` stays false): the Terminal has no other enemy to take
+   turns with, so its bites never wait for one. Right for the future, if other enemies join the Terminal?
+1088. **No pattern.** Placeholder: its rules place it in the maze's cells (only DebrisMaze knows them), so it has no
+   pattern in `data/patterns/terminal/`. Fine?
+1089. **Its look and sounds.** Placeholders (`CentipedeModel`, `tools/asset_gen/sfx_bank_centipede.gd`): nine riveted
+   brass drums with steel bands, a pair of jointed steel legs each, green glass canisters on every other segment and a
+   little steam, a welder-mask head 1.3 times the body's size with two big green lenses (green kept as drawn) and
+   hooked mandibles, a red glow in its open jaws while it telegraphs (the warning red), rearing up 0.8 m to bite, its
+   lenses flaring (not with Reduced flashing); a wound cracks a canister that leaks green and sparks (no sparks with
+   Reduced flashing). Sounds: a hiss and a clatter
+   of legs on waking, a hiss and a clack as its jaws open, a snap as they strike, a metal shriek and a hiss of steam
+   when wounded, a crash of metal when it dies. Close enough to the reference?
+1090. **The hint.** Placeholder (`data/hints/hints.json`, `centipede`, on its first encounter): "A Cybernetic Centipede
+   haunts the maze. When it hisses awake it chases you along the open paths, a little slower than you run: keep
+   moving, and don't get stuck at debris. Its bite is one hit. A dash ({dash}) goes through it and wounds it; two kill
+   it. It can't follow you onto a ceiling." Wording?
+
+**The Terminal's skin** (task O4 of the Terminal workstream, October 20, 2026; from `docs/questions/o4.md`; GDD §5, Zone 8)
+1092. **The hall's shape.** The GDD gives the look ("vaulted tunnels and platforms ... trains ... tunnel wall behind") but not the
+   hall's proportions or what lies beyond the street's walls. How wide and how high should the hall be, and what stands beyond
+   the arches? Placeholder: the far wall `hall_extra` 7.6 m beyond the wall line (about 14 m from the middle at 5 lanes), the
+   vault springing at `spring_height` 7 m and rising to `crown_height` 12.6 m (over every ceiling's top and the lamps), a kerb
+   0.55 m high along the wall line, then a second track 1 m lower with rusted, vine-grown subway cars parked on it in trains
+   (`train_share` 0.55 of 90 m blocks, up to 4 cars), and old white tile under black ashlar on the far wall. DESIGN-TBD in
+   `TerminalHall`.
+1093. **Which lanes are the track bed and which the platforms.** The GDD proposes "the track bed and platforms". Placeholder: every
+   lane but the outer two is track bed with a pair of rails in each (a depot of parallel tracks, the dark seam between lanes
+   keeping them readable); the outer lanes are the platform along each wall (worn concrete, a strip of pale studs on the edge
+   facing the track), at any lane count (3 lanes: one lane of track between two platforms). The outer lanes' look could instead
+   be track bed too, or the whole street one wide platform. DESIGN-TBD in `TerminalTrack.build`.
+1094. **The boundary where the wall is missing.** The Terminal has no wall running, and its arches stand one space wide with about
+   six lengths of open space between them; the GDD proposes that moving past the outer lane bumps the runner back. Placeholder:
+   a low kerb (0.55 m) runs along the wall line the whole way, so the open spaces read as open beyond a boundary and not as a
+   way out; a missing arch is not marked (no orange wall-gap marks: `wall_gap_marks` draws nothing), since a wall gap's marks are
+   the wall-running language. If O1 gives the open spaces as wall gaps, they show the hall. DESIGN-TBD in `TerminalHall._side`
+   and `TerminalSkin.wall_gap_marks`.
+1095. **The arches' look.** The GDD says the sections read as the subway's tunnel arches or structural supports, and a stump is cut
+   off about halfway. Placeholder: a riveted steel pier in flaking verdigris paint on a concrete plinth, from the floor into the
+   vault, with a flared capital and a half-rib springing along the vault toward the middle (a pair closes an arch, a lone one is a
+   broken arch), vines hanging from the capital; the stump the same pier broken at 0.42-0.56 of its height in three uneven
+   columns, rebar out of the break, rubble at its foot. A pier is 3.0 m along the track (`pier_width`) and 1.6 m deep. DESIGN-TBD
+   in `TerminalArches`.
+1096. **The palette and the lamps.** The GDD proposes rust, verdigris and wet black stone with sodium-orange lamplight through haze
+   and vine green. Placeholder: the colours in the skin's exports (`steel_color` a dark verdigris, `rust_color` a dull brown,
+   `lamp_color` a sodium amber, `fog_color` a dim sodium haze); the lamps hang every 18 m from the vault ribs and from the
+   far walls, a fifth dead, a third failing with one slow brownout every few seconds (steady with Reduced flashing), their glow
+   0.09 (0.16 on the Compatibility renderer, which scales emissive colours in sRGB space: about 0.34 at the tube, 0.63 there, under the
+   bloom threshold and a fifth of a gap edge's 1.6). The reference's red-orange wall signs became dull matte brick-red enamel
+   plates with a pale painted border and four bolts (no symbol, no words; a first draft had a ring with a bar through it,
+   which is too close to the London Underground's trademarked roundel, so it was changed). Whether the zone should be this
+   dark, and whether it needs more or brighter lamps, wants the owner's eye. DESIGN-TBD in `kit_terminal.gdshaderinc` and the
+   skin's "Light" exports.
+
+   **Answered in part (owner, October 20, 2026; task O4b): the work lamps are orange.** The first build made them warm cream-white
+   to keep the orange for the gap edges, and asked. The owner: "for these later zones and levels it's ok if the color palette
+   conflicts a bit with the rules. Players have learned how to play the game at this point" (GDD §5, "Looser in the later
+   zones"). So `lamp_color` is a sodium amber (0.98, 0.6, 0.08) and the pools of light on the stone are painted in it (`tm_lit`).
+   The hazards keep their colours, and a lamp is told from a gap edge three ways (each checked in `test_terminal_skin`):
+   **hue** (amber, 35 degrees, against the edge's red-orange 13 and short of the hazard signs' yellow, 46), **glow** (the lamp's
+   tube is dim and under the bloom threshold, the edge is over it and blooms) and **height** (the lamps hang 4.4 m and
+   8.4 m up, nothing orange glows at floor level but hazards; the camps' embers beyond the kerb are dimmer than a lamp).
+   Measured in rendered frames on both renderers (the brightest 1% of each patch, Forward+ then Compatibility): the gap edge's
+   lip (255, 138, 28) and (255, 213, 22), value 1.0; a lamp tube (190, 119, 9) and (191, 123, 1), value 0.75; the track bed
+   and far walls lit by a lamp, saturation 0.33-0.63 and value 0.51-0.66. Still open: whether the lamps should be brighter or
+   bloom a little like the reference's (they do not, to keep the hazards the only glare), and the pools' strength.
+1097. **Scavengers as scenery.** The GDD proposes them as scenery only, like the Marketplace's citizens. Placeholder: a camp in
+   about 40% of 130 m blocks a side, on the second track between the trains and the far wall (a fire barrel with a dim ember
+   glow and three hunched dark silhouettes, no faces), seen mostly through the gaps between trains. `camp_share` 0 clears them.
+   DESIGN-TBD in `TerminalHall._camps`.
+1098. **The cult's emblem in the Terminal.** GDD §5 proposes the emblem hidden in logos and ads in every zone, and every skin from the
+   City to the Dead Zone carries it. The reference has no logos and the Terminal's brief names none, so the skin carries none
+   (its dead boards and plates are wordless and markless). Should one of the dead boards or a pier's plate carry it, scorched or
+   faded? Placeholder: none.
+1099. **Ceilings.** The GDD proposes the underside of a fallen girder, a hanging walkway and a stranded subway car's roof, every
+   one a single lane wide. Placeholder: three kinds picked by hash and weight (`girder_weight` 3, `walkway_weight` 2,
+   `car_weight` 2.5); the car's body sits over the street with the belly as the underside (a car's roof can't be ridden from
+   below), the girder's flange bent up at the torn near end, the walkway hung from the vault on rods. Each rises at most 1.9 m over
+   its underside so the lamps stay clear. DESIGN-TBD in `TerminalCeilings`.
+1100. **The doodads' looks and size.** GDD §3 proposes a heap of broken concrete and rebar, a toppled ticket kiosk or vending machine,
+   fallen ceiling slabs, and cable drums and crates, lower than other zones' doodads (O2 sets the boxes). Placeholder: seven
+   looks, picked by seed (small: cable drums, crates and a rusted drum; medium: a toppled kiosk, a toppled vending machine, a
+   heap; large: fallen slabs, a long heap with a girder), painted to the standard 2.6 m box: a lower box squashes the
+   pictures, so rerun `tools/godot.sh doodads --only=terminal` after O2 sets the boxes (the pictures are drawn in shares of the
+   box's height). DESIGN-TBD in `tools/asset_gen/doodad_art/terminal_art.gd`.
+1101. **The music.** The Terminal has no song of its own yet (GDD §11 and the task plan: no more generated songs; a first draft had a
+   generated placeholder track, which was removed). O1's zone names `music = &"terminal"`, and `data/audio/music_library.tres`
+   maps it to the Dead Zone's: `files["terminal"]` is the Dead Zone's generated loop (cinematics), `zone_tracks["terminal"]`
+   its supplied song (`zone_5`, the way the Casino and the Beach reuse the Marketplace's loop for theirs), and
+   `riff_tracks` keeps the level-complete riff in that song's key (`level_complete_dead_zone`). Should the Terminal get a song of
+   its own (supplied by the owner)? Then `zone_tracks["terminal"]` points at it and a riff in its key is made. DESIGN-TBD in
+   `data/audio/music_library.tres` (the `terminal` entries) and `tests/suites/test_audio.gd` (`GENERATED_ZONE_DEFAULTS`).
