@@ -726,6 +726,20 @@ Recorded in the GDD (§3, "Extended wall runs in The Hush").
 |---|---|---|---|---|
 | O1 | **The Hush's extended wall runs:** three sections that take a double or a triple wall run, small platforms by the wall to recharge on, one with walls on both sides and the others with a wall on one side only (GDD §3). **Core** (generator, The Hush's data). **Done.** | – | M | T1 |
 
+### Q. The Ice Lab (owner, October 21, 2026)
+
+From `docs/USER_REQUESTS.md` (October 21, 2026): the Ice Lab, zone 9 between the Terminal and the Golden Zone (now
+zone 10), three levels, no boss, falling gantryways and teleporters (GDD §5 Zone 9). Its two new enemies are designed
+in later sessions. Core tasks run one at a time: Q1 → Q3 → Q4 → Q5; Q2 alongside Q1.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| Q1 | **The Ice Lab in the campaign:** zone `ice_lab` between the Terminal and the Golden Zone, levels `ice_lab_1` (Frost Foundry), `ice_lab_2` (Relay Station) and `ice_lab_3` (Specimen Vault), no boss, save migration, the difficulty curve and run speed, enemies only cyborgs, Octodogs and heli drones, no dash walls; a per-level hook so the skin can lean level 1 to snow and industry and level 3 to the lab; an earlier zone's song. **Core** (campaign, zone and level data). | – | L | T1 |
+| Q2 | **The Ice Lab's skin:** catwalk and grating floor with snow and ice, drops into a frozen depth as gaps, lab-machinery and ice walls with brain jars, crane-gantry and walkway ceilings, ice crystals, lighting (an indoor frozen hall, no sky), lab doodads including brain jars and **Octodog jars** (the Octodog curled up inside), and the per-level leaning (level 1 snow and industry, level 3 the lab). Reference `docs/art/reference/ice_lab_zone.webp`. | – (hooks into Q1's zone when both are in) | L | T2 |
+| Q3 | **Falling gantryways** (GDD §5 Zone 9): a one-lane overhead walkway a little shorter than a ceiling, held by a pillar in the floor lane; the dash through the pillar drops it over about a second with a seen and heard warning; it destroys every enemy under it and hits a runner under it (armor and shield block it); a pillar met without the dash pushes like a doodad; placed in all three levels, never required, always escapable. **Core** (generator, damage rules, runtime track change). | Q1 | L | T1 |
+| Q4 | **Teleporters** (GDD §5 Zone 9): a square pad with a green space-age antenna in one floor lane; output pads in sight further down; one or two outputs, the antenna's light (left or right) choosing; fixed antennas from level 2, blinking ones in level 3; the first one safe; later landings before a gap or an enemy with the usual time to react; never required. **Core** (generator, player, run world). | Q3 | L | T1 |
+| Q5 | **Octodog jars that break open** (GDD §5 Zone 9, §9.4): some Ice Lab jar doodads hold an Octodog; smashing one sometimes frees it to run ahead and attack as usual, cue first; the generator leaves it room. Its own files plus a **core** hook (generator). | Q2, Q4 | M | T1 |
+
 ## Order at a glance
 
 **Wave 1 (start now):**
