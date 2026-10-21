@@ -41,7 +41,6 @@ func _smoke() -> void:
 	for i: int in n.smoke_columns.size():
 		var col: Vector4 = n.smoke_columns[i]
 		var base: Vector3 = Vector3(col.x, 0.0, col.y)
-		var world: Vector3 = station.to_global(base)
 		var local_base: Vector3 = base
 		var c: Color = n.smoke_color
 		layer.verts.append_array(PackedVector3Array([local_base, local_base, local_base, local_base, local_base, local_base]))
@@ -51,7 +50,6 @@ func _smoke() -> void:
 		layer.uv2s.append_array(PackedVector2Array([size, size, size, size, size, size]))
 		var reach := AABB(base - Vector3(col.z * 2.0, 0.0, col.z * 2.0), Vector3(col.z * 4.0, col.w + 1.0, col.z * 4.0))
 		bounds = reach if i == 0 else bounds.merge(reach)
-		world = world
 	if layer.is_empty():
 		return
 	var batch := MeshBatch.new()

@@ -40,6 +40,7 @@ var station: TerminalIntroStation
 var middle := Vector3.ZERO
 var grime_material: ShaderMaterial
 var gold_halo: ShaderMaterial
+## DESIGN-TBD (docs/questions/f2k.md, 8): the other stops' names are my choice (plausible and neutral); THE PALACE is the owner's.
 var stops: PackedStringArray = PackedStringArray(["GRAND TERMINAL", "CANAL STREET", "OLD MARKET", "CINDER ROW", "HARBOUR GATE"])
 var palace: String = "THE PALACE"
 var dust: MultiMesh
@@ -223,7 +224,7 @@ func update_dust(t: float) -> void:
 			var u: float = age / 1.7
 			var at: Vector3 = board_point(path[i].x, path[i].y, 0.22 + 0.5 * u) + Vector3(0.1 * sin(float(i)) * u, 0.12 * u, 0.0)
 			var size: float = 0.22 + 0.35 * u
-			dust.set_instance_transform(used, Transform3D(Basis.from_scale(Vector3.ONE * size), station.to_global(at)))
+			dust.set_instance_transform(used, Transform3D(Basis.from_scale(Vector3.ONE * size), at))
 			dust.set_instance_custom_data(used, Color(0.55 * sin(PI * pow(u, 0.6)) * (1.0 - u * 0.5), MeshKit.hash01(i, 3, 61), 0.0, 0.0))
 			used += 1
 	for i: int in range(used, DUST_PUFFS):

@@ -13,7 +13,7 @@ extends Node3D
 
 const WORD_GAP: float = 0.9
 const FALLEN_SEED: int = 8801
-const GHOST := Color(0.17, 0.165, 0.155)
+const GHOST := Color(0.088, 0.085, 0.08)
 const SOOT_LETTER := Color(0.13, 0.12, 0.11)
 const SOOT_FRONT := Color(0.26, 0.235, 0.21)
 const RUST := Color(0.2, 0.12, 0.08)
@@ -21,7 +21,7 @@ const AMBER := Color(1.0, 0.6, 0.18)
 ## A spark's life (s), how many each burst has, its size (m) and the gravity it falls under.
 const SPARK_LIFE: float = 0.7
 const SPARKS_PER_BURST: int = 9
-const SPARK_SIZE: float = 0.24
+const SPARK_SIZE: float = 0.34
 const SPARK_GRAVITY: float = 6.5
 const MAX_SPARKS: int = 80
 ## The flicker's cell length (s): a lit letter is dimmed for whole cells, never faster than this.
@@ -39,6 +39,8 @@ var lit: Array[bool] = []
 var bursts: Array[Vector2] = []
 var spark_mm: MultiMesh
 var spark_node: MultiMeshInstance3D
+## How many sparks are in flight now.
+var live_sparks: int = 0
 var _fallen: Array[MeshInstance3D] = []
 var _rng := RandomNumberGenerator.new()
 ## Where the letters' tops are (the sign's line), and the x of each of TERMINAL's letters.
@@ -90,8 +92,8 @@ func _ghost(layout: Dictionary) -> void:
 		# The line's origin is its left edge at the baseline: put it where the letter's ink box was.
 		s.append(l, Transform3D(Basis.IDENTITY, Vector3(float(p["x"]) - width * 0.5, top_y - n.letter_height, 0.09)))
 		for bx: float in [-0.3, 0.3]:
-			s.box(Vector3(float(p["x"]) + bx * width, top_y - 0.25, 0.12), Vector3(0.12, 0.12, 0.1), RUST, 0.0, MeshKit.PAT_DZ_STEEL)
-			s.box(Vector3(float(p["x"]) + bx * width, top_y - n.letter_height + 0.25, 0.12), Vector3(0.12, 0.12, 0.1), RUST, 0.0,
+			s.box(Vector3(float(p["x"]) + bx * width, top_y - 0.25, 0.12), Vector3(0.18, 0.18, 0.12), RUST * 1.5, 0.0, MeshKit.PAT_DZ_STEEL)
+			s.box(Vector3(float(p["x"]) + bx * width, top_y - n.letter_height + 0.25, 0.12), Vector3(0.18, 0.18, 0.12), RUST * 1.5, 0.0,
 				MeshKit.PAT_DZ_STEEL)
 	var m: MeshInstance3D = batch.commit(station, "SignGhost")
 	if m != null:
@@ -252,27 +254,27 @@ func update(t: float) -> void:
 			halos[i].set_shader_parameter(&"state_glow", k * 0.9)
 	# The sparks.
 	var used: int = 0
-	if not soft or true:
-		for b: int in bursts.size():
-			var age: float = t - bursts[b].x
-			if age < 0.0 or age > SPARK_LIFE * (1.6 if soft else 1.0):
-				continue
-			if soft and b % 3 != 0:
-				continue
-			var count: int = SPARKS_PER_BURST / 2 if soft else SPARKS_PER_BURST
-			var life: float = SPARK_LIFE * (1.6 if soft else 1.0)
-			var slow: float = 0.6 if soft else 1.0
-			for s: int in count:
-				if used >= MAX_SPARKS:
-					break
-				var local: Vector3 = _spark_at(b, s, age * slow)
-				var fade: float = 1.0 - age / life
-				var xf := Transform3D(Basis.from_scale(Vector3.ONE * SPARK_SIZE * (0.6 + 0.6 * fade)), station.to_global(local))
-				spark_mm.set_instance_transform(used, xf)
-				spark_mm.set_instance_custom_data(used, Color(fade * fade * (0.5 if soft else 1.0), 0.0, 0.0, 0.0))
-				used += 1
+	for b: int in bursts.size():
+		var age: float = t - bursts[b].x
+		if age < 0.0 or age > SPARK_LIFE * (1.6 if soft else 1.0):
+			continue
+		if soft and b % 3 != 0:
+			continue
+		var count: int = SPARKS_PER_BURST / 2 if soft else SPARKS_PER_BURST
+		var life: float = SPARK_LIFE * (1.6 if soft else 1.0)
+		var slow: float = 0.6 if soft else 1.0
+		for s: int in count:
+			if used >= MAX_SPARKS:
+				break
+			var local: Vector3 = _spark_at(b, s, age * slow)
+			var fade: float = 1.0 - age / life
+			var xf := Transform3D(Basis.from_scale(Vector3.ONE * SPARK_SIZE * (0.6 + 0.6 * fade)), local)
+			spark_mm.set_instance_transform(used, xf)
+			spark_mm.set_instance_custom_data(used, Color(fade * fade * (0.5 if soft else 1.0), 0.0, 0.0, 0.0))
+			used += 1
 	for i: int in range(used, MAX_SPARKS):
 		spark_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ZERO), Vector3.ZERO))
+	live_sparks = used
 
 
 ## A lit letter's brightness at `t` (1 steady): flickering (dimmed for whole cells, now and then) with a flash when it
@@ -281,13 +283,22 @@ func brightness(i: int, t: float, soft: bool) -> float:
 	if i >= lit.size() or not lit[i]:
 		return 0.0
 	if soft:
-		return 0.78 + 0.14 * sin(TAU * 0.2 * t + float(i)) + 0.1 * pulse(i, t, 1.4)
+		return 0.78 + 0.14 * sin(TAU * 0.2 * t + float(i)) + 0.1 * swell(i, t)
 	var cell: int = int(floor(t / FLICKER_CELL + float(i) * 3.1))
 	var dip: float = 0.28 + 0.1 * float(i % 3)
 	var k: float = 1.0
 	if MeshKit.hash01(cell, i, 51) < 0.1 + 0.06 * float(i % 4):
 		k = dip
 	return k * (0.94 + 0.06 * sin(t * 7.0 + float(i))) + 1.6 * pulse(i, t, 0.14)
+
+
+## A slow swell for a burst of letter `i` at `t` (0 to 1 and back over about 2.5 s, smooth: with Reduced flashing).
+func swell(i: int, t: float) -> float:
+	var best: float = 0.0
+	for b: Vector2 in bursts:
+		if int(b.y) == i and t >= b.x and t < b.x + 2.5:
+			best = maxf(best, sin(PI * (t - b.x) / 2.5))
+	return best
 
 
 ## How much a burst of letter `i` lights it at `t` (1 at the burst, dying over `over` seconds).

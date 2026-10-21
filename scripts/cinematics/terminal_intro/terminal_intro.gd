@@ -229,8 +229,9 @@ func _runner(t: CineTimeline) -> void:
 	t_walk = n.wipe_at - 0.25 - (first + second) / n.walk_speed
 	t_corner = t_walk + first / n.walk_speed
 	_key(r, t_walk, start, &"walk", yaw_to(corner.x - start.x, corner.z - start.z), 0.0, 0.0)
-	_key(r, t_corner, corner, &"walk", NAN)
-	_key(r, n.wipe_at - 0.25, stand, &"walk", NAN)
+	# SMOOTH keys: a rounded corner, and a slowing as they arrive.
+	_key(r, t_corner, corner, &"walk", NAN).move = CinePath.Move.SMOOTH
+	_key(r, n.wipe_at - 0.25, stand, &"walk", NAN).move = CinePath.Move.SMOOTH
 	# Slowing as they arrive, then turning to face the board.
 	var eased: CineActorKey = _key(r, n.wipe_at, stand, &"walk", 90.0, 0.0, 6.0)
 	eased.trans = Tween.TRANS_QUAD
@@ -310,62 +311,63 @@ func _camera(t: CineTimeline) -> void:
 	var right := Vector2(-f.y, f.x)
 	var eye := Vector3(start.x, EYE_HEIGHT, start.z)
 	# The face: in front of them and a little to their left (the gold eyepiece's side), close, easing in.
-	var from: Vector3 = eye + Vector3(f.x * 0.95 - right.x * 0.2, 0.0, f.y * 0.95 - right.y * 0.2)
-	var to: Vector3 = eye + Vector3(f.x * 0.82 - right.x * 0.18, 0.0, f.y * 0.82 - right.y * 0.18)
-	_shot(t, 0.0, from, eye, 30.0)
-	_shot(t, n.survey_at - 0.3, to, eye, 30.0)
-	# Sweeping round them, by their right, to behind them, rising and the lens widening, the look going from their face
-	# to what they are looking at (the station): the scene is revealed behind their head as the camera comes round.
-	var scene := Vector3(1.0, 9.0, 0.0)
-	# On the way it looks over the wasteland along the front first (where the heaps, the column and the bus are).
-	var over := Vector3(10.0, 1.6, 7.0)
+	var from: Vector3 = eye + Vector3(f.x * n.face_from.x + right.x * n.face_from.y, 0.0, f.y * n.face_from.x + right.y * n.face_from.y)
+	var to: Vector3 = eye + Vector3(f.x * n.face_to.x + right.x * n.face_to.y, 0.0, f.y * n.face_to.x + right.y * n.face_to.y)
+	_shot(t, 0.0, from, eye, n.face_from.z)
+	_shot(t, n.survey_at - 0.3, to, eye, n.face_to.z)
+	# Sweeping round them, by their right, to behind them, rising and the lens widening, the look going from their face to what they
+	# are looking at (the station) by way of the wasteland: the scene is revealed behind their head as the camera comes round.
 	var steps: int = 9
 	var t0: float = n.survey_at - 0.3
 	var t1: float = n.facade_at - 0.02
 	for i: int in range(1, steps + 1):
 		var u: float = float(i) / float(steps)
 		var e: float = smoothstep(0.0, 1.0, u)
-		var phi: float = deg_to_rad(lerpf(16.0, 158.0, e))
-		var radius: float = lerpf(0.9, 2.5, e)
+		var phi: float = deg_to_rad(lerpf(n.sweep_angle.x, n.sweep_angle.y, e))
+		var radius: float = lerpf(n.sweep_radius.x, n.sweep_radius.y, e)
 		var dir := Vector2(f.x * cos(phi) + right.x * sin(phi), f.y * cos(phi) + right.y * sin(phi))
-		var pos := Vector3(eye.x + dir.x * radius, lerpf(EYE_HEIGHT, 1.7, e), eye.z + dir.y * radius)
-		var look: Vector3 = eye.lerp(over.lerp(scene, smoothstep(0.55, 1.0, u)), smoothstep(0.25, 0.6, u))
-		_shot(t, lerpf(t0, t1, u), pos, look, lerpf(30.0, 52.0, e))
+		var pos := Vector3(eye.x + dir.x * radius, lerpf(EYE_HEIGHT, n.sweep_end.x, e), eye.z + dir.y * radius)
+		var look: Vector3 = eye.lerp(n.sweep_over.lerp(n.sweep_scene, smoothstep(0.55, 1.0, u)), smoothstep(0.25, 0.6, u))
+		_shot(t, lerpf(t0, t1, u), pos, look, lerpf(n.face_to.z, n.sweep_end.y, e))
 	# The station's front, from across the street: wide, then craning up and pushing in on the sign.
-	var far: float = minf(23.0, street_edge)
-	_shot(t, n.facade_at, Vector3(-6.0, 2.2, far), Vector3(1.0, 10.5, 0.0), 62.0, CinePath.Move.CUT)
-	_shot(t, n.walk_at - 0.004, Vector3(-2.0, 5.5, far - 3.5), Vector3(3.0, 15.0, 0.0), 54.0)
-	# The walk: following them from behind, low, the front ahead.
-	var follow: CineCameraKey = t.shot(n.walk_at, st(0.0, 0.0, 0.0), st(0.0, 0.0, 0.0), CinePath.Move.CUT, 46.0)
+	var wide := Vector3(n.wide_from.x, n.wide_from.y, minf(n.wide_from.z, street_edge))
+	var crane := Vector3(n.crane_from.x, n.crane_from.y, minf(n.crane_from.z, street_edge - 1.0))
+	_shot(t, n.facade_at, wide, n.wide_look, n.wide_fov, CinePath.Move.CUT)
+	_shot(t, n.walk_at - 0.004, crane, n.crane_look, n.crane_fov)
+	# The walk: following them across the forecourt, low, the front beside them.
+	var follow: CineCameraKey = t.shot(n.walk_at, st(0.0, 0.0, 0.0), st(0.0, 0.0, 0.0), CinePath.Move.CUT, n.follow_fov.x)
 	follow.follow = &"runner"
 	follow.watch = &"runner"
-	follow.position = Vector3(2.4, 1.3, -2.8)
-	follow.target = Vector3(-1.5, 0.75, 2.0)
-	var follow2: CineCameraKey = t.shot(n.arrive_at - 0.004, st(0.0, 0.0, 0.0), st(0.0, 0.0, 0.0), CinePath.Move.SMOOTH, 44.0)
+	follow.position = n.follow_from
+	follow.target = n.follow_look
+	var follow2: CineCameraKey = t.shot(n.arrive_at - 0.004, st(0.0, 0.0, 0.0), st(0.0, 0.0, 0.0), CinePath.Move.SMOOTH, n.follow_fov.y)
 	follow2.follow = &"runner"
 	follow2.watch = &"runner"
-	follow2.position = Vector3(2.0, 1.1, -2.4)
-	follow2.target = Vector3(-1.0, 0.75, 1.2)
+	follow2.position = n.follow_to
+	follow2.target = n.follow_look_to
 	# At the board as they wipe it: from their right front.
 	var bx: float = n.board_x
-	_shot(t, n.arrive_at, Vector3(bx + 3.0, 1.15, 3.2), Vector3(bx, 1.0, 0.1), 40.0, CinePath.Move.CUT)
-	_shot(t, n.sign_at - 0.004, Vector3(bx + 2.6, 1.15, 2.9), Vector3(bx, 1.0, 0.1), 38.0)
-	# The close-up of the board, from in front: the whole of it, pushing in toward the Palace at the bottom.
 	var mid: Vector3 = board.middle
-	_shot(t, n.sign_at, Vector3(bx, mid.y + 0.02, 1.5), Vector3(bx, mid.y, 0.1), 50.0, CinePath.Move.CUT)
-	_shot(t, n.mind_at - 0.004, Vector3(bx - 0.25, mid.y - 0.3, 0.85), Vector3(bx - 0.2, mid.y - 0.38, 0.1), 42.0)
+	_shot(t, n.arrive_at, Vector3(bx + n.wipe_cam.x, n.wipe_cam.y, n.wipe_cam.z), Vector3(bx + n.wipe_look.x, n.wipe_look.y, n.wipe_look.z), n.wipe_fov.x, CinePath.Move.CUT)
+	_shot(t, n.sign_at - 0.004, Vector3(bx + n.wipe_cam_to.x, n.wipe_cam_to.y, n.wipe_cam_to.z), Vector3(bx + n.wipe_look.x, n.wipe_look.y, n.wipe_look.z), n.wipe_fov.y)
+	# The close-up of the board, from in front: the whole of it, pushing in toward the Palace at the bottom.
+	_shot(t, n.sign_at, Vector3(bx, mid.y + 0.02, n.board_out), Vector3(bx, mid.y, 0.1), n.board_fov, CinePath.Move.CUT)
+	_shot(t, n.mind_at - 0.004, Vector3(bx + n.board_push.x, mid.y + n.board_push.y, n.board_push.z),
+		Vector3(bx + n.board_push_look.x, mid.y + n.board_push_look.y, n.board_push_look.z), n.board_push_fov)
 	# They make up their mind: close on them from by the board, the street behind them.
-	_shot(t, n.mind_at, Vector3(n.board_x + 1.0, 1.1, 0.9), Vector3(n.board_x, 1.1, n.step_back), 28.0, CinePath.Move.CUT)
-	_shot(t, n.door_at - 0.004, Vector3(n.board_x + 0.9, 1.08, 1.0), Vector3(n.board_x - 0.1, 1.06, n.step_back + 0.1), 26.0)
+	_shot(t, n.mind_at, Vector3(bx + n.mind_cam.x, n.mind_cam.y, n.mind_cam.z), Vector3(bx + n.mind_look.x, n.mind_look.y, n.step_back + n.mind_look.z), n.mind_fov.x, CinePath.Move.CUT)
+	_shot(t, n.door_at - 0.004, Vector3(bx + n.mind_cam_to.x, n.mind_cam_to.y, n.mind_cam_to.z),
+		Vector3(bx + n.mind_look_to.x, n.mind_look_to.y, n.step_back + n.mind_look_to.z), n.mind_fov.y)
 	# The entrance: low behind them at the foot of the heap, looking up the heap at the crack of light.
 	var foot := Vector3(n.heap_foot.x, 0.0, n.heap_foot.y)
-	_shot(t, n.door_at, Vector3(foot.x + 2.8, 0.95, foot.z + 5.2), Vector3(0.0, 3.0, 0.0), 52.0, CinePath.Move.CUT)
-	_shot(t, n.climb_from, Vector3(foot.x + 2.2, 1.0, foot.z + 4.4), Vector3(0.0, 3.4, 0.0), 48.0)
+	_shot(t, n.door_at, foot + n.door_cam, n.door_look, n.door_fov.x, CinePath.Move.CUT)
+	_shot(t, n.climb_from, foot + n.door_cam_to, n.door_look_to, n.door_fov.y)
 	# The climb: from beside the heap, then close on the crack as they squeeze in.
-	_shot(t, n.climb_from + 0.004, Vector3(-6.0, 2.0, 7.5), Vector3(0.8, 2.3, 3.2), 50.0, CinePath.Move.CUT)
-	_shot(t, n.crest_at - 0.3, Vector3(-3.5, 3.0, 6.0), Vector3(0.4, 3.2, 1.0), 46.0)
-	_shot(t, n.crest_at - 0.296, Vector3(-1.8, 3.6, 2.5), Vector3(0.2, 3.95, 0.1), 38.0, CinePath.Move.CUT)
-	_shot(t, n.inside_at - 0.5, Vector3(-1.5, 3.7, 2.2), Vector3(0.2, 3.95, -0.4), 36.0)
+	var c: PackedVector3Array = n.climb_cam
+	_shot(t, n.climb_from + 0.004, c[0], c[1], c[2].x, CinePath.Move.CUT)
+	_shot(t, n.crest_at - 0.3, c[3], c[4], c[5].x)
+	_shot(t, n.crest_at - 0.296, c[6], c[7], c[8].x, CinePath.Move.CUT)
+	_shot(t, n.inside_at - 0.5, c[9], c[10], c[11].x)
 	# Inside.
 	_inside_camera(t)
 
@@ -406,8 +408,8 @@ func _inside_runner(t: CineTimeline) -> void:
 		_pose_key(r.at(n.jump_at + tau, ent(p.x, p.y, p.z)), out_yaw, 0.0, -1.0)
 	# They land, straighten up and turn to face down the line (+x along the wall: the way the level runs), look along it, and set off.
 	var land := Vector3(0.2, 0.0, n.landing_out)
-	_pose_key(r.at(t_land + 0.35, ent(land.x, 0.0, land.z), &"walk"), out_yaw, 0.0, -1.0)
-	_pose_key(r.at(t_land + 0.55, ent(land.x, 0.0, land.z)), 0.0, 0.0, -1.0)
+	_pose_key(r.at(t_land + 0.15, ent(land.x, 0.0, land.z), &"walk"), out_yaw, 0.0, -1.0)
+	_pose_key(r.at(t_land + 0.3, ent(land.x, 0.0, land.z)), 0.0, 0.0, -1.0)
 	var look: CineActorKey = _pose_key(r.at(t_land + 1.2, ent(land.x, 0.0, land.z)), 0.0, 0.0, -1.0)
 	look.look_up = 8.0
 	var walk: CineActorKey = r.at(n.duration, ent(land.x + 2.6, 0.0, land.z))
@@ -426,14 +428,13 @@ func _pose_key(k: CineActorKey, yaw: float, look_up: float, progress: float) -> 
 
 
 func _inside_camera(t: CineTimeline) -> void:
-	var i0: float = n.inside_at
 	# From the hall, across the track, at the crack of light in the wall and the runner coming out of it; then round to behind them
 	# as they land, looking down the line: the tracks running off, the platform, the arches, the lamps.
-	t.shot(i0, ent(-1.2, 1.6, 7.6), ent(0.2, 3.7, 0.0), CinePath.Move.CUT, 52.0)
-	t.shot(n.jump_at - 0.2, ent(-1.6, 1.7, 7.4), ent(0.2, 3.5, 0.3), CinePath.Move.SMOOTH, 52.0)
-	t.shot(t_land, ent(-3.0, 1.5, 6.6), ent(4.0, 1.3, 4.4), CinePath.Move.SMOOTH, 54.0)
-	t.shot(t_land + 1.3, ent(-4.4, 1.55, 5.5), ent(14.0, 1.9, 4.6), CinePath.Move.SMOOTH, 56.0)
-	t.shot(n.duration, ent(-3.3, 1.55, 5.2), ent(14.0, 1.95, 4.6), CinePath.Move.SMOOTH, 52.0)
+	var c: PackedVector3Array = n.inside_cam
+	var at: Array[float] = [n.inside_at, n.jump_at - 0.2, t_land, t_land + 1.3, n.duration]
+	for i: int in at.size():
+		t.shot(at[i], ent(c[i * 3].x, c[i * 3].y, c[i * 3].z), ent(c[i * 3 + 1].x, c[i * 3 + 1].y, c[i * 3 + 1].z),
+			CinePath.Move.CUT if i == 0 else CinePath.Move.SMOOTH, c[i * 3 + 2].x)
 
 
 # --- Sounds, effects and cues ---------------------------------------------------------------------------------------
@@ -508,3 +509,17 @@ func _light_level(t: float) -> float:
 	if Settings.flashing_reduced:
 		return 1.0
 	return 1.0 + 0.06 * sin(t * 1.7) + 0.04 * sin(t * 4.3 + 1.0)
+
+
+## Draw calls its props add now (the station and what stands on it, the sparks and the dust, the way in inside, the runner's rig):
+## tests.
+func props_draw_calls() -> int:
+	var calls: int = 0
+	if station != null and station.is_visible_in_tree():
+		calls += station.draw_calls() + 2
+	if entry != null and entry.is_visible_in_tree():
+		calls += entry.draw_calls()
+	for node: CineActorNode in actors.values():
+		if node.visible and node.avatar != null:
+			calls += node.avatar.rig.draw_call_count()
+	return calls

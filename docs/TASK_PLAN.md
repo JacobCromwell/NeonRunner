@@ -622,11 +622,16 @@ on `CasinoPerson` (`shake_hand`), two new sounds (`tools/asset_gen/sfx_bank_casi
 staging choices are `docs/questions/f2j.md`.
 
 **F2k: the Terminal's intro** (owner, October 21, 2026; GDD §6, Cinematics, "Terminal intro"; reference
-`docs/art/reference/terminal_zone.jpg`). In the Terminal's intro slot (`data/cinematics/terminal_intro.tres`), which plays the
-arrival flyover: the runner's face surveying a Dead Zone wasteland, the camera panning to the decayed Grand Terminal Station
-("GRAND" fallen off, "TERMINAL" drooping, sparking and flickering; light spilling from inside); the runner wipes a sign whose
-stop "THE PALACE" is in gold; the rubble-blocked entrance with a crack of light at the top, climbed and squeezed through; the
-runner drops inside, the first level's tracks running off ahead. The Terminal's own assets (task O4's skin) and the Dead Zone's.
+`docs/art/reference/terminal_zone.jpg`). **Done:** `TerminalIntro` (`scripts/cinematics/terminal_intro/`) in the Terminal's intro
+slot, which played the arrival flyover: 32.4 s on two stages. Outside, the Dead Zone's look (the stage def's own skin) with the
+street's left wall open on the abandoned Grand Terminal Station (`TerminalIntroStation`: a head house with a great arched window and
+two wings, "GRAND" fallen off, "TERMINAL" drooping with four letters lit, flickering and sparking, warm light in shafts out of the
+window and the crack, the Dead Zone's props and smoke round it): the runner's face as they survey, the camera sweeping over the
+wasteland to the station, a quick walk round the heap to the route board, the wipe (the hand's own trail clears the grime), the
+close-up of the stops with THE PALACE in gold, a nod and a turn, the entrance blocked by rubble to a crack of light, the climb and
+the squeeze in; then, after a dip to black, the Terminal's own stage: out through the crack, a jump, the tracks running off ahead,
+the zone's title card. Three runner poses on the toolkit (`wipe`, `scramble`, `squeeze`), seven new sounds
+(`tools/asset_gen/sfx_bank_terminal_intro.gd`), `test_terminal_intro`. The staging choices are `docs/questions/f2k.md`.
 
 ### H. The owner's requests (October 8, 2026)
 
@@ -773,7 +778,7 @@ Recorded in the GDD (§3, "Extended wall runs in The Hush").
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro, F2e's Beach outro, F2f's Marketplace intro, F2g's Gangland intro, F2h's City intro, F2i's Casino boss intro and F2j's Casino intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro, F2e's Beach outro, F2f's Marketplace intro, F2g's Gangland intro, F2h's City intro, F2i's Casino boss intro, F2j's Casino intro and F2k's Terminal intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 

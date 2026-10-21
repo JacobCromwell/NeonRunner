@@ -13,7 +13,7 @@ global uniform vec3 scenery_tint;
 uniform vec2 board_size = vec2(1.5, 1.15);
 uniform vec2 trail[48];
 uniform int trail_count = 0;
-uniform float radius = 0.2;
+uniform float radius = 0.23;
 uniform vec3 grime : source_color = vec3(0.075, 0.07, 0.065);
 uniform float opacity = 0.97;
 // How much grime is left where it was wiped (a smear).
