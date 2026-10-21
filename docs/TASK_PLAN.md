@@ -510,13 +510,14 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2h | **The Neon City's intro**, the game's first cinematic (the owner's beats, October 16, 2026) | F1 | M | T2 |
 | F2i | **The Casino's boss intro**, before The House (the owner's beats and reference, October 17, 2026) | F1 | L | T2 |
 | F2j | **The Casino's intro**, pulling up at the Brass Lotus (the owner's beats and reference, October 18, 2026) | F1 | M | T2 |
+| F2k | **The Terminal's intro**, outside the abandoned Grand Terminal and in through the rubble (the owner's beats, October 21, 2026) | F1 | M–L | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2j have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2k have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -619,6 +620,13 @@ from the passenger seat, and looks up the steps; at the top the Chairman shakes 
 a woman either side of him, and walks in past two cyborg guards; back to the runner and the zone's title card. A handshake
 on `CasinoPerson` (`shake_hand`), two new sounds (`tools/asset_gen/sfx_bank_casino_intro.gd`), `test_casino_intro`. The
 staging choices are `docs/questions/f2j.md`.
+
+**F2k: the Terminal's intro** (owner, October 21, 2026; GDD §6, Cinematics, "Terminal intro"; reference
+`docs/art/reference/terminal_zone.jpg`). In the Terminal's intro slot (`data/cinematics/terminal_intro.tres`), which plays the
+arrival flyover: the runner's face surveying a Dead Zone wasteland, the camera panning to the decayed Grand Terminal Station
+("GRAND" fallen off, "TERMINAL" drooping, sparking and flickering; light spilling from inside); the runner wipes a sign whose
+stop "THE PALACE" is in gold; the rubble-blocked entrance with a crack of light at the top, climbed and squeezed through; the
+runner drops inside, the first level's tracks running off ahead. The Terminal's own assets (task O4's skin) and the Dead Zone's.
 
 ### H. The owner's requests (October 8, 2026)
 
