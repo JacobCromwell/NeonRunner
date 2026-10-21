@@ -19,10 +19,13 @@ extends ZoneSkin
 ## (wall_stump, which ZoneSkin gains in task O1). Ceilings are few and always one lane wide (TerminalCeilings): the
 ## underside of a fallen girder, a hanging maintenance walkway or a stranded car's roof. The doodads are debris
 ## (TerminalDoodads, picture cards, lower than other zones' ones).
-## Colour rule (GDD §5, the owner's note on the reference): the lamps and the red-orange plates stay dim warm-white
-## or sodium and matte, never a gap edge's orange: nothing glows but the work lamps, hazards, triggers and the
-## orange ends of ceilings and gaps, and signs carry no words. The hall is dark: the hazards stay the brightest,
-## most saturated things on screen.
+## Colour rule (GDD §5, looser in the later zones, the owner, October 20, 2026: "it's ok if the color palette conflicts a
+## bit with the rules"): the work lamps are orange, as the owner first asked and the reference shows, a sodium amber, and the
+## hazards keep their colours and shapes. A lamp is told from a gap edge by its hue (yellower: amber against the edge's
+## red-orange), its glow (a fraction of the edge's and under the bloom threshold, which the edge is over, so edges bloom and
+## lamps do not) and its height (up in the vault and on the far walls, never at floor level); the red-orange plates are dull and
+## matte, and signs carry no words. Nothing glows but the work lamps, hazards, triggers and the orange ends of ceilings and gaps.
+## The hall is dark: the hazards stay the brightest, most saturated things on screen.
 ## Reduced flashing: the failing lamps' brownouts are a slow smooth dip (every few seconds, never a strobe) and hold
 ## still with Reduced flashing (kit_terminal.gdshaderinc, tm_burn: the global `reduced_flashing`).
 ## No dash walls (GDD §5, §9.14: its debris is enough): the base's default look stands, and `test_dash_walls` lists this skin among
@@ -52,21 +55,25 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var sheen_strength: float = 0.14
 
 @export_group("Light")
-## DESIGN-TBD (docs/questions/o4.md item 5): the owner asked for orange work lamps; these are warm-white sodium, so that the
-## only strongly orange things stay the gap edges (and the lamps' pools of light are painted warm). Also open: how dark the
-## hall is, how bright and how many the lamps are.
-## The work lamps (GDD §5: a few failing orange work lamps): warm-white sodium, never a gap edge's orange. Hung from the
+## DESIGN-TBD (docs/questions/o4.md item 5): how dark the hall is, and how bright and how many the lamps are. (The lamps'
+## colour is the owner's: orange.)
+## The work lamps (GDD §5: a few failing orange work lamps): a sodium amber, yellower than a gap edge's red-orange, and their
+## light on the stone is painted the same colour (tm_lit). Hung from the
 ## vault every lamp_pitch metres, lamp_height up; a fifth are dead, a third failing, by a hash of their index
 ## (kit_terminal.gdshaderinc tm_burn), and the far walls carry lamps of their own half a pitch off, wall_lamp_height up.
-@export var lamp_color: Color = Color(1.0, 0.74, 0.44)
+@export var lamp_color: Color = Color(0.98, 0.6, 0.08)
 @export_range(8.0, 40.0, 0.5, "suffix:m") var lamp_pitch: float = 18.0
 @export_range(6.0, 12.0, 0.1, "suffix:m") var lamp_height: float = 8.4
 @export_range(2.0, 7.0, 0.1, "suffix:m") var wall_lamp_height: float = 4.4
 ## How much of the lamps' light the scenery takes (0: none).
 @export_range(0.0, 2.0, 0.05) var lamp_gain: float = 1.0
-## The lamps' own glow (vertex glow, times emissive_scale): kept under the bloom threshold, so a lamp is a dim warm
-## tube and never a hazard's glare.
-@export_range(0.0, 0.6, 0.01) var lamp_glow: float = 0.22
+## The lamps' own glow (vertex glow, times emissive_scale): kept under the bloom threshold and a fraction of a gap edge's, so a
+## lamp is a dim amber tube that never blooms: a hazard's glare stays the hazards'.
+@export_range(0.0, 0.6, 0.01) var lamp_glow: float = 0.09
+## The same on the Compatibility renderer (web, low-end Android), which scales emissive colours in sRGB space where the
+## others scale them in linear space: the same number draws far dimmer there, so this one draws about as bright as lamp_glow does
+## on the others (and, like it, a fraction of a gap edge's, under the bloom threshold).
+@export_range(0.0, 0.6, 0.01) var lamp_glow_compat: float = 0.16
 ## What wet stone and puddles give back of the haze, and how wet it all is (0 dry).
 @export var haze_color: Color = Color(0.42, 0.26, 0.14)
 @export_range(0.0, 1.0, 0.05) var wetness: float = 0.7
@@ -142,7 +149,7 @@ extends ZoneSkin
 @export_group("Scavengers")
 ## DESIGN-TBD (docs/questions/o4.md): GDD §5 gives the Terminal "a few scavengers", scenery only like the Marketplace's citizens
 ## (proposed): the share of 130 m blocks, a side, with a camp on the second track (a fire barrel with dim embers and three still
-## silhouettes), and the embers' colour and glow (below the work lamps' and far below a gap edge's).
+## silhouettes), and the embers' colour and glow (dimmer than a work lamp's, and far below a gap edge's).
 @export_range(0.0, 1.0, 0.01) var camp_share: float = 0.4
 @export var ember_color: Color = Color(0.7, 0.4, 0.2)
 @export_range(0.0, 0.3, 0.01) var ember_glow: float = 0.14
@@ -346,6 +353,11 @@ func glow_material() -> ShaderMaterial:
 	if not _materials.has(&"glow"):
 		_materials[&"glow"] = MeshKit.glow({"fade_begin": fog_begin + 20.0, "fade_end": fog_end})
 	return _materials[&"glow"]
+
+
+## The glow of a work lamp's tube on the renderer in use (lamp_glow, lamp_glow_compat).
+func lamp_tube_glow() -> float:
+	return lamp_glow_compat if RenderingServer.get_current_rendering_method() == "gl_compatibility" else lamp_glow
 
 
 ## How opaque the steam plumes are at their core on the renderer in use (jet_opacity, jet_opacity_compat).
