@@ -2,9 +2,10 @@ extends SkinSuite
 ## The Terminal's skin (TerminalSkin, Zone 8, task O4; GDD §5: an abandoned subway under the city). The shared skin checks
 ## (SkinSuite) over a whole level for 3, 5 and 6 lanes (the Terminal's own campaign level once task O1 adds it, else the Dead
 ## Zone's, whose walls are the long ones every other zone has), then the zone's own:
-## - the palette and the colour rule (GDD §5, the owner's note on the reference): nothing glows but the work lamps, the hazards,
-##   triggers and the orange ends of gaps and ceilings; a lamp glows far below a gap edge and under the bloom threshold, in warm
-##   white, never in a hazard's colour; the dead boards and the red-orange plates are matte;
+## - the palette and the colour rule (GDD §5; looser in the later zones, the owner, October 20, 2026: the Terminal's work lamps are
+##   orange): nothing glows but the work lamps, the hazards, triggers and the orange ends of gaps and ceilings; a lamp is a sodium
+##   orange, told from a gap edge by hue (yellower), brightness (a fraction of the edge's, under the bloom threshold the edge is over)
+##   and height (up in the hall, never at floor level); the dead boards and the red-orange plates are matte;
 ## - the sky is none: no stars, no moon, no skyline, the fog and the horizon the same warm haze;
 ## - the shaders: its patterns in their own include (ids 100-108) with one include and one dispatch line in the kit's solid shader,
 ##   colours as sRGB Vector3s, and the failing lamps hold still with Reduced flashing (kit_terminal.gdshaderinc: tm_burn);
@@ -34,6 +35,13 @@ const FALLBACK_LEVEL_PATH: String = "res://data/levels/dead_zone_1.tres"
 const SLEEPER_WOOD := Color(0.24, 0.17, 0.12)
 const SLEEPER_SHADE_MIN: float = 0.7 * 0.85
 const LIT_MIN: float = 0.62
+## What tells a work lamp from a gap edge now that both are orange (GDD §5: looser in the later zones): the lamp's hue lies at
+## least this far (of a turn) toward yellow from the edge's and short of the hazard signs' yellow; its glow is at most this share
+## of the edge's, and under the bloom threshold the edge is over; and it hangs at least this high above the street.
+const LAMP_HUE_OVER_EDGE: float = 0.04
+const LAMP_HUE_SHORT_OF_SIGN: float = 0.02
+const LAMP_EDGE_SHARE: float = 0.4
+const LAMP_MIN_HEIGHT: float = 4.0
 ## The showcase track's gap (SkinSuite.showcase_track): lane 3 of 5, 50-57 m.
 const GAP_LANE := Vector2(1.2, 3.6)
 const GAP := Vector2(50.0, 57.0)
@@ -80,8 +88,8 @@ func run() -> void:
 	stop_error_count("building terminal levels")
 
 
-## Before anything is built: the lamps and everything lit stay warm and dim, the hazards far more saturated than any of them,
-## the sky none (the vault is whole) and the haze the colour the street fades into.
+## Before anything is built: everything lit stays warm and dim, the hazards far more saturated than any of them, the lamps
+## orange but told from a gap edge, the sky none (the vault is whole) and the haze the colour the street fades into.
 func _palette(skin: TerminalSkin, env: Environment) -> void:
 	var lit: Array[Color] = [skin.ballast_color, skin.platform_color, skin.gutter_color, skin.gap_inside_color, skin.pit_floor_color,
 		skin.stone_color, skin.tile_color, skin.vault_color, skin.concrete_color, skin.steel_color, skin.rust_color, skin.vine_color,
@@ -101,15 +109,29 @@ func _palette(skin: TerminalSkin, env: Environment) -> void:
 		if _chroma(c) > 0.3:
 			vivid.append(str(c))
 	check(vivid.is_empty(), "no surface is as saturated as a hazard: %s" % ", ".join(vivid))
-	# The lamps: warm white or sodium, a dim tube far below a gap edge and under the bloom threshold.
+	# The lamps (the owner: orange, as in the reference): a sodium orange, but told from a gap edge by hue, brightness and height.
 	var lamp: Color = skin.lamp_color
-	check(lamp.r >= lamp.g and lamp.g >= lamp.b and lamp.g > 0.6 and lamp.b > 0.3,
-		"a work lamp is warm white or sodium, never a hazard's orange or yellow (%s)" % lamp)
+	var edge: Color = skin.gap_edge_color
+	check(lamp.r >= lamp.g and lamp.g >= lamp.b and lamp.s > 0.7 and lamp.h > 0.05,
+		"a work lamp is a sodium orange (%s, hue %.0f degrees, saturation %.2f)" % [lamp, lamp.h * 360.0, lamp.s])
+	check(lamp.h >= edge.h + LAMP_HUE_OVER_EDGE and lamp.h <= skin.sign_frame_color.h - LAMP_HUE_SHORT_OF_SIGN,
+		"a lamp is amber: yellower than a gap edge (%.0f degrees against %.0f) and short of a hazard sign's yellow (%.0f)" % [
+			lamp.h * 360.0, edge.h * 360.0, skin.sign_frame_color.h * 360.0])
 	var lamp_peak: float = _max_linear(lamp) * skin.lamp_glow * skin.emissive_scale
-	var edge_peak: float = _max_linear(skin.gap_edge_color) * TerminalTrack.LIP_GLOW * skin.emissive_scale
-	check(lamp_peak < skin.glow_threshold and lamp_peak < edge_peak / 1.4,
-		"a lamp glows dimly (%.2f), under the bloom threshold (%.2f) and well under what a gap edge does (%.2f)" % [
+	var edge_peak: float = _max_linear(edge) * TerminalTrack.LIP_GLOW * skin.emissive_scale
+	check(lamp_peak < skin.glow_threshold and edge_peak > skin.glow_threshold and lamp_peak <= edge_peak * LAMP_EDGE_SHARE,
+		"a lamp glows dimly (%.2f) under the bloom threshold (%.2f) and well under a gap edge, which blooms (%.2f)" % [
 			lamp_peak, skin.glow_threshold, edge_peak])
+	# The Compatibility renderer scales emissive colours in sRGB space (the colour's own largest channel, not its linear one).
+	var lamp_peak_compat: float = lamp.v * skin.lamp_glow_compat * skin.emissive_scale
+	var edge_peak_compat: float = edge.v * TerminalTrack.LIP_GLOW * skin.emissive_scale
+	check(lamp_peak_compat < skin.glow_threshold and lamp_peak_compat <= edge_peak_compat * LAMP_EDGE_SHARE and lamp_peak_compat >= lamp_peak,
+		"the same on the Compatibility renderer: %.2f under the bloom threshold and a fraction of the edge's %.2f, and no dimmer than elsewhere (%.2f)" % [
+			lamp_peak_compat, edge_peak_compat, lamp_peak])
+	var ember_peak: float = _max_linear(skin.ember_color) * skin.ember_glow * skin.emissive_scale
+	check(ember_peak <= lamp_peak, "a camp's embers are no brighter than a work lamp (%.2f against %.2f)" % [ember_peak, lamp_peak])
+	check(skin.lamp_height >= LAMP_MIN_HEIGHT and skin.wall_lamp_height >= LAMP_MIN_HEIGHT,
+		"the lamps hang high above the street, never at floor level (%.1f and %.1f m)" % [skin.lamp_height, skin.wall_lamp_height])
 	# No sky: nothing in it but the haze, and the street fades into the same haze.
 	var sky := env.sky.sky_material as ShaderMaterial
 	check(float(sky.get_shader_parameter("star_amount")) == 0.0 and float(sky.get_shader_parameter("moon_radius")) == 0.0
@@ -219,6 +241,7 @@ func _surfaces(skin: TerminalSkin, level_path: String) -> void:
 	var stray_plumes: PackedStringArray = []
 	var widths: Array[int] = [0, 0]
 	var lamp_glow: Array[float] = [0.0]
+	var lamp_low: Array[float] = [INF]
 	var layout: LevelLayout = level(level_path, 5, 0.6)
 	var lane_half_cm: int = roundi(tuning.lane_width * 50.0)
 	await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
@@ -246,10 +269,17 @@ func _surfaces(skin: TerminalSkin, level_path: String) -> void:
 				continue
 			if absf(-p.z - layout.length) < 2.0:
 				continue
-			var lamp: bool = material == solid and pattern == MeshKit.PAT_TERMINAL_LAMP and c.a <= skin.lamp_glow + 0.001
+			var lamp: bool = material == solid and pattern == MeshKit.PAT_TERMINAL_LAMP and _same_rgb(c, skin.lamp_color) \
+				and c.a <= skin.lamp_tube_glow() + 0.001
+			# A scavengers' fire barrel's embers: dim, on the second track beyond the wall line.
+			var ember: bool = material == solid and pattern == MeshKit.PAT_TERMINAL_LAMP and _same_rgb(c, skin.ember_color) \
+				and c.a <= skin.ember_glow + 0.001 and absf(p.x) > geo_wall(5)
 			lamps[0] += int(lamp)
 			if lamp:
 				lamp_glow[0] = maxf(lamp_glow[0], c.a)
+				lamp_low[0] = minf(lamp_low[0], p.y)
+			elif ember:
+				pass
 			elif glows.size() < 4:
 				glows.append("%s pattern %d at %s" % [c, pattern, p]))
 	check(glows.is_empty(), "nothing glows but hazards, triggers, the orange edges and ends and the work lamps: %s" % ", ".join(glows))
@@ -260,7 +290,8 @@ func _surfaces(skin: TerminalSkin, level_path: String) -> void:
 		"a plume is faint smoke on both renderers (%.2f, %.2f on the Compatibility renderer)" % [skin.jet_opacity, skin.jet_opacity_compat])
 	check(widths[1] > 0 and widths[0] == 0, "every track bed and platform is drawn with its lane's own half width, %d cm (%d vertices, %d without)" % [
 		lane_half_cm, widths[1], widths[0]])
-	check(lamp_glow[0] <= skin.lamp_glow + 0.001, "no lamp glows past the skin's lamp glow (%.2f)" % lamp_glow[0])
+	check(lamp_glow[0] <= skin.lamp_tube_glow() + 0.001, "no lamp glows past the skin's lamp glow (%.2f)" % lamp_glow[0])
+	check(lamp_low[0] >= LAMP_MIN_HEIGHT - 0.1, "every work lamp, as built, hangs high above the street (the lowest at %.1f m)" % lamp_low[0])
 
 
 ## Gaps read as holes at a glance (CLAUDE.md readability rules): what a gap shows (the dark service level) stays clearly darker

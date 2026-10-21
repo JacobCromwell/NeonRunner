@@ -325,7 +325,7 @@ func _wall_lamps(s: MeshLayer, side: int, h: float, d0: float, d1: float) -> voi
 			MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PZ | MeshKit.FACE_PY, 0.0)
 		s.box(Vector3(x, y, z), Vector3(0.26, 0.2, 1.3), skin.post_color, 0.0, MeshKit.PAT_TERMINAL_STEEL,
 			MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY | MeshKit.FACE_PZ, 0.0)
-		s.box(Vector3(x - sd * 0.08, y - 0.02, z), Vector3(0.1, 0.12, 1.1), skin.lamp_color, skin.lamp_glow,
+		s.box(Vector3(x - sd * 0.08, y - 0.02, z), Vector3(0.1, 0.12, 1.1), skin.lamp_color, skin.lamp_tube_glow(),
 			MeshKit.PAT_TERMINAL_LAMP, MeshKit.ALL_FACES, 1.0)
 
 
@@ -393,7 +393,7 @@ func _lamp(s: MeshLayer, h: float, zk: float) -> void:
 	s.box(Vector3(0, (top + y + 0.2) * 0.5, zk), Vector3(0.05, top - y - 0.2, 0.05), chain, 0.0, MeshKit.PAT_TERMINAL_STEEL,
 		MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PZ, 2.0)
 	s.box(Vector3(0, y + 0.1, zk), Vector3(0.6, 0.22, LAMP_LENGTH), chain, 0.0, MeshKit.PAT_TERMINAL_STEEL, MeshKit.ALL_FACES, 0.0)
-	s.box(Vector3(0, y - 0.04, zk), Vector3(0.34, 0.1, LAMP_LENGTH - 0.3), skin.lamp_color, skin.lamp_glow, MeshKit.PAT_TERMINAL_LAMP,
+	s.box(Vector3(0, y - 0.04, zk), Vector3(0.34, 0.1, LAMP_LENGTH - 0.3), skin.lamp_color, skin.lamp_tube_glow(), MeshKit.PAT_TERMINAL_LAMP,
 		MeshKit.ALL_FACES, 0.0)
 
 
