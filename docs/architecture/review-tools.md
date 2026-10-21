@@ -87,7 +87,11 @@ at once, it follows out unharmed), a Buzz Overdrive's charge left late or its cu
 too-wide gap (each ending in its blast), or its model on a plinth
 (`--scenario=chase|show|octodog|buzz|cut|gap|model`; showings only in `show` unless `--shows`), on any zone's
 skin, lane count, speed and rider count, through the game camera or one behind or beside it
-(`--camera=game|behind|side`, `--reduced-flashing`), the Golden Zone's statue
+(`--camera=game|behind|side`, `--reduced-flashing`), `centipede_showcase` (task O3): the Cybernetic Centipede's model
+posed (`--scenario=model --pose=walk|sleep|wake|bite|wounded`, `--angle=D` fixed, `--near` on its head or its cracked
+canister) or a scripted encounter in a hand-made maze block (MazeKit) on the Terminal's skin: it wakes, comes at the
+runner, who dashes through it head-on (`--dash=M` metres before it), turns and bites at a closed wall (god mode), then
+the runner dashes on (`--high`, `--side`, `--lanes=N`, `--skin=`, `--reduced-flashing`), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`, `sewer_swarm_showcase`),
 the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
 and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;

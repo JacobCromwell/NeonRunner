@@ -7,7 +7,8 @@ Every pattern uses abstract gameplay pieces only, and no pattern assumes a lane 
 A level whose `LevelConfig.patterns_path` names a file in a folder of its own picks from that folder only
 (`LevelGenerator.load_for`: its main file first, then the folder's others in name order). The Terminal's levels
 do (task O1, `terminal/`): none of the core patterns' holes, fences, signs, ramps or enemies, only its open track
-and its one-lane ceilings, and the debris maze's and the centipede's patterns when tasks O2 and O3 add them there.
+and its one-lane ceilings. The debris maze and the Cybernetic Centipede that waits in it have no patterns: their
+rules scripts place them (tasks O2 and O3: `debris_maze_rules.gd`, `centipede_rules.gd`).
 
 A level only picks patterns whose `requires` entries are all in its `features` list
 (`LevelConfig.features`), so a pattern file for a new enemy type changes nothing until a level turns

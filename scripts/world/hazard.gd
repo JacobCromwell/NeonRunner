@@ -40,7 +40,7 @@ var breakable: DashBreakable = null
 var dash_passes: bool = true
 ## Touching it does nothing (DamageRules: IGNORE) but what the dash does: an enemy's body that hurts only through its
 ## attack (task O3; GDD §9.15, the Cybernetic Centipede: "it hurts only on contact", its bite, which its head telegraphs
-## before each one). Its body and legs carry harmless hitboxes, so a dash through any of it still meets it (and wounds
+## before each one). Its head and body carry harmless hitboxes, so a dash through any of it still meets it (and wounds
 ## it), while a runner who brushes it, lands on it or swings claws at it is neither hurt nor helped. False for every
 ## other hazard.
 var harmless: bool = false

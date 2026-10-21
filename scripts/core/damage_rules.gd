@@ -11,7 +11,7 @@ extends RefCounted
 ##    declares dash_kills = false, like the Bad Dream, which it passes through safely). An enemy that takes
 ##    more than one dash (Enemy.dash_hits: the Cybernetic Centipede's two, task O3, GDD §9.15) is wounded by
 ##    each dash but its last (WOUND_ENEMY: the dash passes through it safely), and defeated by its last.
-##    A harmless part (Hazard.harmless: the centipede's body and legs, which only its bite makes dangerous)
+##    A harmless part (Hazard.harmless: the centipede's head and body, which only its bite makes dangerous)
 ##    does nothing else: whatever protects the player or not, touching it is IGNORE.
 ## 3. Dropping onto an enemy's top stomps it if it's stompable; claws beat spines and tentacles.
 ##    A weak point stomped from above defeats its enemy and is harmless otherwise.

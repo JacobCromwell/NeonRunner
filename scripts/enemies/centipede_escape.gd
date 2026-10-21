@@ -8,6 +8,9 @@ extends RefCounted
 ## Escapable: from the block's run-in (any lane) to past its last wall, some way through exists on the Player's moves,
 ## with the dash at its slowest recharge (PowerupTuning: 8 s) and the stops and waits that takes, on which the runner is
 ## never within a centipede's bite, whatever the centipede does. A runner choosing that way escapes without needing armor.
+## The way keeps off the block's anti-grav pads (a maze ceiling's: DebrisMaze), as MazeRoute's do: a ride on its ceiling
+## would get the runner away too (the centipede can't follow), but the way is the floor's, so a runner following it is
+## never lifted off it by surprise.
 ## "Whatever it does" rests on what every centipede keeps to (Centipede, which test_centipede checks on physics):
 ## - it waits, still, until the runner is on the floor in its own section of the maze or one joined to it (DebrisMaze
 ##   links, with the runner's own smashes) within its wake distance along the track (CentipedeTuning.wake_distance_at),
@@ -40,6 +43,9 @@ const STOP_CLEARANCE: float = 0.02
 const BODY_MARGIN: float = 0.1
 ## MazeRoute.DASH_SLACK: taken off the dash's carry (metres).
 const DASH_SLACK: float = 1.0
+## Kept off an anti-grav pad either side along its lane (metres; MazeRoute.PAD_MARGIN), and before it half a lane
+## switch's run more.
+const PAD_MARGIN: float = 0.6
 ## A lane switch while running starts this far past where the runner came into the stage (metres), and the switches
 ## need this much room besides their run before the wall's face (metres).
 const SWITCH_START: float = 0.6
@@ -141,6 +147,8 @@ class Context:
 	var stage_sections: Array = []
 	var wall_pieces: Dictionary = {}
 	var divider_pieces: Dictionary = {}
+	## Per lane, the stretches its anti-grav pads keep the runner's body off (Vector2(start, end) each).
+	var pad_spans: Array = []
 	## Each spot's field (CentipedeMaze.field), by "lane|at".
 	var _fields: Dictionary = {}
 
@@ -193,6 +201,34 @@ class Context:
 		for key: String in divider_pieces:
 			(divider_pieces[key] as Array).sort_custom(func(a: Dictionary, c: Dictionary) -> bool:
 				return float(a["start"]) < float(c["start"]))
+		for lane: int in lanes:
+			pad_spans.append([])
+		for p: Dictionary in p_layout.pads:
+			var at: float = float(p["at"])
+			var lane: int = int(p["lane"])
+			if lane >= 0 and lane < lanes and at >= float(b["entry"]) - 10.0 and at <= float(b["exit"]) + 10.0:
+				(pad_spans[lane] as Array).append(Vector2(at - CentipedeEscape.PAD_MARGIN - switch_time * v * 0.5,
+					at + p_tuning.pad_length + CentipedeEscape.PAD_MARGIN))
+
+	## True if a body whose middle runs from `z0` to `z1` in `lane` (BODY_MARGIN kept beyond its half depth) keeps off
+	## every anti-grav pad's stretch there.
+	func pad_clear(lane: int, z0: float, z1: float) -> bool:
+		if lane < 0 or lane >= lanes:
+			return true
+		var lo: float = minf(z0, z1) - half - CentipedeEscape.BODY_MARGIN
+		var hi: float = maxf(z0, z1) + half + CentipedeEscape.BODY_MARGIN
+		for span: Vector2 in pad_spans[lane]:
+			if span.x < hi and span.y > lo:
+				return false
+		return true
+
+	## True if every lane from `from_lane` to `to_lane` keeps off the pads from `z0` to `z1` (a switch's lanes, taken
+	## whole).
+	func pads_clear_between(from_lane: int, to_lane: int, z0: float, z1: float) -> bool:
+		for lane: int in range(mini(from_lane, to_lane), maxi(from_lane, to_lane) + 1):
+			if not pad_clear(lane, z0, z1):
+				return false
+		return true
 
 	static func _join(map: Dictionary, a: int, c: int) -> void:
 		if a < 0 or c < 0:
@@ -316,6 +352,8 @@ class Search:
 				return {}
 		var best: Dictionary = {}
 		for l: Dictionary in current:
+			if not c.pad_clear(int(l["lane"]), float(l["z"]), maxf(c.leave_end, float(l["z"]))):
+				continue
 			var n: Dictionary = _copy(l)
 			var end_t: float = float(l["t"]) + maxf(c.leave_end - float(l["z"]), 0.0) / c.v
 			var here: Array[int] = [c.stage_section(c.stages - 1, 0)]
@@ -343,6 +381,10 @@ class Search:
 			var run: float = switches * (c.switch_time + CentipedeEscape.SWITCH_SLACK) * c.v
 			if switches > 0 and z + CentipedeEscape.SWITCH_START + run + CentipedeEscape.SWITCH_MARGIN > face:
 				continue
+			# Lined up (in its lane from z_set on), keeping off the pads in every lane it crosses meanwhile.
+			var z_set: float = z + CentipedeEscape.SWITCH_START + run if switches > 0 else z
+			if not c.pads_clear_between(from_lane, lane, z, z_set):
+				continue
 			var n: Dictionary = _copy(l)
 			if int(l["lane"]) < 0:
 				n["start_lane"] = lane
@@ -353,6 +395,8 @@ class Search:
 				var next_cell: int = DebrisMaze.cell_index(c.cells[s + 1], lane)
 				var there: int = c.stage_section(s + 1, next_cell)
 				var z_out: float = float(wall["end"]) + c.half + CentipedeEscape.BODY_MARGIN
+				if not c.pad_clear(lane, z_set, z_out):
+					continue
 				var t_wall: float = t + (float(wall["start"]) - z) / c.v
 				var t_out: float = t + (z_out - z) / c.v
 				var mine: Array[int] = [here]
@@ -366,7 +410,8 @@ class Search:
 					continue
 				_arrive(n, s + 1, lane, t_out, z_out, out)
 				continue
-			if forbidden.has("%d|%d" % [s, lane]) or not c.wall_pieces.has("%d|%d" % [s, lane]):
+			if forbidden.has("%d|%d" % [s, lane]) or not c.wall_pieces.has("%d|%d" % [s, lane]) \
+					or not c.pad_clear(lane, z_set, face):
 				continue
 			var t_face: float = t + (face - z) / c.v
 			var mine2: Array[int] = [here]
@@ -400,7 +445,7 @@ class Search:
 			next_front = minf(next_front, float((c.walls[s + 1] as Dictionary)["start"]))
 		var z_end: float = maxf(face + c.carry, last_end + c.half + CentipedeEscape.BODY_MARGIN)
 		z_end = minf(z_end, next_front - c.half - CentipedeEscape.BODY_MARGIN)
-		if z_end <= last_end + c.half:
+		if z_end <= last_end + c.half or not c.pad_clear(lane, face, z_end):
 			return
 		# The joins this smash makes (DebrisMaze.links' breach): everything open right before the wall's front and right
 		# past its back, in the lanes open through it beside the smashed one, one lane either side more (taken wider than
@@ -458,7 +503,8 @@ class Search:
 		var dividers: Array = (rooms[s] as Dictionary)["dividers"]
 		for side: int in [-1, 1]:
 			var to_lane: int = lane + side
-			if to_lane < 0 or to_lane >= c.lanes or dividers.has(to_lane):
+			if to_lane < 0 or to_lane >= c.lanes or dividers.has(to_lane) \
+					or not c.pads_clear_between(lane, to_lane, z_end - 0.3, z_end + c.switch_time * c.v):
 				continue
 			var m: Dictionary = _copy(n)
 			var t_sw: float = t_end + c.switch_time + CentipedeEscape.SLIDE_SLACK

@@ -11,8 +11,9 @@ extends RefCounted
 ##   task H7a), every ceiling scenario keeps its rules (check_scenarios, task I4), every wall-run gap keeps
 ##   its (check_wall_run_gaps, task J2), every line of wall-hop credits keeps its (check_wall_hops, task N1), a
 ##   level without wall running has nothing on its walls, every broken stump standing opposite an arch
-##   (check_boundary_walls, task O1), and every block of a debris maze keeps its rules and is finishable with the dash
-##   at its slowest recharge (check_debris_maze, task O2).
+##   (check_boundary_walls, task O1), every block of a debris maze keeps its rules and is finishable with the dash
+##   at its slowest recharge (check_debris_maze, task O2), and every Cybernetic Centipede waits where its rules allow, its
+##   block escapable past it (check_centipedes, task O3).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -36,6 +37,7 @@ const DashWallRulesScript = preload("res://scripts/enemies/dash_wall_rules.gd")
 const TreasureStashRules = preload("res://scripts/enemies/treasure_stash_rules.gd")
 const FencedCeilingRules = preload("res://scripts/enemies/fenced_ceiling_rules.gd")
 const DangerDensityScript = preload("res://scripts/world/danger_density.gd")
+const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
@@ -89,6 +91,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_wall_hops(suite, layout, config, tag)
 	check_boundary_walls(suite, layout, config, tag)
 	check_debris_maze(suite, layout, config, tag)
+	check_centipedes(suite, layout, config, tag)
 
 
 ## A level whose walls are a boundary (task O1; LevelConfig.wall_running off, which its layout carries: the Terminal,
@@ -253,6 +256,85 @@ static func check_debris_maze(suite: TestSuite, layout: LevelLayout, config: Lev
 				"no other ceiling over a maze block (%.1f-%.1f) %s" % [h["start"], h["end"], tag])
 	for d: Dictionary in pieces:
 		suite.check(int(d["maze"]) >= 0 and int(d["maze"]) < layout.maze.size(), "every maze piece belongs to a block " + tag)
+
+
+## The Cybernetic Centipede (task O3; GDD §9.15: it "haunts the debris maze, waiting in the open sections between the
+## debris"; centipede_rules.gd), wherever the generator places one: only in a level with the feature and a maze; each in a
+## maze block from the feature's start (params.block naming it), its head and body in one open cell of a room (the rules'
+## margins), its floor span covering it; one in a cell joined to neither the block's run-in nor its breather is placed as
+## "trapped", and only such a one; at most max_per_block a block, min_spacing apart; and every block with centipedes
+## escapable past them (CentipedeEscape.find: from its run-in to past its last wall on the Player's moves, with the dash
+## at its slowest recharge and the waits that takes, never within any centipede's reach whatever it does).
+static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var feature: String = CentipedeRulesScript.FEATURE
+	var mine: Array[Dictionary] = []
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == feature:
+			mine.append(e)
+	if not config.has_feature(feature) or layout.maze.is_empty():
+		suite.check(mine.is_empty(), "no centipede without the feature and a maze to haunt " + tag)
+		return
+	suite.check(not mine.is_empty(), "a level with the centipede has some in its maze " + tag)
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var t: CentipedeTuning = CentipedeRulesScript.tuning()
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var start: float = gen.feature_start(feature)
+	var n: int = layout.lane_count
+	var by_block: Dictionary = {}
+	for e: Dictionary in mine:
+		var at: float = float(e["at"])
+		var lane: int = int(e["lane"])
+		var params: Dictionary = e.get("params", {})
+		var i: int = int(params.get("block", -1))
+		var x: String = "(a centipede at %.1f, lane %d) %s" % [at, lane, tag]
+		suite.check(i >= 0 and i < layout.maze.size() and CentipedeMaze.block_at(layout, at) == i and at >= start - 0.01
+			and lane >= 0 and lane < n, "it waits in the maze block it names, from the feature's start " + x)
+		if i < 0 or i >= layout.maze.size():
+			continue
+		var b: Dictionary = layout.maze[i]
+		var rooms: Array = b["rooms"]
+		var r: int = -1
+		for k: int in rooms.size():
+			if at >= float(rooms[k]["start"]) and at <= float(rooms[k]["end"]):
+				r = k
+		var in_cell: bool = r >= 0
+		if in_cell:
+			var room: Dictionary = rooms[r]
+			in_cell = at >= float(room["start"]) + CentipedeRulesScript.HEAD_MARGIN - 0.01 \
+				and at + Centipede.BODY_LENGTH + CentipedeRulesScript.TAIL_MARGIN <= float(room["end"]) + 0.01 \
+				and not (room["dividers"] as Array).has(lane)
+		suite.check(in_cell, "its head and body lie in an open cell of a room " + x)
+		var span: Variant = params.get("floor_span", null)
+		suite.check(span is Vector2 and (span as Vector2).x <= at + 0.01 and (span as Vector2).y >= at + Centipede.BODY_LENGTH,
+			"its floor span covers it (%s) %s" % [span, x])
+		if in_cell:
+			# Walled in: its cell's section joined to neither the run-in's nor the breather's along open paths.
+			var bl: LevelLayout = CentipedeMaze.for_block(layout, i, tuning).block_layout()
+			var secs: Array[Dictionary] = DebrisMaze.sections(bl)
+			var links: Array[Dictionary] = DebrisMaze.links(bl, secs)
+			var cell: int = DebrisMaze.cell_index(DebrisMaze.cells_of(rooms[r]["dividers"], n), lane)
+			var group: PackedInt32Array = DebrisMaze.open_group(links, DebrisMaze.section_id(secs, 0, r, lane))
+			var walled: bool = not group.has(DebrisMaze.section_id(secs, 0, -1, 0)) \
+				and not group.has(DebrisMaze.section_id(secs, 0, rooms.size(), 0))
+			var situation: String = String(params.get("situation", ""))
+			suite.check(CentipedeRulesScript.SITUATIONS.has(situation) and (situation == "trapped") == walled,
+				"it's placed as walled in exactly when its cell is (%s, cell %d) %s" % [situation, cell, x])
+		if not by_block.has(i):
+			by_block[i] = []
+		(by_block[i] as Array).append(e)
+	for i: int in by_block:
+		var list: Array = by_block[i]
+		var x: String = "(maze block %d at %.0f, %d centipedes) %s" % [i, float(layout.maze[i]["start"]), list.size(), tag]
+		suite.check(list.size() <= t.max_per_block, "at most %d centipedes a block %s" % [t.max_per_block, x])
+		var spots: Array = []
+		for e: Dictionary in list:
+			for o: Dictionary in spots:
+				suite.check(absf(float(o["at"]) - float(e["at"])) >= t.min_spacing - 0.01,
+					"two in a block wait %.0f m apart at least %s" % [t.min_spacing, x])
+			spots.append({"lane": int(e["lane"]), "at": float(e["at"])})
+		var found: Dictionary = CentipedeEscape.find(layout, tuning, i, spots)
+		suite.check(bool(found["ok"]), "its block stays escapable past its centipedes, the dash at %.0f s (%s) %s"
+			% [float(found["recharge"]), found["reason"], x])
 
 
 ## Block `b`'s (the `index`th) debris, `pieces` every maze piece of the layout (check_debris_maze): exactly its walls'

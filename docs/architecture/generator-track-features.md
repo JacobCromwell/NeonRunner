@@ -642,7 +642,7 @@ Damage and interactions, "Where doodads stop the runner".
   beside it), `hidden_reach` past the wall before it where that wall is closed in its lane (a dash through it shows the
   pad in time, as for any doodad), `pad_rise` clear past it, its rider's drop past the last wall clear of debris in
   every lane (`drop_room`) through the breather.
-- **For what lives in it (task O3's centipedes).** `LevelLayout.maze` holds each block's record ({entry, start, end,
+- **For what lives in it (task O3's centipedes, `enemy-centipede.md`).** `LevelLayout.maze` holds each block's record ({entry, start, end,
   exit, walls [{start, end, size, open}], rooms [{start, end, dividers}], breaks}); its debris are `LevelLayout.doodads`
   entries marked `maze` (the block), `part` ("wall" or "divider") and `index` (`LevelLayout.is_maze_debris`), its
   ceilings hulls marked `maze`. `DebrisMaze.sections(layout)` lists every open section (each block's run-in, each
