@@ -17,6 +17,7 @@ source_levels = Dictionary[String, String]({
 "dead_zone": "dead_zone/1",
 "gangland": "gangland/3",
 "golden": "golden/2",
+"ice_lab": "ice_lab/3",
 "marketplace": "marketplace/2",
 "terminal": "terminal/2"
 })

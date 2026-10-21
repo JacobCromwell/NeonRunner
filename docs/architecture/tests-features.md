@@ -396,6 +396,18 @@ open length in stretches of 100 m and more, both walls open at once within `both
 second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1`, the campaign step
 with the full flow, end to end through the smoke tool. How the campaign configures the Beach off its curve, and
 that no other level or boss changed (nor with the volleyball match added), is `test_campaign`'s (Campaign, The Beach).
+`test_ice_lab_levels` checks the Ice Lab's levels (task Q1; Campaign, The Ice Lab): the zone's data and its place in
+the campaign (zone 9 between the Terminal and the Golden Zone, its steps, no boss slot, its skin stand-in, its speed
+between its neighbours', its track playing an earlier zone's song); each level's data (off the curve, its own seed, the
+core patterns, the shared wall-gap numbers with wall running, doodads that push at the usual height, no dash walls or
+maze, its neighbours' dials, a danger density dial between Terminal 2's and Golden 1's) and features, every feature
+introduced before the zone named as kept (`KEEPS`: its cyborgs, window cyborgs, Octodogs and heli drones, and every
+obstacle and mechanic) or left out (`LEAVES_OUT`: every other earlier enemy, the dash walls, the Terminal's maze), and
+nothing of a later zone's; and every build at 3, 5 and 6 lanes on the levels' own seeds and three others, as the campaign
+configures them: no warnings, the campaign's fairness checks (LayoutChecks), the same level on a second build, no enemy
+but its own (no host among the cyborgs), no dash walls, floor cuts, maze or arch stumps, the usual obstacles (holes,
+fences, signs, ceilings and pads, doodads) and every listed feature but the sprinkled-in ceiling scenarios. About 30 s.
+Tasks Q3 to Q5 add their mechanics' checks here.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls
