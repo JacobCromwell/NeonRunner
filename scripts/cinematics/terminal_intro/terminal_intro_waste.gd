@@ -4,7 +4,7 @@ extends Node3D
 ## own props on the forecourt and the street beyond it, drawn by the Dead Zone's skin as it draws them in a level (its doodad
 ## picture cards: a broken concrete column with its rebar showing, a heap of rubble, the burned-out bus; DeadDoodads), and a few
 ## columns of its smoke (dead_smoke.gdshader, never flickering) rising from the heaps. Visual only: no hitboxes. Station frame
-## (x along the front, y up, z out). DESIGN-TBD (docs/questions/f2k.md): what stands where.
+## (x along the front, y up, z out). DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115): what stands where.
 
 ## Each kind's size class (the doodad cards' own boxes: MovementTuning.doodad_size).
 const KINDS: Array[StringName] = [&"small", &"medium", &"large"]

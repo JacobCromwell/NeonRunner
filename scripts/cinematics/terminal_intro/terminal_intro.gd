@@ -17,7 +17,7 @@ extends CinematicSequencer
 ## A script on the toolkit, its numbers data (`numbers`, by default data/cinematics/terminal_intro_tuning.tres,
 ## TerminalIntroTuning). Outside it plays on one stretch of the Dead Zone's street (the stage def's skin) in the level's
 ## lanes, the station in an opening of the left wall; everything is worked out from the time (_on_advance), so stepping or
-## skipping shows the same. DESIGN-TBD (docs/questions/f2k.md): the staging the beats leave open.
+## skipping shows the same. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115): the staging the beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/terminal_intro_tuning.tres"
 ## Outside is the Dead Zone's look (the zone's own skin is the Terminal's, for inside).

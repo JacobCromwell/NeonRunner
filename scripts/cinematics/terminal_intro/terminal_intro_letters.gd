@@ -9,7 +9,7 @@ extends Node3D
 ##   rule, the owner, October 20, 2026), which flickers a little; now and then one sparks (sparks, a flash of its light).
 ## Reduced flashing (Settings): no flicker (the lit letters breathe slowly instead), fewer and slower sparks, no flash.
 ## Everything is worked out from the time (update()), so stepping or skipping shows the same. Station frame (x along the front,
-## y up, z out). DESIGN-TBD (docs/questions/f2k.md): the droop, which letters are lit, the sparks.
+## y up, z out). DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115): the droop, which letters are lit, the sparks.
 
 const WORD_GAP: float = 0.9
 const FALLEN_SEED: int = 8801

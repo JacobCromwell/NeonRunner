@@ -6,7 +6,7 @@ extends RefCounted
 ## out onto the forecourt in a slope the runner can climb, and down a little on the inside. Drawn as flat-shaded
 ## quads in the Dead Zone's rubble (PAT_DZ_CONCRETE, a heap), with broken slabs and rebar sticking out of it at its
 ## sides (never along the runner's way up, which is smoothed: `height()` is what their feet follow).
-## Visual only: no hitboxes. DESIGN-TBD (docs/questions/f2k.md): its shape.
+## Visual only: no hitboxes. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115): its shape.
 
 const CELL: float = 0.5
 const RUBBLE: Color = Color(0.34, 0.33, 0.32)

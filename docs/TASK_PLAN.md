@@ -631,7 +631,7 @@ wasteland to the station, a walk round the heap to the route board, the wipe (th
 close-up of the stops with THE PALACE in gold, a nod and a turn, the entrance blocked by rubble to a crack of light, the climb and
 the squeeze in; then, after a dip to black, the Terminal's own stage: out through the crack, a jump, the tracks running off ahead,
 the zone's title card. Three runner poses on the toolkit (`wipe`, `scramble`, `squeeze`), seven new sounds
-(`tools/asset_gen/sfx_bank_terminal_intro.gd`), `test_terminal_intro`. The staging choices are `docs/questions/f2k.md`.
+(`tools/asset_gen/sfx_bank_terminal_intro.gd`), `test_terminal_intro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115`.
 
 ### H. The owner's requests (October 8, 2026)
 

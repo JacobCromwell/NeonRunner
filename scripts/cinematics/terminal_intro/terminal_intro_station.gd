@@ -18,7 +18,7 @@ extends Node3D
 ## - The light coming out (the Terminal's failing orange, TerminalIntroTuning.light_color): shafts and a pool of it on the
 ##   forecourt from the great window and from the crack, halos round the windows (additive cards of the skin's glow
 ##   material), and real lights for the runner and the letters. The shafts breathe slowly (steady with Reduced flashing).
-## DESIGN-TBD (docs/questions/f2k.md): the station's design, simplified from the owner's reference of the Terminal's look and
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115): the station's design, simplified from the owner's reference of the Terminal's look and
 ## the Dead Zone's grey.
 
 const STONE := Color(0.205, 0.193, 0.182)

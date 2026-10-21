@@ -10,12 +10,12 @@ extends Resource
 ## station's entrance, blocked by rubble with a crack of light at the top, climbs up the rubble and squeezes in through
 ## the hole, then jumps down to the ground inside, where the first level's train tracks run off ahead.
 ## Everything else (timings, places, the station's design, the sign's other stops, the camera) is DESIGN-TBD
-## (docs/questions/f2k.md). Times are seconds from the start. The station's points are in its own frame
+## (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115). Times are seconds from the start. The station's points are in its own frame
 ## (TerminalIntroStation): x along its front (to the viewer's right as one looks at it from the street), y up, z out
 ## from its front toward the street; the street's left wall's line is `forecourt` out from the front.
 
 @export_group("Timing")
-## DESIGN-TBD (docs/questions/f2k.md, 13): the length and the shots' times; the orchestrator's brief for the task suggested about 25
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1114): the length and the shots' times; the orchestrator's brief for the task suggested about 25
 ## to 32 s (the owner's beats set no length). Longer than GDD §1's 5-15 s, as the other intros are. It ends on black: Terminal 1
 ## opens on its own view.
 @export_range(10.0, 60.0, 0.1, "suffix:s") var duration: float = 32.0
@@ -42,7 +42,7 @@ extends Resource
 @export_range(300.0, 2000.0, 10.0, "suffix:m") var stage_length: float = 400.0
 
 @export_group("The station")
-## DESIGN-TBD (docs/questions/f2k.md, 1, 2): the station's design and size, where it stands, the heap and the crack.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102, 1103): the station's design and size, where it stands, the heap and the crack.
 ## Where its front's middle is along the street (z), the opening in the street's left wall (long enough that the
 ## wall's cut ends are never in view), and how far its front stands back from the wall's line (the forecourt).
 @export_range(80.0, 300.0, 0.5, "suffix:m") var station_at: float = 120.0
@@ -69,7 +69,7 @@ extends Resource
 @export_range(10.0, 22.0, 0.1, "suffix:m") var window_to: float = 17.6
 
 @export_group("Inside")
-## DESIGN-TBD (docs/questions/f2k.md, 12): the way in from inside, the jump and where they land.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1113): the way in from inside, the jump and where they land.
 ## The way in from inside: where it is along the street (z), how far back from the street's left wall's line its wall stands, how
 ## far the heap's inside slope runs into the hall, and where the runner lands from the jump (out from the wall) and when they jump.
 @export_range(10.0, 300.0, 0.5, "suffix:m") var inside_at_z: float = 56.0
@@ -79,7 +79,7 @@ extends Resource
 @export_range(0.0, 60.0, 0.05, "suffix:s") var jump_at: float = 28.2
 
 @export_group("The sign")
-## DESIGN-TBD (docs/questions/f2k.md, 3, 4): how "GRAND" is shown fallen, TERMINAL's droop, which letters are lit and how they spark.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1104, 1105): how "GRAND" is shown fallen, TERMINAL's droop, which letters are lit and how they spark.
 ## "GRAND TERMINAL" across the head house: the letters' height, where its middle line is up the front, the gap
 ## between letters (a share of their height) and how far they stand out of the front.
 @export_range(1.0, 4.0, 0.05, "suffix:m") var letter_height: float = 2.3
@@ -99,7 +99,7 @@ extends Resource
 @export_range(1.0, 10.0, 0.1, "suffix:s") var spark_every: float = 3.4
 
 @export_group("The light")
-## DESIGN-TBD (docs/questions/f2k.md, 5): the light out of the station.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1106): the light out of the station.
 ## The failing orange of the Terminal's work lamps, spilling out of the entrance, the big window and the wings'
 ## windows: the colour, the strength of the shafts (their glow, share of full) and of the pool of light on the
 ## forecourt, and how strong the real lights on the runner are.
@@ -110,7 +110,7 @@ extends Resource
 @export_range(2.0, 30.0, 0.5, "suffix:m") var light_range: float = 16.0
 
 @export_group("The wasteland")
-## DESIGN-TBD (docs/questions/f2k.md, 6): which of the Dead Zone's props stand where.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1107): which of the Dead Zone's props stand where.
 ## The Dead Zone's props on the plaza and the street: where each stands (x along the front, z out from it),
 ## turned this much (degrees): [kind, x, z, turn] with kind 0 a broken column, 1 a rubble heap, 2 the burned-out bus.
 @export var props: PackedVector4Array = PackedVector4Array([
@@ -124,7 +124,7 @@ extends Resource
 @export_range(0.0, 5.0, 0.1, "suffix:m/s") var smoke_rise: float = 0.8
 
 @export_group("The route board")
-## DESIGN-TBD (docs/questions/f2k.md, 8, 9): where the board hangs and how the wipe goes (its stops' names are TerminalIntroSign.stops).
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1109, 1110): where the board hangs and how the wipe goes (its stops' names are TerminalIntroSign.stops).
 ## Where it hangs on the front: x along it (its middle) and how far its wiped strokes reach either side of that (metres: the
 ## hand sweeps this wide; the list's rows, TerminalIntroSign.NAME_X onward, are within it), and when the wipe starts (it ends at
 ## `sign_at`, the cut to the close-up).
@@ -133,7 +133,7 @@ extends Resource
 @export_range(0.0, 60.0, 0.05, "suffix:s") var wipe_at: float = 13.8
 
 @export_group("The runner")
-## DESIGN-TBD (docs/questions/f2k.md, 7, 9, 10, 11): where they stand, how they look about, walk, decide and climb.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1108, 1110, 1111, 1112): where they stand, how they look about, walk, decide and climb.
 ## Where they stand at the start (x along the station's front, z out from it), the way they face (degrees, 0 along the
 ## front to the right, + turning left, toward the front) and how they look about: right, then left toward the station and up at it.
 @export var start_at: Vector2 = Vector2(-3.0, 11.0)
@@ -160,7 +160,7 @@ extends Resource
 @export_range(0.0, 60.0, 0.05, "suffix:s") var through_at: float = 26.9
 
 @export_group("The cameras")
-## DESIGN-TBD (docs/questions/f2k.md, 7, 13): every shot's place, look and lens.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1108, 1114): every shot's place, look and lens.
 ## Points are in the station's frame (x along its front, y up, z out from it) unless a comment says otherwise; each shot's lens is its
 ## own `fov` (vertical degrees). The face: in front of the runner, `forward` metres ahead and `right` to their right (negative: their
 ## left, the gold eyepiece's side) at their eye line, easing in from `face_from` to `face_to` (x forward, y right, z fov).

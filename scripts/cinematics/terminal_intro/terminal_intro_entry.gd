@@ -7,7 +7,7 @@ extends Node3D
 ## the lintel, through which the dusk's cold grey light comes in as a beam across the platform: cold against the work lamps'
 ## amber. Same frame as the station's front (x along the wall, y up, z out of the wall into the hall), so the heap and the lintel
 ## are built the same way. Built on the Terminal stage (a second CineStage after the cut), hidden with it. Visual only.
-## DESIGN-TBD (docs/questions/f2k.md): the wall's design, the cold light.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115): the wall's design, the cold light.
 
 const THICK: float = 1.2
 const HALF_WIDTH: float = 9.0

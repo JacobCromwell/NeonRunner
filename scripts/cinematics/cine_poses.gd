@@ -22,7 +22,7 @@ extends RefCounted
 ## strokes, over a progress: a reach, three strokes working down it, the arm lowered), `scramble` (up a slope of loose rubble on
 ## hands and feet, leaning into it, the arms reaching in turn with the leg phase) and `squeeze` (into a low gap head first: from
 ## a crouch to lying prone, the arms reaching ahead, crawling in turn with the leg phase, over a progress).
-## DESIGN-TBD (docs/questions/f2c.md, f2d.md; the three of the Terminal's intro: docs/questions/f2k.md, 11): the key poses are
+## DESIGN-TBD (docs/questions/f2c.md, f2d.md; the three of the Terminal's intro: docs/OPEN_QUESTIONS_DEFERRED.md item 1112): the key poses are
 ## hand-set placeholders.
 
 const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"wipe", &"scramble", &"squeeze"]

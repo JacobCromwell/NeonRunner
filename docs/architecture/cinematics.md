@@ -549,7 +549,7 @@ skipping shows the same. Cost (headless, `test_casino_intro`): about 45 ms to se
 mesh caches), about 0.6 ms a step and at most about 3 ms; its props add about 97 draw calls (the people on the rig most of it).
 
 **The Terminal's intro** (`TerminalIntro`, task F2k; the owner's beats, October 21, 2026, GDD §6 Cinematics, "Terminal intro"; the
-Terminal's look from `docs/art/reference/terminal_zone.jpg`; what they leave open is DESIGN-TBD, `docs/questions/f2k.md`; numbers in
+Terminal's look from `docs/art/reference/terminal_zone.jpg`; what they leave open is DESIGN-TBD, `docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115`; numbers in
 `data/cinematics/terminal_intro_tuning.tres`): 32.0 s before Terminal 1 on two stages. **Outside** is the Dead Zone's look, not the
 zone's own: the stage def carries the Dead Zone's skin (`CineStageDef.skin`, so its sky, haze and greys, and a skin set on the def
 takes no sky of the slot's), in the level's lanes, with the street's left wall open for 110 m (`wall_gaps`) on the station. **Inside**

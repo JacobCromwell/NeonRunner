@@ -7,7 +7,7 @@ extends Node3D
 ## route down it (a line and a dot at each stop) and the stops' names (TerminalIntroText, flat lines), the Palace last and bigger,
 ## in gold with a glow and a halo. Over it all a film of grime (terminal_intro_grime.gdshader) that the wipe clears along the
 ## hand's own trail (`set_trail()`), and a few puffs of dust where the hand passes (`update_dust()`).
-## Visual only. DESIGN-TBD (docs/questions/f2k.md): the stops' names, the board's design.
+## Visual only. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115): the stops' names, the board's design.
 
 const PANEL := Color(0.085, 0.16, 0.17)
 const PANEL_LINE := Color(0.36, 0.34, 0.29)
@@ -51,7 +51,7 @@ var station: TerminalIntroStation
 var middle := Vector3.ZERO
 var grime_material: ShaderMaterial
 var gold_halo: ShaderMaterial
-## DESIGN-TBD (docs/questions/f2k.md, 8): the other stops' names are my choice (plausible and neutral); THE PALACE is the owner's.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1109): the other stops' names are my choice (plausible and neutral); THE PALACE is the owner's.
 var stops: PackedStringArray = PackedStringArray(["GRAND TERMINAL", "CANAL STREET", "OLD MARKET", "CINDER ROW", "HARBOUR GATE"])
 var palace: String = "THE PALACE"
 var dust: MultiMesh
