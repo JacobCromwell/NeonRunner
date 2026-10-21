@@ -55,6 +55,9 @@ extends SceneTree
 ##   sfx_bank_casino_boss_intro.gd  Casino boss intro's: the roulette wheel's ball, a crowd cheering, the floor's
 ##                        bustle, the golden door, the wall's tremor and collapse, a cyborg guard's shout
 ##   sfx_bank_casino_intro.gd  Casino intro's: the violet sports car cruising down the casino street and pulling up
+##   sfx_bank_terminal_outro.gd  Terminal outro's: the metro train's front door (a firm rattle, a violent clatter, fist
+##                        bangs, the pneumatic door opening and closing), the train waking, pulling away and rushing off,
+##                        and the screech's friendly squeak
 ##   sfx_bank_centipede.gd  the Cybernetic Centipede: its wake (the warning: a hiss and a clatter of legs), a bite's
 ##                        warning (its mandibles ratcheting open, a rising hiss), the snap, a wound and its death
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
@@ -95,6 +98,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_casino_boss_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_casino_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_centipede.gd"),
+	preload("res://tools/asset_gen/sfx_bank_terminal_outro.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"
