@@ -55,6 +55,22 @@ func track(p: Vector3) -> Vector3:
 	return Vector3(front_x + p.z, p.y, along_at + p.x)
 
 
+## A material of its own with the same shader and parameters as `src`, to animate one thing without touching the skin's shared
+## material. Not Resource.duplicate(): on a colour uniform given as a Vector3 (the zone skins' sRGB rule) the engine's duplicate
+## drops the value from the source and the copy alike (the Dead Zone's sheen_color went back to the shader's purple default for the
+## rest of the session), so the parameters are copied over by name.
+static func own(src: ShaderMaterial) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = src.shader
+	if src.shader != null:
+		for u: Dictionary in src.shader.get_shader_uniform_list():
+			var key: StringName = StringName(u["name"])
+			var v: Variant = src.get_shader_parameter(key)
+			if v != null:
+				m.set_shader_parameter(key, v)
+	return m
+
+
 ## A runner's heading (radians, 0 down the street, + turning left) for a direction (dx along the front, dz out from it).
 static func heading(dx: float, dz: float) -> float:
 	# Track x is the station's z, track z its x.
@@ -366,8 +382,8 @@ func _hall(s: MeshLayer) -> void:
 ## The shafts of light out of the great window and the crack, and the pools they make on the forecourt: additive cards of
 ## the skin's glow material (a copy of it, so the cinematic can breathe it).
 func _light_shafts() -> void:
-	shaft_material = glow.duplicate() as ShaderMaterial
-	pool_material = glow.duplicate() as ShaderMaterial
+	shaft_material = own(glow)
+	pool_material = own(glow)
 	var batch := MeshBatch.new()
 	var g: MeshLayer = batch.layer(shaft_material)
 	var c: Color = n.light_color

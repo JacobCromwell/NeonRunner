@@ -109,7 +109,7 @@ func _terminal(layout: Dictionary) -> void:
 		lit.append(is_lit)
 		var body: Dictionary = TerminalIntroText.letter(String(p["ch"]), n.letter_height, n.letter_depth, SOOT_LETTER,
 			AMBER if is_lit else SOOT_FRONT, n.letter_glow if is_lit else 0.0, MeshKit.PAT_DZ_STEEL)
-		var mat: ShaderMaterial = solid.duplicate() as ShaderMaterial
+		var mat: ShaderMaterial = TerminalIntroStation.own(solid)
 		materials.append(mat)
 		var pivot := Node3D.new()
 		pivot.name = "Letter%d_%s" % [i, p["ch"]]
@@ -137,7 +137,7 @@ func _terminal(layout: Dictionary) -> void:
 		# The halo of a lit letter.
 		var halo_mat: ShaderMaterial = null
 		if is_lit:
-			halo_mat = station.glow.duplicate() as ShaderMaterial
+			halo_mat = TerminalIntroStation.own(station.glow)
 			var hb := MeshBatch.new()
 			var w: float = float(body["width"]) * 1.9 + 1.2
 			var h: float = n.letter_height * 1.8

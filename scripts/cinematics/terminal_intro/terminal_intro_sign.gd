@@ -137,7 +137,7 @@ func _text(s: MeshLayer, text: String, u: float, v: float, cap: float, color: Co
 
 ## A halo behind the Palace's name: a soft gold glow (its own material, so it can breathe).
 func _gold() -> void:
-	gold_halo = station.glow.duplicate() as ShaderMaterial
+	gold_halo = TerminalIntroStation.own(station.glow)
 	var batch := MeshBatch.new()
 	var g: MeshLayer = batch.layer(gold_halo)
 	var width: float = float(TerminalIntroText.line(palace, PALACE_CAP, GOLD)["width"])

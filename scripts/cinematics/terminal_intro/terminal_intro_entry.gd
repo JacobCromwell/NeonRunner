@@ -94,7 +94,7 @@ func _crack(s: MeshLayer) -> void:
 ## The cold light coming in through the crack: a beam down and out over the platform and the track.
 func _beam(glow: ShaderMaterial) -> void:
 	var batch := MeshBatch.new()
-	var g: MeshLayer = batch.layer(glow.duplicate() as ShaderMaterial)
+	var g: MeshLayer = batch.layer(TerminalIntroStation.own(glow))
 	var dw: float = n.door_width * 0.5
 	var y: float = n.door_height - 0.4
 	for k: int in 3:

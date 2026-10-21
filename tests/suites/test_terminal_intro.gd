@@ -120,6 +120,14 @@ func _check_intro(lanes: int) -> void:
 	var outside_skin: ZoneSkin = load(TerminalIntro.OUTSIDE_SKIN_PATH) as ZoneSkin
 	check(seq.stage.geo.lane_count == lanes and seq.stage.skin == outside_skin and seq.stage.skin != _step().zone.skin,
 		"%s: it opens on the Dead Zone's look (the zone's own is the Terminal's), in the level's lanes" % tag)
+	# The letters' own materials are copies of the skin's: building them must leave the skin's shared material as it was (the
+	# engine's Resource.duplicate() drops a Vector3 on a colour uniform, which turned the Dead Zone's sheen to the shader's purple).
+	var shared: ShaderMaterial = (outside_skin as DeadZoneSkin).solid_material()
+	var own_mat: ShaderMaterial = seq.letters.materials[0]
+	check(shared.get_shader_parameter(&"sheen_color") is Vector3 and own_mat != shared
+		and own_mat.get_shader_parameter(&"sheen_color") == shared.get_shader_parameter(&"sheen_color")
+		and own_mat.get_shader_parameter(&"dz_ash") == shared.get_shader_parameter(&"dz_ash"),
+		"%s: the letters' materials copy the Dead Zone's, and leave its own parameters intact" % tag)
 	check(seq.playing.problems(sfx).is_empty(), "%s: its timeline has no problems (%s)" % [tag, seq.playing.problems(sfx)])
 	check(seq.duration() >= 25.0 and seq.duration() <= 34.0, "%s: it lasts %.1f s (the owner asked for about 25 to 32)" % [tag, seq.duration()])
 	var stage: CineStage = seq.stage
