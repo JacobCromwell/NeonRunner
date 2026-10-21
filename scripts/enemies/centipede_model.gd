@@ -52,6 +52,13 @@ const HEAD_SCALE: float = 1.3
 ## mirrored), under its mask.
 const FACE_TILT: float = 0.2
 const JAW_HINGE := Vector3(0.16, -0.04, -0.34)
+## A right mandible's elbow, bend and tip (its own frame: the hinge at the origin): what jaws_reach() measures.
+const JAW_ELBOW := Vector3(0.07, -0.1, -0.3)
+const JAW_BEND := Vector3(-0.04, -0.15, -0.47)
+const JAW_TIP := Vector3(-0.17, -0.17, -0.52)
+## The dome at the back and top of its head (head frame): where it stands and its size, for head_top().
+const DOME_CENTER := Vector3(0.0, 0.04, 0.08)
+const DOME_SIZE := Vector3(0.86, 0.7, 0.84)
 ## Where its right lens sits (head frame; the left's is mirrored) and its size across (metres, before HEAD_SCALE).
 const LENS := Vector3(0.27, 0.27, -0.33)
 const LENS_SIZE: float = 0.25
@@ -286,11 +293,35 @@ func _lift(i: int, rear: float) -> float:
 	return rear * REAR_HEIGHT * maxf(1.0 - float(i + 1) / (REAR_SEGMENTS + 1), 0.0) * 0.8
 
 
-## The top of its head drawn at full rear, above the floor (metres): its bite's hitbox stays under it
-## (CentipedeTuning.bite_height; GDD §3, hitboxes smaller than what's drawn).
+## The top of its head's dome drawn at full rear, upright, above the floor (metres; its feelers aside): its bite's
+## hitbox stays under it (CentipedeTuning.bite_height; GDD §3, hitboxes smaller than what's drawn).
 func reared_top() -> float:
-	var head_aabb: AABB = (_head_mesh.mesh as Mesh).get_aabb()
-	return Centipede.HEAD_HEIGHT - 0.1 + REAR_HEIGHT + HEAD_SCALE * head_aabb.end.y
+	var dome: AABB = _prim(&"dome").get_aabb()
+	return Centipede.HEAD_HEIGHT - 0.1 + REAR_HEIGHT + HEAD_SCALE * (DOME_CENTER.y + DOME_SIZE.y * dome.end.y)
+
+
+## The top of its head's dome as posed now (world height; its feelers aside), for tests: the highest of the dome's
+## points.
+func head_top() -> float:
+	var arrays: Array = _prim(&"dome").surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var xform: Transform3D = _head_mesh.global_transform * Transform3D(Basis.from_scale(DOME_SIZE), DOME_CENTER)
+	var best: float = -INF
+	for v: Vector3 in verts:
+		best = maxf(best, (xform * v).y)
+	return best
+
+
+## How far in front of `origin` (world, on the floor under its head's middle) its mandibles reach as posed now, along
+## `forward` (world, level): the farthest of their elbows, bends and tips (the points their struts and spikes are drawn
+## along and out to: what's drawn reaches at least as far). Its bite's hitbox stops short of it (Centipede._place_bite).
+func jaws_reach(origin: Vector3, forward: Vector3) -> float:
+	var best: float = 0.0
+	for pivot: Node3D in _jaws:
+		var xform: Transform3D = (pivot.get_child(0) as Node3D).global_transform
+		for point: Vector3 in [JAW_ELBOW, JAW_BEND, JAW_TIP]:
+			best = maxf(best, (xform * point - origin).dot(forward))
+	return best
 
 
 ## How far in front of its head's middle its mandibles' tips are drawn, at rest (metres): its bite's hitbox, with the
@@ -567,7 +598,7 @@ static func _head_body(weathered: bool) -> ArrayMesh:
 	var mask := Color(0.2, 0.19, 0.18)
 	var face := Vector3(FACE_TILT, 0.0, 0.0)
 	# The dome: the back and top of its head, brass, with a steel band.
-	b.add(brass, &"dome", Vector3(0.0, 0.04, 0.08), Vector3(0.86, 0.7, 0.84))
+	b.add(brass, &"dome", DOME_CENTER, DOME_SIZE)
 	b.add(STEEL.darkened(0.2), &"cylinder", Vector3(0.0, 0.04, 0.08), Vector3(0.88, 0.1, 0.86))
 	b.add(STEEL.darkened(0.1), &"box", Vector3(0.0, 0.3, 0.08), Vector3(0.1, 0.06, 0.8), Vector3(0.0, 0.0, 0.0))
 	# The mask: a dark plate on its face, its visor slot, and a chin guard under it.
@@ -615,9 +646,9 @@ static func _lens_mesh() -> ArrayMesh:
 ## inner edge.
 static func _mandible() -> ArrayMesh:
 	var b := ColorBatch.new()
-	var elbow := Vector3(0.07, -0.1, -0.3)
-	var bend := Vector3(-0.04, -0.15, -0.47)
-	var tip := Vector3(-0.17, -0.17, -0.52)
+	var elbow: Vector3 = JAW_ELBOW
+	var bend: Vector3 = JAW_BEND
+	var tip: Vector3 = JAW_TIP
 	b.strut(STEEL, Vector3.ZERO, elbow, 0.09)
 	b.strut(STEEL, elbow, bend, 0.08)
 	b.spike(RUST, bend, tip, 0.045)

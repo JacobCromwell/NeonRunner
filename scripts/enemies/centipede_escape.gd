@@ -6,8 +6,10 @@ extends RefCounted
 ## built level again.
 ##
 ## Escapable: from the block's run-in (any lane) to past its last wall, some way through exists on the Player's moves,
-## with the dash at its slowest recharge (PowerupTuning: 8 s) and the stops and waits that takes, on which the runner is
-## never within a centipede's bite, whatever the centipede does. A runner choosing that way escapes without needing armor.
+## with the dash at its slowest recharge (PowerupTuning: 8 s) and just used as the run-in begins (entry_ready: the debris
+## maze's own check takes the same; in the Terminal a runner may well have dashed through a doodad just before it), and
+## the stops and waits that takes, on which the runner is never within a centipede's bite, whatever the centipede does.
+## A runner choosing that way escapes without needing armor.
 ## The way keeps off the block's anti-grav pads (a maze ceiling's: DebrisMaze), as MazeRoute's do: a ride on its ceiling
 ## would get the runner away too (the centipede can't follow), but the way is the floor's, so a runner following it is
 ## never lifted off it by surprise.
@@ -41,8 +43,11 @@ extends RefCounted
 const STOP_CLEARANCE: float = 0.02
 ## MazeRoute.BODY_MARGIN: kept between the body and debris along its lane (metres).
 const BODY_MARGIN: float = 0.1
-## MazeRoute.DASH_SLACK: taken off the dash's carry (metres).
+## MazeRoute.DASH_SLACK: taken off the dash's carry for where the runner surely gets to (metres).
 const DASH_SLACK: float = 1.0
+## Added to the dash's full carry for what it may smash (metres): the Player smashes every piece in its lane whose front
+## its dash reaches (Player._dash_claims), so the holes a way opens to the centipedes are taken wider, never narrower.
+const SMASH_MARGIN: float = 1.0
 ## Kept off an anti-grav pad either side along its lane (metres; MazeRoute.PAD_MARGIN), and before it half a lane
 ## switch's run more.
 const PAD_MARGIN: float = 0.6
@@ -62,9 +67,6 @@ const REACH_MARGIN: float = 0.5
 const FRONT: int = 6
 ## Searches again at most this many times after a way fails with its smashes open.
 const RETRIES: int = 4
-## How long before a block's run-in the dash may last have been used (seconds less than the time from the previous
-## block's last wall's face): a runner dashing through it gets there sooner than running.
-const ENTRY_SLACK: float = 0.5
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 ## Seconds of tolerance when labels are compared.
 const EPS: float = 0.0001
@@ -92,16 +94,12 @@ static func slowest_recharge() -> float:
 	return out
 
 
-## Seconds from block `index`'s run-in until the dash is ready, for a runner who used it as late as any way through the
-## block before could (at its last wall's face, recharging `recharge` seconds), running at `speed`: 0 for the level's
-## first block (no way before it needs the dash).
-static func entry_ready(layout: LevelLayout, index: int, speed: float, recharge: float) -> float:
-	if index <= 0:
-		return 0.0
-	var prev: Dictionary = layout.maze[index - 1]
-	var last: Dictionary = (prev["walls"] as Array)[-1]
-	var since: float = (float(layout.maze[index]["entry"]) - float(last["start"])) / maxf(speed, 0.01) - ENTRY_SLACK
-	return maxf(recharge - since, 0.0)
+## Seconds from a block's run-in until the dash is ready, recharging `recharge` seconds: the whole of it, as if the
+## runner had just used it as the run-in began (the worst case, and the debris maze's own: MazeRoute's runner starts every
+## block with the dash just used). In the Terminal doodads stop the runner, so one who dashed through a doodad just before
+## a block comes into it with the dash nearly that far off; one who spends it in the run-in itself has thrown it away.
+static func entry_ready(recharge: float) -> float:
+	return recharge
 
 
 ## The farthest a centipede can have run (metres) `t` seconds after it began to move, from a standstill: no faster than
@@ -130,7 +128,10 @@ class Context:
 	var v: float = 18.0
 	var switch_time: float = 0.14
 	var half: float = 0.26
+	## How far a dash surely carries the runner (its run less DASH_SLACK), and how far it may smash (its whole run and
+	## SMASH_MARGIN).
 	var carry: float = 10.0
+	var smash_reach: float = 12.0
 	var bonus: float = 8.0
 	var chase: float = 15.0
 	var accel: float = 30.0
@@ -169,6 +170,7 @@ class Context:
 		var duration: float = pt.dash_duration if pt != null else 0.6
 		bonus = pt.dash_speed_bonus if pt != null else 8.0
 		carry = (v + bonus) * duration - CentipedeEscape.DASH_SLACK
+		smash_reach = (v + bonus) * duration + CentipedeEscape.SMASH_MARGIN
 		var t := EnemyDirector.tuning_for("centipede") as CentipedeTuning
 		if t == null:
 			t = CentipedeTuning.new()
@@ -253,7 +255,7 @@ class Context:
 
 	## The way out past the centipedes at `spots` ({lane, at} each). `options`: recharge (seconds; default the dash's
 	## slowest), entry_ready (seconds from the run-in's start until the dash is ready; default
-	## CentipedeEscape.entry_ready), forbidden ({"<wall>|<lane>": true}, dashes never to take).
+	## CentipedeEscape.entry_ready: the whole recharge), forbidden ({"<wall>|<lane>": true}, dashes never to take).
 	## {ok, reason, moves (MazeBot's), start_lane, seconds (from the run-in's start until the runner is leave_margin past
 	## the last wall), waits (seconds stood waiting for the dash), dashes, path ([stage, cell] each, stage 0 the run-in),
 	## entry_ready, recharge, wakes (each centipede's wake on the way, seconds, INF never)}.
@@ -277,7 +279,7 @@ class Search:
 		c = p_context
 		spots = p_spots
 		recharge = float(options.get("recharge", CentipedeEscape.slowest_recharge()))
-		ready0 = float(options.get("entry_ready", CentipedeEscape.entry_ready(c.layout, c.index, c.v, recharge)))
+		ready0 = float(options.get("entry_ready", CentipedeEscape.entry_ready(recharge)))
 		forbidden = (options.get("forbidden", {}) as Dictionary).duplicate()
 		for spot: Dictionary in spots:
 			fields.append(c.field_of(spot))
@@ -428,21 +430,30 @@ class Search:
 	func _dash(n: Dictionary, s: int, lane: int, face: float, t_go: float, here: int, out: Array) -> void:
 		var wall: Dictionary = c.walls[s]
 		var smashed: Array = [c.wall_pieces["%d|%d" % [s, lane]]]
+		# The runner surely gets past what fronts within the sure carry; the dash may smash all that fronts within its
+		# whole run (the smash set, which the centipedes may use, is taken that wide).
 		var reach_z: float = face + c.half + c.carry
+		var smash_z: float = face + c.half + c.smash_reach
 		var last_end: float = float(wall["end"])
 		var next_front: float = INF
 		var rooms: Array = c.rooms
 		var in_divider: bool = s < rooms.size() and ((rooms[s] as Dictionary)["dividers"] as Array).has(lane)
 		if in_divider:
 			for p: Dictionary in c.divider_pieces.get("%d|%d" % [s, lane], []):
-				if float(p["start"]) <= reach_z:
-					smashed.append(p)
-					last_end = maxf(last_end, float(p["end"]))
-				else:
-					next_front = float(p["start"])
+				if float(p["start"]) > smash_z:
+					if next_front == INF:
+						next_front = float(p["start"])
 					break
+				smashed.append(p)
+				if float(p["start"]) <= reach_z and next_front == INF:
+					last_end = maxf(last_end, float(p["end"]))
+				elif next_front == INF:
+					next_front = float(p["start"])
 		if s + 1 < c.walls.size() and not ((c.walls[s + 1] as Dictionary)["open"] as Array).has(lane):
-			next_front = minf(next_front, float((c.walls[s + 1] as Dictionary)["start"]))
+			var next_wall: float = float((c.walls[s + 1] as Dictionary)["start"])
+			next_front = minf(next_front, next_wall)
+			if next_wall <= smash_z and c.wall_pieces.has("%d|%d" % [s + 1, lane]):
+				smashed.append(c.wall_pieces["%d|%d" % [s + 1, lane]])
 		var z_end: float = maxf(face + c.carry, last_end + c.half + CentipedeEscape.BODY_MARGIN)
 		z_end = minf(z_end, next_front - c.half - CentipedeEscape.BODY_MARGIN)
 		if z_end <= last_end + c.half or not c.pad_clear(lane, face, z_end):

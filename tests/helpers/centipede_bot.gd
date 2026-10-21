@@ -2,11 +2,13 @@ class_name CentipedeBot
 extends RefCounted
 ## Runs a way out of a block of the debris maze that CentipedeEscape found (task O3) on real physics, past the block's live
 ## Cybernetic Centipedes, and checks the proof as it goes. Tests only.
-## A full RunWorld over the layout (its director spawning the centipedes from their layout entries, as in a level), its
-## Player from the block's run-in in the way's start lane, pressing the way's lane switches where it makes them and
+## A full RunWorld over its own copy of the layout (its director spawning the block's centipedes from their layout
+## entries, as in a level; every other enemy left out), its Player from `lead` metres before the block's run-in in the
+## way's start lane, so it comes into the block running, as in a level (that stretch of the copy cleared to open floor:
+## the bot runs the block, not what the level put before it), pressing the way's lane switches where it makes them and
 ## dashing at a stop where it dashes once the dash is ready, standing and waiting for it otherwise (as MazeBot does):
-## the dash is ready the way's entry_ready seconds after the run-in's start (the proof's assumption for a block whose
-## runner came from the last one), then its recharge after each. No armor: a bite kills.
+## the dash is ready the way's entry_ready seconds after the runner reaches the run-in (the proof's assumption: the whole
+## recharge, as if it had just been used there), then its recharge after each. No armor: a bite kills.
 ## Besides whether the runner got out alive and unbitten, it checks what the proof rests on (CentipedeEscape's header)
 ## against the live centipedes: none moves before its wake and wake_time (Centipede.history), any faster than its chase
 ## speed, with its head in debris (CentipedeMaze.clear_at) or out of its block's stretch; and, with a distance field of
@@ -16,11 +18,13 @@ extends RefCounted
 ## bite (CentipedeTuning.bite_reach and the runner's half depth): the proof's bound, on the real run.
 ##   var bot := CentipedeBot.new(sim, level_tuning)
 ##   var r: Dictionary = await bot.run(layout, index, CentipedeEscape.find(layout, level_tuning, index, spots))
-## result: {alive, cause, reached (past the block's last wall and leave_margin), seconds, dashes, moves_left, blocked
-## (switches the Player refused), bites (contacts any centipede's bite made), woke (centipedes that woke), margin (the
-## least, metres, by which the runner was out of an awake centipede's bound: negative if ever within it), early (moved
-## before its wake and wake_time), fast (the most a step went over its chase speed, metres), in_debris (frames its head
-## touched debris), outside (frames its head was out of its block's stretch)}.
+## result: {alive, cause, reached (past the block's last wall and leave_margin), seconds (from the run-in), dashes,
+## moves_left, blocked (switches the Player refused), bites (contacts any centipede's bite made), woke (centipedes that
+## woke), before_run_in (of those, the ones that woke while the runner was still short of the run-in: the proof's runner
+## starts there, so none may), margin (the least, metres, by which the runner was out of an awake centipede's bound:
+## negative if ever within it), early (moved before its wake and wake_time), fast (the most a step went over its chase
+## speed, metres), in_debris (frames its head touched debris), outside (frames its head was out of its block's
+## stretch)}.
 
 ## Metres a step of the independent field's grid, across the track and along it.
 const CELL: float = 0.3
@@ -35,9 +39,13 @@ const EARLY: float = 0.25
 const GRACE_SECONDS: float = 6.0
 ## No way there.
 const FAR: int = 1 << 30
+## The lead-in is cleared this much further back than the runner starts (metres): a piece just behind it can't reach it.
+const LEAD_CLEAR: float = 5.0
 
 var sim: RunSim
 var tuning: MovementTuning
+## How far before the block's run-in the runner starts (metres; see the header).
+var lead: float = 25.0
 ## Records every frame's {t, d, x, lane, stopped, dashing} in the result's `trace`, and the Player's events in `events`.
 var trace: bool = false
 
@@ -49,15 +57,18 @@ func _init(p_sim: RunSim, p_tuning: MovementTuning) -> void:
 
 func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 	var result := {"alive": false, "cause": "", "reached": false, "seconds": 0.0, "dashes": 0, "moves_left": 0,
-		"blocked": 0, "bites": 0, "woke": 0, "margin": INF, "early": 0, "fast": 0.0, "in_debris": 0, "outside": 0,
-		"trace": [], "events": []}
+		"blocked": 0, "bites": 0, "woke": 0, "before_run_in": 0, "margin": INF, "early": 0, "fast": 0.0, "in_debris": 0,
+		"outside": 0, "trace": [], "events": []}
 	var copy: LevelLayout = layout.copy()
 	var b: Dictionary = copy.maze[index]
+	var entry: float = float(b["entry"])
+	var from: float = maxf(entry - lead, 1.0)
+	_clear_lead_in(copy, index, from - LEAD_CLEAR, entry)
 	var t := EnemyDirector.tuning_for("centipede") as CentipedeTuning
 	var world: RunWorld = sim.build_world(copy, Loadout.new(), tuning)
 	var p: Player = world.player
 	p.setup(tuning, world.geo, int(way.get("start_lane", 0)))
-	p.distance = float(b["entry"])
+	p.distance = from
 	p.died.connect(func(cause: String) -> void: result["cause"] = cause)
 	p.movement_event.connect(func(kind: StringName) -> void:
 		(result["events"] as Array).append([snappedf(p.distance, 0.01), kind])
@@ -77,11 +88,17 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 	var moves: Array = way.get("moves", [])
 	var m: int = 0
 	var pressed: int = -1
-	var cooldown: float = float(way.get("entry_ready", 0.0))
+	# The dash's cooldown starts as the runner reaches the run-in (see the header).
+	var cooldown: float = INF
+	var entered_t: float = INF
 	var recharge: float = float(way.get("recharge", 8.0))
-	var limit: int = int((float(way.get("seconds", 30.0)) * 1.25 + GRACE_SECONDS) * Engine.physics_ticks_per_second)
+	var limit: int = int((float(way.get("seconds", 30.0)) * 1.25 + GRACE_SECONDS + (entry - from) / tuning.run_speed)
+		* Engine.physics_ticks_per_second)
 	var seen: Dictionary = {}
 	for frame: int in limit:
+		if entered_t == INF and p.distance >= entry:
+			entered_t = world.level_time()
+			cooldown = float(way.get("entry_ready", CentipedeEscape.entry_ready(recharge)))
 		if m < moves.size():
 			var move: Dictionary = moves[m]
 			var kind: String = String(move["kind"])
@@ -124,6 +141,8 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 			if c.state != Centipede.State.SLEEP and float(s["wake"]) == INF:
 				s["wake"] = float((c.history[0] as Array)[1]) - start_t
 				result["woke"] = int(result["woke"]) + 1
+				if float((c.history[0] as Array)[2]) < entry:
+					result["before_run_in"] = int(result["before_run_in"]) + 1
 			var head: Vector2 = c.head()
 			var step: float = head.distance_to(s["prev"])
 			result["fast"] = maxf(float(result["fast"]), step - v_c * dt)
@@ -150,10 +169,48 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 	for id: int in seen:
 		result["bites"] = int(result["bites"]) + int((seen[id] as Dictionary)["bites"])
 	result["alive"] = p.alive
-	result["seconds"] = world.level_time() - start_t
+	result["seconds"] = world.level_time() - (entered_t if entered_t < INF else start_t)
 	result["moves_left"] = moves.size() - m
 	await sim.free_world(world)
 	return result
+
+
+## Clears `layout` (the bot's copy) from `from` to the block's run-in at `to` (see the header): every piece standing on
+## or under the floor there (zone doodads and other blocks' debris, holes, floor cuts, fences, pads, speed pads, dash
+## walls), and every enemy but block `index`'s own centipedes.
+static func _clear_lead_in(layout: LevelLayout, index: int, from: float, to: float) -> void:
+	var doodads: Array[Dictionary] = []
+	for d: Dictionary in layout.doodads:
+		if (LevelLayout.is_maze_debris(d) and int(d["maze"]) == index) or not _overlaps(d, from, to):
+			doodads.append(d)
+	layout.doodads = doodads
+	layout.gaps = _clear_of(layout.gaps, from, to)
+	layout.cuts = _clear_of(layout.cuts, from, to)
+	layout.fences = _clear_of(layout.fences, from, to)
+	layout.pads = _clear_of(layout.pads, from, to)
+	layout.speed_pads = _clear_of(layout.speed_pads, from, to)
+	layout.dash_walls = _clear_of(layout.dash_walls, from, to)
+	var enemies: Array[Dictionary] = []
+	for e: Dictionary in layout.enemies:
+		if String(e["type"]) == "centipede" and int((e.get("params", {}) as Dictionary).get("block", -1)) == index:
+			enemies.append(e)
+	layout.enemies = enemies
+
+
+## The entries of `list` clear of the stretch from `from` to `to`.
+static func _clear_of(list: Array[Dictionary], from: float, to: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for e: Dictionary in list:
+		if not _overlaps(e, from, to):
+			out.append(e)
+	return out
+
+
+## True if entry `e` (from its `start` to its `end`, or at its `at`) lies on the stretch from `from` to `to`.
+static func _overlaps(e: Dictionary, from: float, to: float) -> bool:
+	var lo: float = float(e.get("start", e.get("at", 0.0)))
+	var hi: float = float(e.get("end", lo))
+	return hi >= from and lo < to
 
 
 # --- The independent field --------------------------------------------------------------------------

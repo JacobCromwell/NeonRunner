@@ -22,7 +22,7 @@
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
     "enforcer_truck_runs", "wide_gaps", "charge_paths", "host_releases", "dash_walls", "beach_levels",
     "mecha_guppy_climb", "mecha_guppy_bait", "mecha_guppy_tunables", "mecha_guppy_top", "mecha_guppy_whole",
-    "wall_run_gaps", "buzz_company", "weekly_fairness"
+    "wall_run_gaps", "buzz_company", "weekly_fairness", "centipede_fuzz"
   ],
   "medium": [
     "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm",
@@ -199,7 +199,7 @@
     {"match": "data/ui/*", "suites": ["ui_kit", "screens", "phone_screens"]},
     {"match": "data/platform/*", "suites": ["web_demo"]},
     {"match": "tests/helpers/maze_kit.gd", "tier": "full", "suites": ["centipede*"]},
-    {"match": "tests/helpers/centipede_bot.gd", "tier": "full", "suites": ["centipede_maze"]},
+    {"match": "tests/helpers/centipede_bot.gd", "tier": "full", "suites": ["centipede_maze", "centipede_fuzz"]},
     {"match": "tests/helpers/*", "tier": "full"},
     {"match": "tests/run_tests.gd", "tier": "full"},
     {"match": "tests/suite_map.json", "suites": []},

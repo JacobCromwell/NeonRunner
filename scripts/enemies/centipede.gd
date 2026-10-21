@@ -17,11 +17,14 @@ extends Enemy
 ##    way as far as it sees clear, never into debris: CentipedeMaze.clear_at), at most its chase speed (a share of the run
 ##    speed: the runner is slightly faster, but a stop at debris lets it catch them). It turns round in a lane to come
 ##    back along a cell, slowing as it swings.
-## 4. Its bite: when the runner will be within its reach in front of its head by the end of the telegraph, its head rears
-##    and its jaws open with a hiss and a clack (centipede_bite; OPENING, bite_telegraph); only then is its bite live
-##    (STRIKE, bite_window: the jaws snap shut as its head darts forward, centipede_snap), and a contact in that time is
-##    one hit (DamageRules: an enemy attack, which armor or the shield absorbs, then the invulnerability window; else it
-##    kills). Then its jaws rest (REST) before the next. Its body and legs are harmless (Hazard.harmless).
+## 4. Its bite: when the runner will be within its reach in front of its head by the end of the telegraph, with nothing
+##    between, its head rears and its jaws open with a hiss and a clack (centipede_bite; OPENING, bite_telegraph); only
+##    then is its bite live (STRIKE, bite_window: still reared, its head darts forward and back as its jaws snap shut,
+##    centipede_snap), and a contact in that time is one hit (DamageRules: an enemy attack, which armor or the shield
+##    absorbs, then the invulnerability window; else it kills). Its bite's hitbox reaches from its head's front to just
+##    short of its jaws' tips as they're drawn that frame (with the lunge), never further than bite_reach, its height
+##    under the reared head (GDD §3: hitboxes inside what's drawn). Then its jaws rest (REST) and its head sinks before
+##    the next. Its body and legs are harmless (Hazard.harmless).
 ## 5. The dash passes through it safely and wounds it (Enemy.dash_hits: GDD §9.15, "two dashes kill it"): it recoils,
 ##    stunned (STUN), a tube on its back cracked and leaking green, sparks flying; then it turns and chases from behind.
 ##    The second dash kills it. Weapons, claws and stomps do nothing (immune_to_weapons, claw_immune, not stompable: no
@@ -30,7 +33,8 @@ extends Enemy
 ##    legs folding and its lenses dimming, and stays so). So it does when it has fallen give_up_distance behind along its
 ##    way, or when the runner is out past its block's last wall into the breather (leave_margin): it never leaves its
 ##    block's stretch. Given up, or asleep as the runner passes, it leaves play behind them (should_retire).
-## It isn't a big attack (the Terminal has no other enemy to take turns with). Its look: CentipedeModel.
+## It isn't a big attack (the Terminal has no other enemy to take turns with: is_major_attack_active). Its look:
+## CentipedeModel.
 
 enum State { SLEEP, WAKE, CHASE, STUN, GIVE_UP }
 enum Jaw { CLOSED, OPENING, STRIKE, REST }
@@ -61,7 +65,8 @@ const WINDOW: float = 40.0
 ## Within this far of the runner with nothing between, it goes straight for them (metres).
 const STRAIGHT_RANGE: float = 14.0
 ## How far short of the runner's middle its head's middle stops (metres): far enough that its reared head, between the
-## runner and the camera behind them, leaves their head in sight, near enough that its bite reaches them.
+## runner and the camera behind them, leaves their head in sight, near enough that its bite reaches them. DESIGN-TBD
+## (docs/questions/o3.md 14): from behind, its reared head still hides most of the runner while it bites.
 const STANDOFF: float = 1.3
 ## How finely a line of sight is sampled (metres).
 const SIGHT_STEP: float = 0.3
@@ -72,6 +77,16 @@ const BITE_TURN_SHARE: float = 0.5
 const BITE_SIDE_SLACK: float = 0.3
 ## Seconds it lingers after giving up before it may leave play.
 const GIVE_UP_LINGER: float = 2.0
+## The share of its jaws' rest over which its head sinks back down after a strike.
+const REST_SINK: float = 0.5
+## The shortest its bite's hitbox gets in front of its head's front (metres), and how far short of its jaws' tips drawn
+## it stops (metres; GDD §3: hitboxes a little smaller than what's drawn).
+const MIN_BITE: float = 0.1
+const BITE_INSET: float = 0.05
+## A line of sight for its bite is sampled this finely (metres), through a probe this small either way (metres): debris
+## between its head and the runner keeps it from rearing at them.
+const BITE_SIGHT_STEP: float = 0.25
+const BITE_SIGHT_HALF: float = 0.1
 ## The hazard green of its glass and lenses (GDD §9.15: "glowing green", kept as drawn; the colour rule's hazard green).
 const GLOW := Color(0.35, 1.0, 0.3)
 
@@ -159,6 +174,8 @@ func _build() -> void:
 	# Its body lies behind its head in its lane.
 	for i: int in int(ceil(BODY_LENGTH / TRAIL_STEP)) + 2:
 		_trail.append(Vector2(_head.x, at + i * TRAIL_STEP))
+	# Its head and body are harmless, its bite alone hurts. DESIGN-TBD (docs/questions/o3.md 4): should running into its
+	# body hurt too?
 	_head_box = add_hitbox(&"body", HEAD_HIT, Vector3.ZERO)
 	_head_box.harmless = true
 	_head_box.is_solid = false
@@ -225,7 +242,8 @@ func _set_state(next: State) -> void:
 			_model.set_awake(false)
 
 
-## True if the runner wakes it now (see the header, 2).
+## True if the runner wakes it now (see the header, 2). DESIGN-TBD (docs/questions/o3.md 1): "close to it" read as the
+## runner on the floor in its own section or one joined to it, within its wake distance.
 func _should_wake(p: Player) -> bool:
 	if not p.alive or p.surface != Player.Surface.FLOOR or _maze == null:
 		return false
@@ -249,7 +267,8 @@ func _play(sound: StringName) -> void:
 
 
 ## The sections of its block (DebrisMaze.sections and links with this attempt's smashes, on the block alone) and those
-## whose runner wakes it (its own, and every one joined to it), made again whenever a dash smashes some of the block.
+## whose runner wakes it (its own, and every one joined to it), made again whenever a dash smashes some of the block: a
+## dash that opens a walled-in one's cell releases it. DESIGN-TBD (docs/questions/o3.md 8): the release.
 func _refresh_sections() -> void:
 	_wakers.clear()
 	if _maze == null:
@@ -278,16 +297,24 @@ func _runner_section(p: Player) -> int:
 
 
 ## The section holding `lane` at track distance `at`, or, inside a wall's opening (no section there), the one just
-## past or before it in that lane: -1 if none is near.
+## past or before it in that lane: -1 if none is near, or if `at` is outside its block's stretch (from its run-in's start
+## to its breather's end: no probe looks past either, so a runner not yet in the block never wakes it, as the escape
+## proof's runner starts at the run-in).
 func _section_near(lane: int, at: float) -> int:
+	var lo: float = float(_block.get("entry", -INF))
+	var hi: float = float(_block.get("exit", INF))
+	if at < lo or at > hi:
+		return -1
 	for dz: float in [0.0, 2.0, -2.0, 4.0, -4.0, 7.0, -7.0]:
+		if at + dz < lo or at + dz > hi:
+			continue
 		var id: int = DebrisMaze.section_at(_secs, lane, at + dz)
 		if id >= 0:
 			return id
 	return -1
 
 
-## True if it gives up the chase now (see the header, 5).
+## True if it gives up the chase now (see the header, 6). DESIGN-TBD (docs/questions/o3.md 5): when it gives up.
 func _gives_up(p: Player) -> bool:
 	if not p.alive or p.surface == Player.Surface.CEILING or _maze == null:
 		return true
@@ -446,19 +473,34 @@ func _bite(delta: float, p: Player) -> void:
 
 
 ## True if the runner will be within its bite's reach in front of its head by the end of a telegraph begun now: in front,
-## within its jaws' width (and their body's), no further than the bite reaches and they close in meanwhile.
+## within its jaws' width (and their body's), no further than the bite reaches and they close in meanwhile, with no
+## debris between.
 func _bite_coming(p: Player) -> bool:
 	if not p.alive or p.surface != Player.Surface.FLOOR:
 		return false
 	var dir := Vector2(sin(_heading), cos(_heading))
-	var rel := Vector2(p.position.x, p.distance) - _head
+	var runner := Vector2(p.position.x, p.distance)
+	var rel: Vector2 = runner - _head
 	var ahead: float = rel.dot(dir)
 	var side: float = absf(rel.dot(Vector2(dir.y, -dir.x)))
 	var vt: MovementTuning = world.tuning
 	if ahead <= 0.0 or side > _t.bite_width * 0.5 + vt.visual_size.x * 0.5 + BITE_SIDE_SLACK:
 		return false
 	var closing: float = maxf(_speed - p.speed * dir.y, 0.0)
-	return ahead <= _t.bite_reach(CentipedeMaze.HEAD_HALF_LENGTH) + vt.visual_size.z * 0.5 + closing * _t.bite_telegraph
+	if ahead > _t.bite_reach(CentipedeMaze.HEAD_HALF_LENGTH) + vt.visual_size.z * 0.5 + closing * _t.bite_telegraph:
+		return false
+	return _maze == null or _clear_line(_head, runner)
+
+
+## True if no debris stands on the line from `a` to `b` (track terms; a thin probe, so a runner stopped at a piece's face
+## counts as in sight).
+func _clear_line(a: Vector2, b: Vector2) -> bool:
+	var steps: int = maxi(int(ceil(a.distance_to(b) / BITE_SIGHT_STEP)), 1)
+	for i: int in range(1, steps + 1):
+		var q: Vector2 = a.lerp(b, float(i) / steps)
+		if not _maze.clear_at(q.x, q.y, BITE_SIGHT_HALF, BITE_SIGHT_HALF):
+			return false
+	return true
 
 
 ## Its jaws snap shut (a contact, the bite's time over, a wound or a stop): its bite goes dead, and its jaws rest.
@@ -468,6 +510,11 @@ func _close_jaws() -> void:
 		return
 	jaw = Jaw.REST
 	_jaw_time = 0.0
+
+
+## Never a big attack: the Terminal has no other enemy to take turns with. DESIGN-TBD (docs/questions/o3.md 10).
+func is_major_attack_active() -> bool:
+	return false
 
 
 ## Its bite touched the runner (Hazard.contacted from the Player: armor or the shield took it, or it killed).
@@ -619,8 +666,6 @@ func _place(delta: float) -> void:
 	var face: Basis = Basis.looking_at(Vector3(sin(_heading), 0.0, -cos(_heading)), Vector3.UP)
 	var dir := Vector2(sin(_heading), cos(_heading))
 	_head_box.global_transform = Transform3D(face, _world_point(_head, HEAD_HIT.y * 0.5 + HEAD_BOX_LIFT))
-	var bite_mid: float = CentipedeMaze.HEAD_HALF_LENGTH + (_t.lunge_reach + _t.bite_length) * 0.5
-	_bite_box.global_transform = Transform3D(face, _world_point(_head + dir * bite_mid, _t.bite_height * 0.5))
 	for i: int in BODY_BOXES:
 		var arc: float = 0.9 + i * (BODY_LENGTH - 1.2) / maxf(BODY_BOXES - 1, 1)
 		_body_boxes[i].global_transform = Transform3D(_facing_at(arc), _world_point(_trail_point(arc),
@@ -631,16 +676,37 @@ func _place(delta: float) -> void:
 		segs.append(Transform3D(_facing_at(arc), _world_point(_trail_point(arc), 0.0)))
 	var rear: float = 0.0
 	var open: float = 0.0
-	match jaw:
-		Jaw.OPENING:
-			rear = clampf(_jaw_time / maxf(_t.bite_telegraph, 0.01), 0.0, 1.0)
-			open = rear
-		Jaw.STRIKE:
-			var k: float = clampf(_jaw_time / maxf(_t.bite_window, 0.01), 0.0, 1.0)
-			rear = 1.0 - k
-			open = 1.0 - k
-	if state == State.WAKE:
-		rear = maxf(rear, clampf(_state_time / maxf(_stun_for, 0.01), 0.0, 1.0) * 0.6)
-	var lunge: float = _t.lunge_reach * (sin(PI * clampf(_jaw_time / maxf(_t.bite_window, 0.01), 0.0, 1.0)) if jaw == Jaw.STRIKE else 0.0)
+	var lunge: float = 0.0
+	if state == State.CHASE:
+		match jaw:
+			Jaw.OPENING:
+				rear = clampf(_jaw_time / maxf(_t.bite_telegraph, 0.01), 0.0, 1.0)
+				open = rear
+			Jaw.STRIKE:
+				# Still reared, its head darts forward and back as its jaws snap shut.
+				var k: float = clampf(_jaw_time / maxf(_t.bite_window, 0.01), 0.0, 1.0)
+				rear = 1.0
+				open = 1.0 - k
+				lunge = _t.lunge_reach * sin(PI * k)
+			Jaw.REST:
+				# Then its head sinks back down.
+				rear = 1.0 - clampf(_jaw_time / maxf(_t.bite_rest * REST_SINK, 0.01), 0.0, 1.0)
+	elif state == State.WAKE:
+		rear = clampf(_state_time / maxf(_stun_for, 0.01), 0.0, 1.0) * 0.6
 	_model.pose(Transform3D(face, _world_point(_head + dir * lunge, 0.0)), segs, _gait, _speed / maxf(_chase_v, 0.01),
 		rear, open, delta)
+	_place_bite(face, dir)
+
+
+## Its bite's hitbox for this frame (live only while it strikes; see the header, 4): from its head's front to BITE_INSET
+## short of its jaws' tips as the model draws them now (CentipedeModel.jaws_reach, the lunge in it), never further than
+## bite_reach, nor shorter than MIN_BITE; bite_height tall, under its reared head.
+func _place_bite(face: Basis, dir: Vector2) -> void:
+	var front: float = CentipedeMaze.HEAD_HALF_LENGTH
+	var tips: float = _model.jaws_reach(_world_point(_head, 0.0), Vector3(dir.x, 0.0, -dir.y))
+	var length: float = clampf(tips - BITE_INSET, front + MIN_BITE, _t.bite_reach(front)) - front
+	var size := Vector3(_t.bite_width, _t.bite_height, length)
+	if not _bite_box.size.is_equal_approx(size):
+		_bite_box.size = size
+		((_bite_box.get_child(0) as CollisionShape3D).shape as BoxShape3D).size = size
+	_bite_box.global_transform = Transform3D(face, _world_point(_head + dir * (front + length * 0.5), _t.bite_height * 0.5))

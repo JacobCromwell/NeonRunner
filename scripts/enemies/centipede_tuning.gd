@@ -3,10 +3,11 @@ extends EnemyTuning
 ## Numbers for the Cybernetic Centipede (task O3; GDD §9.15), edited in data/enemies/centipede.tres and shown in the F6
 ## panel. The enemy (centipede.gd), its generator rules (centipede_rules.gd) and the escape check that proves every
 ## placement fair (CentipedeEscape) read the same numbers, so a centipede is placed with the speeds, reach and timings
-## it plays with. Distances along the track are given at MovementTuning.REFERENCE_SPEED and stretched by the level's
-## pace (the helpers take it), and speeds follow the level's run speed, so every warning keeps its seconds in a faster
-## zone (GDD §3, "Pace": enemies speed up to match, never with shorter warnings). Every value is DESIGN-TBD
-## (docs/questions/o3.md): the GDD gives the shape of the encounter, not its numbers.
+## it plays with. Its wake and give-up distances are given at MovementTuning.REFERENCE_SPEED and stretched by the
+## level's pace (wake_distance_at, give_up_distance_at); every other length (its bite's, leave_margin, retire_behind,
+## min_spacing) stays as given, whatever the pace; and its speeds follow the level's run speed, so every warning keeps
+## its seconds in a faster zone (GDD §3, "Pace": enemies speed up to match, never with shorter warnings). Every value is
+## DESIGN-TBD (docs/questions/o3.md): the GDD gives the shape of the encounter, not its numbers.
 
 @export_group("Chase")
 ## GDD §9.15: "the runner is slightly faster". Its top speed along the maze's open paths, as a share of the level's run
@@ -39,8 +40,9 @@ extends EnemyTuning
 @export_range(0.1, 1.0, 0.05, "suffix:s") var bite_window: float = 0.3
 ## Seconds its jaws rest closed after a bite before it can rear for the next.
 @export_range(0.1, 2.0, 0.05, "suffix:s") var bite_rest: float = 0.55
-## The bite's reach in front of its head (metres), the hitbox's length with the lunge: within the mandibles drawn and
-## their lunge (CentipedeModel.jaw_reach; GDD §3, hitboxes no bigger than what's drawn).
+## The bite's reach in front of its head (metres), with the lunge, at most: its hitbox reaches to just short of its
+## jaws' tips as they're drawn each frame (CentipedeModel.jaws_reach), never further than this (bite_reach; GDD §3,
+## hitboxes no bigger than what's drawn), and the escape proof takes this whole reach.
 @export_range(0.3, 2.0, 0.05, "suffix:m") var bite_length: float = 0.6
 ## The bite's width (metres): well under a lane (2.4 m), so a runner a lane over is never bitten.
 @export_range(0.3, 1.6, 0.05, "suffix:m") var bite_width: float = 0.8

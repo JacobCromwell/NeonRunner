@@ -19,10 +19,12 @@ extends TestSuite
 ## - A level without the feature has none.
 ## - The bot on real physics (CentipedeBot): a hand-made block whose way out wakes its centipede, and every block with
 ##   centipedes of each Terminal level (its own seed) at 3, 5 and 6 lanes, run by the way the proof found past its live
-##   centipedes, the dash at its slowest recharge (ready when the proof assumes): out alive and never bitten, every move
-##   made, never refused a switch; the live centipedes keep what the proof rests on (none moves before its wake and
-##   wake_time, nor faster than its chase speed, nor into debris, nor out of its block), and the runner stays out of
-##   every awake one's bound by a field of the bot's own. (The levels' ways mostly slip past their centipedes asleep.)
+##   centipedes, the runner coming in from 25 m before the run-in, the dash at its slowest recharge and just used as it
+##   reaches the run-in (the proof's assumption): out alive and never bitten, every move made, never refused a switch;
+##   the live centipedes keep what the proof rests on (none wakes before the runner is in the block, none moves before
+##   its wake and wake_time, nor faster than its chase speed, nor into debris, nor out of its block), and the runner stays
+##   out of every awake one's bound by a field of the bot's own. (The levels' ways mostly slip past their centipedes
+##   asleep; test_centipede_fuzz runs the other seeds' blocks, and ways that wake them.)
 ## - The first-encounter hint (data/hints/hints.json, trigger enemy:centipede): it says it chases and bites, that the dash
 ##   goes through it and two kill it, and is picked for Rubble Line, not for a level without one.
 
@@ -274,8 +276,8 @@ func _test_bot() -> void:
 		"the hand-made block's way out wakes its centipede (%s, wakes %s)" % [made_way["reason"], made_way.get("wakes", [])])
 	if bool(made_way["ok"]):
 		var r: Dictionary = await CentipedeBot.new(sim, tuning).run(made, 0, made_way)
-		check(r["alive"] and r["reached"] and int(r["bites"]) == 0 and int(r["woke"]) == 1 and int(r["early"]) == 0
-			and float(r["fast"]) <= 0.001 and int(r["in_debris"]) == 0 and float(r["margin"]) > 0.0,
+		check(r["alive"] and r["reached"] and int(r["bites"]) == 0 and int(r["woke"]) == 1 and int(r["before_run_in"]) == 0
+			and int(r["early"]) == 0 and float(r["fast"]) <= 0.001 and int(r["in_debris"]) == 0 and float(r["margin"]) > 0.0,
 			"the bot runs it past the woken centipede on physics, unbitten, out of its bound (%.2f m to spare) %s" % [r["margin"], r])
 	var lines: PackedStringArray = []
 	for id: String in LEVELS:
@@ -306,9 +308,10 @@ func _test_bot() -> void:
 				check(r["alive"] and r["reached"] and int(r["bites"]) == 0 and int(r["moves_left"]) == 0 and int(r["blocked"]) == 0,
 					"the bot runs the way out alive and unbitten, every move made, never refused (%s, %d bites, %d moves left, %d refused) %s"
 					% [r["cause"], r["bites"], r["moves_left"], r["blocked"], tag])
-				check(int(r["early"]) == 0 and float(r["fast"]) <= 0.001 and int(r["in_debris"]) == 0 and int(r["outside"]) == 0,
-					"the live centipedes keep what the proof rests on (moved early %d, over their speed %.4f m, in debris %d, out of their block %d) %s"
-					% [r["early"], r["fast"], r["in_debris"], r["outside"], tag])
+				check(int(r["before_run_in"]) == 0 and int(r["early"]) == 0 and float(r["fast"]) <= 0.001
+					and int(r["in_debris"]) == 0 and int(r["outside"]) == 0,
+					"the live centipedes keep what the proof rests on (woke before the run-in %d, moved early %d, over their speed %.4f m, in debris %d, out of their block %d) %s"
+					% [r["before_run_in"], r["early"], r["fast"], r["in_debris"], r["outside"], tag])
 				check(float(r["margin"]) > 0.0, "the runner stays out of every awake one's bound (%.2f m to spare) %s"
 					% [r["margin"], tag])
 			lines.append("%s at %d lanes: %d blocks run, %d woke, %.1f m to spare at the least" % [id, lanes, runs, woke, least])

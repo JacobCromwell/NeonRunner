@@ -11,6 +11,7 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   centipede_wound  a dash's first wound: a glass tube cracking, a burst of steam and a crackle of sparks
 ##   centipede_death  the second: its plates and legs clattering apart, glass shattering, a deep thud and a last falling
 ##                    hiss from its broken valves
+## DESIGN-TBD (docs/questions/o3.md 12): the sounds.
 
 ## The bite's warning's length (seconds): its telegraph's (CentipedeTuning.bite_telegraph, 0.45 s) and a tail.
 const BITE_LENGTH: float = 0.55

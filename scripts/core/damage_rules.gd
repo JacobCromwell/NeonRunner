@@ -79,13 +79,15 @@ static func resolve(hazard: Hazard, defense: Defense, stomping: bool = false) ->
 
 	if defense.dashing and hazard.dash_passes:
 		if enemy != null and enemy.dash_kills:
-			# Task O3: one that takes more dashes than this one is only wounded by it.
+			# Task O3: one that takes more dashes than this one is only wounded by it. A dash meets it through any of its
+			# hitboxes, its attack's too. DESIGN-TBD (docs/questions/o3.md 9): only through its head or body?
 			if enemy.dash_wounds + 1 < enemy.dash_hits:
 				return Outcome.WOUND_ENEMY
 			return Outcome.DEFEAT_ENEMY
 		return Outcome.IGNORE
 
-	# Task O3: a harmless part (the Cybernetic Centipede's body) does nothing but what the dash does.
+	# Task O3: a harmless part (the Cybernetic Centipede's body) does nothing but what the dash does. DESIGN-TBD
+	# (docs/questions/o3.md 4): should running into its body hurt?
 	if hazard.harmless:
 		return Outcome.IGNORE
 

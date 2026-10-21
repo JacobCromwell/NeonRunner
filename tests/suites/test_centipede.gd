@@ -9,13 +9,17 @@ extends TestSuite
 ## - its look: the model's draw calls and triangles within budget, only its glass, lenses and open jaws glowing, its
 ##   bite's hitbox within the head and jaws drawn, its head's and body's smaller than drawn; its warm-up look shows every
 ##   part, and the director readies it with the level;
+## - its bite's hitbox through whole strikes (a runner in god mode, stopped at debris, so no contact cuts one short):
+##   every frame it's live, it stops short of its mandibles as they're drawn that frame (their meshes, the lunge in
+##   them), its top stays under its head drawn, and it follows the lunge out and back;
 ## - on real physics, in hand-made maze blocks (MazeKit) at 3, 5 and 6 lanes: it waits, still, until the runner on the
-##   floor is in its own section or one joined to it within its wake distance, then warns (the hiss and the clatter,
-##   centipede_wake), rears and keeps still for its wake time; it chases along open floor only (its head never in debris,
-##   every step within its chase speed), and catches a runner stopped at debris: its head rears and its jaws open (the
-##   telegraph, its sound) for bite_telegraph before every bite, and each contact is one hit: the armor takes it, with
-##   the invulnerability window after; with neither armor nor shield it kills; a claw runner (5 lanes) is bitten like
-##   anyone and never kills it; it's never a big attack;
+##   floor is in its own section or one joined to it within its wake distance (never before the runner is in its block:
+##   one near the run-in wakes as they reach the run-in's start, however far its wake distance reaches), then warns (the
+##   hiss and the clatter, centipede_wake), rears and keeps still for its wake time; it chases along open floor only (its
+##   head never in debris, every step within its chase speed), and catches a runner stopped at debris: its head rears and
+##   its jaws open (the telegraph, its sound) for bite_telegraph before every bite, and each contact is one hit: the armor
+##   takes it, with the invulnerability window after; with neither armor nor shield it kills; a claw runner (5 lanes) is
+##   bitten like anyone and never kills it; it's never a big attack;
 ## - met head-on in a corridor, the runner dashes through it unharmed and wounds it once (however many of its hitboxes
 ##   the dash meets): its lenses flared as it woke, and its cracked tube leaks and it sparks (neither the flare nor the
 ##   sparks with Reduced flashing: 6 lanes); it recoils with its jaws shut, turns and chases from behind, gives up once
@@ -51,7 +55,9 @@ func run() -> void:
 		return
 	_test_data()
 	await _test_parts()
+	await _test_strike_drawn()
 	for lanes: int in LANES:
+		await _test_wake_at_run_in(lanes)
 		await _test_wake_and_bite(lanes)
 		await _test_head_on(lanes)
 		await _test_trapped(lanes)
@@ -227,7 +233,104 @@ func _test_parts() -> void:
 	await sim.free_world(world)
 
 
+# --- Its bite, as drawn ------------------------------------------------------------------------------
+
+## Its bite's hitbox through whole strikes (see the header): the runner, in god mode, stops at a closed wall in the middle
+## lane; the centipede, waiting in an edge lane, comes and bites them again and again.
+func _test_strike_drawn() -> void:
+	var w: Dictionary = _world(5, [[2], [], [2]], [[], []], 0, 16.0, 4, 2)
+	var world: RunWorld = w["world"]
+	world.player.god_mode = true
+	var log := {"c": null, "frames": 0, "run": 0, "longest": 0, "over": -INF, "top_over": -INF, "near": INF, "far": -INF}
+	await _run(world, 8.0, func(_f: int) -> bool:
+		var c: Centipede = _follow(world, log)
+		if c == null:
+			return bool(log.get("found", false))
+		if not c.bite_live():
+			log["run"] = 0
+			return false
+		var origin := Vector3(c.head().x, 0.0, TrackGeometry.world_z(c.head().y))
+		var forward := Vector3(sin(c.heading()), 0.0, -cos(c.heading()))
+		var box: Vector2 = _box_extent(c.bite_box(), origin, forward)
+		log["frames"] = int(log["frames"]) + 1
+		log["run"] = int(log["run"]) + 1
+		log["longest"] = maxi(int(log["longest"]), int(log["run"]))
+		log["over"] = maxf(float(log["over"]), box.x - _drawn_jaws(c, origin, forward))
+		log["top_over"] = maxf(float(log["top_over"]), box.y - c.model().head_top())
+		log["near"] = minf(float(log["near"]), box.x)
+		log["far"] = maxf(float(log["far"]), box.x)
+		return false)
+	var whole: int = int(floor(t.bite_window * Engine.physics_ticks_per_second)) - 1
+	check(int(log["longest"]) >= whole, "it bites a runner in god mode through whole strikes (%d live frames, the longest strike %d, a whole one %d)"
+		% [log["frames"], log["longest"], whole])
+	check(float(log["over"]) < 0.0,
+		"its bite's hitbox stays inside its jaws as drawn that frame, through the whole strike (%.3f m past their farthest at the most)"
+		% log["over"])
+	check(float(log["top_over"]) <= 0.001, "its top stays under its head as drawn (%.3f m over at the most)" % log["top_over"])
+	var reach: float = t.bite_reach(CentipedeMaze.HEAD_HALF_LENGTH)
+	check(float(log["far"]) - float(log["near"]) >= t.lunge_reach * 0.5 and float(log["far"]) <= reach + 0.001,
+		"it follows the lunge out and back (it reaches from %.2f m to %.2f m in front of its head's middle; bite_reach %.2f m)"
+		% [log["near"], log["far"], reach])
+	print("  its bite through whole strikes: %d live frames, reaching %.2f to %.2f m, %.3f m inside its jaws drawn and %.3f m under its head at the least"
+		% [log["frames"], log["near"], log["far"], -float(log["over"]), -float(log["top_over"])])
+	await sim.free_world(world)
+
+
+## How far in front of `origin` (world, on the floor under `c`'s head's middle) its mandibles are drawn now, along
+## `forward`: the farthest of their meshes' points.
+func _drawn_jaws(c: Centipede, origin: Vector3, forward: Vector3) -> float:
+	var best: float = -INF
+	for node: Node in c.model().find_children("mandible", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		for s: int in mi.mesh.get_surface_count():
+			var verts: PackedVector3Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+			for v: Vector3 in verts:
+				best = maxf(best, (mi.global_transform * v - origin).dot(forward))
+	return best
+
+
+## Hitbox `box`'s corners (world): the farthest of them along `forward` from `origin` (x), and the highest (y).
+func _box_extent(box: Hazard, origin: Vector3, forward: Vector3) -> Vector2:
+	var shape := box.get_child(0) as CollisionShape3D
+	var half: Vector3 = (shape.shape as BoxShape3D).size * 0.5
+	var out := Vector2(-INF, -INF)
+	for i: int in 8:
+		var corner := Vector3(half.x * (1.0 if (i & 1) != 0 else -1.0), half.y * (1.0 if (i & 2) != 0 else -1.0),
+			half.z * (1.0 if (i & 4) != 0 else -1.0))
+		var q: Vector3 = shape.global_transform * corner
+		out.x = maxf(out.x, (q - origin).dot(forward))
+		out.y = maxf(out.y, q.y)
+	return out
+
+
 # --- Waking, the chase and the bite -----------------------------------------------------------------
+
+## Not before the block (see the header): a short run-in, then an open room through an opening in the middle lane, the
+## centipede waiting just inside it, near enough that its wake distance reaches back well before the run-in's start; the
+## runner comes from 40 m before the run-in.
+func _test_wake_at_run_in(lanes: int) -> void:
+	var mid: int = lanes / 2
+	var tag: String = "(%d lanes)" % lanes
+	var w: Dictionary = _world(lanes, [[mid], [mid]], [[]], 0, 3.0, mid, mid, {"room": 40.0, "run_in": 10.0})
+	var world: RunWorld = w["world"]
+	var entry: float = float((w["block"] as Dictionary)["entry"])
+	world.player.distance = entry - 40.0
+	var wake_d: float = t.wake_distance_at(world.tuning.pace())
+	check(wake_d > float(w["at"]) - entry + 8.0, "(its wake distance, %.1f m, reaches back past the run-in's start, %.1f m from it) %s"
+		% [wake_d, float(w["at"]) - entry, tag])
+	var log := {"c": null, "woke_at": INF}
+	await _run(world, 4.0, func(_f: int) -> bool:
+		var c: Centipede = _follow(world, log)
+		if c == null:
+			return bool(log.get("found", false))
+		if c.state != Centipede.State.SLEEP:
+			log["woke_at"] = float((c.history[0] as Array)[2]) - entry
+			return true
+		return false)
+	check(float(log["woke_at"]) >= 0.0 and float(log["woke_at"]) <= 1.0,
+		"it wakes only once the runner is in its block, at the run-in's start (%.2f m past it) %s" % [log["woke_at"], tag])
+	await sim.free_world(world)
+
 
 ## Waking, the chase and the bite (see the header): one open room the runner enters through an opening in the middle
 ## lane, a wall closed in every lane at its end, where the runner stops; the centipede waits in an edge lane halfway along
