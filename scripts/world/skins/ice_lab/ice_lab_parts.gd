@@ -301,7 +301,7 @@ func crystals(l: MeshLayer, at: Vector3, up: Vector3, count: int, max_length: fl
 ## A brain in a jar's liquid, at `c`, hanging in it: a squashed pink-grey blob (the lobes and folds are the shader's) with a cable rising
 ## from it to the lid.
 func brain(l: MeshLayer, c: Vector3, scale: float, seed: int) -> void:
-	ellipsoid(l, c, Vector3(0.2, 0.15, 0.2) * scale, 6, 3, skin.brain_color, MeshKit.PAT_IL_BRAIN, 0.0)
+	ellipsoid(l, c, Vector3(0.2, 0.15, 0.2) * scale, 8, 4, skin.brain_color, MeshKit.PAT_IL_BRAIN, 0.0)
 	var from: Vector3 = c + Vector3(0.0, 0.12 * scale, 0.0)
 	var to := Vector3(c.x, c.y + 1.4, c.z + 0.04 * (MeshKit.hash01(seed, 1, 31) - 0.5))
 	var cable: Color = skin.steel_color.darkened(0.2)
@@ -314,13 +314,18 @@ func brain(l: MeshLayer, c: Vector3, scale: float, seed: int) -> void:
 ## hazard colours), so it is never mistaken for an attack.
 func octodog(l: MeshLayer, c: Vector3, scale: float, seed: int) -> void:
 	var base_green: Color = OctodogModel.TENTACLE_GREEN_BASE.darkened(0.25)
-	var tip_green: Color = OctodogModel.TENTACLE_GREEN_TIP.darkened(0.55)
-	var metal := Color(0.3, 0.34, 0.4)
+	var tip_green: Color = OctodogModel.TENTACLE_GREEN_TIP.darkened(0.4)
+	var metal := Color(0.34, 0.38, 0.45)
 	ellipsoid(l, c, Vector3(0.3, 0.2, 0.34) * scale, 6, 3, base_green)
-	# The folded robot chassis and legs under the mass.
-	l.box(c + Vector3(0.0, -0.22 * scale, 0.0), Vector3(0.42, 0.07, 0.56) * scale, metal, 0.0, 0, FRONT_FACES)
-	for sz: float in [-1.0, 1.0]:
-		l.box(c + Vector3(0.0, -0.32 * scale, sz * 0.22 * scale), Vector3(0.5, 0.14, 0.07) * scale, metal.darkened(0.15), 0.0, 0, FRONT_FACES)
+	# The folded robot chassis under the mass and its four legs tucked up beside it (hip, knee out, foot back in: a dog asleep).
+	l.box(c + Vector3(0.0, -0.2 * scale, 0.0), Vector3(0.34, 0.06, 0.5) * scale, metal.darkened(0.2), 0.0, 0, FRONT_FACES)
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			var hip: Vector3 = c + Vector3(sx * 0.15, -0.2, sz * 0.2) * scale
+			var knee: Vector3 = hip + Vector3(sx * 0.2, 0.02, sz * 0.12) * scale
+			var foot: Vector3 = knee + Vector3(-sx * 0.04, -0.2, sz * 0.08) * scale
+			tube(l, PackedVector3Array([hip, knee, foot]), PackedFloat32Array([0.04 * scale, 0.035 * scale, 0.03 * scale]), 3,
+				PackedColorArray([metal, metal, metal.lightened(0.15)]))
 	# Tentacles spiralling round the mass, thinning to a tip curled inward.
 	var count: int = 5
 	for i: int in count:

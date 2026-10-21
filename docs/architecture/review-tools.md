@@ -102,7 +102,10 @@ breaks with a shield still held: nothing; the shield breaks: the red edges pulse
 they fade; `--hold` stops with the edge steady, for a `--shot` at a phone's window size); `--phone --flavor=web_demo` with the engine's `--resolution 844x340` shows a screen as a
 phone's browser does, the menus magnified, and `--shot=<png>` saves it), the Terminal's skin (`terminal_review`: a stretch laid out as O1's levels are (no wall running), arches a space
 long with the open space between and stumps, holes, one ceiling of each kind, debris, fences, signs, in 19 shots; `--shot=N`,
-`--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`, `--lanes`), a zone skin
+`--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`, `--lanes`), the Ice Lab's skin (`ice_lab_review`: the same options, in any of
+its leans with `--skin=ice_lab_frost|ice_lab|ice_lab_lab`; a stretch with close-ups of each wall bay kind the skin's hash gives, of the
+jars and the Octodog's, both kinds of ceiling, wall gaps, the hall from above, a floor cut, fences, signs and a row of every doodad look of
+each size class, 32 shots), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
