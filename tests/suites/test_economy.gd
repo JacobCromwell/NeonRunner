@@ -1,7 +1,8 @@
 extends TestSuite
 ## Wallet, items, records, saving, the shop catalog, loadouts and the App's buy flow. Also the
 ## balancing passes (task R7, after the owner's playtest: G1's pace, G3's free armor, G4's weaker laser
-## tier 1; task I7, the rebalance for all eight zones; the Terminal, task O1, the ninth): the catalog's prices laid against what
+## tier 1; task I7, the rebalance for all eight zones; the Terminal, task O1, the ninth; the Ice Lab, task Q1, the tenth):
+## the catalog's prices laid against what
 ## `tools/measure/economy.gd` reads from the campaign (the reasoning is in items 846-850 in docs/OPEN_QUESTIONS*.md and
 ## docs/architecture/economy-platforms.md).
 
@@ -13,7 +14,8 @@ const EconomyModel = preload("res://tools/measure/economy_model.gd")
 ## price and every tier before it: tiers are bought in order). "First fits at N" means affordable after finishing
 ## N, so usable from N + 1. Campaign levels, with the volleyball match counted: City 1-3 are levels 1-3, Gangland
 ## 1-3 4-6, Marketplace 1-2 7-8, Casino 1-2 9-10, Corporate 1-2 11-12, Beach 1-3 13-15, Dead Zone 1-2 16-17,
-## the Terminal 1-2 18-19 (task O1), Golden 1-3 20-22. Where each is placed (GDD §5's schedule; the reasoning is in
+## the Terminal 1-2 18-19 (task O1), the Ice Lab 1-3 20-22 (task Q1), Golden 1-3 23-25. Where each is placed (GDD §5's
+## schedule; the reasoning is in
 ## items 846-850 in docs/OPEN_QUESTIONS*.md):
 ##   armor I the owner's "died a lot" note (GDD §4, the October 3 early-economy revision: it fits City 1); II at
 ##   Gangland 1, III at Marketplace 2 (usable from the Casino's mixed crowd), IV at Beach 3 (usable from the
