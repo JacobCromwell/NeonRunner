@@ -13,7 +13,8 @@ extends Node3D
 ## - its head: a welder's mask of dark steel plates with a visor slot, two big round lenses glowing green in brass rims, a
 ##   brass dome behind with cables, feelers, and two hooked mandibles that swing open; a red glow inside its jaws while
 ##   they stand open (its bite's warning, with the head rearing; the hazard red of every zone's attack warnings);
-## - wounded (a dash's first): one canister cracked, its glow out, leaking green, and sparks (none with Reduced flashing).
+## - wounded (a dash's first): one canister cracked, its glow out, leaking green, and sparks (none with Reduced flashing);
+## - its lenses flare as it rears (waking, each bite), but not with Reduced flashing.
 ## The glass, the lenses and the maw are the only parts that glow, in hazard colours (green as drawn, the colour rule's
 ## hazard green; red in its open jaws); the rest is matte metal. About ten draw calls and 5,000 triangles. Built once per
 ## look (static caches) and shared. The parts are posed in world space by Centipede (pose()), the model a child of the
@@ -232,7 +233,10 @@ func pose(head_xform: Transform3D, segment_xforms: Array[Transform3D], gait: flo
 	_maw.visible = open > 0.05
 	if _maw.visible:
 		_maw.scale = Vector3.ONE * clampf(open, 0.2, 1.0)
-	_lenses.material_override = _lens_flare if rear > 0.3 else (_lens_awake if awake else _lens_rest)
+	# Its lenses flare as it rears (its warnings: waking, each bite); with Reduced flashing they stay at their awake
+	# glow, so nothing blinks bright with every bite (the rearing, the jaws and the red maw still warn).
+	var flare: bool = rear > 0.3 and not Settings.flashing_reduced
+	_lenses.material_override = _lens_flare if flare else (_lens_awake if awake else _lens_rest)
 	var glass_i: int = 0
 	var phase: float = gait * STEPS_PER_METRE * TAU
 	var step_amount: float = clampf(moving, 0.0, 1.0) if awake else 0.0
@@ -315,6 +319,11 @@ func set_wounded(on: bool, reduced_flashing: bool = false) -> void:
 ## True while its open jaws' red glow shows.
 func maw_visible() -> bool:
 	return _maw.visible
+
+
+## True while its lenses flare (rearing; never with Reduced flashing).
+func lenses_flaring() -> bool:
+	return _lenses.material_override == _lens_flare
 
 
 ## True while its sparks fly (or would, out of the tree).

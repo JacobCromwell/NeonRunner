@@ -17,8 +17,9 @@ extends TestSuite
 ##   the invulnerability window after; with neither armor nor shield it kills; a claw runner (5 lanes) is bitten like
 ##   anyone and never kills it; it's never a big attack;
 ## - met head-on in a corridor, the runner dashes through it unharmed and wounds it once (however many of its hitboxes
-##   the dash meets): its cracked tube leaks and it sparks (not with Reduced flashing: 6 lanes), it recoils with its jaws
-##   shut, turns and chases from behind, gives up once the runner is out past its block's last wall, and leaves play;
+##   the dash meets): its lenses flared as it woke, and its cracked tube leaks and it sparks (neither the flare nor the
+##   sparks with Reduced flashing: 6 lanes); it recoils with its jaws shut, turns and chases from behind, gives up once
+##   the runner is out past its block's last wall, and leaves play;
 ## - a walled-in one sleeps on as the runner passes by its cell and leaves play behind them, and a dash that opens its
 ##   cell releases it (it wakes, with its warning);
 ## - the second dash kills it (the player's kill and its score, its death sound);
@@ -325,7 +326,7 @@ func _test_head_on(lanes: int) -> void:
 	p.movement_event.connect(func(kind: StringName) -> void: events.append(kind))
 	var log := {"c": null, "dashed": -1.0, "wounded": false, "sparking": false, "leaking": false, "wounds": 0,
 		"stunned": false, "shut": true, "turned": false, "after": false, "gave_up": -1.0, "gone": false, "contacts": 0,
-		"sounds": [], "head": 0.0}
+		"sounds": [], "head": 0.0, "flared": false}
 	await _run(world, 9.0, func(_f: int) -> bool:
 		var c: Centipede = _follow(world, log)
 		if c == null or not world.director.active.has(c):
@@ -334,6 +335,7 @@ func _test_head_on(lanes: int) -> void:
 		log["sounds"] = c.sounds_played.duplicate()
 		log["wounds"] = maxi(int(log["wounds"]), c.dash_wounds)
 		log["contacts"] = c.bite_contacts.size()
+		log["flared"] = bool(log["flared"]) or c.model().lenses_flaring()
 		if float(log["dashed"]) < 0.0 and c.state == Centipede.State.CHASE and c.head().y - p.distance <= DASH_GAP:
 			RunSim.act(p, &"dash")
 			log["dashed"] = world.level_time()
@@ -363,6 +365,8 @@ func _test_head_on(lanes: int) -> void:
 		"the runner is unharmed by it %s: %s" % [tag, events])
 	check(bool(log["leaking"]) and bool(log["sparking"]) != reduced,
 		"it shows its wound: its cracked tube leaking, sparks %s %s" % ["off" if reduced else "flying", tag])
+	check(bool(log["flared"]) != reduced, "its lenses flare as it rears to wake %s %s" % ["(not with Reduced flashing)"
+		if reduced else "", tag])
 	check((log["sounds"] as Array).has(&"centipede_wound"), "its wound sounds " + tag)
 	check(bool(log["stunned"]) and bool(log["shut"]), "it recoils, stunned, its jaws shut " + tag)
 	check(bool(log["turned"]) and bool(log["after"]), "then it turns and chases from behind " + tag)

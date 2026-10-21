@@ -38,7 +38,8 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   hole the runner makes is open to the centipede too). The way keeps off the block's anti-grav pads, as MazeRoute's
   do. Over test_centipede_maze's sweep, two blocks in three get a centipede; at 5 and 6 lanes about a quarter wait
   near the way, a quarter in it and half walled in; at 3 lanes most are walled in (there's little room to pass one in
-  the open). A Terminal level takes about 0.1–0.35 s to generate here, most of it the proof.
+  the open). It adds about 0.08 s to a Terminal level's generation (about 0.24 s here, from 0.16 s), and nothing
+  measurable to endless mode's 20-minute copy of Last Stop (its maze's own cost).
 - **Its maze** (`CentipedeMaze`, from the block's record and its debris entries, rebuilt when a dash smashes some:
   `refresh()`). One model so they never disagree: merged pieces per lane and `clear_at()` (the head's footprint, every
   piece as wide as the widest); an `open` grid (1 m bins, no debris touches) for `find_path()` (A* on Dial's buckets,
@@ -67,9 +68,11 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   runs, folded while it waits), green glass canisters on every other segment (glowing, as drawn: a hazard colour) and a
   little steam; a welder-mask head 1.3 times the body's size with two big green lenses, hooked mandibles that swing
   open, and a red glow in its open jaws (the warning red); rearing lifts its head 0.8 m and its first two segments in a
-  ramp. Wounded: a canister cracked, leaking green, sparks (none with Reduced flashing). Its glass, lenses and maw are
-  all that glow; 11 draw calls and about 4,900 triangles; posed in world space each frame (`pose()`), built once per
-  look (static caches), every part warmed with the level (`Centipede.warm_up`).
+  ramp, its lenses flaring (not with Reduced flashing). Wounded: a canister cracked, leaking green, sparks (none with
+  Reduced flashing). Its glass, lenses and maw are all that glow; 11 draw calls and about 4,900 triangles; posed in
+  world space each frame (`pose()`), built once per look (static caches), every part warmed with the level
+  (`Centipede.warm_up`). Spawned `spawn_lead` (130 m) ahead and retired behind the runner, at most two a block: a few
+  are alive at once.
 - **Sounds** (`tools/asset_gen/sfx_bank_centipede.gd`, `tools/godot.sh sfx --only=centipede_wake,...`): `centipede_wake`,
   `centipede_bite`, `centipede_snap`, `centipede_wound`, `centipede_death`; volumes in `data/audio/sfx_library.tres`.
   It notes what it plays (`sounds_played`), and its states (`history`), bites (`bites`, `bite_contacts`) for tests.
@@ -81,4 +84,6 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   levels, the proof on hand-made blocks, its maze model against DebrisMaze's, endless mode, and `CentipedeBot`,
   `tests/helpers/centipede_bot.gd`: the proof's way out of every block with centipedes run on physics past live ones,
   checking their invariants and the runner's distance from each awake one with a field of its own), `test_damage_rules`
-  (wounds and harmless parts).
+  (wounds and harmless parts). `test_doodads`'s rule for a runner who dashes through a doodad (time to see what it hid
+  and move) leaves a waiting centipede out: its wake time and its bite's telegraph are longer than that reaction and
+  switch (checked there).
