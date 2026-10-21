@@ -11,13 +11,15 @@ extends CineKey
 ## by how fast it moves, and is in the air above the floor), `slide`, `dash`, `stomp`, `dead`, and the
 ## poses that play out over `progress` (CinePoses): `lie` (on its back), `get_up` (from lying to standing,
 ## reaching up), `climb` (out over an edge, its hands holding the key's position) and `get_in` (into a low car
-## on its right, through an open door, to sitting); and `walk` (a walk at walking pace, standing at ease when
-## it stops). A cyborg:
+## on its right, through an open door, to sitting), `brace` (feet apart, leaning in with its arms forward, to heave
+## at something in front of it: progress 0 standing at ease to 1 fully braced) and `hands_up` (hands thrown up in
+## frustration, held, then slumping back to standing: progress 0-1); and `walk` (a walk at walking pace, standing at
+## ease when it stops). A cyborg:
 ## `idle`/`walk` (by how fast it moves), `aim`, `run_away`, `cower`, `die` (falls, once), `stomped` (squashed flat, once, as
 ## a stomp kills it in play), `lie` (lying
 ## still, its screen dark) and `crouch` (crouched low over something in front of it).
 @export var pose: StringName = &""
-## How far through a pose that plays out over time (the runner's `lie`, `get_up`, `climb` and `get_in`) it is from
+## How far through a pose that plays out over time (the runner's `lie`, `get_up`, `climb`, `get_in`, `brace` and `hands_up`) it is from
 ## this key on, 0-1 (below 0: keep the last); between keys it moves as the position does.
 @export_range(-1.0, 1.0, 0.01) var progress: float = -1.0
 ## True: it faces the way it moves (holding its heading while it stands). False: it turns to `yaw`.

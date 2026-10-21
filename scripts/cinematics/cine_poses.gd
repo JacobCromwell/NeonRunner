@@ -4,7 +4,9 @@ extends RefCounted
 ## back (`lie`), getting up from there to standing with its arms reaching up (`get_up`), climbing out
 ## over an edge (`climb`, its hands holding on to the key's position until it gets a foot under it), and
 ## getting into a low car from beside its open door (`get_in`: the near leg over the sill, ducking in,
-## sitting, the other leg in). They play out over a progress (CineActorKey.progress, 0-1) instead of
+## sitting, the other leg in), bracing against something in front of it (`brace`: feet apart, knees bent, leaning in with
+## its arms forward, to heave at it or pound on it; the cinematic's script works the arms' reach and the heaving) and throwing its hands up
+## in frustration (`hands_up`: flung up, held, then slumping back to standing at ease). They play out over a progress (CineActorKey.progress, 0-1) instead of
 ## following movement: each is a few key poses (tables in HumanoidPose's conventions, degrees; "root_rot"
 ## tips the whole body) blended smoothly by it, so stepping the clock any way gives the same pose; moved
 ## along meanwhile, its legs step (add_steps; not while getting in, whose legs are its key poses).
@@ -20,7 +22,7 @@ extends RefCounted
 ## (HumanoidRig.apply_pose, put on the ground) in place of PlayerAvatar's own animation.
 ## DESIGN-TBD (docs/questions/f2c.md, f2d.md): the key poses are hand-set placeholders.
 
-const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in"]
+const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"brace", &"hands_up"]
 ## The walk: metres covered by one gait cycle in its full stride (two steps), the share of the cycle a foot is
 ## down (from its heel strike), the shortest stride (a share of the full one, walking slowly), and (degrees) the
 ## knee's bend as it takes the weight and through the swing, the arms' swing, the hips' turn and drop and the
@@ -252,6 +254,43 @@ const SEATED := {
 	THIGH_L: Vector3(84, 0, 5), SHIN_L: Vector3(-28, 0, 0), FOOT_L: Vector3(12, 0, 0),
 }
 
+## Braced against something in front of it: feet apart, knees bent, leaning in, its arms forward (where the hands go
+## is the cinematic's to say), its head up to look at it.
+const BRACED := {
+	CHEST: Vector3(-13, 0, 0), NECK: Vector3(7, 0, 0), HEAD: Vector3(10, 0, 0),
+	UPPER_ARM_R: Vector3(56, 0, 8), FOREARM_R: Vector3(38, 0, 0), HAND_R: Vector3(-6, 0, 0),
+	UPPER_ARM_L: Vector3(56, 0, 8), FOREARM_L: Vector3(38, 0, 0), HAND_L: Vector3(-6, 0, 0),
+	THIGH_R: Vector3(24, 0, 9), SHIN_R: Vector3(-34, 0, 0), FOOT_R: Vector3(12, 0, -4),
+	THIGH_L: Vector3(14, 0, 9), SHIN_L: Vector3(-22, 0, 0), FOOT_L: Vector3(8, 0, -4),
+}
+
+## Hands thrown up: both arms flung up and out, the chest out and the head back.
+const FLUNG := {
+	CHEST: Vector3(8, 0, 0), NECK: Vector3(8, 0, 0), HEAD: Vector3(16, 0, 0),
+	UPPER_ARM_R: Vector3(152, 0, 32), FOREARM_R: Vector3(22, 0, 0), HAND_R: Vector3(-14, 0, 0),
+	UPPER_ARM_L: Vector3(152, 0, 32), FOREARM_L: Vector3(22, 0, 0), HAND_L: Vector3(-14, 0, 0),
+	THIGH_R: Vector3(4, 0, 6), SHIN_R: Vector3(-6, 0, 0), FOOT_R: Vector3(4, 0, -4),
+	THIGH_L: Vector3(4, 0, 6), SHIN_L: Vector3(-6, 0, 0), FOOT_L: Vector3(4, 0, -4),
+}
+
+## Hands still up, but coming down: the elbows bending, the head dropping forward.
+const LOWERING := {
+	CHEST: Vector3(-2, 0, 0), NECK: Vector3(-2, 0, 0), HEAD: Vector3(2, 0, 0),
+	UPPER_ARM_R: Vector3(128, 0, 30), FOREARM_R: Vector3(46, 0, 0), HAND_R: Vector3(-10, 0, 0),
+	UPPER_ARM_L: Vector3(128, 0, 30), FOREARM_L: Vector3(46, 0, 0), HAND_L: Vector3(-10, 0, 0),
+	THIGH_R: Vector3(4, 0, 5), SHIN_R: Vector3(-6, 0, 0), FOOT_R: Vector3(3, 0, -3),
+	THIGH_L: Vector3(4, 0, 5), SHIN_L: Vector3(-6, 0, 0), FOOT_L: Vector3(3, 0, -3),
+}
+
+## Slumped: the arms dropped, the shoulders sagging, the head bowed (a sigh).
+const SLUMPED := {
+	CHEST: Vector3(-12, 0, 0), NECK: Vector3(-8, 0, 0), HEAD: Vector3(-14, 0, 0),
+	UPPER_ARM_R: Vector3(8, 0, 9), FOREARM_R: Vector3(12, 0, 0), HAND_R: Vector3(-4, 0, 0),
+	UPPER_ARM_L: Vector3(8, 0, 9), FOREARM_L: Vector3(12, 0, 0), HAND_L: Vector3(-4, 0, 0),
+	THIGH_R: Vector3(4, 0, 4), SHIN_R: Vector3(-8, 0, 0), FOOT_R: Vector3(3, 0, -3),
+	THIGH_L: Vector3(4, 0, 4), SHIN_L: Vector3(-8, 0, 0), FOOT_L: Vector3(3, 0, -3),
+}
+
 ## Each pose's key poses: [progress, table], in order.
 const LIE_KEYS: Array = [[0.0, LIE]]
 const GET_UP_KEYS: Array = [[0.0, LIE], [0.2, STIR], [0.38, PROPPED], [0.55, SIT], [0.75, KNEEL], [0.9, STAND],
@@ -259,6 +298,8 @@ const GET_UP_KEYS: Array = [[0.0, LIE], [0.2, STIR], [0.38, PROPPED], [0.55, SIT
 const CLIMB_KEYS: Array = [[0.0, HANG], [0.35, PULL], [0.52, MANTLE], [0.66, PRESS], [0.8, KNEE_UP], [0.9, RISE],
 	[1.0, UP]]
 const GET_IN_KEYS: Array = [[0.0, AT_EASE], [0.28, STEP_IN], [0.52, DUCK_IN], [0.78, SIT_DOWN], [1.0, SEATED]]
+const BRACE_KEYS: Array = [[0.0, AT_EASE], [1.0, BRACED]]
+const HANDS_UP_KEYS: Array = [[0.0, AT_EASE], [0.35, FLUNG], [0.6, LOWERING], [0.85, SLUMPED], [1.0, AT_EASE]]
 
 
 ## Stepping legs over a pose that plays out over time, while the actor moves along (`weight` 0-1): the run
@@ -285,9 +326,9 @@ static func is_cine_pose(pose_name: StringName) -> bool:
 
 
 ## How much a pose's legs step while it's moved along (add_steps): not while walking (the walk is its own
-## steps) or getting in (its legs are its key poses).
+## steps), getting in, bracing or throwing its hands up (their legs are key poses).
 static func steps_while_moving(pose_name: StringName) -> float:
-	return 0.0 if pose_name == &"walk" or pose_name == &"get_in" else 1.0
+	return 0.0 if pose_name == &"walk" or pose_name == &"get_in" or pose_name == &"brace" or pose_name == &"hands_up" else 1.0
 
 
 ## The walk's phase advanced by `moved` metres, its stride `stride` of its full one (walk_stride).
@@ -395,6 +436,10 @@ static func runner(p: HumanoidPose, pose_name: StringName, progress: float, time
 			keys = CLIMB_KEYS
 		&"get_in":
 			keys = GET_IN_KEYS
+		&"brace":
+			keys = BRACE_KEYS
+		&"hands_up":
+			keys = HANDS_UP_KEYS
 		&"walk":
 			walk(p, 0.0, 0.0, time)
 			return

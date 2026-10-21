@@ -6,4 +6,5 @@
 script = ExtResource("1_script")
 id = &"terminal_outro"
 title = "Out of the tunnels"
-placeholder_text = "DESIGN-TBD: a short scene leaving the Terminal's tunnels, heading for the Golden Zone (the Terminal has no boss)."
+scene = "res://scenes/cinematics/terminal_outro.tscn"
+placeholder_text = "The runner finds an abandoned metro train, can't get in, and is let in by the screech; the train speeds away down the tracks."
