@@ -47,7 +47,8 @@ DESIGN-TBD in `scripts/cinematics/terminal_outro/` and its numbers in `data/cine
    saloon windows glowing warm; a failing strip's stutter, or one slow glow with Reduced flashing), it sits 1.2 s, starts
    and accelerates at up to 14 m/s² (far faster than a real metro, as the Gangland car's launch is), so that it is well past
    the haze (170 m) and out of sight about 5 s after it starts; the picture holds on the empty tunnel and fades to black.
-   Should its horn or a departure chime sound? (None does: a chime is a warning sound.)
+   Should its horn or a departure chime sound? (None does: a chime is a warning sound.) Its tail lights glow red, as the
+   Gangland car's do: red is a hazard colour in play, but nothing in a cinematic is a hazard; should they be a softer colour?
 
 9. **The staging and timing.** Placeholder: 28.0 s in six shots: low behind the runner as they jog in and ease to a stop
    short of the train's tail (3.6 s); from beside them as they look up at it (1.6 s); the long pan along the train's side,
