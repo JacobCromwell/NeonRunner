@@ -39,8 +39,8 @@ func setup(p_skin: ZoneSkin, p_numbers: TerminalIntroTuning, stage: CineStage, p
 	rotation_degrees = Vector3(0.0, 90.0, 0.0)
 	heap = TerminalIntroHeap.new(n.heap_height, n.inside_slope, n.heap_foot_width * 0.8, n.door_width)
 	crest = n.heap_height
-	var solid := skin.call(&"solid_material") as ShaderMaterial
-	var glow := skin.call(&"glow_material") as ShaderMaterial
+	var solid: ShaderMaterial = skin.call(&"solid_material") as ShaderMaterial if skin.has_method(&"solid_material") else MeshKit.solid()
+	var glow: ShaderMaterial = skin.call(&"glow_material") as ShaderMaterial if skin.has_method(&"glow_material") else MeshKit.glow()
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(solid)
 	_wall(s)

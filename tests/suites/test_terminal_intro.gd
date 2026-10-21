@@ -13,6 +13,7 @@ const LANES: Array[int] = [3, 5, 6]
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 const SCENE: String = "res://scenes/cinematics/terminal_intro.tscn"
 const STEP: float = 1.0 / 30.0
+const POSE_JOINTS: Array[StringName] = [&"head", &"hand_l", &"hand_r", &"foot_l", &"foot_r"]
 const SOUNDS: Array[String] = ["waste_wind", "sign_buzz", "sign_zap", "grime_wipe", "rubble_scramble", "landing_thud", "station_hum"]
 const MAX_SOUND_SECONDS: float = 2.5
 ## The runner stands within this of their places (metres).
@@ -21,7 +22,14 @@ const STAND_SLACK: float = 0.12
 const HAND_SLACK: float = 0.09
 ## Walking, the runner keeps this far off the heap (metres), and their pace is within this range (m/s).
 const HEAP_CLEARANCE: float = 0.35
-const WALK_PACE := Vector2(1.8, 3.3)
+const WALK_PACE := Vector2(1.2, 2.0)
+## A joint of the runner moves at most this far in one step (at 30 fps, over what the actor itself moved), on a frame the camera does
+## not cut in: poses do not blend, so a change of pose on camera would show as a pop of more than half a metre.
+const POSE_JUMP_MAX: float = 0.5
+## The wipe leaves this much of THE PALACE and its gold ring clear by the cut to the close-up (mean over its box, and at its worst
+## point with the film's edge at its most torn).
+const PALACE_CLEAR: float = 0.95
+const PALACE_CLEAR_WORST: float = 0.75
 ## The camera keeps this far over the heap's surface and the ground (metres).
 const CAMERA_CLEARANCE: float = 0.15
 ## The most a lit letter's brightness may change in one step with Reduced flashing (it breathes).
@@ -129,7 +137,7 @@ func _check_intro(lanes: int) -> void:
 		and own_mat.get_shader_parameter(&"dz_ash") == shared.get_shader_parameter(&"dz_ash"),
 		"%s: the letters' materials copy the Dead Zone's, and leave its own parameters intact" % tag)
 	check(seq.playing.problems(sfx).is_empty(), "%s: its timeline has no problems (%s)" % [tag, seq.playing.problems(sfx)])
-	check(seq.duration() >= 25.0 and seq.duration() <= 34.0, "%s: it lasts %.1f s (the owner asked for about 25 to 32)" % [tag, seq.duration()])
+	check(seq.duration() >= 25.0 and seq.duration() <= 32.0 + 0.001, "%s: it lasts %.1f s (the brief suggested about 25 to 32)" % [tag, seq.duration()])
 	var stage: CineStage = seq.stage
 	var station: TerminalIntroStation = seq.station
 	# The station stands back from the street's left wall in an opening of it, and only there.
@@ -181,6 +189,8 @@ func _check_intro(lanes: int) -> void:
 	check(seq.wipe_hand.size() == TerminalIntro.WIPE_SAMPLES + 1 and board.middle.y > 0.6 and board.middle.y < 1.5,
 		"%s: the board hangs at the height the runner's hand reaches (%.2f m)" % [tag, board.middle.y])
 
+	_check_wipe(seq, tag)
+	_check_walk_keys(seq, tag)
 	var runner := seq.actors[&"runner"] as CineActorNode
 	var runner_in := seq.actors[&"runner_in"] as CineActorNode
 	var worst_step: float = 0.0
@@ -194,7 +204,15 @@ func _check_intro(lanes: int) -> void:
 	var walk_max: float = 0.0
 	var walk_min_at: float = 0.0
 	var climb_off: float = 0.0
-	var hand_best: float = INF
+	var hand_worst: float = 0.0
+	var hand_seen: int = 0
+	var trail_off: float = 0.0
+	var jump_worst: float = 0.0
+	var jump_where: String = ""
+	var last_joints: Dictionary = {}
+	var last_roots: Dictionary = {}
+	var last_cam := Vector3.INF
+	var square_yaw: float = 180.0
 	var looks_left: float = 0.0
 	var looks_right: float = 0.0
 	var landed_y: float = INF
@@ -211,6 +229,30 @@ func _check_intro(lanes: int) -> void:
 		if seq.done:
 			break
 		var t: float = seq.time
+		# Their pose never pops: no joint moves more than POSE_JUMP_MAX in a step (over what the actor moved), but on a camera cut.
+		var cam_now: Vector3 = seq.camera.global_position
+		var cut: bool = last_cam != Vector3.INF and cam_now.distance_to(last_cam) > 1.0
+		last_cam = cam_now
+		for id: StringName in [&"runner", &"runner_in"]:
+			var actor_node := seq.actors[id] as CineActorNode
+			if actor_node == null or not actor_node.visible or actor_node.avatar == null:
+				last_joints.erase(id)
+				continue
+			var at_root: Vector3 = actor_node.global_position
+			var now: Array[Vector3] = []
+			for j: StringName in POSE_JOINTS:
+				var joint: Node3D = actor_node.avatar.rig.joint(j)
+				now.append(joint.global_position if joint != null else at_root)
+			if last_joints.has(id) and not cut:
+				var moved: Vector3 = at_root - (last_roots[id] as Vector3)
+				if moved.length() < CineActorNode.MAX_STEP:
+					for k: int in POSE_JOINTS.size():
+						var jump: float = ((now[k] - (last_joints[id] as Array[Vector3])[k]) - moved).length()
+						if jump > jump_worst:
+							jump_worst = jump
+							jump_where = "%s %s at %.2f s (pose %s)" % [id, POSE_JOINTS[k], t, actor_node.pose]
+			last_joints[id] = now
+			last_roots[id] = at_root
 		if not seq.inside:
 			draw_calls = maxi(draw_calls, seq.props_draw_calls())
 			# The camera: in the street (inside its right wall) or on the plaza, in front of the station, never in the rubble.
@@ -225,7 +267,13 @@ func _check_intro(lanes: int) -> void:
 		if t < n.survey_at + 2.0:
 			looks_left = maxf(looks_left, rad_to_deg(runner.look))
 			looks_right = minf(looks_right, rad_to_deg(runner.look))
-		# Walking to the board: round the heap, at a quick pace.
+		# Walking to the board: the cut to them (the shot that follows them) is not in the shot before it: they are out of frame.
+		if not checked.has("walk_cut") and t >= n.walk_at - STEP * 1.01 and t < n.walk_at:
+			checked["walk_cut"] = true
+			var up := Vector3(0.0, 0.65, 0.0)
+			check(not seq.camera.is_position_in_frustum(runner.global_position + up),
+				"%s: the walk's cut to where they have got to is unseen (they are out of the shot before it)" % tag)
+		# Walking to the board: round the heap, at a natural pace.
 		if t > seq.t_walk + 0.5 and t < n.wipe_at - 0.9:
 			var spd: float = runner.speed
 			if t > seq.t_walk + 1.0 and spd < walk_min:
@@ -243,7 +291,13 @@ func _check_intro(lanes: int) -> void:
 			var off: float = absf(hp.z - TerminalIntroSign.FACE_OUT)
 			var inside: bool = absf(hp.x - board.middle.x) < TerminalIntroSign.BOARD.x * 0.5 + 0.1 and absf(hp.y - board.middle.y) < TerminalIntroSign.BOARD.y * 0.5 + 0.1
 			if inside:
-				hand_best = minf(hand_best, off)
+				hand_worst = maxf(hand_worst, off)
+				hand_seen += 1
+				# The trail the grime clears is this hand's own path: where it is on the board now, against the trail at this moment.
+				var on_board := Vector2(hp.x - board.middle.x, hp.y - board.middle.y)
+				var trail_at: Vector2 = _trail_at(board, t)
+				if trail_at.x < INF:
+					trail_off = maxf(trail_off, on_board.distance_to(trail_at))
 		# Climbing: their feet follow the heap's surface.
 		if t > n.climb_from + 0.3 and t < n.crest_at - 0.1:
 			climb_off = maxf(climb_off, absf(p.y - heap.height(p.x, p.z)))
@@ -269,6 +323,9 @@ func _check_intro(lanes: int) -> void:
 			var foot := Vector3(n.heap_foot.x, 0.0, n.heap_foot.y)
 			check(p.distance_to(foot) < STAND_SLACK and rad_to_deg(runner.look_up) > 18.0,
 				"%s: they stand at the heap's foot looking up at the entrance (%.2f m off, looking up %.0f°)" % [tag, p.distance_to(foot), rad_to_deg(runner.look_up)])
+		if not checked.has("square") and t >= n.wipe_at - 0.05:
+			checked["square"] = true
+			square_yaw = absf(rad_to_deg(angle_difference(runner.yaw, deg_to_rad(90.0))))
 		if not checked.has("wipe_start") and t >= n.wipe_at + 0.05:
 			checked["wipe_start"] = true
 			check(p.distance_to(seq.stand) < STAND_SLACK + 0.1,
@@ -310,7 +367,10 @@ func _check_intro(lanes: int) -> void:
 	check(looks_left > 35.0 and looks_right < -20.0, "%s: the runner's head turns right (%.0f°) and then left toward the station (%.0f°) as they survey" % [tag, looks_right, looks_left])
 	check(walk_min > WALK_PACE.x and walk_max < WALK_PACE.y, "%s: they walk quickly and evenly to the board (%.2f m/s at %.2f s to %.2f m/s)" % [tag, walk_min, walk_min_at, walk_max])
 	check(through_heap == "", "%s: their walk goes round the heap, not over it (%s)" % [tag, through_heap])
-	check(hand_best < HAND_SLACK, "%s: while they wipe, their hand is on the board's face (%.3f m off at best)" % [tag, hand_best])
+	check(hand_seen > 20 and hand_worst < HAND_SLACK, "%s: while they wipe, their hand is on the board's face throughout (%.3f m off at worst, over %d steps)" % [tag, hand_worst, hand_seen])
+	check(trail_off < 0.07, "%s: the grime is cleared along the hand's own path (the trail is %.3f m off the hand at worst)" % [tag, trail_off])
+	check(jump_worst < POSE_JUMP_MAX, "%s: their pose never pops (a joint moves %.2f m at most in a step, %s)" % [tag, jump_worst, jump_where])
+	check(square_yaw < 6.0, "%s: they are square to the board when the wipe starts (%.1f° off)" % [tag, square_yaw])
 	check(climb_off < 0.06, "%s: climbing, their feet follow the rubble's surface (%.3f m off at worst)" % [tag, climb_off])
 	check(camera_out == "", "%s: the camera keeps in front of the station, in the street and over the rubble (%s)" % [tag, camera_out])
 	check(low_out == "", "%s: inside, the camera stays in the hall (%s)" % [tag, low_out])
@@ -339,6 +399,108 @@ func _check_intro(lanes: int) -> void:
 	check(setup_msec < SETUP_BUDGET_MSEC and worst_step < STEP_BUDGET_MSEC and draw_calls <= PROP_DRAW_CALLS,
 		"%s: it costs little (set up %.0f ms, a step at worst %.1f ms, %d draw calls)" % [tag, setup_msec, worst_step, draw_calls])
 	await _free(seq)
+
+
+# --- The wipe and the walk ---------------------------------------------------------------------------------------
+
+## The hand's trail at `t` (metres from the board's middle: along, up), between the trail's points; INF outside the strokes.
+func _trail_at(board: TerminalIntroSign, t: float) -> Vector2:
+	var times: PackedFloat32Array = board.path_times
+	if times.size() < 2 or t < times[0] or t > times[times.size() - 1]:
+		return Vector2(INF, INF)
+	for i: int in times.size() - 1:
+		if t >= times[i] and t <= times[i + 1]:
+			return board.path[i].lerp(board.path[i + 1], (t - times[i]) / maxf(times[i + 1] - times[i], 0.0001))
+	return Vector2(INF, INF)
+
+
+## How clear `box` (metres from the board's middle, y up) is with the first `count` trail points wiped: the mean over the box and the
+## worst point, the film's edge torn by `torn` (TerminalIntroSign.clearance, the grime shader's rule).
+func _cleared(box: Rect2, board: TerminalIntroSign, count: int, torn: float) -> Vector2:
+	var total: float = 0.0
+	var worst: float = 1.0
+	var points: int = 0
+	for i: int in 25:
+		for j: int in 5:
+			var p := Vector2(lerpf(box.position.x, box.end.x, float(i) / 24.0), lerpf(box.position.y, box.end.y, float(j) / 4.0))
+			var c: float = TerminalIntroSign.clearance(p, board.path, count, torn)
+			total += c
+			worst = minf(worst, c)
+			points += 1
+	return Vector2(total / float(points), worst)
+
+
+## The wipe against the board's rows, by the grime shader's own rule: nothing is clear before the hand has been over it, the first
+## stop clears before THE PALACE, and by the cut to the close-up THE PALACE, its gold ring and every stop are clear; the grime is
+## opaque until then (nothing, the Palace's glow included, shows through it), drawn over the glow and under the dust, and its
+## picture is the board's the right way up.
+func _check_wipe(seq: TerminalIntro, tag: String) -> void:
+	var board: TerminalIntroSign = seq.board
+	var n: TerminalIntroTuning = seq.n
+	var count_at_cut: int = 0
+	for i: int in board.path_times.size():
+		if board.path_times[i] <= n.sign_at:
+			count_at_cut = i + 1
+	var cap: float = TerminalIntroSign.PALACE_CAP
+	var palace_w: float = float(TerminalIntroText.line(board.palace, cap, TerminalIntroSign.GOLD)["width"])
+	var palace := Rect2(TerminalIntroSign.NAME_X, TerminalIntroSign.PALACE_ROW - cap * 0.5, palace_w, cap)
+	var ring := Rect2(TerminalIntroSign.LINE_X - 0.05, TerminalIntroSign.PALACE_ROW - 0.05, 0.1, 0.1)
+	var top_w: float = float(TerminalIntroText.line(board.stops[0], TerminalIntroSign.TEXT_CAP, TerminalIntroSign.FADED)["width"])
+	var top_row := Rect2(TerminalIntroSign.NAME_X, TerminalIntroSign.FIRST_ROW - TerminalIntroSign.TEXT_CAP * 0.5, top_w, TerminalIntroSign.TEXT_CAP)
+	var torn: float = TerminalIntroSign.RAGGED * 0.5
+	var untouched: Vector2 = _cleared(Rect2(-0.7, -0.55, 1.4, 1.1), board, 0, 0.0)
+	check(untouched.x < 0.001, "%s: before the hand touches it the whole board is under its grime" % tag)
+	# When the top stop is clear (to the point's mean), THE PALACE is not yet.
+	var first_clear: int = -1
+	for count: int in range(1, count_at_cut + 1):
+		if _cleared(top_row, board, count, 0.0).x >= PALACE_CLEAR:
+			first_clear = count
+			break
+	var palace_then: float = _cleared(palace, board, first_clear, 0.0).x if first_clear > 0 else 1.0
+	check(first_clear > 0 and first_clear < count_at_cut * 0.6 and palace_then < 0.5,
+		"%s: the top of the list is wiped first (clear after %d of %d trail points, THE PALACE then %.0f%% clear)" % [tag, first_clear, count_at_cut, palace_then * 100.0])
+	var p_all: Vector2 = _cleared(palace, board, count_at_cut, 0.0)
+	var p_torn: Vector2 = _cleared(palace, board, count_at_cut, torn)
+	check(p_all.x >= PALACE_CLEAR and p_torn.y >= PALACE_CLEAR_WORST,
+		"%s: THE PALACE is wiped clean by the cut to the close-up (%.0f%% clear, %.0f%% at its worst point torn)" % [tag, p_all.x * 100.0, p_torn.y * 100.0])
+	var r_all: Vector2 = _cleared(ring, board, count_at_cut, 0.0)
+	check(r_all.x >= 0.9, "%s: so is its gold ring (%.0f%% clear)" % [tag, r_all.x * 100.0])
+	var stops_ok: bool = true
+	var worst_stop: float = 1.0
+	for k: int in board.stops.size():
+		var w: float = float(TerminalIntroText.line(board.stops[k], TerminalIntroSign.TEXT_CAP, TerminalIntroSign.FADED)["width"])
+		var row := Rect2(TerminalIntroSign.NAME_X, TerminalIntroSign.FIRST_ROW - TerminalIntroSign.ROW_PITCH * float(k) - TerminalIntroSign.TEXT_CAP * 0.5,
+			w, TerminalIntroSign.TEXT_CAP)
+		var c: Vector2 = _cleared(row, board, count_at_cut, 0.0)
+		worst_stop = minf(worst_stop, c.x)
+		stops_ok = stops_ok and c.x >= 0.9
+	check(stops_ok, "%s: and each stop of the list is (the least %.0f%% clear)" % [tag, worst_stop * 100.0])
+	var grime: ShaderMaterial = board.grime_material
+	var code: String = grime.shader.code
+	check(code.contains("0.5 - UV.y") and code.contains("ALPHA = mix(1.0, residue, wiped)"),
+		"%s: the grime's picture is the board's the right way up (a quad's UV.y runs down), and it is opaque until wiped" % tag)
+	var dust_mat: Material = board.dust.mesh.material
+	check(board.gold_halo.render_priority < grime.render_priority and grime.render_priority < dust_mat.render_priority,
+		"%s: the Palace's halo is drawn under the grime and the dust over it (%d, %d, %d)" % [tag, board.gold_halo.render_priority, grime.render_priority, dust_mat.render_priority])
+
+
+## The runner's walk keys: after the last of the survey's looks, and the cut to where they have got to is a real cut (further than
+## the toolkit treats as a move), on the camera's cut.
+func _check_walk_keys(seq: TerminalIntro, tag: String) -> void:
+	var n: TerminalIntroTuning = seq.n
+	var runner := seq.actors[&"runner"] as CineActorNode
+	var last_look: float = n.looks[n.looks.size() - 1].x
+	check(seq.t_walk >= last_look, "%s: they set off after the survey's last look (%.2f s, the look at %.2f s)" % [tag, seq.t_walk, last_look])
+	var keys: Array = runner.actor.keys
+	var cut_jump: float = 0.0
+	var cut_found: bool = false
+	for i: int in range(1, keys.size()):
+		var k := keys[i] as CineActorKey
+		if k.time >= n.walk_at - TerminalIntro.CUT_LEAD - 0.01 and k.time <= n.walk_at:
+			cut_found = k.move == CinePath.Move.CUT
+			cut_jump = Vector2(k.position.x - (keys[i - 1] as CineActorKey).position.x, k.position.z - (keys[i - 1] as CineActorKey).position.z).length()
+	check(cut_found and cut_jump > CineActorNode.MAX_STEP + 0.5,
+		"%s: they are cut to where they have got to as the shot that follows them begins (a %.1f m cut)" % [tag, cut_jump])
 
 
 # --- Reduced flashing ------------------------------------------------------------------------------------------
@@ -375,7 +537,10 @@ func _test_reduced_flashing() -> void:
 			var level: float = float(seq.station.shaft_material.get_shader_parameter(&"state_glow"))
 			light_min = minf(light_min, level)
 			light_max = maxf(light_max, level)
-		results.append({"lowest": lowest, "step": biggest_step, "sparks": sparks, "light": light_max - light_min})
+		var zaps: int = 0
+		for line: String in seq.log_lines:
+			zaps += 1 if line == "sound sign_zap" else 0
+		results.append({"lowest": lowest, "step": biggest_step, "sparks": sparks, "light": light_max - light_min, "zaps": zaps})
 		await _free(seq)
 	Settings.flashing_reduced = was
 	var normal: Dictionary = results[0]
@@ -386,6 +551,8 @@ func _test_reduced_flashing() -> void:
 		"with Reduced flashing they breathe slowly instead (lowest %.2f, steps of at most %.3f) and the station's light holds steady" % [soft_run["lowest"], soft_run["step"]])
 	check(int(soft_run["sparks"]) < int(normal["sparks"]) and int(soft_run["sparks"]) > 0,
 		"and there are fewer sparks (%d at most against %d)" % [soft_run["sparks"], normal["sparks"]])
+	check(int(soft_run["zaps"]) > 0 and int(soft_run["zaps"]) * 2 <= int(normal["zaps"]) + 1,
+		"and a zap only for the bursts that show sparks (%d against %d)" % [soft_run["zaps"], normal["zaps"]])
 
 
 # --- Skipping and the App ----------------------------------------------------------------------------

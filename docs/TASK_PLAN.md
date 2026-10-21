@@ -623,11 +623,11 @@ staging choices are `docs/questions/f2j.md`.
 
 **F2k: the Terminal's intro** (owner, October 21, 2026; GDD §6, Cinematics, "Terminal intro"; reference
 `docs/art/reference/terminal_zone.jpg`). **Done:** `TerminalIntro` (`scripts/cinematics/terminal_intro/`) in the Terminal's intro
-slot, which played the arrival flyover: 32.4 s on two stages. Outside, the Dead Zone's look (the stage def's own skin) with the
+slot, which played the arrival flyover: 32.0 s on two stages. Outside, the Dead Zone's look (the stage def's own skin) with the
 street's left wall open on the abandoned Grand Terminal Station (`TerminalIntroStation`: a head house with a great arched window and
 two wings, "GRAND" fallen off, "TERMINAL" drooping with four letters lit, flickering and sparking, warm light in shafts out of the
 window and the crack, the Dead Zone's props and smoke round it): the runner's face as they survey, the camera sweeping over the
-wasteland to the station, a quick walk round the heap to the route board, the wipe (the hand's own trail clears the grime), the
+wasteland to the station, a walk round the heap to the route board, the wipe (the hand's own trail clears the grime, the list top first and THE PALACE last), the
 close-up of the stops with THE PALACE in gold, a nod and a turn, the entrance blocked by rubble to a crack of light, the climb and
 the squeeze in; then, after a dip to black, the Terminal's own stage: out through the crack, a jump, the tracks running off ahead,
 the zone's title card. Three runner poses on the toolkit (`wipe`, `scramble`, `squeeze`), seven new sounds

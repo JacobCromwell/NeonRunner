@@ -5,7 +5,7 @@ shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled;
 
 uniform vec3 tint : source_color = vec3(1.0, 0.82, 0.5);
-uniform float strength = 2.2;
+uniform float strength = 3.4;
 
 varying float bright;
 
@@ -20,6 +20,7 @@ void vertex() {
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = max(1.0 - length(p), 0.0);
-	float a = r * r * (0.35 + 0.65 * r);
+	// A bright core with a short soft edge (it is a spark, not a mist), so it still reads when it is only a few pixels wide.
+	float a = smoothstep(0.0, 0.45, r) * (0.55 + 0.45 * r);
 	ALBEDO = tint * (a * bright * strength);
 }

@@ -15,20 +15,21 @@ extends Resource
 ## from its front toward the street; the street's left wall's line is `forecourt` out from the front.
 
 @export_group("Timing")
-## DESIGN-TBD (docs/questions/f2k.md, 13): the length and the shots' times; the owner asked for about 25 to 32 s.
-## Longer than GDD §1's 5-15 s, as the other intros are. It ends on black: Terminal 1 opens on its own view.
-@export_range(10.0, 60.0, 0.1, "suffix:s") var duration: float = 32.4
+## DESIGN-TBD (docs/questions/f2k.md, 13): the length and the shots' times; the orchestrator's brief for the task suggested about 25
+## to 32 s (the owner's beats set no length). Longer than GDD §1's 5-15 s, as the other intros are. It ends on black: Terminal 1
+## opens on its own view.
+@export_range(10.0, 60.0, 0.1, "suffix:s") var duration: float = 32.0
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_in: float = 1.0
 @export_range(0.0, 8.0, 0.1, "suffix:s") var music_fade: float = 4.0
-@export_range(10.0, 60.0, 0.05, "suffix:s") var fade_at: float = 31.2
+@export_range(10.0, 60.0, 0.05, "suffix:s") var fade_at: float = 30.8
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_out: float = 1.2
 ## The zone's title card over the last shot (inside), and how long it shows.
-@export_range(0.0, 60.0, 0.05, "suffix:s") var card_at: float = 29.6
-@export_range(0.5, 6.0, 0.05, "suffix:s") var card_seconds: float = 2.8
+@export_range(0.0, 60.0, 0.05, "suffix:s") var card_at: float = 29.4
+@export_range(0.5, 6.0, 0.05, "suffix:s") var card_seconds: float = 2.6
 ## The shots: the face (from the start), the camera sweeping round to look over the wasteland and the station
 ## (`survey_at`), the station's front (`facade_at`), the runner walking across to the sign (`walk_at`), at the sign as
 ## they wipe it (`arrive_at`), the close-up of the sign (`sign_at`), the runner making up their mind (`mind_at`), the
-## runner looking at the entrance (`door_at`), the climb and the squeeze in (`climb_at`), inside (`inside_at`).
+## runner looking at the entrance (`door_at`), the climb (the runner's `climb_from`) and the squeeze in, inside (`inside_at`).
 @export_range(0.0, 60.0, 0.05, "suffix:s") var survey_at: float = 2.8
 @export_range(0.0, 60.0, 0.05, "suffix:s") var facade_at: float = 6.2
 @export_range(0.0, 60.0, 0.05, "suffix:s") var walk_at: float = 10.6
@@ -36,7 +37,6 @@ extends Resource
 @export_range(0.0, 60.0, 0.05, "suffix:s") var sign_at: float = 16.2
 @export_range(0.0, 60.0, 0.05, "suffix:s") var mind_at: float = 18.7
 @export_range(0.0, 60.0, 0.05, "suffix:s") var door_at: float = 21.0
-@export_range(0.0, 60.0, 0.05, "suffix:s") var climb_at: float = 22.4
 @export_range(0.0, 60.0, 0.05, "suffix:s") var inside_at: float = 27.4
 ## The stage's street (metres; the finish line the track builder draws at its end stays out of view).
 @export_range(300.0, 2000.0, 10.0, "suffix:m") var stage_length: float = 400.0
@@ -126,9 +126,10 @@ extends Resource
 @export_group("The route board")
 ## DESIGN-TBD (docs/questions/f2k.md, 8, 9): where the board hangs and how the wipe goes (its stops' names are TerminalIntroSign.stops).
 ## Where it hangs on the front: x along it (its middle) and how far its wiped strokes reach either side of that (metres: the
-## hand sweeps this wide), how long the wipe takes (the pose's progress over it) and when it starts.
+## hand sweeps this wide; the list's rows, TerminalIntroSign.NAME_X onward, are within it), and when the wipe starts (it ends at
+## `sign_at`, the cut to the close-up).
 @export_range(-20.0, 20.0, 0.05, "suffix:m") var board_x: float = 5.2
-@export_range(0.1, 1.2, 0.01, "suffix:m") var wipe_reach: float = 0.28
+@export_range(0.1, 1.2, 0.01, "suffix:m") var wipe_reach: float = 0.38
 @export_range(0.0, 60.0, 0.05, "suffix:s") var wipe_at: float = 13.8
 
 @export_group("The runner")
@@ -137,14 +138,15 @@ extends Resource
 ## front to the right, + turning left, toward the front) and how they look about: right, then left toward the station and up at it.
 @export var start_at: Vector2 = Vector2(-3.0, 11.0)
 @export_range(-180.0, 180.0, 1.0, "suffix:°") var start_yaw: float = 22.0
-@export_range(0.5, 3.0, 0.05, "suffix:m/s") var walk_speed: float = 2.7
-## They go round the heap: the corner they walk to first (x, z), beyond the heap's foot.
-@export var walk_corner: Vector2 = Vector2(6.8, 8.0)
+## A walk for a runner 1.28 m tall (a footfall about 3 times a second): they set off after looking at the sign, and the shot that
+## follows them (`walk_at`) cuts to where they have got to, the last stretch before the board.
+@export_range(0.5, 3.0, 0.05, "suffix:m/s") var walk_speed: float = 1.55
+## They go round the heap: the corner they walk to first (x, z), beyond the heap's foot, in line with the board so that they come
+## at it square.
+@export var walk_corner: Vector2 = Vector2(5.6, 8.0)
 ## The head's turns: [seconds, look (+ left), look up] keys from the start (the body does not move).
 @export var looks: PackedVector3Array = PackedVector3Array([Vector3(0.0, 0.0, 0.0), Vector3(0.7, 4.0, 0.0), Vector3(1.5, -38.0, -2.0),
 	Vector3(2.15, -38.0, -2.0), Vector3(3.2, 44.0, 6.0), Vector3(4.6, 52.0, 14.0), Vector3(6.4, 54.0, 16.0)])
-## They set off for the board at `go_at`; at the board they stand `stand_off` from its panel (before the hand's own reach is added).
-@export_range(0.0, 60.0, 0.05, "suffix:s") var go_at: float = 10.7
 ## After the wipe they have stepped back from the board (how far out from the front), look at it, nod (`nod_at`), and turn to
 ## the entrance (`turn_at`), walking off toward it.
 @export_range(1.0, 4.0, 0.05, "suffix:m") var step_back: float = 2.0
@@ -171,6 +173,15 @@ extends Resource
 @export var sweep_end: Vector2 = Vector2(1.7, 52.0)
 @export var sweep_over: Vector3 = Vector3(10.0, 1.6, 7.0)
 @export var sweep_scene: Vector3 = Vector3(1.0, 9.0, 0.0)
+## The station's front opens low, on the letters of GRAND lying in the rubble below where they hung (the camera, what it looks at at
+## first and then, the lens), holding there `fallen_hold` s, then it pulls back and tilts up (over `fallen_move` s) to the wide shot of
+## the front, with the sign. (Station frame.)
+@export var fallen_from: Vector3 = Vector3(-7.5, 1.5, 11.5)
+@export var fallen_look: Vector3 = Vector3(-11.6, 0.8, 3.0)
+@export var fallen_look_to: Vector3 = Vector3(-10.4, 0.9, 3.0)
+@export_range(20.0, 100.0, 1.0, "suffix:°") var fallen_fov: float = 52.0
+@export_range(0.0, 4.0, 0.05, "suffix:s") var fallen_hold: float = 1.0
+@export_range(0.2, 4.0, 0.05, "suffix:s") var fallen_move: float = 1.6
 ## The station's front from across the street (its z held inside the street's right wall): wide, then craning up and pushing in on the
 ## sign. [from, look, fov] each.
 @export var wide_from: Vector3 = Vector3(-5.0, 2.0, 23.0)
@@ -197,7 +208,7 @@ extends Resource
 @export_range(0.5, 4.0, 0.05, "suffix:m") var board_out: float = 1.5
 @export_range(20.0, 100.0, 1.0, "suffix:°") var board_fov: float = 50.0
 @export var board_push: Vector3 = Vector3(-0.25, -0.3, 0.85)
-@export var board_push_look: Vector3 = Vector3(-0.2, -0.38, 0.1)
+@export var board_push_look: Vector3 = Vector3(-0.1, -0.3, 0.1)
 @export_range(20.0, 100.0, 1.0, "suffix:°") var board_push_fov: float = 42.0
 ## Making up their mind: close on them from beside the board (offsets: along from the board, height, out), looking at them, and at the end.
 @export var mind_cam: Vector3 = Vector3(1.0, 1.1, 0.9)
@@ -217,9 +228,9 @@ extends Resource
 	Vector3(-1.8, 3.6, 2.5), Vector3(0.2, 3.95, 0.1), Vector3(38.0, 0.0, 0.0),
 	Vector3(-1.5, 3.7, 2.2), Vector3(0.2, 3.95, -0.4), Vector3(36.0, 0.0, 0.0)])
 ## Inside, in the way in's frame (x along the wall, y up, z out of it into the hall) [camera, look, fov] each: at the crack and the runner
-## coming out of it, following the jump, round to the landing, and looking down the line, easing in.
+## coming out of it, the cut to the jump (from nearer, following it down), round to the landing, and looking down the line, easing in.
 @export var inside_cam: PackedVector3Array = PackedVector3Array([Vector3(-1.2, 1.6, 7.6), Vector3(0.2, 3.7, 0.0), Vector3(52.0, 0.0, 0.0),
-	Vector3(-1.6, 1.7, 7.4), Vector3(0.2, 3.5, 0.3), Vector3(52.0, 0.0, 0.0),
+	Vector3(-2.3, 1.3, 4.6), Vector3(0.2, 2.7, 0.5), Vector3(56.0, 0.0, 0.0),
 	Vector3(-3.0, 1.5, 6.6), Vector3(4.0, 1.3, 4.4), Vector3(54.0, 0.0, 0.0),
 	Vector3(-4.4, 1.55, 5.5), Vector3(14.0, 1.9, 4.6), Vector3(56.0, 0.0, 0.0),
 	Vector3(-3.3, 1.55, 5.2), Vector3(14.0, 1.95, 4.6), Vector3(52.0, 0.0, 0.0)])

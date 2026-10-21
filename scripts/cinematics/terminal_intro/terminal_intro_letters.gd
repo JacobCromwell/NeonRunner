@@ -2,7 +2,7 @@ class_name TerminalIntroLetters
 extends Node3D
 ## The Grand Terminal Station's sign (TerminalIntroStation; the owner's beats, October 21, 2026): "GRAND TERMINAL" across the
 ## head house, in big extruded letters (TerminalIntroText, the kit's solid material), of which
-## - "GRAND" has fallen off: where it was, a dirty ghost of each letter (the clean stone it covered) and the bare bolts, and
+## - "GRAND" has fallen off: where it was, a faint stain of each letter (the cleaner stone it covered) and the bare bolts, and
 ##   the letters themselves in the rubble below, sooty and unlit (one leaning on the front, one half buried);
 ## - "TERMINAL" is starting to droop: each letter hangs on its mount a little crooked (tipped in its plane, slipped, its
 ##   foot swung out), and only a few still have light, an amber the Terminal's work lamps' (the Terminal's looser colour
@@ -13,17 +13,19 @@ extends Node3D
 
 const WORD_GAP: float = 0.9
 const FALLEN_SEED: int = 8801
-const GHOST := Color(0.26, 0.25, 0.235)
+## The stain the letters of GRAND left on the band: the cleaner stone they covered, only a shade over the band (and well under the
+## unlit letters of TERMINAL, SOOT_FRONT), so it reads as where letters were, not as letters.
+const GHOST := Color(0.17, 0.165, 0.155)
 const SOOT_LETTER := Color(0.13, 0.12, 0.11)
 const SOOT_FRONT := Color(0.26, 0.235, 0.21)
 const RUST := Color(0.2, 0.12, 0.08)
 const AMBER := Color(1.0, 0.6, 0.18)
 ## A spark's life (s), how many each burst has, its size (m) and the gravity it falls under.
 const SPARK_LIFE: float = 0.7
-const SPARKS_PER_BURST: int = 9
-const SPARK_SIZE: float = 0.34
+const SPARKS_PER_BURST: int = 12
+const SPARK_SIZE: float = 0.62
 const SPARK_GRAVITY: float = 6.5
-const MAX_SPARKS: int = 80
+const MAX_SPARKS: int = 100
 ## The flicker's cell length (s): a lit letter is dimmed for whole cells, never faster than this.
 const FLICKER_CELL: float = 0.3
 
@@ -81,7 +83,7 @@ func _layout() -> Dictionary:
 	return out
 
 
-## The dirty outline of each fallen letter on the band and its bare mounting bolts.
+## The faint stain of each fallen letter on the band and its bare mounting bolts.
 func _ghost(layout: Dictionary) -> void:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(solid)
@@ -92,8 +94,8 @@ func _ghost(layout: Dictionary) -> void:
 		# The line's origin is its left edge at the baseline: put it where the letter's ink box was.
 		s.append(l, Transform3D(Basis.IDENTITY, Vector3(float(p["x"]) - width * 0.5, top_y - n.letter_height, 0.09)))
 		for bx: float in [-0.3, 0.3]:
-			s.box(Vector3(float(p["x"]) + bx * width, top_y - 0.25, 0.12), Vector3(0.18, 0.18, 0.12), RUST * 1.5, 0.0, MeshKit.PAT_DZ_STEEL)
-			s.box(Vector3(float(p["x"]) + bx * width, top_y - n.letter_height + 0.25, 0.12), Vector3(0.18, 0.18, 0.12), RUST * 1.5, 0.0,
+			s.box(Vector3(float(p["x"]) + bx * width, top_y - 0.25, 0.12), Vector3(0.2, 0.2, 0.12), RUST * 2.2, 0.0, MeshKit.PAT_DZ_STEEL)
+			s.box(Vector3(float(p["x"]) + bx * width, top_y - n.letter_height + 0.25, 0.12), Vector3(0.2, 0.2, 0.12), RUST * 2.2, 0.0,
 				MeshKit.PAT_DZ_STEEL)
 	var m: MeshInstance3D = batch.commit(station, "SignGhost")
 	if m != null:
@@ -236,8 +238,9 @@ func _spark_at(burst: int, k: int, age: float) -> Vector3:
 	var letter_index: int = int(bursts[burst].y)
 	var p: Vector3 = letters[letter_index].position
 	var seed_id: int = burst * 97 + k
-	var v := Vector3(MeshKit.hash01(seed_id, 1, 41) - 0.5, MeshKit.hash01(seed_id, 2, 42) * 1.6 - 0.2, MeshKit.hash01(seed_id, 3, 43) * 0.8 + 0.2)
-	v = v * Vector3(5.0, 3.0, 2.4)
+	# Flung out of the sign (toward the street) and sideways, mostly downward at first (a few arc up), then falling.
+	var v := Vector3(MeshKit.hash01(seed_id, 1, 41) - 0.5, MeshKit.hash01(seed_id, 2, 42) * 1.5 - 1.1, MeshKit.hash01(seed_id, 3, 43) * 0.7 + 0.3)
+	v = v * Vector3(6.0, 2.5, 3.2)
 	var start := Vector3(p.x + (MeshKit.hash01(seed_id, 4, 44) - 0.5) * 1.0, p.y - n.letter_height * (0.2 + 0.7 * MeshKit.hash01(seed_id, 5, 45)), p.z + n.letter_depth + 0.1)
 	return start + v * age + Vector3(0.0, -0.5 * SPARK_GRAVITY * age * age, 0.0)
 
@@ -258,7 +261,7 @@ func update(t: float) -> void:
 		var age: float = t - bursts[b].x
 		if age < 0.0 or age > SPARK_LIFE * (1.6 if soft else 1.0):
 			continue
-		if soft and b % 3 != 0:
+		if not burst_shows(b, soft):
 			continue
 		var count: int = SPARKS_PER_BURST / 2 if soft else SPARKS_PER_BURST
 		var life: float = SPARK_LIFE * (1.6 if soft else 1.0)
@@ -275,6 +278,11 @@ func update(t: float) -> void:
 	for i: int in range(used, MAX_SPARKS):
 		spark_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ZERO), Vector3.ZERO))
 	live_sparks = used
+
+
+## Whether burst `b` shows sparks (and has its zap, TerminalIntro): all of them, but with Reduced flashing one in three.
+static func burst_shows(b: int, soft: bool) -> bool:
+	return not soft or b % 3 == 0
 
 
 ## A lit letter's brightness at `t` (1 steady): flickering (dimmed for whole cells, now and then) with a flash when it

@@ -550,7 +550,7 @@ mesh caches), about 0.6 ms a step and at most about 3 ms; its props add about 97
 
 **The Terminal's intro** (`TerminalIntro`, task F2k; the owner's beats, October 21, 2026, GDD §6 Cinematics, "Terminal intro"; the
 Terminal's look from `docs/art/reference/terminal_zone.jpg`; what they leave open is DESIGN-TBD, `docs/questions/f2k.md`; numbers in
-`data/cinematics/terminal_intro_tuning.tres`): 32.4 s before Terminal 1 on two stages. **Outside** is the Dead Zone's look, not the
+`data/cinematics/terminal_intro_tuning.tres`): 32.0 s before Terminal 1 on two stages. **Outside** is the Dead Zone's look, not the
 zone's own: the stage def carries the Dead Zone's skin (`CineStageDef.skin`, so its sky, haze and greys, and a skin set on the def
 takes no sky of the slot's), in the level's lanes, with the street's left wall open for 110 m (`wall_gaps`) on the station. **Inside**
 is the zone's own Terminal stage, after a 0.4 s dip to black: the cue `enter` calls `switch_stage` with no skin, so the slot's own
@@ -560,40 +560,51 @@ expect; `TerminalIntroStation.track()` turns a point into track space): `Termina
 14 m back from the wall's line on the Dead Zone's pavement (kit pattern `PAT_DZ_STREET`, laid out from the world, so it joins the
 street; a kerb over the wall gap's orange lip, rubble piers over its cut ends): a head house with a great arched window over the
 entrance, pilasters, courses and a cornice, a broad band for the sign, wings of two rows of tall arched windows (a few lit, the
-right one broken down), soot streaks, fallen masonry, and the hall behind it as a dark box whose far wall glows, so the crack and
-the windows show light. The entrance is blocked by `TerminalIntroHeap`, a heightfield of rubble (flat quads in the Dead Zone's
-concrete pattern, slabs and rebar on its flanks, a smoothed way up that `height()` and `way_x()` give the runner's feet) filling
+right one broken down), soot streaks, fallen masonry, and the hall behind it as a dark box whose far wall glows in bands (dark at
+the floor, brightest a few metres up) with columns and girders standing in front of it, so the crack and the windows show light in
+slits, never one flat orange. The entrance is blocked by `TerminalIntroHeap`, a heightfield of rubble (quads in the Dead Zone's
+concrete pattern with their corners jittered so the facets are broken and uneven, over 200 chunks and big tilted slabs, rebar, and
+small stones strewn over the smoothed way up that `height()` and `way_x()` give the runner's feet, which the drawn surface keeps to) filling
 the doorway to 0.85 m under a lintel of stone teeth, spilling 6.5 m out onto the forecourt. The light out of the station: shafts
 and a pool as additive cards of the skin's glow material (a copy of it, breathed by `set_light()`: slowly, steady with Reduced
-flashing), halos, and three real lights for the runner; the cards fade out near the camera (the glow shader's negative `UV2.y`).
+flashing), halos, and three real lights for the runner; the shaft cards fade out within 9 m of the camera (the glow shader's negative
+`UV2.y`, `SHAFT_NEAR`), since close to one they would wash the whole view orange.
 `TerminalIntroLetters`: "GRAND TERMINAL" in extruded Exo 2 letters (`TerminalIntroText`, TextMesh at a coarse curve step turned
 into kit meshes, one surface each; the kit solid material copied per letter so each one's `state_glow` is its own): GRAND's
-letters are gone (a dirty ghost of each on the band, bare bolts, the five letters sooty in the rubble below, one leaning on the
-front, one half buried); TERMINAL's hang tipped on their mounts (`droop_angle`, `droop_slip`, `droop_out`), four still lit in the
+letters are gone (a faint stain of each on the band, a shade over it and well under TERMINAL's unlit letters, bare bolts, the five
+letters sooty in the rubble below, one leaning on the front, one half buried); TERMINAL's hang tipped on their mounts (`droop_angle`, `droop_slip`, `droop_out`), four still lit in the
 Terminal's work-lamp amber, flickering (dimmed for whole 0.3 s cells, never faster) and sparking now and then (a MultiMesh of
-camera-facing dots, `terminal_intro_spark.gdshader`, each burst's sparks flung out and down under gravity, worked out from the
-time). With Reduced flashing nothing flickers (the lit letters breathe), a third of the bursts come, with half the sparks, slower
-and dimmer, and the station's light holds steady (`test_terminal_intro` measures the brightness steps and the spark counts).
+camera-facing dots, `terminal_intro_spark.gdshader`, twelve to a burst, each flung out of the sign and down under gravity, worked out
+from the time). With Reduced flashing nothing flickers (the lit letters breathe), a third of the bursts come (`TerminalIntroLetters.burst_shows`,
+the same rule for their `sign_zap` sounds), with half the sparks, slower and dimmer, and the station's light holds steady (`test_terminal_intro` measures the brightness steps and the spark counts).
 `TerminalIntroSign`: the route board (an enamel board in a rusted frame, the stops' names as flat kit text, `ROUTES` and a line
 with a dot at each stop, THE PALACE last, larger, in gold with a glow, a halo and a gold ring) under a film of grime
-(`terminal_intro_grime.gdshader`) that the wipe clears along **the hand's own trail**: the runner's wipe pose was measured on the
+(`terminal_intro_grime.gdshader`: opaque until wiped, its dirt in the colour, so that nothing of the board, the Palace's glow included,
+shows through it; drawn over the glow and under the dust by `render_priority`) that the wipe clears along **the hand's own trail**: the runner's wipe pose was measured on the
 real rig at build time (`_measure_wipe`: a scratch `PlayerAvatar` posed through the progress, its palm read off the hand joint),
 the board hung at the height the hand reaches and the runner placed at each key to put the palm on its face (`wipe_position`, the
-hand sweeping `wipe_reach` either side), and the points the palm passes become the shader's trail (48 points, the first
-`trail_count` used so far, so the clearing follows the clock); dust puffs rise where it passes (the Casino boss intro's dust
+hand sweeping `wipe_reach` either side, in three level strokes, each a step lower: `CinePoses.wipe_level`), and the points the palm
+passes become the shader's trail (48 points, the first `trail_count` used so far, so the clearing follows the clock; the shader's
+y is up, a quad's UV.y runs down). The list's rows are within the band the hand reaches (`FIRST_ROW`, `ROW_PITCH`, `PALACE_ROW`), so
+the first stop clears first and THE PALACE last; `TerminalIntroSign.clearance()` is the shader's rule in GDScript, which the tests run
+(the Palace and its ring at least 95% clear by the cut to the close-up); dust puffs rise where it passes (the Casino boss intro's dust
 shader). `TerminalIntroWaste`: the Dead Zone's own props drawn by its skin as in a level (`ZoneSkin.doodad`: a broken column, a rubble
 heap, the burned-out bus, eight of them) and three columns of its smoke (`dead_smoke.gdshader`). `TerminalIntroEntry` (on the
 Terminal stage): a section of the station's wall at the left platform's back, in the skin's tile and ashlar, with the doorway, the
 back of the same heap (a short steep slope) and the ragged crack, through which the dusk's cold grey comes in as a beam across the
 platform. **The beats.** 0-2.8 s the runner's face (a close shot from in front and a little to their left, their gold eyepiece),
 their head turning right, then left toward the station and up at it; 2.8-6.2 s the camera sweeps round them by their right, over the
-wasteland, to behind them and the station; cut at 6.2 s to the station's front from across the street, wide, craning up to the
-sign (TERMINAL sparking and drooping, light in shafts from the window and the crack; the runner sets off round the heap's foot at
-6.9 s at 2.7 m/s); 10.6 s following them across the forecourt; 13.6 s at the board as they wipe it (`wipe`, 2.4 s, three strokes
+wasteland, to behind them and the station; cut at 6.2 s to the station's front from across the street, low on the letters of GRAND
+in the rubble (held a second), then pulling back and tilting up to the wide view and craning up to the sign (TERMINAL sparking and
+drooping, light in shafts from the window and the crack); 10.6 s following them across the forecourt (they walk at 1.55 m/s; this
+shot is the last 4.6 m of the walk, square on to the board: a CUT key moves them there a moment before the shot, while the camera is
+on the station and they are out of its frame; a camera riding with an actor reads its path across a cut, so the cut is not at the
+camera's own); 13.6 s at the board as they wipe it (`wipe`, 2.4 s, three strokes
 down it); at the cut to the close-up (16.2 s) they step back out of shot and the camera, square in front of the board, shows all of
 it and pushes in toward THE PALACE; 18.7 s close on them (a nod, a turn to the entrance); 21 s low at the heap's foot, the crack of
 light above (they look up at it); 22.5 s the climb (`scramble`, their feet on the heap's surface) and, at the crest, the squeeze in
-through the crack head first (`squeeze`, lying down as they go), the camera close on the crack; 27.4 s inside (a second actor,
+through the crack head first (`squeeze`, lying down as they go), the camera close on the crack (poses do not blend, so the walk to the scramble, the scramble to the
+squeeze and the crawl to the jump are each on a camera cut); 27.4 s inside (a second actor,
 `runner_in`): they crawl out through the crack over the crest, jump (a free fall, 0.84 s), land on the track bed (the thud) and turn to
 face along the line, the camera round behind them looking down it, the tracks running off into the distance, the platforms, arches
 and lamps, the zone's title card over it, and black. **Toolkit.** `CinePoses` gained three runner poses: `wipe` (the right arm to a

@@ -27,6 +27,8 @@ const TURN_RATE: float = 3.0
 ## The wipe's hand path is measured at this many steps of its progress; the runner's keys come this often through it.
 const WIPE_SAMPLES: int = 48
 const KEY_STEP: float = 0.05
+## The runner's cut to where they have got to on the walk is this long before the cut to the shot that follows them (s).
+const CUT_LEAD: float = 0.1
 ## How far the hand's palm is held off the board's grime (metres), so it never goes into it.
 const HAND_OFF: float = 0.03
 ## The runner's own height when it lies on the heap's crest, over the surface (metres): its body is prone there.
@@ -220,19 +222,28 @@ func _runner(t: CineTimeline) -> void:
 	# Surveying: standing at ease, their head turning (the looks keys), the body facing along the street.
 	for k: Vector3 in n.looks:
 		_key(r, k.x, start, &"walk", n.start_yaw, k.y, k.z)
-	# The walk to the board: round the heap's foot to its right (the corner), then to where the wipe begins, at `walk_speed`,
-	# so that they arrive as the wipe starts; they set off after looking at the sign.
+	# The walk to the board: round the heap's foot to its right (the corner), then to where the wipe begins, at `walk_speed` (a
+	# natural pace for a runner this size), arriving as the wipe starts. The shot that follows them (`walk_at`) is the last stretch
+	# of it: they are cut to where they have got to by the time they arrive (a CUT key a moment before the cut to that shot, so the
+	# camera riding with them never reads their path across it) while the cameras are on the station and they are out of frame.
 	stand = wipe_position(0.0)
 	var corner := Vector3(n.walk_corner.x, 0.0, n.walk_corner.y)
 	var first: float = Vector2(corner.x - start.x, corner.z - start.z).length()
 	var second: float = Vector2(stand.x - corner.x, stand.z - corner.z).length()
-	t_walk = n.wipe_at - 0.25 - (first + second) / n.walk_speed
-	t_corner = t_walk + first / n.walk_speed
-	_key(r, t_walk, start, &"walk", yaw_to(corner.x - start.x, corner.z - start.z), 0.0, 0.0)
-	# SMOOTH keys: a rounded corner, and a slowing as they arrive.
-	_key(r, t_corner, corner, &"walk", NAN).move = CinePath.Move.SMOOTH
-	_key(r, n.wipe_at - 0.25, stand, &"walk", NAN).move = CinePath.Move.SMOOTH
-	# Slowing as they arrive, then turning to face the board.
+	var t_arrive: float = n.wipe_at - 0.25
+	var last_look: float = n.looks[n.looks.size() - 1].x if not n.looks.is_empty() else 0.0
+	t_walk = maxf(n.walk_at, last_look)
+	var seen: float = minf(n.walk_speed * (t_arrive - t_walk), first + second)
+	var d_cut: float = first + second - seen
+	var cut_at: float = t_walk - CUT_LEAD
+	t_corner = t_walk + (first - d_cut) / n.walk_speed if d_cut < first else -1.0
+	_key(r, cut_at - 0.004, start, &"walk", yaw_to(corner.x - start.x, corner.z - start.z), 0.0, 0.0)
+	_key(r, cut_at, _along(start, corner, stand, d_cut), &"walk", NAN).move = CinePath.Move.CUT
+	# SMOOTH keys: a rounded corner (if it is still ahead), and a slowing as they arrive.
+	if t_corner > 0.0:
+		_key(r, t_corner, corner, &"walk", NAN).move = CinePath.Move.SMOOTH
+	_key(r, t_arrive, stand, &"walk", NAN).move = CinePath.Move.SMOOTH
+	# Slowing as they arrive, then turning to face the board (they come at it square, so it is a few degrees).
 	var eased: CineActorKey = _key(r, n.wipe_at, stand, &"walk", 90.0, 0.0, 6.0)
 	eased.trans = Tween.TRANS_QUAD
 	eased.easing = Tween.EASE_OUT
@@ -268,6 +279,15 @@ func _runner(t: CineTimeline) -> void:
 	_key(r, n.climb_from - 0.2, foot, &"walk", foot_yaw, 0.0, 24.0)
 	_climb(r)
 	_inside_runner(t)
+
+
+## The point `d` metres along the walk start, corner, stand (station frame).
+static func _along(from: Vector3, corner: Vector3, to: Vector3, d: float) -> Vector3:
+	var first: float = Vector2(corner.x - from.x, corner.z - from.z).length()
+	if d <= first:
+		return from.lerp(corner, d / maxf(first, 0.001))
+	var second: float = Vector2(to.x - corner.x, to.z - corner.z).length()
+	return corner.lerp(to, clampf((d - first) / maxf(second, 0.001), 0.0, 1.0))
 
 
 ## Up the heap on the way TerminalIntroHeap keeps smooth (`way_x`), then the squeeze in through the crack at its crest.
@@ -332,7 +352,10 @@ func _camera(t: CineTimeline) -> void:
 	# The station's front, from across the street: wide, then craning up and pushing in on the sign.
 	var wide := Vector3(n.wide_from.x, n.wide_from.y, minf(n.wide_from.z, street_edge))
 	var crane := Vector3(n.crane_from.x, n.crane_from.y, minf(n.crane_from.z, street_edge - 1.0))
-	_shot(t, n.facade_at, wide, n.wide_look, n.wide_fov, CinePath.Move.CUT)
+	# It opens low on the letters of GRAND where they fell, holds, then pulls back and tilts up the front to the sign.
+	_shot(t, n.facade_at, n.fallen_from, n.fallen_look, n.fallen_fov, CinePath.Move.CUT)
+	_shot(t, n.facade_at + n.fallen_hold, n.fallen_from + Vector3(0.0, 0.0, 0.3), n.fallen_look_to, n.fallen_fov)
+	_shot(t, n.facade_at + n.fallen_hold + n.fallen_move, wide, n.wide_look, n.wide_fov)
 	_shot(t, n.walk_at - 0.004, crane, n.crane_look, n.crane_fov)
 	# The walk: following them across the forecourt, low, the front beside them.
 	var follow: CineCameraKey = t.shot(n.walk_at, st(0.0, 0.0, 0.0), st(0.0, 0.0, 0.0), CinePath.Move.CUT, n.follow_fov.x)
@@ -361,12 +384,13 @@ func _camera(t: CineTimeline) -> void:
 	# The entrance: low behind them at the foot of the heap, looking up the heap at the crack of light.
 	var foot := Vector3(n.heap_foot.x, 0.0, n.heap_foot.y)
 	_shot(t, n.door_at, foot + n.door_cam, n.door_look, n.door_fov.x, CinePath.Move.CUT)
-	_shot(t, n.climb_from, foot + n.door_cam_to, n.door_look_to, n.door_fov.y)
-	# The climb: from beside the heap, then close on the crack as they squeeze in.
+	_shot(t, n.climb_from - 0.004, foot + n.door_cam_to, n.door_look_to, n.door_fov.y)
+	# The climb: from beside the heap, then close on the crack as they squeeze in. Each change of the runner's pose (the walk to the
+	# scramble, the scramble to the squeeze) is on a cut, at the same moment: poses do not blend.
 	var c: PackedVector3Array = n.climb_cam
-	_shot(t, n.climb_from + 0.004, c[0], c[1], c[2].x, CinePath.Move.CUT)
-	_shot(t, n.crest_at - 0.3, c[3], c[4], c[5].x)
-	_shot(t, n.crest_at - 0.296, c[6], c[7], c[8].x, CinePath.Move.CUT)
+	_shot(t, n.climb_from, c[0], c[1], c[2].x, CinePath.Move.CUT)
+	_shot(t, n.crest_at - 0.004, c[3], c[4], c[5].x)
+	_shot(t, n.crest_at, c[6], c[7], c[8].x, CinePath.Move.CUT)
 	_shot(t, n.inside_at - 0.5, c[9], c[10], c[11].x)
 	# Inside.
 	_inside_camera(t)
@@ -429,12 +453,18 @@ func _pose_key(k: CineActorKey, yaw: float, look_up: float, progress: float) -> 
 
 func _inside_camera(t: CineTimeline) -> void:
 	# From the hall, across the track, at the crack of light in the wall and the runner coming out of it; then round to behind them
-	# as they land, looking down the line: the tracks running off, the platform, the arches, the lamps.
+	# as they land, looking down the line: the tracks running off, the platform, the arches, the lamps. The cut to the jump is
+	# at the moment they rise from the crawl and leave the lip (the runner's pose changes there: poses do not blend).
 	var c: PackedVector3Array = n.inside_cam
-	var at: Array[float] = [n.inside_at, n.jump_at - 0.2, t_land, t_land + 1.3, n.duration]
+	var at: Array[float] = [n.inside_at, n.jump_at - 0.004, n.jump_at, t_land, t_land + 1.3, n.duration]
+	var cams: Array[int] = [0, 0, 1, 2, 3, 4]
 	for i: int in at.size():
-		t.shot(at[i], ent(c[i * 3].x, c[i * 3].y, c[i * 3].z), ent(c[i * 3 + 1].x, c[i * 3 + 1].y, c[i * 3 + 1].z),
-			CinePath.Move.CUT if i == 0 else CinePath.Move.SMOOTH, c[i * 3 + 2].x)
+		var k: int = cams[i]
+		# The first shot pushes in a little as they come out.
+		var push := Vector3(0.3, 0.05, -0.4) if i == 1 else Vector3.ZERO
+		t.shot(at[i], ent(c[k * 3].x + push.x, c[k * 3].y + push.y, c[k * 3].z + push.z),
+			ent(c[k * 3 + 1].x, c[k * 3 + 1].y, c[k * 3 + 1].z),
+			CinePath.Move.CUT if i == 0 or i == 2 else CinePath.Move.SMOOTH, c[k * 3 + 2].x)
 
 
 # --- Sounds, effects and cues ---------------------------------------------------------------------------------------
@@ -452,9 +482,12 @@ func _events(t: CineTimeline) -> void:
 	while at < n.sign_at:
 		t.sound(at, &"sign_buzz", -8.0)
 		at += 2.3
-	for b: Vector2 in letters.bursts:
-		if b.x > 2.4 and b.x < n.sign_at - 0.4:
-			t.sound(b.x, &"sign_zap", -4.0)
+	var soft: bool = Settings.flashing_reduced
+	for b: int in letters.bursts.size():
+		var burst: Vector2 = letters.bursts[b]
+		# Only the bursts that show sparks have their zap (with Reduced flashing that is one in three).
+		if burst.x > 2.4 and burst.x < n.sign_at - 0.4 and TerminalIntroLetters.burst_shows(b, soft):
+			t.sound(burst.x, &"sign_zap", -4.0)
 	for k: int in 3:
 		t.sound(n.wipe_at + 0.25 + float(k) * 0.62, &"grime_wipe", -4.0)
 	at = n.door_at

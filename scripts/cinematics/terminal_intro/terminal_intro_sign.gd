@@ -23,16 +23,27 @@ const PANEL_OUT: float = 0.1
 const FACE_OUT: float = 0.16
 const FRAME_WIDTH: float = 0.07
 ## Rows: the first stop's height up from the board's middle, the pitch between stops, and the Palace's height, and the
-## route line's and the names' x from the middle.
+## route line's and the names' x from the middle. The middle is where the strokes' middle is (the hand's reach on the board:
+## about 0.2 m above and below it), so the whole list is within the wiped band: the first stop is wiped first and THE PALACE,
+## the last row, last (the reveal).
 const FIRST_ROW: float = 0.27
-const ROW_PITCH: float = 0.115
-const PALACE_ROW: float = -0.33
-const LINE_X: float = -0.52
-const NAME_X: float = -0.4
+const ROW_PITCH: float = 0.105
+const PALACE_ROW: float = -0.29
+const LINE_X: float = -0.45
+const NAME_X: float = -0.33
 const TEXT_CAP: float = 0.058
-const PALACE_CAP: float = 0.095
+const PALACE_CAP: float = 0.09
 const TRAIL_POINTS: int = 48
 const DUST_PUFFS: int = 28
+## The wipe clears everything within WIPE_RADIUS of the hand's trail (a soft edge from 60% of it), the film's edge torn by up
+## to RAGGED (the grime shader's rule, `clearance()`).
+const WIPE_RADIUS: float = 0.23
+const RAGGED: float = 0.035
+## Draw order of the board's see-through layers (Material.render_priority; the station's own light cards are 0): the Palace's halo
+## first, the grime over it (opaque until wiped, so the halo cannot glow through it, yet under the shafts of light), the dust last.
+const HALO_PRIORITY: int = -3
+const GRIME_PRIORITY: int = -1
+const DUST_PRIORITY: int = 3
 
 var n: TerminalIntroTuning
 var station: TerminalIntroStation
@@ -138,6 +149,7 @@ func _text(s: MeshLayer, text: String, u: float, v: float, cap: float, color: Co
 ## A halo behind the Palace's name: a soft gold glow (its own material, so it can breathe).
 func _gold() -> void:
 	gold_halo = TerminalIntroStation.own(station.glow)
+	gold_halo.render_priority = HALO_PRIORITY
 	var batch := MeshBatch.new()
 	var g: MeshLayer = batch.layer(gold_halo)
 	var width: float = float(TerminalIntroText.line(palace, PALACE_CAP, GOLD)["width"])
@@ -156,6 +168,9 @@ func _grime() -> void:
 	var w: float = BOARD.x + FRAME_WIDTH * 2.0
 	var h: float = BOARD.y + FRAME_WIDTH * 2.0
 	grime_material.set_shader_parameter(&"board_size", Vector2(w, h))
+	grime_material.set_shader_parameter(&"radius", WIPE_RADIUS)
+	grime_material.set_shader_parameter(&"ragged_edge", RAGGED)
+	grime_material.render_priority = GRIME_PRIORITY
 	set_trail(PackedVector2Array(), 0)
 	var q := QuadMesh.new()
 	q.size = Vector2(w, h)
@@ -179,6 +194,16 @@ func set_trail(points: PackedVector2Array, count: int) -> void:
 	grime_material.set_shader_parameter(&"trail_count", mini(count, TRAIL_POINTS))
 
 
+## How clean the board is at `point` (metres from its middle, x along, y up) once the first `count` points of `trail` have been
+## wiped, 0 (all grime) to 1 (wiped): the grime shader's rule, with the film's edge torn by `torn` (-RAGGED/2 to RAGGED/2: the
+## shader's noise; a positive value makes the film lift less there). The tests run it.
+static func clearance(point: Vector2, trail: PackedVector2Array, count: int, torn: float = 0.0) -> float:
+	var d: float = 1000.0
+	for i: int in mini(count, trail.size()):
+		d = minf(d, point.distance_to(trail[i]))
+	return 1.0 - smoothstep(WIPE_RADIUS * 0.6, WIPE_RADIUS, d + torn)
+
+
 ## The dust the hand raises: soft puffs (the Casino boss intro's dust shader) drifting off the board.
 func _dust() -> void:
 	dust = MultiMesh.new()
@@ -190,6 +215,7 @@ func _dust() -> void:
 	mat.shader = load("res://scripts/cinematics/casino_boss_intro/casino_dust.gdshader") as Shader
 	mat.set_shader_parameter(&"dust", Color(0.5, 0.44, 0.36))
 	mat.set_shader_parameter(&"dust_shade", Color(0.3, 0.26, 0.21))
+	mat.render_priority = DUST_PRIORITY
 	q.material = mat
 	dust.mesh = q
 	dust.instance_count = DUST_PUFFS
@@ -229,9 +255,3 @@ func update_dust(t: float) -> void:
 			used += 1
 	for i: int in range(used, DUST_PUFFS):
 		dust.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ZERO), Vector3.ZERO))
-
-
-## The gold's glow breathing slowly: `k` about 1 (steady with Reduced flashing, set by the caller).
-func set_gold(k: float) -> void:
-	if gold_halo != null:
-		gold_halo.set_shader_parameter(&"state_glow", k)

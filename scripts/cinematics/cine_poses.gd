@@ -22,7 +22,8 @@ extends RefCounted
 ## strokes, over a progress: a reach, three strokes working down it, the arm lowered), `scramble` (up a slope of loose rubble on
 ## hands and feet, leaning into it, the arms reaching in turn with the leg phase) and `squeeze` (into a low gap head first: from
 ## a crouch to lying prone, the arms reaching ahead, crawling in turn with the leg phase, over a progress).
-## DESIGN-TBD (docs/questions/f2c.md, f2d.md): the key poses are hand-set placeholders.
+## DESIGN-TBD (docs/questions/f2c.md, f2d.md; the three of the Terminal's intro: docs/questions/f2k.md, 11): the key poses are
+## hand-set placeholders.
 
 const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"wipe", &"scramble", &"squeeze"]
 ## The walk: metres covered by one gait cycle in its full stride (two steps), the share of the cycle a foot is
@@ -256,9 +257,10 @@ const SEATED := {
 	THIGH_L: Vector3(84, 0, 5), SHIN_L: Vector3(-28, 0, 0), FOOT_L: Vector3(12, 0, 0),
 }
 
-## The wipe: how many strokes it makes, how far through its progress the arm is up (the reach ends at WIPE_RAISE.x, the arm
-## starts to come down at WIPE_RAISE.y), the arm's pitch at the top of the board and at the bottom (degrees), the sweep (degrees
-## either side of the stroke's middle) and where the strokes' middle is (degrees).
+## The wipe: how many strokes it makes (level, side to side, each a step lower down the board), how far through its progress the
+## arm is up (the reach ends at WIPE_RAISE.x, the arm starts to come down at WIPE_RAISE.y), the arm's pitch at the top of the
+## board and at the bottom (degrees), the sweep (degrees either side of the stroke's middle) and where the strokes' middle is
+## (degrees).
 const WIPE_STROKES: int = 3
 const WIPE_RAISE := Vector2(0.16, 0.88)
 const WIPE_PITCH := Vector2(124.0, 42.0)
@@ -456,8 +458,8 @@ static func runner(p: HumanoidPose, pose_name: StringName, progress: float, time
 
 
 ## The runner wiping a board in front of it, `progress` 0-1 through the wipe: the right arm comes up to the board (to
-## WIPE_RAISE.x), wipes it in WIPE_STROKES strokes, side to side, working down it (the arm's pitch from WIPE_PITCH.x to
-## WIPE_PITCH.y), and comes down again (from WIPE_RAISE.y). The body leans in and turns with the stroke, the head on the board.
+## WIPE_RAISE.x), wipes it in WIPE_STROKES level strokes, side to side, working down it (the arm's pitch from WIPE_PITCH.x to
+## WIPE_PITCH.y by wipe_level), and comes down again (from WIPE_RAISE.y). The body leans in and turns with the stroke, the head on the board.
 ## `wipe_hand_path` gives the strokes' shape alone. The left arm hangs, the feet stay put.
 static func wipe(p: HumanoidPose, progress: float, time: float) -> void:
 	p.reset()
@@ -465,16 +467,26 @@ static func wipe(p: HumanoidPose, progress: float, time: float) -> void:
 	var raise: float = smoothstep(0.0, WIPE_RAISE.x, progress) * (1.0 - smoothstep(WIPE_RAISE.y, 1.0, progress))
 	var u: float = clampf((progress - WIPE_RAISE.x) / (WIPE_RAISE.y - WIPE_RAISE.x), 0.0, 1.0)
 	var sweep: float = wipe_stroke(u) * raise
-	var pitch: float = lerpf(WIPE_PITCH.x, WIPE_PITCH.y, u)
+	var level: float = wipe_level(u)
+	var pitch: float = lerpf(WIPE_PITCH.x, WIPE_PITCH.y, level)
 	p.add_table({"root_rot": Vector3(-6.0 * raise, 0.0, 0.0)}, 1.0)
 	p.add_deg(CHEST, Vector3(-8.0 * raise, 10.0 * sweep, 0.0))
 	p.add_deg(NECK, Vector3(6.0 * raise, -6.0 * sweep, 0.0))
 	p.add_deg(HEAD, Vector3(4.0 * raise, -4.0 * sweep, 0.0))
 	p.set_limb(UPPER_ARM_R, 1, Vector3(lerpf(4.0, pitch, raise), 0.0, lerpf(7.0, WIPE_MIDDLE + WIPE_SWEEP * sweep, raise)))
-	p.set_limb(FOREARM_R, 1, Vector3(lerpf(14.0, lerpf(30.0, 52.0, u), raise), 0.0, 0.0))
+	p.set_limb(FOREARM_R, 1, Vector3(lerpf(14.0, lerpf(30.0, 52.0, level), raise), 0.0, 0.0))
 	p.set_limb(HAND_R, 1, Vector3(lerpf(-4.0, -14.0, raise), 0.0, 0.0))
 	p.add_limb(UPPER_ARM_L, -1, Vector3(8.0 * raise, 0.0, 0.0))
 	p.ground = 1.0
+
+
+## How far down the board the strokes are at `u` (0-1 through them): 0 at the top and 1 at the bottom, each stroke level (the
+## hand moving across at one height) and the hand dropping to the next as it turns at the end of a stroke.
+static func wipe_level(u: float) -> float:
+	var v: float = clampf(u, 0.0, 1.0) * float(WIPE_STROKES)
+	var idx: int = mini(int(floor(v)), WIPE_STROKES - 1)
+	var drop: float = smoothstep(0.78, 1.0, v - float(idx)) if idx < WIPE_STROKES - 1 else 0.0
+	return (float(idx) + drop) / float(maxi(WIPE_STROKES - 1, 1))
 
 
 ## A stroke's position, -1 to 1, `u` 0-1 through the strokes: WIPE_STROKES of them, each from one side to the other and back

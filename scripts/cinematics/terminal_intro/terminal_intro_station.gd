@@ -30,6 +30,9 @@ const GLASS_OFF := Color(0.025, 0.027, 0.03)
 const PLATE := Color(0.19, 0.188, 0.185)
 ## The front's thickness, and how far the pilasters, courses and the cornice stand out of it.
 const THICK: float = 1.4
+## The shafts of light fade out within this many metres of the camera (they are big cards: close to one the whole view would wash
+## flat orange), starting at 40% of it.
+const SHAFT_NEAR: float = 9.0
 ## The glass's offset in front of the wall.
 const GLASS_Z: float = 0.05
 
@@ -286,9 +289,9 @@ func _head_house(s: MeshLayer, g: MeshLayer) -> void:
 	# The head house's halo of light: the great window's, and the crack of the doorway's.
 	var halo: Color = n.light_color
 	g.rect(Vector3(-ww * 0.8, n.window_from - 1.2, 0.6), Vector3(ww * 1.6, 0.0, 0.0), Vector3(0.0, (n.window_to - n.window_from) + 2.8, 0.0),
-		halo, 0.34, MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE, -4.0)
+		halo, 0.34, MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE, -SHAFT_NEAR)
 	g.rect(Vector3(-dw - 1.6, n.door_height - 2.6, 0.7), Vector3(dw * 2.0 + 3.2, 0.0, 0.0), Vector3(0.0, 4.8, 0.0), halo, 0.3,
-		MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE, -4.0)
+		MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE, -SHAFT_NEAR)
 	_streaks(s, hw)
 
 
@@ -365,9 +368,27 @@ func _hall(s: MeshLayer) -> void:
 	var hw: float = n.hall_width * 0.5 - 1.0
 	var depth: float = 16.0
 	var lamp: Color = n.light_color
-	# The far wall: a warm glow, brighter toward its middle; the floor and the ceiling dark.
-	s.rect(Vector3(-hw, 0.0, -depth), Vector3(hw * 2.0, 0.0, 0.0), Vector3(0.0, 19.0, 0.0), lamp.lerp(Color(1.0, 0.75, 0.4), 0.15), 0.12,
-		MeshKit.PAT_PLAIN, Vector2.ZERO, Vector2.ONE, 0.0)
+	# The far wall: a warm glow, brightest a few metres up and dimming to the floor and the ceiling (bands, each to the next: never one
+	# flat colour, which at the crack, close up, would be a flat orange screen); the columns of the hall stand in front of it in dark
+	# strips and two girders cross, so the light comes through the crack in slits.
+	var wall_color: Color = lamp.lerp(Color(1.0, 0.75, 0.4), 0.15)
+	var edges: Array[float] = [0.0, 1.5, 4.0, 7.5, 12.0, 19.0]
+	var glows: Array[float] = [0.0, 0.1, 0.2, 0.17, 0.07, 0.01]
+	for i: int in edges.size() - 1:
+		var ca := Color(wall_color, glows[i])
+		var cb := Color(wall_color, glows[i + 1])
+		var pa := Vector3(-hw, edges[i], -depth)
+		var pb := Vector3(-hw, edges[i + 1], -depth)
+		var pc := Vector3(hw, edges[i + 1], -depth)
+		var pd := Vector3(hw, edges[i], -depth)
+		_tri_c(s, pa, pb, pc, ca, cb, cb)
+		_tri_c(s, pa, pc, pd, ca, cb, ca)
+	var columns: int = 8
+	for k: int in columns:
+		var cx: float = lerpf(-hw + 2.0, hw - 2.0, (float(k) + 0.5 * MeshKit.hash01(k, 3, 77)) / float(columns - 1))
+		s.box(Vector3(cx, 9.5, -depth + 4.5), Vector3(0.9 + 0.5 * MeshKit.hash01(k, 4, 77), 19.0, 0.9), SOOT, 0.0, MeshKit.PAT_PLAIN)
+	for gy: float in [6.2, 11.5]:
+		s.box(Vector3(0.0, gy, -depth + 5.0), Vector3(hw * 2.0, 0.4, 0.5), SOOT, 0.0, MeshKit.PAT_PLAIN)
 	s.rect(Vector3(-hw, 0.2, -THICK), Vector3(hw * 2.0, 0.0, 0.0), Vector3(0.0, 0.0, -(depth - THICK)), SOOT, 0.0, MeshKit.PAT_PLAIN)
 	s.rect(Vector3(-hw, 19.0, -depth), Vector3(hw * 2.0, 0.0, 0.0), Vector3(0.0, 0.0, depth - THICK), SOOT, 0.0, MeshKit.PAT_PLAIN)
 	# The side walls inside (dark), so the crack sees the glow beyond and nothing else.
@@ -393,14 +414,14 @@ func _light_shafts() -> void:
 	for k: int in 3:
 		var fan: float = float(k - 1) * 1.6
 		g.rect(Vector3(-dw + 0.4 + fan * 0.3, crack_y, 0.1), Vector3(dw * 2.0 - 0.8 + absf(fan), 0.0, 0.0),
-			Vector3(fan * 2.0, -crack_y + 0.1, n.heap_length + 4.0 + float(k) * 2.0) , c, n.shaft_glow * 1.2, MeshKit.SHAPE_BEAM, Vector2.ZERO, Vector2.ONE, -3.5)
+			Vector3(fan * 2.0, -crack_y + 0.1, n.heap_length + 4.0 + float(k) * 2.0) , c, n.shaft_glow * 1.2, MeshKit.SHAPE_BEAM, Vector2.ZERO, Vector2.ONE, -SHAFT_NEAR)
 	# From the great window: slanting shafts out and down to the forecourt.
 	var ww: float = n.window_width
 	for k: int in 4:
 		var x0: float = -ww * 0.4 + ww * 0.8 * float(k) / 3.0
 		var drift: float = (float(k) - 1.5) * 1.4
 		g.rect(Vector3(x0 - 1.3, n.window_from + 1.0, 0.3), Vector3(2.6, 0.0, 0.0),
-			Vector3(drift, -(n.window_from + 1.0), n.forecourt * 0.85 + 2.0), c, n.shaft_glow, MeshKit.SHAPE_BEAM, Vector2.ZERO, Vector2.ONE, -3.5)
+			Vector3(drift, -(n.window_from + 1.0), n.forecourt * 0.85 + 2.0), c, n.shaft_glow, MeshKit.SHAPE_BEAM, Vector2.ZERO, Vector2.ONE, -SHAFT_NEAR)
 	shafts = batch.commit(self, "Shafts")
 	if shafts != null:
 		shafts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
