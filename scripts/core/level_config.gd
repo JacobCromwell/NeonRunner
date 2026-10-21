@@ -10,16 +10,16 @@ extends Resource
 ## EnemyDirector. So those tasks add their own files and never edit level data.
 ## - barnacle_turret: the Barnacle Turret, a ceiling hazard (GDD §9.8), from Marketplace 1
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
-## - centipede: the Cybernetic Centipede (GDD §9.15; task O3), the Terminal's only enemy, from Terminal 1
 ## tithe_collector (GDD §9.12, Corporate 2, then the Golden Zone) is built (task C5): its own script,
 ## tuning and pattern (data/patterns/tithe_collector.json) place it, so it's out of this list. So are the
 ## wall fences, `wall_fences` and `wall_fences_partial` (task B5: the generator places them,
 ## WallFencePlacement), buzz_overdrive (GDD §9.9, from Corporate 1 through the Golden Zone; task C2:
 ## its pattern, data/patterns/buzz_overdrive.json, and its rules, buzz_overdrive_rules.gd, place it),
 ## gilded_sentinel (GDD §9.11, Golden 2 and the Golden Palace; task C4: data/patterns/gilded_sentinel.json
-## and its rules, gilded_sentinel_rules.gd), and debris_maze (GDD §5, Zone 8, the Terminal's; task O2: its rules,
-## debris_maze_rules.gd, build it, DebrisMaze).
-const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator", "centipede"]
+## and its rules, gilded_sentinel_rules.gd), debris_maze (GDD §5, Zone 8, the Terminal's; task O2: its rules,
+## debris_maze_rules.gd, build it, DebrisMaze), and centipede (GDD §9.15, the Terminal's only enemy, from Terminal 1;
+## task O3: its rules, centipede_rules.gd, place it in the maze's cells; no pattern).
+const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 
 @export var id: StringName = &"prototype"
 ## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).
@@ -98,6 +98,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator", "ce
 ##   stretches of the track where doodads stand so thickly that the open floor between them is a maze the runner
 ##   breaks through with the dash (no patterns: its rules, debris_maze_rules.gd, build it, DebrisMaze; numbers in
 ##   debris_maze_tuning). Its doodads stop the runner where the level says so (doodads_stop).
+## - centipede: the Cybernetic Centipede (task O3; GDD §9.15), the Terminal's only enemy, from Terminal 1: it waits in
+##   the debris maze's open cells and chases the runner along its open paths (no patterns: its rules,
+##   centipede_rules.gd, place it where the maze stays escapable, CentipedeEscape; it needs the debris_maze feature)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.

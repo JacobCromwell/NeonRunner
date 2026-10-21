@@ -280,6 +280,10 @@ var _blocker_query := PhysicsShapeQueryParameters3D.new()
 ## DamageRules.lets_through: a sign), by instance id, with the physics frame the body last touched each:
 ## left alone until a frame the body is clear of it (_check_hazards).
 var _passing: Dictionary = {}
+## The enemies the current dash has wounded (task O3; DamageRules.WOUND_ENEMY: an enemy that takes more than one dash,
+## Enemy.dash_hits), by instance id: one wound a dash, and the dash goes on through the rest of it. Cleared as a dash
+## starts (start_dash).
+var _dash_wounded: Dictionary = {}
 
 var _pivot: Node3D
 var _avatar: PlayerAvatar  # Avatar
@@ -462,6 +466,10 @@ func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 	if not alive:
 		return DamageRules.Outcome.IGNORE
 	var d: DamageRules.Defense = defense()
+	# Task O3 (GDD §9.15): an enemy this dash has wounded already lets it on through the rest of it, so one dash wounds
+	# it once (its other hitboxes, and the same one on the next frames, are passed).
+	if d.dashing and hazard.enemy != null and _dash_wounded.has(hazard.enemy.get_instance_id()):
+		return DamageRules.Outcome.IGNORE
 	var outcome: DamageRules.Outcome = DamageRules.resolve(hazard, d, stomping)
 	var b: DashBreakable = hazard.breakable
 	if b != null and is_instance_valid(b) and not b.is_smashed():
@@ -489,6 +497,10 @@ func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 				_event(&"stomp")
 			hazard.enemy.defeat(cause)
 			enemy_contact.emit(hazard.enemy, cause)
+		DamageRules.Outcome.WOUND_ENEMY:
+			# Task O3 (GDD §9.15): the dash passes through it safely and wounds it (the enemy shows it, Enemy.wound).
+			_dash_wounded[hazard.enemy.get_instance_id()] = true
+			hazard.enemy.wound(&"dash")
 		DamageRules.Outcome.ROBBED:
 			# GDD §9.12: no hit; the thief takes its share (the ScoreKeeper hears `robbed`).
 			theft_immune_left = rules.theft_grace
@@ -531,6 +543,7 @@ func start_dash(duration: float, speed_bonus: float) -> void:
 	dashing = true
 	_dash_left = duration
 	_dash_bonus = speed_bonus
+	_dash_wounded.clear()
 	_event(&"dash")
 
 

@@ -84,6 +84,7 @@ func run() -> void:
 	(body.enemy as Enemy).dash_kills = false
 	check(DamageRules.resolve(body, _d("dashing")) == O.IGNORE, "the dash passes safely through a dash-proof enemy (Bad Dream)")
 	(body.enemy as Enemy).dash_kills = true
+	_test_dash_hits_and_harmless_parts()
 
 	# Stomps, spines and tentacles.
 	check(DamageRules.resolve(top, _d(), true) == O.STOMP, "dropping onto a stompable enemy stomps it")
@@ -111,6 +112,44 @@ func run() -> void:
 
 	for n: Node in _nodes:
 		n.free()
+
+
+## Task O3 (GDD §9.15, the Cybernetic Centipede): an enemy that takes two dashes (Enemy.dash_hits) is wounded by the
+## first (WOUND_ENEMY, the dash passing safely) and defeated by the second; its harmless parts (Hazard.harmless: the
+## body and legs, only its bite hurts) do nothing to a runner whatever they carry, but a dash through them still counts;
+## its bite (an attack part) is one hit that armor or the shield absorbs, that claws don't cancel and a stomp can't land.
+func _test_dash_hits_and_harmless_parts() -> void:
+	var shell: Hazard = _enemy_part(&"body")
+	shell.harmless = true
+	shell.is_solid = false
+	var bite: Hazard = _enemy_part(&"attack", true)
+	bite.enemy = shell.enemy
+	var e: Enemy = shell.enemy
+	e.dash_hits = 2
+	e.claw_immune = true
+	e.stompable = false
+	e.immune_to_weapons = true
+	for defense: Array in [[], ["armor"], ["shield"], ["claws"], ["armor", "shield"], ["god"], ["invulnerable"]]:
+		var d: DamageRules.Defense = _d(defense[0] if defense.size() > 0 else "", defense[1] if defense.size() > 1 else "")
+		check(DamageRules.resolve(shell, d) == O.IGNORE and DamageRules.resolve(shell, d, true) == O.IGNORE,
+			"a harmless part does nothing, touched or landed on (%s)" % [defense])
+	check(DamageRules.resolve(shell, _d("dashing")) == O.WOUND_ENEMY, "the first of its two dashes wounds it")
+	check(DamageRules.resolve(bite, _d("dashing")) == O.WOUND_ENEMY, "through its bite too: the dash passes safely")
+	e.dash_wounds = 1
+	check(DamageRules.resolve(shell, _d("dashing")) == O.DEFEAT_ENEMY and DamageRules.resolve(bite, _d("dashing")) == O.DEFEAT_ENEMY,
+		"its second dash defeats it")
+	e.dash_wounds = 0
+	check(DamageRules.resolve(bite, _d()) == O.KILL, "its bite kills a runner with no armor and no shield")
+	check(DamageRules.resolve(bite, _d("armor")) == O.BLOCKED_ARMOR, "armor absorbs a bite")
+	check(DamageRules.resolve(bite, _d("shield")) == O.BLOCKED_SHIELD, "the shield absorbs a bite")
+	check(DamageRules.resolve(bite, _d("claws")) == O.KILL, "claws don't stop a bite: a claw runner is bitten like anyone")
+	check(DamageRules.resolve(bite, _d(), true) == O.KILL, "landing on its bite is no stomp")
+	check(DamageRules.resolve(bite, _d("armor", "invulnerable")) == O.IGNORE, "the invulnerability window ignores a bite")
+	# Every other enemy is as before: one dash defeats it.
+	var plain: Hazard = _enemy_part(&"body")
+	check((plain.enemy as Enemy).dash_hits == 1 and DamageRules.resolve(plain, _d("dashing")) == O.DEFEAT_ENEMY,
+		"an enemy with the default dash_hits still falls to one dash")
+	check(not plain.harmless, "hazards aren't harmless by default")
 
 
 func _d(a: String = "", b: String = "") -> DamageRules.Defense:

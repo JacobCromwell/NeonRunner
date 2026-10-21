@@ -57,6 +57,13 @@ var claw_immune: bool = false
 var stompable: bool = true
 ## The juggernaut dash defeats it on contact. False = the dash passes through it safely.
 var dash_kills: bool = true
+## How many dashes through it defeat it (task O3; GDD §9.15: "two dashes kill" the Cybernetic Centipede), with
+## dash_kills on: 1 for every enemy the dash defeats at once; above 1, each dash before its last passes through it
+## safely and wounds it (DamageRules: WOUND_ENEMY, wound()), one wound a dash (Player.receive_hit), and its last
+## defeats it (DEFEAT_ENEMY).
+var dash_hits: int = 1
+## The dashes that have wounded it so far (wound()).
+var dash_wounds: int = 0
 ## Bosses ignore claw contact kills (GDD §8).
 var is_boss: bool = false
 ## A destructible obstacle rather than a creature (fence generators): doesn't count as a kill.
@@ -278,6 +285,21 @@ func _hurt_charge_contacts(hitbox: Hazard, previous: Transform3D) -> void:
 			continue
 		_charge_contact_hits[id] = true
 		victim.take_damage(victim.health, CHARGE_DAMAGE_CAUSE)
+
+
+## A dash passed through it and wounded it (task O3; DamageRules: WOUND_ENEMY, for an enemy whose dash_hits are more
+## than one, at every dash but its last). Override _on_wounded to show it and react.
+func wound(cause: StringName) -> void:
+	if not alive:
+		return
+	dash_wounds += 1
+	health_changed.emit(self)
+	_on_wounded(cause)
+
+
+## Called once for each wound (wound()). The default does nothing.
+func _on_wounded(_cause: StringName) -> void:
+	pass
 
 
 ## Defeats the enemy (weapon, stomp, claws, dash, gap, emp, ...). Safe to call more than once.

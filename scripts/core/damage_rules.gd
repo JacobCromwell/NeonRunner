@@ -8,7 +8,11 @@ extends RefCounted
 ## Order (GDD §8–9 shared rules):
 ## 1. Inactive hazards and already-defeated enemies do nothing.
 ## 2. The juggernaut dash passes through hazards and defeats enemies it hits (unless the enemy
-##    declares dash_kills = false, like the Bad Dream, which it passes through safely).
+##    declares dash_kills = false, like the Bad Dream, which it passes through safely). An enemy that takes
+##    more than one dash (Enemy.dash_hits: the Cybernetic Centipede's two, task O3, GDD §9.15) is wounded by
+##    each dash but its last (WOUND_ENEMY: the dash passes through it safely), and defeated by its last.
+##    A harmless part (Hazard.harmless: the centipede's body and legs, which only its bite makes dangerous)
+##    does nothing else: whatever protects the player or not, touching it is IGNORE.
 ## 3. Dropping onto an enemy's top stomps it if it's stompable; claws beat spines and tentacles.
 ##    A weak point stomped from above defeats its enemy and is harmless otherwise.
 ## 4. Claws defeat any enemy on body contact, except claw-immune ones (bosses, the Bad Dream).
@@ -44,6 +48,10 @@ enum Outcome {
 	## up; the thief takes its share of the run's credits (ScoreKeeper.rob) and holds it, and for a
 	## moment no theft can happen again (GameRules.theft_grace).
 	ROBBED,
+	## The dash passed through an enemy that takes more than one (Enemy.dash_hits) and wounded it (task O3; GDD
+	## §9.15, the Cybernetic Centipede: "a dash passes through it safely and wounds it"); the player is unharmed.
+	## Its last dash is a DEFEAT_ENEMY. The Player counts one wound a dash (Player.receive_hit).
+	WOUND_ENEMY,
 }
 
 
@@ -71,7 +79,14 @@ static func resolve(hazard: Hazard, defense: Defense, stomping: bool = false) ->
 
 	if defense.dashing and hazard.dash_passes:
 		if enemy != null and enemy.dash_kills:
+			# Task O3: one that takes more dashes than this one is only wounded by it.
+			if enemy.dash_wounds + 1 < enemy.dash_hits:
+				return Outcome.WOUND_ENEMY
 			return Outcome.DEFEAT_ENEMY
+		return Outcome.IGNORE
+
+	# Task O3: a harmless part (the Cybernetic Centipede's body) does nothing but what the dash does.
+	if hazard.harmless:
 		return Outcome.IGNORE
 
 	if enemy != null:
