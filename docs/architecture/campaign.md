@@ -119,7 +119,9 @@ completion bonus, Continue for old saves, its boss, cinematics and music.
 
 **The Terminal** (task O1; the owner, October 20, 2026; GDD §5, Zone 8). `data/zones/terminal.tres` (id `terminal`,
 24.6 m/s, music `terminal`, the Dead Zone's skin until task O4's) is zone 8, between the Dead Zone and the Golden
-Zone: its intro (the arrival flyover), Rubble Line and Last Stop (`data/levels/terminal_1.tres` and `terminal_2.tres`:
+Zone: its intro (the Grand Terminal's, `TerminalIntro`, task F2k: the runner finds the abandoned station in the Dead Zone's
+wasteland, wipes a route board that names THE PALACE and squeezes in through the rubble to the tracks; the arrival flyover it
+played before is gone from this slot), Rubble Line and Last Stop (`data/levels/terminal_1.tres` and `terminal_2.tres`:
 seeds 901 and 902, 140 and 145 s) and its outro (a card), **no boss** (the Marketplace's way: no boss or boss-intro
 slot). Its levels are off the curve like the Beach's, strictly between Dead Zone 2 and Golden 1 (difficulty 0.79 and
 0.805, enemy scaling 0.83 and 0.85, completion bonus Dead Zone 2's; danger density dials 0.37 and 0.38, which add
@@ -184,9 +186,9 @@ zone's intro and outro too; the existing ones don't set it and keep their placeh
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the City's, Gangland's, the
-Marketplace's and the Dead Zone's, and the City's boss intro, play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
-Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the City's, Gangland's, the Marketplace's and the Dead Zone's
-intros their own (`CityIntro`, F2h; `GanglandIntro`, F2g; `MarketplaceIntro`, F2f; `DeadZoneIntro`, task F2c), Gangland's and the Beach's outros theirs (`GanglandOutro`, F2d; `BeachOutro`, F2e), and the other outros are
+Marketplace's, the Casino's, the Dead Zone's and the Terminal's, and the City's boss intro, play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
+Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the City's, Gangland's, the Marketplace's, the Casino's, the Dead Zone's and the Terminal's
+intros their own (`CityIntro`, F2h; `GanglandIntro`, F2g; `MarketplaceIntro`, F2f; `CasinoIntro`, F2j; `DeadZoneIntro`, task F2c; `TerminalIntro`, F2k), Gangland's and the Beach's outros theirs (`GanglandOutro`, F2d; `BeachOutro`, F2e), and the other outros are
 still cards. A boss is
 built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Beach's
 Mecha Guppy and Captain Cogs last, task E5e-c), each slot holding the phases GDD §10 gives its boss and its

@@ -536,7 +536,10 @@ a light factor multiplied in after `to_linear()` scales sRGB values on the
 Compatibility renderer; `golden_facade.gdshader` passes every one of its light factors through
 `light_factor()` (kit_common), which raises it to the 1/2.2 power there, so its walls are as bright on
 both renderers. (The older skins' uniform colours, and the kit's own `shade` factor, still differ a little
-between the renderers.)
+between the renderers.) Never `duplicate()` a skin's ShaderMaterial to get one of your own: the engine's
+`Resource.duplicate()` drops a `Vector3` set on a colour uniform (a `source_color` `vec3`) from the original
+and the copy, so the skin's shared material goes back to the shader's default colour for the rest of the session.
+Build a fresh material (`MeshKit.solid(params)`) or copy the parameters by name (`TerminalIntroStation.own()`).
 
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 the Corporate zone's
