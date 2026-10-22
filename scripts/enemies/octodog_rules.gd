@@ -90,6 +90,24 @@ static func dogs_in(layout: LevelLayout) -> Array[Dictionary]:
 	return out
 
 
+## What the passes after the rules keep off around Octodog entry `e` (LevelGenerator.enemy_keep_out: the fill pass, the
+## danger density pass, the wider gaps, the zone doodads, the wall-run gaps, what keeps off big attacks). A standing
+## dog's is every enemy's, from LevelGenerator.FILL_ENEMY_LEAD_SECONDS before it to the end of the floor its charges
+## use (enemy_floor_span), worked out exactly as LevelGenerator does for a type without a keep_out of its own. A dog
+## held in a jar (task Q5, LevelLayout.is_held) keeps only the floor its charges use: it's harmless until then (it tumbles
+## out, runs ahead and paces), and its jar keeps a doodad's room of its own (octodog_jar_rules.gd, doodad_keep_outs and
+## fill_keep_outs).
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var at: float = float(e["at"])
+	var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
+	if LevelLayout.is_held(e):
+		return span
+	var out := Vector2(at - LevelGenerator.FILL_ENEMY_LEAD_SECONDS * gen.speed, at)
+	if span.y >= span.x:
+		out = Vector2(minf(out.x, span.x), maxf(out.y, span.y))
+	return out
+
+
 ## True if a dog standing at `at` can make its first charge fairly, whatever its lane: the wind-up
 ## starts (the player `stop` metres before it) after the level's start, with no pad or ceiling
 ## landing from there to the dog, a clear stretch for the charge, and its run so far off every chase.

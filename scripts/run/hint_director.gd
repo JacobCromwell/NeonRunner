@@ -214,7 +214,8 @@ func _first_at(trigger: String) -> float:
 				if trigger == "teleporter" or float(tp.get("blink", 0.0)) > 0.0:
 					found.append(float(tp["at"]))
 		"octodog_jar":
-			# Task Q5 (GDD §5, Zone 9): the first jar holding an Octodog (LevelLayout.HOLDS). DESIGN-TBD
+			# Task Q5 (GDD §5, Zone 9): the first jar holding an Octodog (LevelLayout.HOLDS), whether its dog comes out or
+			# it's a decoy (LevelLayout.DECOY): the hint ("may break out") never tells which jar releases. DESIGN-TBD
 			# (docs/questions/q5.md 9): the hint's wording (data/hints/hints.json, "octodog_jar").
 			for dj: Dictionary in layout.doodads:
 				if LevelLayout.held_type(dj) == "octodog":

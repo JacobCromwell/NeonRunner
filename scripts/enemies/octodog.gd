@@ -50,13 +50,14 @@ extends Enemy
 ## is marked LevelLayout.HELD stands in its jar (the zone doodad holding it, LevelLayout.holder_of: the skin draws it
 ## curled up in there) and stays out of play there (HELD: no look of its own, no hitbox, no target, immune to weapons,
 ## no attack) until the jar breaks (its entry marked "smashed", DashBreakable.smash: the dash, or a wall runner passing
-## one by a side wall, task L3). Then it bursts out (_release: the glass and its green spray, the octodog_release sound)
-## and tumbles on ahead of the runner (TUMBLE:
-## jar_tumble_time, flung jar_tumble_speed faster than them, rolling over once, harmless), lands running and plays out as
-## any dog after a lunge: it sprints ahead to its usual distance, paces there and makes its planned charges, each from
-## its wind-up with its cue (GDD §5, proposed: "starts its usual attack from the first wind-up, with its cue, never a
-## lunge without warning"), killed and scored as any Octodog. Its charges were planned from the release
-## (octodog_jar_rules.gd). A runner who passes the jar without smashing it never meets it: it leaves play unseen.
+## one by a side wall, task L3). The jar breaks as every doodad does (its own pieces, the dash's crunch), exactly as a
+## decoy does (LevelLayout.DECOY: one whose dog never comes out), and then the dog bursts out (_release: its green spray
+## and its snarl, the octodog_release sound) and tumbles on ahead of the runner (TUMBLE: jar_tumble_time, flung
+## jar_tumble_speed faster than them, rolling over once, harmless), lands running and plays out as any dog after a lunge:
+## it sprints ahead to its usual distance, paces there and makes its planned charges, each from its wind-up with its cue
+## (GDD §5, proposed: "starts its usual attack from the first wind-up, with its cue, never a lunge without warning"),
+## killed and scored as any Octodog. Its charges were planned from the release (octodog_jar_rules.gd). A runner who passes
+## the jar without smashing it never meets it: it leaves play unseen.
 
 enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING, HELD, TUMBLE }
 ## The director's answer to its first wind-up's ask (EnemyDirector.major_attack_blocked), asked at
@@ -71,8 +72,6 @@ const PHASE_NAMES: PackedStringArray = ["idle", "windup", "lunge", "turn", "spri
 ## Metres past its jar's end a runner who hasn't smashed it is when a dog held in it leaves play (should_retire): their
 ## body is past the jar by then, so no dash reaches it any more.
 const JAR_PASSED: float = 1.0
-## The colour of the glass flying when it bursts out of its jar (task Q5: the jars' pale cold glass).
-const JAR_GLASS := Color(0.78, 0.93, 1.0)
 ## The height of its middle above its feet (metres), which its tumble out of a jar rolls it about.
 const TUMBLE_PIVOT: float = 0.4
 ## pad_or_landing_between(): metres kept clear around an anti-grav pad, and after a ceiling section's
@@ -298,9 +297,10 @@ func _tick(delta: float) -> void:
 
 
 ## Task Q5: its jar was smashed (GDD §5, Zone 9): it bursts out, just past the jar in its lane (the runner who smashed
-## it is at the jar's front), the glass and a green spray flying and the octodog_release sound playing, and tumbles on
-## ahead of them (TUMBLE), harmless: no hitbox until it's ahead in its sprint after (_sprint), and its attack is its
-## planned charges', each from its wind-up with its cue.
+## it is at the jar's front), a green spray flying off it and its snarl playing (octodog_release: the dog's own, so the
+## jar's break itself is any doodad's, the same as a decoy's), and tumbles on ahead of them (TUMBLE), harmless: no hitbox
+## until it's ahead in its sprint after (_sprint), and its attack is its planned charges', each from its wind-up with
+## its cue.
 func _release() -> void:
 	in_jar = false
 	immune_to_weapons = false
@@ -314,7 +314,6 @@ func _release() -> void:
 	_place()
 	var at: Vector3 = global_position + Vector3(0.0, 1.0, 0.0)
 	_play(&"octodog_release", at)
-	world.effects.burst(at, JAR_GLASS, 24, 0.9)
 	world.effects.burst(at, OctodogModel.TENTACLE_GREEN_TIP, 16, 0.6)
 
 

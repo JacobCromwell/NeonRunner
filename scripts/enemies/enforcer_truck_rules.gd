@@ -372,6 +372,7 @@ static func trucks_in(layout: LevelLayout) -> Array[Dictionary]:
 ## The level's baits, along the track (runner distances): {at (where its charge comes: an Octodog's first
 ## planned wind-up, a Buzz Overdrive's charge), warn (where its warning starts: the wind-up, the rev), hold
 ## (where the truck stops firing for it: hold_seconds() before its warning), kind, entry (its enemy entry)}.
+## Never an Octodog held in a jar (task Q5, LevelLayout.is_held): it comes out only if the runner smashes its jar.
 static func bait_points(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var hold: float = tuning().hold_seconds() * gen.speed
@@ -379,7 +380,7 @@ static func bait_points(gen: LevelGenerator) -> Array[Dictionary]:
 		match String(e.get("type", "")):
 			"octodog":
 				var anchors: Array = (e.get("params", {}) as Dictionary).get("charge_at", [])
-				if not anchors.is_empty():
+				if not anchors.is_empty() and not LevelLayout.is_held(e):
 					var a: float = float(anchors[0])
 					out.append({"at": a, "warn": a, "hold": a - hold, "kind": "octodog", "entry": e})
 			"buzz_overdrive":

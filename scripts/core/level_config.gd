@@ -120,9 +120,10 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   an Octodog (LevelLayout.HOLDS), dressed as the zone's jar with one curled up inside; breaking it (the dash, or a wall
 ##   runner by its side wall) lets the dog out, and it runs ahead and attacks like any Octodog, its charges planned from
 ##   there (no patterns: its rules, octodog_jar_rules.gd, stand up to `octodog_jars` of them where the release and every
-##   charge are fair, taking plain content out of the way where that's the only room; the dog's numbers in
-##   data/enemies/octodog.tres, Jars). The zone's other Octodog jars are its skin's look only and hold nothing
-##   (IceLabDoodads).
+##   charge are fair, taking what stands on a charge's path or in the jar's room out of the way where that's the only
+##   room, and none in a build without room: an occasional feature; the dog's numbers in data/enemies/octodog.tres,
+##   Jars). `octodog_jar_decoys` of the level's small doodads are dressed and broken the same but hold a dog that never
+##   comes out (LevelLayout.DECOY), and the zone's other Octodog jars are its skin's look only (IceLabDoodads).
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -310,15 +311,21 @@ var _skin: ZoneSkin
 ## Octodog jars that break open (task Q5; GDD §5, Zone 9, the owner, October 21, 2026: "some jars hold a curled-up
 ## Octodog ... sometimes smashing an Octodog jar doodad releases its Octodog into the world, and the runner has to fight
 ## it"): with the `octodog_jar` feature, the generator stands up to this many jars holding an Octodog
-## (octodog_jar_rules.gd), each where its push is a doodad's and the dog it lets out has room for its usual attack (its
-## run and every charge clear, plain content taken out of its way where that's the only room); fewer where the level
-## leaves no room (none, with a warning, in a rare build with room for not even one charge: 1 of 63 measured by
-## tools/measure/octodog_jars.gd). The rest of a zone's Octodog jars are its skin's look and hold nothing (GDD §5,
-## proposed: "a jar that will release its Octodog looks the same as one that won't"). 0 turns them off. Without the
-## feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1): 1 in each of the Ice Lab's levels (a heli drone's pad schedule leaves a
-## freed dog's attack room before its first pad only); quick play's prototype level takes this default, endless mode its
-## level's and a weekly challenge's week Sentinel Row's.
+## (octodog_jar_rules.gd), each where its push is a doodad's and the dog it lets out has room for its usual attack, two
+## charges at least, each charge's stretch clear (what stands on a charge's path or in the jar's room taken out of its
+## way where that's the only room); fewer where the level leaves no room, none in a crowded build (an occasional feature,
+## octodog_jar_rules.gd's OCCASIONAL: no warning, and its decoys stand all the same). 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1): 1 in each of the Ice
+## Lab's levels (a heli drone's pad schedule leaves a freed dog's attack little room once it has started); quick play's
+## prototype level takes this default, endless mode its level's and a weekly challenge's week Sentinel Row's.
 @export_range(0, 8) var octodog_jars: int = 1
+## How many of the level's own small zone doodads standing alone become Octodog jars whose dog never comes out (task Q5;
+## LevelLayout.DECOY; octodog_jar_rules.gd, after_doodads): dressed and broken exactly as the jars that release theirs
+## (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't"), so "sometimes" holds in
+## every level, whatever the skin's own variety of jars adds. Where the level has too few, new small doodads where a
+## zone doodad may stand (the doodad pass's own rules); fewer only where none fits. Without the `octodog_jar` feature it
+## does nothing. DESIGN-TBD (docs/questions/q5.md 1): 2 in Frost Foundry, 3 in Relay Station
+## and Specimen Vault, and this default elsewhere.
+@export_range(0, 8) var octodog_jar_decoys: int = 2
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings
 ## into a treasure stash's (treasure_stash_rules.gd), where one fits (an inner lane with inner lanes beside it:

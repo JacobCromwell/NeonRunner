@@ -17,11 +17,18 @@ const WALL_RUN_HOLE: String = "wall_run"
 ## HELD (held_by, holder_of). Abstract, as every piece here: the skin dresses such a doodad as the zone's container
 ## with that enemy inside (ZoneSkin.held_doodad_look: the Ice Lab's Octodog jar), and smashing it (DashBreakable.smash,
 ## its entry marked "smashed") lets the enemy out (it watches its doodad: Octodog). Placed by its feature's rules
-## (scripts/enemies/octodog_jar_rules.gd), never by the zone doodads' pass. A doodad of the zone's that only looks like
-## such a container (the skin's own variety) holds nothing.
+## (scripts/enemies/octodog_jar_rules.gd), never by the zone doodads' pass; one marked DECOY too is a zone doodad of the
+## pass's own whose enemy never comes out. A doodad of the zone's that only looks like such a container (the skin's own
+## variety) holds nothing.
 const HOLDS: String = "holds"
 ## The params key of an enemy entry held in a doodad (HOLDS) until that doodad is smashed: true.
 const HELD: String = "held"
+## The key of a doodad marked HOLDS whose enemy never comes out (task Q5: a decoy, true): no entry of `enemies` stands in
+## it (held_by is {}), but the skin dresses it and the dash breaks it exactly as one that releases its enemy, so the two
+## can't be told apart (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't").
+## Marked by its feature's rules after the zone doodads' pass (octodog_jar_rules.gd, after_doodads), on doodads of the
+## zone's own.
+const DECOY: String = "decoy"
 
 var lane_count: int = 3
 var length: float = 0.0
@@ -61,7 +68,7 @@ var enemies: Array[Dictionary] = []
 ## seed its look is picked by (its first one's `seed`): the row's doodads share its lane, size class, side and
 ## look, each its own entry with a seed of its own (doodad_extent).
 ## A doodad that holds an enemy until it's smashed (task Q5: an Octodog's jar) also holds HOLDS, the enemy's type
-## (holds_enemy, held_by).
+## (holds_enemy, held_by), and DECOY where that enemy never comes out (is_decoy).
 var doodads: Array[Dictionary] = []
 ## {lane, start, end, warn, charge, keep, speed}: a floor cut planned in advance (task B4; GDD §9.9,
 ## the Buzz Overdrive's): the floor of `lane` from `start` to `end` turns into a gap during play, run
@@ -515,6 +522,11 @@ static func holds_enemy(d: Dictionary) -> bool:
 ## The type of the enemy doodad entry `d` holds (HOLDS), or "" if it holds none.
 static func held_type(d: Dictionary) -> String:
 	return String(d.get(HOLDS, ""))
+
+
+## True if doodad entry `d` holds an enemy that never comes out (HOLDS and DECOY: a decoy, task Q5).
+static func is_decoy(d: Dictionary) -> bool:
+	return holds_enemy(d) and bool(d.get(DECOY, false))
 
 
 ## True if enemy entry `e` (one of `enemies`) is held in a doodad until that doodad is smashed (task Q5: its params

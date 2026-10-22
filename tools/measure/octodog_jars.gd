@@ -51,6 +51,10 @@ func _run() -> void:
 			_without = true
 		elif arg.begins_with("--start="):
 			_start = float(arg.get_slice("=", 1))
+		elif arg.begins_with("--max-taken="):
+			OctodogJarRules.max_taken = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--max-ceilings="):
+			OctodogJarRules.max_ceilings = int(arg.get_slice("=", 1))
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var builds: int = 0
@@ -63,6 +67,7 @@ func _run() -> void:
 	var slowest: float = 0.0
 	var spent: float = 0.0
 	var intros: int = 0
+	var all_decoys: int = 0
 	var late_intros: int = 0
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level() or s.is_minigame() or not s.level.has_feature(OctodogJarRules.FEATURE):
@@ -103,13 +108,17 @@ func _run() -> void:
 				spent += rules_ms
 				builds += 1
 				wanted += config.octodog_jars
-				taken += OctodogJarRules.taken_out
+				taken += OctodogJarRules.last_taken
 				var found: PackedStringArray = OctodogJarRules.problems(gen)
 				problems += found.size()
 				warned += 0 if gen.warnings.is_empty() else 1
 				var parts: PackedStringArray = []
+				var decoys: int = 0
 				for d: Dictionary in layout.doodads:
 					if not LevelLayout.holds_enemy(d):
+						continue
+					if LevelLayout.is_decoy(d):
+						decoys += 1
 						continue
 					placed += 1
 					var dog: Dictionary = layout.held_by(d)
@@ -135,13 +144,15 @@ func _run() -> void:
 					intros += 1
 					late_intros += 1 if late else 0
 					intro = ", introduced %s" % ("LATE" if late else "right after its start")
-				print("%s lanes=%d seed=%d: %d of %d [%s]%s, %d taken out, %d more Octodog jars holding nothing, %d Octodogs standing, %.0f ms (%.1f in the rules), %d builds%s%s"
+				all_decoys += decoys
+				print("%s lanes=%d seed=%d: %d of %d [%s]%s, %d taken out, %d decoys, %d more Octodog jars holding nothing, %d Octodogs standing, %.0f ms (%.1f in the rules), %d builds%s%s"
 					% [s.id, lanes, config.level_seed, parts.size(), config.octodog_jars, ", ".join(parts), intro,
-						OctodogJarRules.taken_out, skin_jars, standing, ms, rules_ms, gen.attempts,
+						OctodogJarRules.last_taken, decoys, skin_jars, standing, ms, rules_ms, gen.attempts,
 						(" WARN %s" % [gen.warnings]) if not gen.warnings.is_empty() else "",
 						(" PROBLEMS %s" % [found]) if not found.is_empty() else ""])
 				if OctodogJarRules.debug:
 					print("  turned down: %s" % [OctodogJarRules.why])
-	print("%d builds: %d of %d jars, %d taken out, %d of the skin's empty Octodog jars, %d problems, %d builds with warnings; the rules took %.1f ms on average and %.1f at most; %d of %d introductions late"
-		% [builds, placed, wanted, taken, looks, problems, warned, spent / maxf(builds, 1.0), slowest, late_intros, intros])
+	print("%d builds: %d of %d jars, %d taken out, %d decoys, %d of the skin's empty Octodog jars, %d problems, %d builds with warnings; the rules took %.1f ms on average and %.1f at most; %d of %d introductions late"
+		% [builds, placed, wanted, taken, all_decoys, looks, problems, warned, spent / maxf(builds, 1.0), slowest, late_intros,
+			intros])
 	quit()

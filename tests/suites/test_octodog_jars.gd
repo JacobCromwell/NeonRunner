@@ -85,6 +85,14 @@ func _test_layout() -> void:
 		"a held dog is none of the level's standing Octodogs")
 	check(OctodogJarRules.positions(lay) == [80.0] and LevelGenerator.feature_positions(lay, OctodogJarRules.FEATURE) == [80.0],
 		"the every-feature check finds the jar at its front")
+	# A decoy: marked as holding an Octodog, and DECOY, with no dog of its own.
+	var decoy: Dictionary = _jar(1, 1, 250.0, true, 7, true)
+	lay.doodads.append(decoy)
+	check(LevelLayout.holds_enemy(decoy) and LevelLayout.held_type(decoy) == "octodog" and LevelLayout.is_decoy(decoy)
+		and not LevelLayout.is_decoy(jar) and lay.held_by(decoy).is_empty(),
+		"a decoy is marked as holding an Octodog, as a decoy, and holds no dog")
+	check(OctodogJarRules.positions(lay) == [80.0], "the every-feature check never counts a decoy")
+	check(LevelLayout.is_decoy(lay.copy().doodads[-1]), "copy() keeps a decoy one")
 
 
 # --- The generator ------------------------------------------------------------------------------
@@ -368,66 +376,77 @@ func _config() -> LevelConfig:
 	return c
 
 
-## A jar doodad of the small class in `lane` from `at`, pushing to `side`, holding an Octodog (nothing with `holds` off),
-## its look `look_seed`.
-func _jar(lane: int, side: int, at: float, holds: bool = true, look_seed: int = 7) -> Dictionary:
+## A jar doodad of the small class in `lane` from `at`, pushing to `side`, holding an Octodog (nothing with `holds` off;
+## one that never comes out, a decoy, with `decoy`), its look `look_seed`.
+func _jar(lane: int, side: int, at: float, holds: bool = true, look_seed: int = 7, decoy: bool = false) -> Dictionary:
 	var d := {"lane": lane, "start": at, "end": at + tuning.doodad_size(&"small").z, "size": &"small", "side": side,
 		"seed": look_seed}
 	if holds:
 		d[LevelLayout.HOLDS] = "octodog"
+	if decoy:
+		d[LevelLayout.DECOY] = true
 	return d
 
 
-## The Octodog a jar at `at` in `lane` holds, its charges planned at `anchors` (player distances) as the jar rules plan them.
-func _held_dog(lane: int, at: float, anchors: Array) -> Dictionary:
+## The Octodog a jar at `at` in `lane` holds, its charges planned at `anchors` (player distances) as the jar rules plan them,
+## each `window` metres long (a charge's stretch at the reference speed and no enemy scaling by default).
+func _held_dog(lane: int, at: float, anchors: Array, window: float = -1.0) -> Dictionary:
 	var planned: Array[float] = []
 	for a: Variant in anchors:
 		planned.append(float(a))
-	var window: float = t.window_length(tuning.run_speed, 0.0)
+	if window < 0.0:
+		window = t.window_length(tuning.run_speed, 0.0)
 	return {"type": "octodog", "at": at, "lane": lane, "side": 0, "seed": 11, "params": {LevelLayout.HELD: true,
 		"doghouse": false, "charges": planned.size(), "charge_at": planned,
 		"floor_span": Vector2(planned[0] - 10.0, planned[-1] + window)}}
 
 
-## The jar rules' plan for a dog held in a jar at `at` on `lay`'s bare track, making `count` charges: {anchors, window}.
-func _plan_for(lay: LevelLayout, at: float, count: int) -> Dictionary:
-	var gen: LevelGenerator = LevelGenerator.for_layout(_config(), tuning, lay)
+## The jar rules' plan for a dog held in a jar at `at` on `lay`'s bare track, making `count` charges, in the level of
+## `config` (the bare one by default: the reference speed, no enemy scaling): {anchors, window}.
+func _plan_for(lay: LevelLayout, at: float, count: int, config: LevelConfig = null) -> Dictionary:
+	var c: LevelConfig = config if config != null else _config()
+	var gen: LevelGenerator = LevelGenerator.for_layout(c, tuning, lay)
 	var a0: float = at + OctodogJarRules.release_distance(gen)
-	var cycle: float = t.cycle_distance(gen.speed, 0.0, gen.pace)
+	var cycle: float = t.cycle_distance(gen.speed, c.enemy_scaling, gen.pace)
 	var anchors: Array[float] = []
 	for k: int in count:
 		anchors.append(a0 + k * cycle)
-	return {"anchors": anchors, "window": t.window_length(gen.speed, 0.0, gen.pace)}
+	return {"anchors": anchors, "window": t.window_length(gen.speed, c.enemy_scaling, gen.pace)}
 
 
 ## A track `lanes` wide with a jar in `lane` at JAR pushing to `side` (holding a dog making two charges with `holds`),
-## dressed by the Ice Lab's skin, the runner in `lane`: {world, jar, dog (its entry), anchors}.
-func _jar_world(lanes: int, lane: int, side: int, holds: bool) -> Dictionary:
-	var lay := RunSim.layout(lanes, 900.0)
-	var plan: Dictionary = _plan_for(lay, JAR, 2)
+## dressed by the Ice Lab's skin, the runner in `lane`, in the level of `config` (the bare one by default; a campaign
+## level's at its own speed and enemy scaling): {world, jar, dog (its entry), anchors, window, movement}.
+func _jar_world(lanes: int, lane: int, side: int, holds: bool, config: LevelConfig = null) -> Dictionary:
+	var c: LevelConfig = config if config != null else _config()
+	var movement: MovementTuning = c.movement_for(tuning)
+	var lay := RunSim.layout(lanes, 1200.0)
+	var plan: Dictionary = _plan_for(lay, JAR, 2, c)
 	var jar: Dictionary = _jar(lane, side, JAR, holds)
 	lay.doodads.append(jar)
 	var dog: Dictionary = {}
 	if holds:
-		dog = _held_dog(lane, JAR, plan["anchors"])
+		dog = _held_dog(lane, JAR, plan["anchors"], float(plan["window"]))
 		lay.enemies.append(dog)
-	var w: RunWorld = sim.build_world(lay, null, null, _config())
-	w.player.setup(tuning, w.geo, lane)
+	var w: RunWorld = sim.build_world(lay, null, movement, c)
+	w.player.setup(movement, w.geo, lane)
 	await tree.physics_frame
 	w.player.running = true
-	return {"world": w, "jar": jar, "dog": dog, "anchors": plan["anchors"], "window": plan["window"]}
+	return {"world": w, "jar": jar, "dog": dog, "anchors": plan["anchors"], "window": plan["window"], "movement": movement}
 
 
 ## One take on real physics: a jar in `lane` pushing to `side`, its dog planned for two charges, the runner coming at it in
 ## that lane. `how`: "dodge" (dash the jar, then sidestep each wind-up), "stay" (dash it and stay in line), "kill" (dash
 ## it, then dash the first lunge), "pass" (run into it without the dash), "wall" (onto the side wall by an outermost
-## lane's jar before it, breaking it low on the wall, then sidestep each wind-up).
-func _take(lanes: int, lane: int, side: int, how: String) -> Dictionary:
-	var made: Dictionary = await _jar_world(lanes, lane, side, true)
+## lane's jar before it, breaking it low on the wall, then sidestep each wind-up). In the level of `config` (the bare one by
+## default; a campaign level's at its own speed and enemy scaling).
+func _take(lanes: int, lane: int, side: int, how: String, config: LevelConfig = null) -> Dictionary:
+	var made: Dictionary = await _jar_world(lanes, lane, side, true, config)
 	var w: RunWorld = made["world"]
 	var p: Player = w.player
 	var anchors: Array = made["anchors"]
-	var dash_at: float = JAR - 0.5 * pt.dash_duration * (tuning.run_speed + pt.dash_speed_bonus)
+	var speed: float = (made["movement"] as MovementTuning).run_speed
+	var dash_at: float = JAR - 0.5 * pt.dash_duration * (speed + pt.dash_speed_bonus)
 	var r := {"alive": true, "event": "", "released": false, "windups": 0, "lunges": 0, "warned": true,
 		"harmless_out": true, "first_windup": INF, "a0": float(anchors[0]), "charges": anchors.size(), "sounds": [],
 		"died_at": -1.0, "kills": 0, "dog_gone": false, "smashes": 0, "pushes": 0, "passes": 0}
@@ -437,7 +456,7 @@ func _take(lanes: int, lane: int, side: int, how: String) -> Dictionary:
 	var dashed: bool = false
 	var killed_dash: bool = false
 	var toward: StringName = &"move_left" if lane == 0 else &"move_right"
-	var seconds: float = (float(anchors[-1]) + float(made["window"]) + 40.0) / tuning.run_speed + 2.0
+	var seconds: float = (float(anchors[-1]) + float(made["window"]) + 40.0) / speed + 2.0
 	for i: int in int(seconds * Engine.physics_ticks_per_second):
 		if how in ["dodge", "stay", "kill"] and not dashed and p.distance >= dash_at:
 			RunSim.act(p, &"dash")

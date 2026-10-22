@@ -96,6 +96,10 @@ extends EnemyTuning
 ## to line up, settling at its distance) on top of the tumble and the sprint (release_distance): its first wind-up is
 ## planned that far on, and a dog in position sooner paces there until the runner reaches it.
 @export_range(0.0, 3.0, 0.05, "suffix:s") var jar_settle_seconds: float = 0.5
+## The most seconds of run a freed dog may pace at its usual distance before its first wind-up, past the moment it's in
+## position (release_distance), as a standing dog paces until its planned moment: the generator may plan its charges that
+## much later, where they have room further on (octodog_jar_rules.gd).
+@export_range(0.0, 10.0, 0.25, "suffix:s") var jar_pace_seconds: float = 4.0
 ## Seconds of run past the feature's start within which the level that introduces the jars (Frost Foundry, the one that
 ## gives `octodog_jar` a start) stands its first one, where it has room there (octodog_jar_rules.gd): test_campaign's
 ## introduction reach, as the gantryways' and the teleporters' intro_window_seconds.
