@@ -362,3 +362,10 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   what the walkway went through each tick). Armor that is up absorbs it, then the shield, else it kills ("falling
   gantryway"); god mode and the window ignore it, the dash passes it. Enemies in its path die by `Enemy.defeat(&"gantryway")` (RunWorld), the usual kill path, which the score
   counts. The whole of it: Falling gantryways (`docs/architecture/gantryways.md`).
+- **Teleporters: nothing that hurts** (GDD §5, Zone 9, owner, October 21, 2026; task Q4). A teleporter is a trigger (kind
+  `teleporter` on LAYER_TRIGGER), never a hitbox: the Player teleports a runner on the floor whose feet touch its pad
+  (`Player._teleport`). The armor, the shield, the invulnerability window, the dash and a slide carry through it as they
+  were (GDD §5, proposed: "no protection after landing"); its safety is the generator's (its landings clear, its calm
+  stretches in `LevelLayout.doodad_between`) and the run world's (`RunWorld._on_teleported`: enemies behind it leave, an
+  attack under way is called off, every shot in the air goes). The whole of it: Teleporters
+  (`docs/architecture/teleporters.md`).

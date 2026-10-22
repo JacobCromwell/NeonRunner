@@ -94,7 +94,9 @@ their margin from the ramp a truck adds; the Octodog rules after the drone's, th
 hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
 nothing clears it afterwards; the Resonator rules after every feature that puts things on the floor or
 plans a big attack, so each pulse is planned on the level's final floor and off every Octodog's run,
-floor cut and Gilded Sentinel's turn). A rules script may also declare `static func after_doodads(gen)`,
+floor cut and Gilded Sentinel's turn; the Ice Lab's set pieces last of all, the falling gantryways and then the
+teleporters, each planned on the level's final rules track: `docs/architecture/gantryways.md`,
+`docs/architecture/teleporters.md`). A rules script may also declare `static func after_doodads(gen)`,
 which runs after the danger density pass's obstacles and the zone doodads, before the wall fences, in the order
 of the features (`LevelGenerator._after_doodad_rules`): what stands in the room the passes before it left, which
 they shouldn't make room for (the dash walls past their introduction, task H7a: Dash walls, below).

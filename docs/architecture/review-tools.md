@@ -40,7 +40,13 @@ its speed, `--take=drop` (dash the pillar and step out while it lands on the cyb
 takes the hit, `--bare` none), `push` (no dash: the pillar pushes the runner aside) or `look` (a still of it standing),
 `--lanes=N`, `--lane=L`, `--side=-1|1`, `--close`, `--beside` (a camera beside the track), `--hitboxes`,
 `--reduced-flashing`, `--god`; `tools/measure/gantryways.gd` lists where each campaign build hangs them and what they
-cost a build), side wall gaps (`wall_gap_review`, task L4:
+cost a build), teleporters (`teleporter_review`, task Q4: one in an inner lane as its rules make one, in any zone's look
+(the Ice Lab's by default) at its speed, through the game's camera with the teleport's flash, `--take=take` (run onto it and
+land on the output pad its light shows), `around` (switch out as its approach begins) or `look` (a still behind it, the
+light still blinking), `--outputs=1|2`, `--light=-1|1`, `--blink`, `--phase=P`, `--hazard` (a fence right past the
+landings), `--lanes=N`, `--lane=L`, `--side=-1|1`, `--close`, `--reduced-flashing`; `tools/measure/teleporters.gd` lists
+where each campaign build stands them, their kinds and hops, what they cost a build and what the re-check finds, with
+`--why` for an introduction that found no spot in its window), side wall gaps (`wall_gap_review`, task L4:
 an open street in any zone's look with side wall gaps as the generator places them (a left, a right and a both-walls
 one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
 the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across

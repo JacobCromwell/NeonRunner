@@ -411,7 +411,9 @@ but its own (no host among the cyborgs), no dash walls, floor cuts, maze or arch
 fences, signs, ceilings and pads, doodads) and every listed feature but the sprinkled-in ceiling scenarios. About 30 s.
 Tasks Q3 to Q5 add their mechanics' checks here: the falling gantryways (Q3) in every level's data (Frost Foundry the
 only one with a `feature_starts` for them), and every build hanging its level's count, each re-checked by
-`LayoutChecks.check_gantryways`.
+`LayoutChecks.check_gantryways`; the teleporters (Q4) in Relay Station's and Specimen Vault's data (Relay Station
+introducing them, Specimen Vault its blinking antennas, each with a `feature_starts`), and every build standing its
+level's counts, each re-checked by `LayoutChecks.check_teleporters`.
 `test_gantryways` checks the falling gantryways (task Q3; Falling gantryways): the layout data (no key without them,
 `copy` and `append_pieces` keeping each pillar its own, the calm stretch counted as a doodad in its lane); the generator
 over the Ice Lab's levels at 3, 5 and 6 lanes (Frost Foundry's introduction within `intro_window_seconds` of the start,
@@ -432,6 +434,27 @@ cut of its level at the level's speed: its pillar pushing a runner without the d
 runner who dashes it stepping out a reaction later (both ways for the introduction), alive, as it lands on its cyborg;
 and endless mode in the Ice Lab on one seed (no warnings, its count along the whole level, each fair; such a build takes
 about a minute, with or without the gantryways). About 75 s.
+`test_teleporters` checks the teleporters (task Q4; Teleporters): the layout data (no key without them, `copy` its own,
+`append_pieces` renumbering, the calm stretches counted as a doodad in their lanes, an introduction's landing in every
+lane); the generator over Relay Station and Specimen Vault at 3, 5 and 6 lanes (the counts, Relay Station's introduction
+within `intro_window_seconds` of its start with one output pad straight ahead and a fixed light between two output pads,
+Specimen Vault's blinking count and its blinking introduction, every one fair, the same level on a fresh build; none
+without the feature or with a count of 0, no blinking one with a blinking count of 0); a wall-run gap's stretch outside
+everything a teleporter keeps (the plan, both re-checks, at 3, 5 and 6 lanes); endless mode in the Ice Lab on one seed
+(its counts along the whole level, no introduction, each fair; about 80 s of the suite's time); the track (the pad's
+trigger, the output pads' nodes, nothing else colliding, the lamps showing the light); the light's rules (a fixed light
+stays, a blinking one changes side every `blink_seconds`, the brighter lamp always the side a touch takes, half a cycle
+on the other side); on real physics at 3, 5 and 6 lanes from every inner lane: landing on the one output pad, on the lit
+one of two each way, on the side a blinking light shows at the touch (both, half a cycle apart), keeping the speed, the
+sound once, running through the landing; the way around, a switch out at the approach and a jump over it passing it; the
+dash, a slide and the protection carried through; what a teleport skips (the enemies between leaving play, a heli drone
+coming along with its wind-up called off and one waiting between never coming, a cyborg's charge-up called off, the shots
+gone, the credits passed and the stars' best score leaving them out, the track built ahead, the camera's cut, the flash;
+the director's entries behind the landing never spawning); the flash (and Reduced flashing's soft tint); every teleporter
+of the campaign at 3, 5 and 6 lanes on real physics on a cut of its level at the level's speed, landed on each output pad
+(its light set each way) and run through, and passed in the lane beside it and by a switch out at its approach; every
+skin's looks (the pad flat in its square, the antenna on its far half within the lane, the output pad's marker over a
+runner's head, glowing only green or green-white), the warm-up, and every number on the F6 panel. About 2 minutes.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls

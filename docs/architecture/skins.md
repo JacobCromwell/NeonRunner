@@ -362,6 +362,14 @@ edge), lit and never glowing, inside its box; the Ice Lab gives it its own steel
 whole of it is in Falling gantryways (`docs/architecture/gantryways.md`); `test_gantryways` dresses all three with every
 skin in `data/skins/` and the grey box.
 
+**Teleporters' looks** (task Q4; the hooks `teleporter_pad`, `teleporter_antenna` and `teleporter_output`, their colours
+`teleporter_colors()`, `teleporter_palette` by default): TeleporterKit's square pad (a steel plate with a green frame, grid,
+hexagonal emitter and halo), its green antenna with a lamp at each end of its crossbar (whose lit looks the hook returns
+for the Teleporter to light on the level clock) and, over an output pad, a floating hexagonal marker so it reads from afar;
+glowing only green or green-white, never a column of light nor anything across a lane; the Ice Lab gives the plate and rim
+its steel. The whole of it is in Teleporters (`docs/architecture/teleporters.md`); `test_teleporters` dresses all three with
+every skin in `data/skins/` and the grey box.
+
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
 (`first_lane`, `last_lane`, `full()`), its collision box (`center`, `size`), the lane seams inside it
