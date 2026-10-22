@@ -13,8 +13,9 @@ extends RefCounted
 ##   LevelLayout.HELD, with no doghouse, and its charges planned from the release (`charges`, `charge_at`, `floor_span`)
 ##   as octodog_rules.gd plans a standing dog's. It stays in its jar (Octodog: hidden, harmless, untouchable) until the
 ##   jar breaks; a runner who passes the jar (pushed aside, as by any doodad) never meets it.
-## The decoys (after_doodads): LevelConfig.octodog_jar_decoys of the level's own small zone doodads standing alone, marked
-## HOLDS "octodog" and LevelLayout.DECOY, with no entry in the enemies: the skin dresses them as every jar holding an
+## The decoys (after_doodads): LevelConfig.octodog_jar_decoys of the level's own small zone doodads standing alone (new
+## ones where a zone doodad may stand, where it has too few), marked HOLDS "octodog" and LevelLayout.DECOY, with no
+## entry in the enemies and nothing kept for them: the skin dresses them as every jar holding an
 ## Octodog and the dash breaks them as every doodad, but their dog never comes out, so the jar that releases is one among
 ## them, never told apart (GDD §5, proposed), whatever jars of its own the skin adds. DESIGN-TBD (docs/questions/q5.md 1).
 ##
@@ -260,12 +261,14 @@ static func release_distance(gen: LevelGenerator, t: OctodogTuning = null, pt: P
 
 ## A jar's own room with its front at `j` in `gen`'s level, in every lane: from its push's lead and a lane switch's room
 ## before it to the level's spacing past it, or its push's landing and the reaction after it, or a lane switch's room
-## past it, whichever is latest (what LayoutChecks.check_doodads keeps around a doodad, lane by lane and in every lane).
-## The passes after the rules keep off it (doodad_keep_outs, fill_keep_outs).
+## past it, whichever is latest (what LayoutChecks.check_doodads keeps around a doodad, lane by lane and in every lane),
+## and a fence's depth more either side (the fill pass keeps a fence's middle off it, the checks its faces). The passes
+## after the rules keep off it (doodad_keep_outs, fill_keep_outs); it keeps off what every rule keeps (dog_at).
 static func jar_region(gen: LevelGenerator, j: float) -> Vector2:
 	var end: float = j + gen.tuning.doodad_size(JAR_SIZE).z
 	var to: float = maxf(maxf(end + gen.doodad_after(end), end + gen.doodad_lane_room()), gen.doodad_landing(j))
-	return Vector2(j - LevelGenerator.doodad_lead_for(gen.tuning) - gen.doodad_lane_room(), to)
+	var pad: float = gen.tuning.fence_depth
+	return Vector2(j - LevelGenerator.doodad_lead_for(gen.tuning) - gen.doodad_lane_room() - pad, to + pad)
 
 
 ## What `plan`'s layout holds now (Plan; after a jar and its dog joined it, or content went to make room).
@@ -310,11 +313,13 @@ static func _ceiling_zones(gen: LevelGenerator) -> Array[Vector2]:
 ## release_distance past the jar to pace_room later (the dog paces meanwhile), where its charges fit (_charges_at): at
 ## `prefer` where they fit there, else the soonest; while _best looks for spots with all that may go gone (plan.going),
 ## the one whose charges need the least taken out of their way (_run_cost), the soonest of those. The jar's own room
-## keeps off every wall-run gap's stretch and every chase.
+## keeps off every wall-run gap's stretch, every chase and what every rule keeps (a gantryway's calm stretch keeps every
+## lane's keep-outs off it).
 static func dog_at(plan: Plan, j: float, wanted: int, prefer: float = -INF) -> Dictionary:
 	var region: Vector2 = jar_region(plan.gen, j)
-	if _hits(plan.wall_runs, region.x, region.y) or _hits(plan.chases, region.x, region.y):
-		return _no("a wall-run gap or a chase at the jar")
+	if _hits(plan.wall_runs, region.x, region.y) or _hits(plan.chases, region.x, region.y) \
+			or _hits(plan.keeps, region.x, region.y):
+		return _no("a wall-run gap, a chase or what a rule keeps at the jar")
 	var first: float = j + plan.release
 	var last: float = first + plan.pace_room + 0.001
 	if prefer >= first - 0.001 and prefer <= last:
@@ -503,14 +508,16 @@ static func _past_charges(plan: Plan, a0: float) -> float:
 	return past
 
 
-## For a jar with its front at `j`: `j` if its own room (jar_region) meets no wall-run gap's stretch or chase, else the
-## first front past all it meets there (every front before that meets one of them too: _best skips them).
+## For a jar with its front at `j`: `j` if its own room (jar_region) meets no wall-run gap's stretch, chase or what a rule
+## keeps, else the first front past all it meets there (every front before that meets one of them too: _best skips
+## them).
 static func _past_blocks(plan: Plan, j: float) -> float:
 	var region: Vector2 = jar_region(plan.gen, j)
 	var past: float = j
-	for s: Vector2 in plan.wall_runs + plan.chases:
-		if s.x <= region.y and s.y >= region.x:
-			past = maxf(past, s.y + (j - region.x) + 0.001)
+	for list: Array[Vector2] in [plan.wall_runs, plan.chases, plan.keeps]:
+		for s: Vector2 in list:
+			if s.x <= region.y and s.y >= region.x:
+				past = maxf(past, s.y + (j - region.x) + 0.001)
 	return past
 
 
@@ -1103,9 +1110,8 @@ static func positions(layout: LevelLayout) -> Array[float]:
 ## of them, drawn from a random stream of their own (DECOY_STREAM), each marked HOLDS "octodog" and DECOY. First the
 ## level's own small zone doodads standing alone (no row, no treasure stash, no gantryway's pillar, no debris, none holding
 ## anything yet), which change nothing but their look; where the level has too few, new small doodads where a zone doodad
-## may stand (LevelGenerator.doodad_fits, the doodad pass's own rules over the layout as it stands, as a jar that
-## releases its dog keeps them), each a seeded pick among every spot that fits (_decoy_spots), as many as fit.
-## DESIGN-TBD (docs/questions/q5.md 1).
+## may stand (_decoy_fits: the doodad pass's own rules over the layout as it stands), each a seeded pick among every spot
+## that fits (_decoy_spots), as many as fit. DESIGN-TBD (docs/questions/q5.md 1).
 static func after_doodads(gen: LevelGenerator) -> void:
 	if not gen.config.has_feature(FEATURE) or gen.config.octodog_jar_decoys <= 0 or gen.layout.lane_count < 3:
 		return
@@ -1139,16 +1145,16 @@ static func after_doodads(gen: LevelGenerator) -> void:
 		var room: LevelGenerator.DoodadRoom = gen.doodad_room()
 		var still: Array[Array] = []
 		for s: Array in spots:
-			if gen.doodad_fits(room, JAR_SIZE, int(s[1]), int(s[2]), float(s[0])):
+			if _decoy_fits(gen, room, int(s[1]), int(s[2]), float(s[0]), length):
 				still.append(s)
 		spots = still
 	if added > 0:
 		lay.doodads.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 
 
-## Every spot a new small zone doodad `length` metres long fits at in `gen`'s layout as it stands
-## (LevelGenerator.doodad_fits): [front, lane, side], its fronts DECOY_STEP apart in each stretch the doodads' room
-## leaves free in every lane (where the zone doodads' pass looks for them), in order.
+## Every spot a new small zone doodad `length` metres long fits at in `gen`'s layout as it stands (_decoy_fits): [front,
+## lane, side], its fronts DECOY_STEP apart in each stretch the doodads' room leaves free in every lane (where the zone
+## doodads' pass looks for them), in order.
 static func _decoy_spots(gen: LevelGenerator, length: float) -> Array[Array]:
 	var lay: LevelLayout = gen.layout
 	var room: LevelGenerator.DoodadRoom = gen.doodad_room()
@@ -1163,10 +1169,26 @@ static func _decoy_spots(gen: LevelGenerator, length: float) -> Array[Array]:
 		while j <= last:
 			for lane: int in lay.lane_count:
 				for side: int in [-1, 1]:
-					if gen.doodad_fits(room, JAR_SIZE, lane, side, j):
+					if _decoy_fits(gen, room, lane, side, j, length):
 						out.append([j, lane, side])
 			j += step
 	return out
+
+
+## True if a new small zone doodad `length` metres long with its front at `j` in `lane`, pushing to `side`, keeps every
+## rule the zone doodads' pass keeps: LevelGenerator.doodad_fits over `room` (its own lane and the lanes beside it, what
+## every lane keeps, the wall lanes, the danger density pass's open lane), and doodad_gap_seconds from every other zone
+## doodad's stretch, whatever its lane (the pass's spots: one at a time, never a slalom).
+static func _decoy_fits(gen: LevelGenerator, room: LevelGenerator.DoodadRoom, lane: int, side: int, j: float,
+		length: float) -> bool:
+	if not gen.doodad_fits(room, JAR_SIZE, lane, side, j):
+		return false
+	var gap: float = gen.config.doodad_gap_seconds * gen.speed
+	for d: Dictionary in gen.layout.doodads:
+		var span: Vector2 = LevelLayout.doodad_extent(d)
+		if span.x < j + length + gap and span.y > j - gap:
+			return false
+	return true
 
 
 ## True if a stretch of `spans` reaches into [from, to].
@@ -1284,6 +1306,9 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 			if k.x <= run.y and k.y >= run.x:
 				out.append("%s: what a rule keeps (%.1f-%.1f m) reaches its dog's charges (%.1f-%.1f m)" % [tag, k.x, k.y,
 					run.x, run.y])
+			if k.x <= region.y and k.y >= region.x:
+				out.append("%s: what a rule keeps (%.1f-%.1f m) reaches its room (%.1f-%.1f m)" % [tag, k.x, k.y, region.x,
+					region.y])
 		var mine: Vector2 = busy_of(gen, dog, stop)
 		for e: Dictionary in lay.enemies:
 			if is_same(e, dog) or String(e.get("type", "")) != TYPE:

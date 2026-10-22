@@ -17,9 +17,9 @@ const WALL_RUN_HOLE: String = "wall_run"
 ## HELD (held_by, holder_of). Abstract, as every piece here: the skin dresses such a doodad as the zone's container
 ## with that enemy inside (ZoneSkin.held_doodad_look: the Ice Lab's Octodog jar), and smashing it (DashBreakable.smash,
 ## its entry marked "smashed") lets the enemy out (it watches its doodad: Octodog). Placed by its feature's rules
-## (scripts/enemies/octodog_jar_rules.gd), never by the zone doodads' pass; one marked DECOY too is a zone doodad of the
-## pass's own whose enemy never comes out. A doodad of the zone's that only looks like such a container (the skin's own
-## variety) holds nothing.
+## (scripts/enemies/octodog_jar_rules.gd), never by the zone doodads' pass; one marked DECOY too holds an enemy that never
+## comes out (one of the pass's own doodads, or one its rules stand where a zone doodad may). A doodad of the zone's that
+## only looks like such a container (the skin's own variety) holds nothing.
 const HOLDS: String = "holds"
 ## The params key of an enemy entry held in a doodad (HOLDS) until that doodad is smashed: true.
 const HELD: String = "held"
@@ -27,7 +27,7 @@ const HELD: String = "held"
 ## it (held_by is {}), but the skin dresses it and the dash breaks it exactly as one that releases its enemy, so the two
 ## can't be told apart (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't").
 ## Marked by its feature's rules after the zone doodads' pass (octodog_jar_rules.gd, after_doodads), on doodads of the
-## zone's own.
+## zone's own, or on new ones where a zone doodad may stand where the level has too few.
 const DECOY: String = "decoy"
 
 var lane_count: int = 3

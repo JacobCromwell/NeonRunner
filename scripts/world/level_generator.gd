@@ -296,7 +296,8 @@ var extended_wall_run_clear: Array[Vector2] = []
 ## risky credit (DangerDensity, its tuning's credit_added_pieces off): more danger, not more pay.
 var uncredited: Dictionary = {}
 ## The danger density pass's obstacle-half plan (DangerDensity.apply_obstacles), which the zone doodads
-## after it ask (DangerDensity.doodad_ok), during a build only; null when the pass didn't run.
+## after it ask (DangerDensity.doodad_ok), and the rules after them that stand doodads of their own
+## (_after_doodad_rules, through doodad_fits), during a build only; null when the pass didn't run.
 var danger_density_plan: RefCounted = null
 
 var _rng := RandomNumberGenerator.new()
@@ -526,9 +527,10 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)
 	buzz_company_result = BuzzCompanyPlacement.place(self, patterns)
 	_place_doodads(patterns)
-	# Only the doodads ask it, and it holds this generator: let it go.
-	danger_density_plan = null
+	# The rules after the doodads ask it too (task Q5: the decoy jars, as zone doodads); only they and the doodads ask it,
+	# and it holds this generator: let it go then.
 	_after_doodad_rules()
+	danger_density_plan = null
 	_place_wall_fences()
 	WallGapPlacement.place(self)
 	gap_density_result = GapDensity.apply(self)
