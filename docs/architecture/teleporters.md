@@ -79,7 +79,11 @@ them), on their own random stream: a level without the feature builds byte for b
 
 **What keeps off it after the rules.** `doodad_keep_outs` (the danger density pass, the wider gaps, the cyborgs planted in
 charge paths, the zone doodads) and `fill_keep_outs` (the fill pass): its windows, every lane and lane by lane, each widened
-by `edge` (half a fence's depth and TOUCH: a pass that keeps a fence's `at` out of a keep-out may stand it right at its end).
+by `edge` (half a fence's depth and TOUCH: a pass that keeps a fence's `at` out of a keep-out may stand it right at its end,
+the fill pass's first filler, and its body reaches half its depth back in). The plan measures every window that much wider
+(`Plan.margin`), so nothing stood in the margin when it was placed: a rule placed before it whose re-check counts every
+rule's keep-outs in its own windows (a falling gantryway's, `GantrywayRules.problems`; the wall-run gaps') finds them clear
+(task Q4's gate found the keep-outs a fifth of a metre into gantryways' windows before the plan kept the margin).
 `LevelLayout.doodad_between` counts its **calm stretches** (`calm`: the approach in P, each landing in its output pad's lane,
 an introduction's landing in every lane): every enemy that holds an attack by a doodad holds it there too (a cyborg's bolts,
 an Octodog's lunge, a heli drone's barrage, the hover truck's cannon), on every attempt, and no credit lies there.

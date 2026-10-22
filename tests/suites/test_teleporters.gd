@@ -42,6 +42,7 @@ extends TestSuite
 ##   number reaches the F6 panel.
 
 const TeleporterRules := preload("res://scripts/enemies/teleporter_rules.gd")
+const GantrywayRules := preload("res://scripts/enemies/gantryway_rules.gd")
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const DUMMY_SCRIPT: String = "res://tests/helpers/dummy_enemy.gd"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
@@ -61,6 +62,7 @@ func run() -> void:
 	_test_layout()
 	_test_generator()
 	_test_wall_run_gaps()
+	_test_gantryways()
 	_test_endless()
 	await _test_track()
 	_test_light()
@@ -196,10 +198,11 @@ func _test_generator() -> void:
 
 
 ## A wall-run gap (its rules run before the teleporters') keeps every rule's keep-outs off its stretch in every lane
-## (WallRunGapPlacement.problem): so every grid spot whose pad stretch or a landing would reach its stretch with its
-## margins (WallRunGapPlacement.keep_out) is blocked, and no other; and a teleporter as near as it may stand leaves the
-## wall-run gap's own re-check passing (its keep-outs, widened by TeleporterRules.edge, still clear of it), while one whose
-## landing reaches it is named by TeleporterRules.problems. At 3, 5 and 6 lanes.
+## (WallRunGapPlacement.problem): so every grid spot whose pad stretch or a landing, with the plan's margin
+## (Plan.margin, TeleporterRules.edge), would reach its stretch with its margins (WallRunGapPlacement.keep_out) is blocked,
+## and no other; and a teleporter as near as it may stand leaves the wall-run gap's own re-check passing (its keep-outs,
+## as wide, still clear of it), while one whose landing reaches it is named by TeleporterRules.problems. At 3, 5 and 6
+## lanes.
 func _test_wall_run_gaps() -> void:
 	for lanes: int in LANE_COUNTS:
 		var layout := RunSim.layout(lanes, 1400.0)
@@ -217,11 +220,12 @@ func _test_wall_run_gaps() -> void:
 		var tag: String = "(lanes=%d, the wall-run gap's stretch %.1f-%.1f m)" % [lanes, k.x, k.y]
 		var wrong: PackedStringArray = []
 		var counts: Array[int] = [0, 0]
+		var e: float = plan.margin
 		for i: int in plan.size():
 			var f: float = plan.front_at(i)
-			var near := Vector2(f - plan.approach, f + plan.pad + plan.room)
+			var near := Vector2(f - plan.approach - e, f + plan.pad + plan.room + e)
 			for h: int in plan.hops.size():
-				var land := Vector2(f + plan.hops[h] - plan.back, f + plan.hops[h] + plan.landing)
+				var land := Vector2(f + plan.hops[h] - plan.back - e, f + plan.hops[h] + plan.landing + e)
 				var reaches: bool = _overlap(near, k) or _overlap(land, k)
 				var edge: bool = _touches(near, k) or _touches(land, k)
 				var blocked: bool = plan.near[i] > 0 or plan.far[h][i] > 0
@@ -233,10 +237,11 @@ func _test_wall_run_gaps() -> void:
 		check(wrong.is_empty() and counts[0] > 0 and counts[1] > 0,
 			"every spot whose pad stretch or landing would reach it is blocked (%d), and no other (%d): %s %s"
 			% [counts[1], counts[0], ", ".join(wrong), tag])
-		# The re-checks: a teleporter whose landing ends just before its stretch, and one whose landing reaches into it.
+		# The re-checks: a teleporter as near as it may stand (its landing with the margin ends just before its stretch), and
+		# one whose landing reaches into it.
 		for into: bool in [false, true]:
 			var hop: float = plan.hops[0]
-			var front: float = k.x - hop - plan.landing - (-0.6 if into else 0.06)
+			var front: float = k.x - hop - plan.landing - (-0.6 if into else e + 0.06)
 			var probe: LevelLayout = layout.copy()
 			probe.teleporters.append(_entry(gen, 1, 1, front, [1], 0, 0.0, 0.0, false, hop))
 			var probe_gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, probe)
@@ -249,6 +254,76 @@ func _test_wall_run_gaps() -> void:
 				var problem: String = WallRunGapPlacement.problem(probe_gen, w)
 				check(problem == "", "the wall-run gap's own re-check passes beside a teleporter as near as it may stand (%s) %s"
 					% [problem, tag])
+
+
+## A falling gantryway (its rules run before the teleporters') re-checks its windows against every rule's keep-outs
+## (GantrywayRules.problems: the lanes they name, and every lane's): so every grid spot whose pad stretch or a landing,
+## with the plan's margin, would reach what a gantryway keeps in every lane (from its pillar's lead to past its walkway
+## and its calm stretch) is blocked, and a teleporter as near as it may stand before it, or after it, leaves the
+## gantryway's re-check as it was (the teleporter's keep-outs are as wide as the plan's margin: the gate of task Q4 found
+## them a fifth of a metre into a gantryway's windows before the plan kept that margin), while one whose keep-outs reach
+## into it is named there. At 3, 5 and 6 lanes.
+func _test_gantryways() -> void:
+	var gt: GantrywayTuning = GantrywayTuning.load_default()
+	for lanes: int in LANE_COUNTS:
+		var layout := RunSim.layout(lanes, 1400.0)
+		var config := LevelConfig.new()
+		config.lane_count = lanes
+		config.features = PackedStringArray(["gantryway", TeleporterRules.FEATURE])
+		var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
+		# A gantryway as its rules make one, over lane 1, its pillar at 700 m pushing to lane 2.
+		var pillar: float = 700.0
+		var walkway: float = GantrywayRules.walkway_length(gen, gt)
+		var calm: float = GantrywayRules.calm_length(gen, gt)
+		var start: float = pillar - GantrywayRules.NEAR_OVERHANG
+		layout.gantryways.append({"id": 0, "lane": 1, "start": start, "end": start + walkway, "pillar": pillar, "side": 1,
+			"calm": [pillar, pillar + calm], "seed": 7})
+		var box: Vector3 = tuning.doodad_size(Gantryway.PILLAR_SIZE)
+		layout.doodads.append({"lane": 1, "start": pillar, "end": pillar + box.z, "size": Gantryway.PILLAR_SIZE, "side": 1,
+			"seed": 7, LevelLayout.GANTRY_PILLAR: 0})
+		var before: float = LevelGenerator.doodad_lead_for(gen.tuning) + gen.doodad_lane_room()
+		var keep := Vector2(pillar - before, maxf(start + walkway + gen.doodad_lane_room(), pillar + calm))
+		var tag: String = "(lanes=%d, the gantryway's stretch %.1f-%.1f m)" % [lanes, keep.x, keep.y]
+		var plan: TeleporterRules.Plan = TeleporterRules.plan_for(gen, tt)
+		var e: float = plan.margin
+		var wrong: PackedStringArray = []
+		var counts: Array[int] = [0, 0]
+		for i: int in plan.size():
+			var f: float = plan.front_at(i)
+			var near := Vector2(f - plan.approach - e, f + plan.pad + plan.room + e)
+			for h: int in plan.hops.size():
+				var land := Vector2(f + plan.hops[h] - plan.back - e, f + plan.hops[h] + plan.landing + e)
+				if _touches(near, keep) or _touches(land, keep):
+					continue
+				var reaches: bool = _overlap(near, keep) or _overlap(land, keep)
+				var blocked: bool = plan.near[i] > 0 or plan.far[h][i] > 0
+				counts[1 if reaches else 0] += 1
+				if reaches != blocked and wrong.size() < 4:
+					wrong.append("%.1f m hop %d (%s)" % [f, h, "free" if reaches else "blocked"])
+		check(wrong.is_empty() and counts[0] > 0 and counts[1] > 0,
+			"every spot whose pad stretch or landing would reach it, with the margin, is blocked (%d), and no other (%d): %s %s"
+			% [counts[1], counts[0], ", ".join(wrong), tag])
+		# The re-check, beside a teleporter as near as it may stand (its landing with the margin just before the gantryway's
+		# stretch, or its pad's approach with the margin just after it), and beside one whose keep-outs reach into it (its
+		# landing itself ending just before it, the margin past that).
+		var baseline: PackedStringArray = GantrywayRules.problems(gen)
+		var hop: float = plan.hops[0]
+		var probes: Array = [[keep.x - hop - plan.landing - e - 0.06, false], [keep.y + plan.approach + e + 0.06, false],
+			[keep.x - hop - plan.landing - 0.1, true]]
+		for probe_at: Array in probes:
+			var front: float = probe_at[0]
+			var probe: LevelLayout = layout.copy()
+			probe.teleporters.append(_entry(gen, 2, 1, front, [2], 0, 0.0, 0.0, false, hop))
+			var added: PackedStringArray = []
+			for why: String in GantrywayRules.problems(LevelGenerator.for_layout(config, tuning, probe)):
+				if not baseline.has(why):
+					added.append(why)
+			if bool(probe_at[1]):
+				check(not added.is_empty(), "the gantryway's re-check names a teleporter whose keep-outs reach into it (%.1f m) %s"
+					% [front, tag])
+			else:
+				check(added.is_empty(), "the gantryway's re-check is as it was beside a teleporter at %.1f m, as near as it may stand (%s) %s"
+					% [front, added, tag])
 
 
 static func _overlap(a: Vector2, b: Vector2) -> bool:

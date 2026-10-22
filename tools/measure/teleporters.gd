@@ -2,13 +2,15 @@ extends SceneTree
 ## Measures the teleporters (task Q4; scripts/enemies/teleporter_rules.gd) over the campaign's levels that have them: for
 ## each build, how many stand of the level's count, where (their pads' fronts as a share of the level), what kind (one
 ## output pad, two with a fixed light, two with a blinking one; the introductions), their lanes and how far they lead, how
-## long the build took with them and without them, and what TeleporterRules.problems() finds (nothing, on every build the
-## suites check). From the project folder:
+## long the build took with them and without them, and what TeleporterRules.problems() finds, and the falling gantryways'
+## GantrywayRules.problems(), which counts every rule's keep-outs (nothing, on every build the suites check). From the
+## project folder:
 ##   godot --headless -s res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
 ## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3). --why prints why an
 ## introduction found no spot in its window (TeleporterRules.debug).
 
 const TeleporterRules = preload("res://scripts/enemies/teleporter_rules.gd")
+const GantrywayRules = preload("res://scripts/enemies/gantryway_rules.gd")
 
 var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
@@ -80,6 +82,9 @@ func _run() -> void:
 				var blink_count: int = config.blinking_teleporters if config.has_feature(TeleporterRules.BLINKING) else 0
 				blink_wanted += blink_count
 				var found: PackedStringArray = TeleporterRules.problems(gen)
+				# The falling gantryways' re-check counts every rule's keep-outs, the teleporters' among them.
+				if config.has_feature(GantrywayRules.FEATURE):
+					found.append_array(GantrywayRules.problems(gen))
 				problems += found.size()
 				var parts: PackedStringArray = []
 				for tp: Dictionary in layout.teleporters:

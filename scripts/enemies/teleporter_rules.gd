@@ -69,8 +69,10 @@ extends RefCounted
 ##
 ## What keeps off them after the rules (doodad_keep_outs, fill_keep_outs): the pad stretch and each landing in every lane
 ## (the danger density pass, the wider gaps, the cyborgs planted in charge paths, the fill pass and the zone doodads), and P,
-## the side lane, the output lanes and the lanes beside them as above; the credits keep out of the calm stretches
-## (LevelLayout.doodad_between). problems() re-checks a finished layout (LayoutChecks.check_teleporters).
+## the side lane, the output lanes and the lanes beside them as above, each `edge` wider at both ends (a fence stood at a
+## keep-out's end never reaches back into what it keeps), as the plan measures every window (Plan.margin: nothing else
+## stands in that margin either); the credits keep out of the calm stretches (LevelLayout.doodad_between). problems()
+## re-checks a finished layout (LayoutChecks.check_teleporters).
 ## DESIGN-TBD (docs/questions/q4.md): every number, inner lanes only, the way around, the windows, the introductions.
 
 const FEATURE: String = "teleporter"
@@ -132,6 +134,8 @@ class Plan:
 	var room: float = 0.0
 	var back: float = LANDING_BACK
 	var landing: float = 0.0
+	## How much wider than what it keeps each window is at both ends (TeleporterRules.edge), as the keep-outs handed on are.
+	var margin: float = 0.0
 	## The hops tried (metres from a pad's front to its output pads').
 	var hops := PackedFloat32Array()
 	var fastest: float = 0.0
@@ -536,10 +540,12 @@ static func _place(gen: LevelGenerator, spot: Dictionary, fronts: Array[float], 
 	var kind: StringName = StringName(spot["kind"])
 	var land: float = front + float(spot["hop"])
 	var outs: PackedInt32Array = spot["outputs"]
-	var windows: Array[Array] = [[lane, Vector2(front - plan.approach, front + plan.pad + plan.room)],
-		[lane + side, Vector2(front - plan.approach, front + plan.pad + plan.room)]]
+	# Its windows as the plan measured them (`margin` wider at both ends than what they keep).
+	var e: float = plan.margin
+	var windows: Array[Array] = [[lane, Vector2(front - plan.approach - e, front + plan.pad + plan.room + e)],
+		[lane + side, Vector2(front - plan.approach - e, front + plan.pad + plan.room + e)]]
 	for o: int in outs:
-		windows.append([o, Vector2(land - plan.back, land + plan.landing)])
+		windows.append([o, Vector2(land - plan.back - e, land + plan.landing + e)])
 	var half: float = gen.tuning.fence_depth * 0.5
 	var powered: Array[Dictionary] = plan.powered
 	_keep(lay.gaps, func(g: Dictionary) -> bool:
@@ -622,6 +628,7 @@ static func plan_for(gen: LevelGenerator, t: TeleporterTuning = null, pt: Poweru
 	p.approach = p.t.approach_seconds * p.fastest
 	p.room = gen.doodad_lane_room()
 	p.landing = landing_length(gen, p.t, pt, intro)
+	p.margin = edge(gen)
 	for s: float in p.t.hops():
 		p.hops.append(s * gen.speed)
 	var longest_hop: float = p.hops[p.hops.size() - 1] if not p.hops.is_empty() else 0.0
@@ -648,9 +655,16 @@ static func plan_for(gen: LevelGenerator, t: TeleporterTuning = null, pt: Poweru
 		p.quiet.append(p.fresh() if intro else PackedInt32Array())
 	if p.size() <= 0:
 		return p
-	# The windows, from a pad's front (grid spot F): its pad stretch, and each hop's landing.
-	var near_a: float = -p.approach
-	var near_b: float = p.pad + p.room
+	# The windows, from a pad's front (grid spot F): its pad stretch, and each hop's landing (from `back` before its output
+	# pads' front to `landing` past it, beside them to a lane switch's room past it), each `margin` wider at both ends than
+	# what it keeps, as the keep-outs handed on are (doodad_keep_outs, fill_keep_outs, `edge`): so those never reach into
+	# anything around it either (another rule's re-check, a falling gantryway's, counts every rule's keep-outs).
+	var e: float = p.margin
+	var near_a: float = -p.approach - e
+	var near_b: float = p.pad + p.room + e
+	var land_a: float = -p.back - e
+	var land_b: float = p.landing + e
+	var beside_b: float = p.room + e
 	p.powered = powered_fences(gen)
 	var keeps: Array[Dictionary] = gen.rules_doodad_keep_outs()
 	# What stands in a lane: [lane, span, plain, solid (a doodad or a floor enemy: it counts beside an output pad too),
@@ -665,9 +679,9 @@ static func plan_for(gen: LevelGenerator, t: TeleporterTuning = null, pt: Poweru
 		p.mark(p.side_marks[lane], span, near_a, near_b, amount)
 		for h: int in p.hops.size():
 			var d: float = p.hops[h]
-			p.mark((p.out[h] as Array)[lane], span, d - p.back, d + p.landing, amount)
+			p.mark((p.out[h] as Array)[lane], span, d + land_a, d + land_b, amount)
 			if bool(piece[3]):
-				p.mark((p.beside[h] as Array)[lane], span, d - p.back, d + p.room)
+				p.mark((p.beside[h] as Array)[lane], span, d + land_a, d + beside_b)
 		if bool(piece[4]):
 			(p.hazards[lane] as Array).append(span)
 	# What every lane keeps, over the pad stretch and over each landing.
@@ -675,22 +689,22 @@ static func plan_for(gen: LevelGenerator, t: TeleporterTuning = null, pt: Poweru
 		p.mark(p.near, span, near_a, near_b)
 		for h: int in p.hops.size():
 			var d: float = p.hops[h]
-			p.mark(p.far[h], span, d - p.back, d + p.landing)
+			p.mark(p.far[h], span, d + land_a, d + land_b)
 	# An introduction's landing: no enemy using the floor in any lane.
 	if intro:
-		for e: Dictionary in lay.enemies:
-			if not LevelGenerator.enemy_uses_floor(e):
+		for en: Dictionary in lay.enemies:
+			if not LevelGenerator.enemy_uses_floor(en):
 				continue
-			var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
+			var span: Vector2 = LevelGenerator.enemy_floor_span(en, gen.pace)
 			for h: int in p.hops.size():
 				var d: float = p.hops[h]
-				p.mark(p.quiet[h], span, d - p.back, d + p.landing)
+				p.mark(p.quiet[h], span, d + land_a, d + land_b)
 	# No ceiling's landing zone reaching the pad's lane or the side lane from its approach to its far end.
 	for h: Dictionary in lay.hulls:
 		var hl: Vector2i = lay.hull_lanes(h)
 		var zone: Vector2 = gen.zones.landing_zone(h)
 		for lane: int in range(hl.x, hl.y + 1):
-			p.mark(p.zone[lane], zone, near_a, p.pad)
+			p.mark(p.zone[lane], zone, near_a, p.pad + e)
 	for lane: int in lanes:
 		Plan.count(p.pad_marks[lane])
 		Plan.count(p.side_marks[lane])
@@ -903,9 +917,12 @@ static func fill_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
-## How much wider than a window the keep-outs handed to the passes after the rules are at each end (metres): half a
-## fence's depth and TOUCH. A pass that keeps a fence's `at` (a point) out of a keep-out may stand it right at the
-## keep-out's end (the fill pass starts a filler there), and its body reaches half its depth back in.
+## How much wider than what a teleporter keeps the keep-outs handed to the passes after the rules are at each end, and
+## its windows as the plan measures them (Plan.margin), metres: half a fence's depth and TOUCH. A pass that keeps a
+## fence's `at` (a point) out of a keep-out may stand it right at the keep-out's end (the fill pass starts a filler
+## there), its body reaching half its depth back in, never into what the teleporter keeps; and as nothing stood in that
+## margin when the teleporter was placed, another rule's re-check that counts every rule's keep-outs (a falling
+## gantryway's) finds them clear of its own windows.
 static func edge(gen: LevelGenerator) -> float:
 	return gen.tuning.fence_depth * 0.5 + TOUCH
 
