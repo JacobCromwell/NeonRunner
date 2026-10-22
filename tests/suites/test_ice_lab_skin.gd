@@ -574,7 +574,7 @@ func _hall_census(batch: MeshBatch, skin: IceLabSkin) -> Dictionary:
 
 
 ## Between the floor and the ceiling, over the lanes, the skin builds nothing solid but hazards, triggers and the play's set pieces (_set_piece: doodads,
-## falling gantryways), anywhere in a whole level; nothing sticks out of
+## falling gantryways, teleporters), anywhere in a whole level; nothing sticks out of
 ## the walls through the wall-run band by more than 5 cm (`wall - 0.05`, as the Corporate, Golden and Beach suites check it) and nothing on the walls or the
 ## lane side of them glows there but the orange edges.
 func _clear_play_space(skin: IceLabSkin, level_path: String) -> void:
@@ -753,6 +753,8 @@ func _under(node: Node, test: Callable) -> bool:
 ## Part of the play rather than the hall's scenery, so the whole-level checks leave it to its own suite: under an area (a
 ## hazard, a trigger, a doodad's or a pillar's body), or a falling gantryway's (task Q3: its walkway hangs over a lane at a
 ## ceiling's height, its wreck lies flat in the lane once it has fallen, built hidden; its shadow and its red warning line
-## are drawn on the lane; test_gantryways checks every skin's gantryway looks: lit, never glowing, inside their boxes).
+## are drawn on the lane; test_gantryways checks every skin's gantryway looks: lit, never glowing, inside their boxes), or
+## a teleporter's (task Q4: its pad and antenna on its trigger, its output pads flat on their lanes, glowing green;
+## test_teleporters checks every skin's teleporter looks).
 func _set_piece(node: Node) -> bool:
-	return _under(node, func(n: Node) -> bool: return n is Area3D or n is Gantryway)
+	return _under(node, func(n: Node) -> bool: return n is Area3D or n is Gantryway or n is Teleporter)
