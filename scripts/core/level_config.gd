@@ -312,9 +312,10 @@ var _skin: ZoneSkin
 ## it"): with the `octodog_jar` feature, the generator stands up to this many jars holding an Octodog
 ## (octodog_jar_rules.gd), each where its push is a doodad's and the dog it lets out has room for its usual attack (its
 ## run and every charge clear, plain content taken out of its way where that's the only room); fewer where the level
-## leaves no room, never none. The rest of a zone's Octodog jars are its skin's look and hold nothing (GDD §5, proposed:
-## "a jar that will release its Octodog looks the same as one that won't"). 0 turns them off. Without the feature it does
-## nothing. DESIGN-TBD (docs/questions/q5.md 1): 1 in each of the Ice Lab's levels (a heli drone's pad schedule leaves a
+## leaves no room (none, with a warning, in a rare build with room for not even one charge: 1 of 63 measured by
+## tools/measure/octodog_jars.gd). The rest of a zone's Octodog jars are its skin's look and hold nothing (GDD §5,
+## proposed: "a jar that will release its Octodog looks the same as one that won't"). 0 turns them off. Without the
+## feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1): 1 in each of the Ice Lab's levels (a heli drone's pad schedule leaves a
 ## freed dog's attack room before its first pad only); quick play's prototype level takes this default, endless mode its
 ## level's and a weekly challenge's week Sentinel Row's.
 @export_range(0, 8) var octodog_jars: int = 1

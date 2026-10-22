@@ -27,7 +27,8 @@ extends RefCounted
 ##   meanwhile), each later one as a standing dog's (a cycle on, or up to charge_slack later where its stretch is clear),
 ##   MIN_CHARGES at least (GDD §9.4: "2–3 charges early, up to 4 at the maximum"; octodog_rules.gd's least) and up to
 ##   the count it rolls (charges_range at the level's enemy scaling); one only where no spot in the level has room for
-##   more even with room made (below), so the level still has its jar. DESIGN-TBD (docs/questions/q5.md 6). Each
+##   more even with room made (below), so the level still has its jar (none, with a warning, in a rare crowded build
+##   with room for not even one). DESIGN-TBD (docs/questions/q5.md 6). Each
 ##   charge's stretch is clear as a standing dog's must be (Octodog.charge_clear: no fence, doodad, anti-grav pad,
 ##   ceiling landing or other enemy near, holes in one lane at most), with no pad or ceiling landing near its first
 ##   wind-up or between two of them (Octodog.pad_or_landing_between). Another enemy at work while it gets out and into
