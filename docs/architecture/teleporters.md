@@ -167,7 +167,9 @@ phone's size: task Q4's review). Everything glows green or green-white
 anti-grav pads') nor anything across a lane (a fence's). ShaderWarmup draws every part at the load (`Teleporter.warm_look`).
 
 **The other wiring.** The first-encounter hints (`teleporter` and `teleporter_blinking` in `data/hints/hints.json`,
-HintDirector's `_first_at`: the first pad, the first blinking one's); `LayoutChecks.check_teleporters` (in `check_layout`)
+HintDirector's `_first_at`: the first pad, the first blinking one's; in the Golden Zone a reminder after its levels' own new
+things, the campaign dating them from the Ice Lab's place: `Campaign.feature_ages` counts a level off the curve played
+before a level on it, task Q6); `LayoutChecks.check_teleporters` (in `check_layout`)
 re-checks every finished layout on its own (the way around and every landing clear, the calm stretches, the landing built
 while the runner is on the pad, then `TeleporterRules.problems()`); the weekly challenge (`teleporters` and
 `blinking_teleporters` are `WeeklyChallenge.GOLDEN_FIELDS`, so an Ice Lab week and, since task Q6, the Golden Zone's stand
