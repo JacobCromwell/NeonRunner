@@ -9,8 +9,9 @@ extends TestSuite
 ##   level's standing Octodogs (LevelGenerator.feature_positions, OctodogRules.dogs_in).
 ## - The generator (octodog_jar_rules.gd) over the Ice Lab's three levels at 3, 5 and 6 lanes: each has its jars
 ##   (LevelConfig.octodog_jars), each holding a dog of its own with its charges planned from the release, its first wind-up
-##   release_distance past the jar, the rules' re-check clean; built again it's the same; a level without the feature, or
-##   with a count of 0, stands none and is built as without it. (Every build's fairness: test_ice_lab_levels and
+##   release_distance past the jar, the rules' re-check clean; in Frost Foundry, which introduces them, none before the
+##   feature's start and the first right after it at five lanes; built again it's the same; a level without the feature,
+##   or with a count of 0, stands none and is built as without it. (Every build's fairness: test_ice_lab_levels and
 ##   test_campaign through LayoutChecks.check_octodog_jars and check_doodads.)
 ## - The skin: the Ice Lab dresses a jar holding an Octodog as its Octodog jar, the look its other Octodog jars (which hold
 ##   nothing) have too; every other skin dresses it as any doodad.
@@ -124,6 +125,17 @@ func _test_generator() -> void:
 					"... its first wind-up release_distance (%.1f m) past the jar %s" % [release, tag])
 			check(OctodogJarRules.problems(gen).is_empty(), "the jars keep every placement rule %s %s"
 				% [tag, OctodogJarRules.problems(gen)])
+			# The level that introduces them (a start of its own: Frost Foundry): nothing before the start, and at five
+			# lanes (the game's own count) its first jar within the introduction's window of it (_intro).
+			if config.feature_starts.has(OctodogJarRules.FEATURE) and not held.is_empty():
+				var start: float = gen.feature_start(OctodogJarRules.FEATURE)
+				var fronts: Array[float] = OctodogJarRules.positions(lay)
+				fronts.sort()
+				var first: float = fronts[0]
+				check(first >= start, "no jar before the feature's start (%.0f m: %.0f) %s" % [start, first, tag])
+				if lanes == 5:
+					check(first <= start + t.jar_intro_window_seconds * gen.speed,
+						"the introduction comes right after its start (%.0f m: %.0f) %s" % [start, first, tag])
 			var warned: bool = false
 			for w: String in gen.warnings:
 				warned = warned or w.begins_with("octodog jars")

@@ -62,12 +62,15 @@ extends RefCounted
 ## stays. The spot that takes the fewest out is taken, then the one nearest a seeded aim. DESIGN-TBD
 ## (docs/questions/q5.md 7).
 ##
-## How many: up to LevelConfig.octodog_jars, a part of the level each, the best spot there (above), then the best of the
-## rest. Its own random stream (LevelGenerator.rng_for), after every other feature's rules (RUN_AFTER: the gantryways and
-## the teleporters keep exactly the spots they had), so a level without the feature draws nothing and is built byte for
-## byte as before. Which of a zone's Octodog jars release: only these. Its others are its skin's look (IceLabDoodads'
-## variety, commoner toward the laboratory) and hold nothing, so "sometimes" is these among them. DESIGN-TBD
-## (docs/questions/q5.md 1).
+## How many: up to LevelConfig.octodog_jars. A level that gives the feature a start (Frost Foundry) introduces it first:
+## the best spot with its front within jar_intro_window_seconds of the start (test_campaign's introduction reach), else
+## the nearest past it, its dog making MIN_CHARGES at the fewest; one charge only where no spot past the start has room
+## for more (_intro; DESIGN-TBD, docs/questions/q5.md 14). Then the rest, a part of the level each past the
+## introduction, the best spot there (above), then the best of the rest. Its own random stream (LevelGenerator.rng_for),
+## after every other feature's rules (RUN_AFTER: the gantryways and the teleporters keep exactly the spots they had), so
+## a level without the feature draws nothing and is built byte for byte as before. Which of a zone's Octodog jars
+## release: only these. Its others are its skin's look (IceLabDoodads' variety, commoner toward the laboratory) and hold
+## nothing, so "sometimes" is these among them. DESIGN-TBD (docs/questions/q5.md 1).
 
 const FEATURE: String = "octodog_jar"
 const TYPE: String = "octodog"
@@ -378,30 +381,41 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 	var plan: Plan = plan_for(gen, t, powerups())
 	var placed: int = 0
 	if plan.hi >= plan.lo:
-		# A part of the level each, aiming for a seeded spot in it; then, where a part had no room, the rest of the level.
-		var part: float = (plan.hi - plan.lo) / float(count)
-		var aims: Array[float] = []
-		for k: int in count:
-			aims.append(plan.lo + (k + rng.randf_range(0.25, 0.75)) * part)
-		for k: int in count:
-			var a: float = plan.lo + k * part
-			var spot: Dictionary = _best(plan, rng, a, a + part, aims[k], _roll_charges(gen, t, rng), MIN_CHARGES)
-			if not spot.is_empty():
+		var from: float = plan.lo
+		var left: int = count
+		# The introduction, where the level gives the feature a start (Frost Foundry): its first jar right after it.
+		if gen.config.feature_starts.has(FEATURE):
+			var intro: Dictionary = _intro(plan, rng)
+			left = 0 if intro.is_empty() else count - 1
+			if not intro.is_empty():
+				_place(plan, intro, placed)
+				placed += 1
+				from = float(intro["front"]) + plan.step
+		if left > 0 and from <= plan.hi:
+			# A part of the level each, aiming for a seeded spot in it; then, where a part had no room, the rest of the level.
+			var part: float = (plan.hi - from) / float(left)
+			var aims: Array[float] = []
+			for k: int in left:
+				aims.append(from + (k + rng.randf_range(0.25, 0.75)) * part)
+			for k: int in left:
+				var a: float = from + k * part
+				var spot: Dictionary = _best(plan, rng, a, a + part, aims[k], _roll_charges(gen, t, rng), MIN_CHARGES)
+				if not spot.is_empty():
+					_place(plan, spot, placed)
+					placed += 1
+			while left > 1 and placed < count:
+				var spot: Dictionary = _best(plan, rng, from, plan.hi, from, _roll_charges(gen, t, rng), MIN_CHARGES)
+				if spot.is_empty():
+					break
 				_place(plan, spot, placed)
 				placed += 1
-		while count > 1 and placed < count:
-			var spot: Dictionary = _best(plan, rng, plan.lo, plan.hi, plan.lo, _roll_charges(gen, t, rng), MIN_CHARGES)
-			if spot.is_empty():
-				break
-			_place(plan, spot, placed)
-			placed += 1
-		# A level with no room anywhere for a dog's usual attack, even with room made, still has its jar: its dog makes
-		# the charges that fit, one at the fewest.
-		if placed == 0:
-			var spot: Dictionary = _best(plan, rng, plan.lo, plan.hi, aims[0], _roll_charges(gen, t, rng), 1)
-			if not spot.is_empty():
-				_place(plan, spot, placed)
-				placed += 1
+			# A level with no room anywhere for a dog's usual attack, even with room made, still has its jar: its dog makes
+			# the charges that fit, one at the fewest.
+			if placed == 0:
+				var spot: Dictionary = _best(plan, rng, from, plan.hi, aims[0], _roll_charges(gen, t, rng), 1)
+				if not spot.is_empty():
+					_place(plan, spot, placed)
+					placed += 1
 	if placed == 0:
 		gen.warnings.append("octodog jars: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
 	gen.layout.doodads.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
@@ -411,6 +425,23 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 static func _roll_charges(gen: LevelGenerator, t: OctodogTuning, rng: RandomNumberGenerator) -> int:
 	var r: Vector2i = t.charges_range(gen.config.enemy_scaling)
 	return rng.randi_range(r.x, r.y)
+
+
+## The introduction's spot, in a level that gives the feature a start (LevelConfig.feature_starts: Frost Foundry): the
+## best (_best, nearest the start) with its front within jar_intro_window_seconds of the start (test_campaign's
+## introduction reach), else the best past that window (nearest it), its dog making MIN_CHARGES at the fewest (its usual
+## attack, GDD §5's proposal, before the timing); only where nothing past the start has room for that, one charge, in the
+## window first. {} if none. DESIGN-TBD (docs/questions/q5.md 14).
+static func _intro(plan: Plan, rng: RandomNumberGenerator) -> Dictionary:
+	var gen: LevelGenerator = plan.gen
+	var wanted: int = _roll_charges(gen, plan.t, rng)
+	var reach: float = minf(gen.feature_start(FEATURE) + plan.t.jar_intro_window_seconds * gen.speed, plan.hi)
+	for least: int in [MIN_CHARGES, 1]:
+		for span: Vector2 in [Vector2(plan.lo, reach), Vector2(reach, plan.hi)]:
+			var spot: Dictionary = _best(plan, rng, span.x, span.y, span.x, wanted, least)
+			if not spot.is_empty():
+				return spot
+	return {}
 
 
 ## The best spot for a jar with its front in [a, b] (see the header: the fewest pieces and enemies taken out of its way,

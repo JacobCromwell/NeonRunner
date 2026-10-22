@@ -9,8 +9,9 @@ curled-up Octodog instead of a brain. Sometimes smashing an Octodog jar doodad r
 runner has to fight it." GDD §5's proposals are built as written: a jar is smashed the way every doodad is (the dash), a jar
 that will release its Octodog looks the same as one that won't, the freed Octodog tumbles out, runs ahead to its usual
 distance and starts its usual attack (§9.4) from the first wind-up, with its cue, never a lunge without warning, and it is
-fought and killed like any Octodog. The level feature is `octodog_jar` (all three Ice Lab levels, from Frost Foundry, no
-start of its own); a level's count is `LevelConfig.octodog_jars` (1 each), DESIGN-TBD (`docs/questions/q5.md`).
+fought and killed like any Octodog. The level feature is `octodog_jar` (all three Ice Lab levels; Frost Foundry introduces
+it from a start of its own at 0.02 of the level, before the gantryways' at 0.15); a level's count is
+`LevelConfig.octodog_jars` (1 each), DESIGN-TBD (`docs/questions/q5.md`).
 
 **The files.**
 - `scripts/enemies/octodog_jar_rules.gd`: the generator's rules (no patterns): where each jar stands, the plan of the dog it
@@ -51,7 +52,10 @@ jar keeps clear.
   around and landings, a wall-run gap's clear stretch, a treasure stash's floor), and every other Octodog's run with its
   stop distance and DOG_GAP between;
 - what the fill pass keeps for the dog (`LevelGenerator.enemy_keep_out`: from 2 s before its jar to its run's end) keeps
-  off every wall-run gap's stretch (`WallRunGapPlacement.keep_out`), as a wall-run gap keeps every enemy's.
+  off every wall-run gap's stretch (`WallRunGapPlacement.keep_out`), as a wall-run gap keeps every enemy's;
+- in the level that introduces the jars (`_intro`: Frost Foundry gives the feature a start), the first stands within
+  `jar_intro_window_seconds` of the start (test_campaign's introduction reach) where its dog's usual attack has room
+  there, else the nearest past it; one charge only where nothing past the start has room for more.
 
 A jar moves what later passes place around its dog's keep-out (a wider gap, say). One such move set a wider gap's landing
 margin right against a teleporter's calm stretch, which `WideGapPlacement` kept off the zone but not off a doodad's push
@@ -68,9 +72,10 @@ put back (`_in_way`, from the lane that takes the fewest out), the fewest first,
 `ROOM_TRIES` are tried for real, their pieces taken out (never the last of a feature or the first of one the level
 introduces: `_features_kept`) and put back if the spot doesn't fit after all. Measured over 63 builds of the Ice Lab's
 levels (their own seeds and six others, 3, 5 and 6 lanes): a jar in all but one (Relay Station at 3 lanes on seed 9001,
-whose build warns: no spot left room for even one charge), its dog making 2 or 3 charges in three builds of four, 5.4
+whose build warns: no spot left room for even one charge), its dog making 2 or 3 charges in three builds of four, 5.7
 pieces taken out on average; about 0.1 s of a level's build, and no more builds of it than without the jars (36 of
-them built both ways; `tools/measure/octodog_jars.gd`, `--without`).
+them built both ways; `tools/measure/octodog_jars.gd`, `--without`). Frost Foundry's introduction came right after its
+start in 13 of its 21 builds, and on its own seed at 5 and 6 lanes (`--start=` tries other starts).
 
 **On the track.** `TrackBuilder` builds a jar as any doodad (a `DashBreakable` over its entry), its look the skin's
 `held_doodad_look`. The director spawns the dog as any enemy; `Octodog._build` finds its jar (`LevelLayout.holder_of`) and
@@ -84,5 +89,5 @@ past. Its first wind-up asks for its turn as any dog's, and waits while another 
 keeps them so when a wait moved one dog's charges).
 
 **Tests.** `test_octodog_jars` (below), `test_ice_lab_levels` (every build's count, `check_octodog_jars` through
-`LayoutChecks.check_layout`), `test_campaign` (the schedule: from Frost Foundry, left out of the Golden Zone), `test_hints`
-(Frost Foundry's hint), `test_audio` (the sound).
+`LayoutChecks.check_layout`), `test_campaign` (the schedule: introduced in Frost Foundry from a start of its own, left out
+of the Golden Zone), `test_hints` (Frost Foundry's hint), `test_audio` (the sound).

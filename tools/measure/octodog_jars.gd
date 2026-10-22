@@ -6,18 +6,27 @@ extends SceneTree
 ## variety, IceLabDoodads), how long the build and the rules took and what OctodogJarRules.problems() finds (nothing, on
 ## every build the suites check). From the project folder:
 ##   godot --headless -s res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
+##   [--seed-base=8800] [--why] [--without] [--start=S]
 ## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3; --seed-base=8800 for 8801, 8802,
 ## ...: test_ice_lab_levels' OTHER_SEEDS). --why counts, build by build,
 ## what turned down the jar fronts tried (OctodogJarRules.debug). --without builds each level without its jars too, for
-## the builds and the time they cost.
+## the builds and the time they cost. --start=S starts the feature at share S of the level that introduces it (Frost
+## Foundry) instead of its own start, and every build of that level says whether its first jar came right after the start
+## (test_campaign's INTRODUCTION_REACH) or late.
 
 const OctodogJarRules = preload("res://scripts/enemies/octodog_jar_rules.gd")
+## How far past its start an introduction may come and still count as right after it (test_campaign's
+## INTRODUCTION_REACH, metres at the reference speed, stretched by the level's pace).
+const INTRODUCTION_REACH: float = 210.0
 
 var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
 var _seeds: int = 3
 var _without: bool = false
 var _seed_base: int = 9000
+## --start=S: the share of the level the introducing level (the one that gives the feature a start) starts it from,
+## instead of its own (to try a placeholder value).
+var _start: float = -1.0
 
 
 func _initialize() -> void:
@@ -40,6 +49,8 @@ func _run() -> void:
 			_seed_base = int(arg.get_slice("=", 1))
 		elif arg == "--without":
 			_without = true
+		elif arg.begins_with("--start="):
+			_start = float(arg.get_slice("=", 1))
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var builds: int = 0
@@ -51,6 +62,8 @@ func _run() -> void:
 	var taken: int = 0
 	var slowest: float = 0.0
 	var spent: float = 0.0
+	var intros: int = 0
+	var late_intros: int = 0
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level() or s.is_minigame() or not s.level.has_feature(OctodogJarRules.FEATURE):
 			continue
@@ -61,6 +74,10 @@ func _run() -> void:
 				var config: LevelConfig = campaign.configure(s, lanes)
 				if k > 0:
 					config.level_seed = _seed_base + k
+				if _start >= 0.0 and config.feature_starts.has(OctodogJarRules.FEATURE):
+					var starts: Dictionary[String, float] = config.feature_starts.duplicate()
+					starts[OctodogJarRules.FEATURE] = _start
+					config.feature_starts = starts
 				var patterns: Array = LevelGenerator.load_for(config)
 				if _without:
 					# The same level without its jars: the builds and the time they cost.
@@ -109,13 +126,22 @@ func _run() -> void:
 							skin_jars += 1
 				looks += skin_jars
 				var standing: int = LevelGenerator.feature_positions(layout, "octodog").size()
-				print("%s lanes=%d seed=%d: %d of %d [%s], %d taken out, %d more Octodog jars holding nothing, %d Octodogs standing, %.0f ms (%.1f in the rules), %d builds%s%s"
-					% [s.id, lanes, config.level_seed, parts.size(), config.octodog_jars, ", ".join(parts),
+				# The level that introduces them (a start of its own): its first jar right after the start, or late.
+				var intro: String = ""
+				if config.feature_starts.has(OctodogJarRules.FEATURE):
+					var at: Array[float] = OctodogJarRules.positions(layout)
+					at.sort()
+					var late: bool = at.is_empty() or at[0] > gen.feature_start(OctodogJarRules.FEATURE) + INTRODUCTION_REACH * gen.pace
+					intros += 1
+					late_intros += 1 if late else 0
+					intro = ", introduced %s" % ("LATE" if late else "right after its start")
+				print("%s lanes=%d seed=%d: %d of %d [%s]%s, %d taken out, %d more Octodog jars holding nothing, %d Octodogs standing, %.0f ms (%.1f in the rules), %d builds%s%s"
+					% [s.id, lanes, config.level_seed, parts.size(), config.octodog_jars, ", ".join(parts), intro,
 						OctodogJarRules.taken_out, skin_jars, standing, ms, rules_ms, gen.attempts,
 						(" WARN %s" % [gen.warnings]) if not gen.warnings.is_empty() else "",
 						(" PROBLEMS %s" % [found]) if not found.is_empty() else ""])
 				if OctodogJarRules.debug:
 					print("  turned down: %s" % [OctodogJarRules.why])
-	print("%d builds: %d of %d jars, %d taken out, %d of the skin's empty Octodog jars, %d problems, %d builds with warnings; the rules took %.1f ms on average and %.1f at most"
-		% [builds, placed, wanted, taken, looks, problems, warned, spent / maxf(builds, 1.0), slowest])
+	print("%d builds: %d of %d jars, %d taken out, %d of the skin's empty Octodog jars, %d problems, %d builds with warnings; the rules took %.1f ms on average and %.1f at most; %d of %d introductions late"
+		% [builds, placed, wanted, taken, looks, problems, warned, spent / maxf(builds, 1.0), slowest, late_intros, intros])
 	quit()

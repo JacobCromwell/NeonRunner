@@ -36,3 +36,4 @@ jar_tumble_time = 0.45
 jar_tumble_speed = 7.0
 jar_tumble_height = 0.7
 jar_settle_seconds = 0.5
+jar_intro_window_seconds = 11.5

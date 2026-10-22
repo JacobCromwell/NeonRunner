@@ -461,8 +461,8 @@ cleared by a restart right after a jump. About 2 minutes.
 `test_octodog_jars` checks the Octodog jars that break open (task Q5; Octodog jars): the layout's marks (a jar and its dog
 finding each other, `copy` and `to_dict` keeping them, a held dog none of the level's standing Octodogs); the generator
 over the Ice Lab's levels at 3, 5 and 6 lanes (the count, each dog's own plan from the release, the re-check clean, no
-warning, most dogs making 2 charges or more, the same jars on a fresh build; none without the feature or with a count of
-0, which builds as without it); the skin (the Ice Lab dresses a jar holding a dog as its Octodog jar, the look of the empty
+warning, most dogs making 2 charges or more, Frost Foundry's introduction never before its start and right after it at 5
+lanes, the same jars on a fresh build; none without the feature or with a count of 0, which builds as without it); the skin (the Ice Lab dresses a jar holding a dog as its Octodog jar, the look of the empty
 ones; other skins as any doodad); and on real physics at 3, 5 and 6 lanes, middle and outermost lanes: the held dog out of
 play and the track's jar in the Octodog jar's look; a dashed jar letting its dog out (the release sound, harmless while it
 tumbles and runs ahead), which makes its planned charges no sooner than planned, each lunge after its wind-up's growl and

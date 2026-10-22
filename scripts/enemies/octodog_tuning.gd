@@ -84,7 +84,7 @@ extends EnemyTuning
 @export_group("Jars")
 ## Task Q5 (GDD §5, Zone 9, the owner, October 21, 2026: "sometimes smashing an Octodog jar doodad releases its Octodog
 ## into the world"; proposed: "the freed Octodog tumbles out, runs ahead to its usual distance and starts its usual
-## attack from the first wind-up, with its cue"). DESIGN-TBD (docs/questions/q5.md 4 and 5): every number here.
+## attack from the first wind-up, with its cue"). DESIGN-TBD (docs/questions/q5.md 4, 5 and 14): every number here.
 ## Seconds the freed dog tumbles out of its smashed jar, flung on ahead of the runner and rolling over once, harmless
 ## (no hitbox: nothing it does before its first wind-up can hurt), before it lands running (its sprint, as after a lunge).
 @export_range(0.1, 1.5, 0.05, "suffix:s") var jar_tumble_time: float = 0.45
@@ -96,6 +96,10 @@ extends EnemyTuning
 ## to line up, settling at its distance) on top of the tumble and the sprint (release_distance): its first wind-up is
 ## planned that far on, and a dog in position sooner paces there until the runner reaches it.
 @export_range(0.0, 3.0, 0.05, "suffix:s") var jar_settle_seconds: float = 0.5
+## Seconds of run past the feature's start within which the level that introduces the jars (Frost Foundry, the one that
+## gives `octodog_jar` a start) stands its first one, where it has room there (octodog_jar_rules.gd): test_campaign's
+## introduction reach, as the gantryways' and the teleporters' intro_window_seconds.
+@export_range(2.0, 40.0, 0.5, "suffix:s") var jar_intro_window_seconds: float = 11.5
 
 
 func windup_time(t: float) -> float:

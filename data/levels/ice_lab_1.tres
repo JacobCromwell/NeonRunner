@@ -14,7 +14,8 @@ enemy_scaling = 0.855
 off_curve = true
 features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "wall_run_gaps", "wall_fences", "treasure_stash", "fenced_ceiling", "wall_fences_partial", "gantryway", "octodog_jar")
 feature_starts = Dictionary[String, float]({
-"gantryway": 0.15
+"gantryway": 0.15,
+"octodog_jar": 0.02
 })
 skin_path = "res://data/skins/ice_lab_frost_skin.tres"
 guarantee_features = true

@@ -21,7 +21,7 @@ extends TestSuite
 ## where LayoutChecks.check_gantryways finds it fair; test_gantryways has the rest), Q4's teleporters (introduced in Relay
 ## Station, with blinking antennas from Specimen Vault: every build stands the level's count of them, and its count of
 ## blinking ones, each where LayoutChecks.check_teleporters finds it fair; test_teleporters has the rest), Q5's Octodog
-## jars that break open (all three levels, from Frost Foundry, with no start of their own: every build stands the level's
+## jars that break open (all three levels, introduced in Frost Foundry from early on: every build stands the level's
 ## count of jars holding an Octodog, each where LayoutChecks.check_octodog_jars finds it fair; test_octodog_jars has the
 ## rest), and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in for them.
 
@@ -182,10 +182,11 @@ func _test_level_data() -> void:
 			and level.feature_starts.has("teleporter_blinking") == (n == 2),
 			"%s %s" % [tag, "brings in blinking antennas (%d)" % level.blinking_teleporters if n == 2 else "has no blinking antenna"])
 		# Task Q5 (GDD §5, Zone 9: Frost Foundry's row of the level schedule names them): every level stands Octodog jars that
-		# break open, none with a start of its own (a freed dog's attack fits before the heli drone's first pad only:
-		# octodog_jar_rules.gd; DESIGN-TBD, docs/questions/q5.md 1).
-		check(level.has_feature("octodog_jar") and level.octodog_jars > 0 and not level.feature_starts.has("octodog_jar"),
-			"%s stands Octodog jars that break open (%d)" % [tag, level.octodog_jars])
+		# break open, and Frost Foundry introduces them, early (a freed dog's attack fits before the heli drone's first pad
+		# only: octodog_jar_rules.gd; DESIGN-TBD, docs/questions/q5.md 14).
+		check(level.has_feature("octodog_jar") and level.octodog_jars > 0 and level.feature_starts.has("octodog_jar") == (n == 0)
+			and (n > 0 or level.feature_start("octodog_jar") < level.feature_start("gantryway")),
+			"%s stands Octodog jars that break open (%d)%s" % [tag, level.octodog_jars, ", introducing them" if n == 0 else ""])
 
 
 ## Every build at 3, 5 and 6 lanes on the levels' own seeds and others, as the campaign configures it.
