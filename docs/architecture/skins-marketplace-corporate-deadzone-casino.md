@@ -575,6 +575,9 @@ chains overhead, no sky.
 - *Falling gantryways* (task Q3; Falling gantryways): GantrywayKit's frosted steel catwalk, pillar and wreck (the default look) in the zone's own colours
   (`gantryway_colors()`: its steel, frame, frost, snow and ice, as its ceilings use them) and its sheen (`gantryway_material()`), so a gantryway reads as
   one of the WALKWAY ceilings; nothing on the walls. Reviewed with `gantryway_review` (its default zone is the Ice Lab) on both renderers.
+- *Teleporters* (task Q4; Teleporters): TeleporterKit's pad, antenna and output marker (the default look), its plate and rim in the hall's steel and
+  frame (`teleporter_colors()`), its green and lamps its own; `test_ice_lab_skin` leaves a teleporter's parts out of its whole-level scenery checks.
+  Reviewed with `teleporter_review` (its default zone is the Ice Lab) on both renderers.
 - *No dash walls* (GDD §5, §9.14): the base's default look, which no level of the zone asks for; `test_dash_walls` lists the three skin files among the
   default-look skins. Its cyborgs wear the Dead Zone's burned base (`enemy_variant`, placeholder: GDD §5, "an existing zone's look").
 - *Cost* (`test_ice_lab_skin`, 66 chunks of Ice Lab 1): build mean 2.0-2.4 ms a chunk at 3-6 lanes, 20-33 surfaces and 15-16k vertices a chunk (5 lanes: 26.9

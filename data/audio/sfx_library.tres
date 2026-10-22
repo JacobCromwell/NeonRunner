@@ -276,6 +276,7 @@ volume_db = {
 "takeover_merger": -3.5,
 "takeover_strafe": -3.0,
 "takeover_whine": -5.0,
+"teleport": -4.0,
 "tithe_collector_cue": -5.0,
 "title_sting": -3.0,
 "tower_crack": -2.0,

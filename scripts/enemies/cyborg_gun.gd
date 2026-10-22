@@ -409,6 +409,15 @@ func _start_charge() -> void:
 		"player_d": world.player.distance, "shooter_d": shooter.track_distance(), "from": at})
 
 
+## Calls a burst under way off from outside (`why`; task Q4: &"teleport", the runner was teleported, Enemy.runner_teleported):
+## a charge-up or a burst still firing stops as any called-off charge-up does (_cancel: RETRY_PAUSE, then the next burst
+## charges up again, its sound and glow first, where the runner is now; bolts already fired were cleared with every shot,
+## ProjectilePool.clear_shots). Nothing happens while it's ready or reloading.
+func call_off(why: StringName) -> void:
+	if state == State.CHARGING or state == State.FIRING:
+		_cancel(why)
+
+
 ## Calls the charge-up off (`why`: &"allowed", the shooter may no longer attack; &"path", the burst
 ## would no longer be fair on the track; &"crossfire", the crossfire rule's last check at the lock).
 func _cancel(why: StringName) -> void:

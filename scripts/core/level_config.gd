@@ -106,6 +106,15 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   the dash knocks down: the walkway falls on the lane over about a second, crushing the enemies under it and hitting
 ##   a runner still under it (no patterns: its rules, gantryway_rules.gd, place up to `gantryways` of them where a
 ##   runner who dashes the pillar always has a lane to step into; numbers in data/tuning/gantryways.tres)
+## - teleporter: the Ice Lab's teleporters (task Q4; GDD §5, Zone 9, owner, October 21, 2026), from Relay Station: a square
+##   pad in an inner lane with a green antenna, which sends a runner who runs onto it to an output pad further down the
+##   track, one or a left and a right one, the antenna's light (fixed) choosing (no patterns: its rules,
+##   teleporter_rules.gd, stand up to `teleporters` of them where the way around and every landing are fair; numbers in
+##   data/tuning/teleporters.tres)
+## - teleporter_blinking: blinking antennas (task Q4; GDD §5), from Specimen Vault, with `teleporter`: `blinking_teleporters`
+##   of the level's teleporters have two output pads and a light that changes side about once a second, the side lit at
+##   the touch deciding (no rules of its own but teleporter_blinking_rules.gd's positions(): teleporter_rules.gd places
+##   them)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -276,6 +285,20 @@ var _skin: ZoneSkin
 ## (docs/questions/q3.md 1 and 14): 3 in each of the Ice Lab's levels; quick play's prototype level takes this default,
 ## endless mode its level's (3 over its 20 minutes from the Ice Lab) and a weekly challenge's week Sentinel Row's.
 @export_range(0, 8) var gantryways: int = 3
+## Teleporters (task Q4; GDD §5, Zone 9, the owner, October 21, 2026: "introduced in level 2, with blinking antennas
+## added in level 3"): with the `teleporter` feature, the generator stands up to this many teleporters' pads in the
+## level's inner lanes, each leading to one output pad or a left and a right one further down the track
+## (teleporter_rules.gd), spread through the level where they're fair (data/tuning/teleporters.tres); fewer where the
+## level leaves no room, never none. 0 turns them off. Without the feature it does nothing. DESIGN-TBD
+## (docs/questions/q4.md 1 and 14): 3 in Relay Station, 4 in Specimen Vault; quick play's prototype level takes this
+## default, endless mode its level's (Specimen Vault's 4 over its 20 minutes from the Ice Lab) and a weekly challenge's
+## week Sentinel Row's.
+@export_range(0, 8) var teleporters: int = 3
+## With the `teleporter_blinking` feature as well (Specimen Vault, GDD §5: "level 3 adds blinking ones"), this many of
+## the level's teleporters have a blinking antenna: two output pads, the light changing side about once a second, the
+## side lit at the touch deciding where the runner lands (the rest keep a fixed light). Without the feature it does
+## nothing. DESIGN-TBD (docs/questions/q4.md 1): 2 of Specimen Vault's 4.
+@export_range(0, 8) var blinking_teleporters: int = 1
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings
 ## into a treasure stash's (treasure_stash_rules.gd), where one fits (an inner lane with inner lanes beside it:

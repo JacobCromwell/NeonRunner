@@ -87,6 +87,16 @@ func live_count() -> int:
 	return _live.size()
 
 
+## Every shot in the air goes at once, the enemies' and the player's (task Q4: a teleport skips the track in between and
+## whatever it holds, RunWorld._on_teleported; a bolt aimed at where the runner was mustn't fly on into where they are).
+## Returns how many went.
+func clear_shots() -> int:
+	var n: int = _live.size()
+	for i: int in range(_live.size() - 1, -1, -1):
+		_release(_live[i])
+	return n
+
+
 func live_shots() -> Array[Projectile]:
 	return _live.duplicate()
 

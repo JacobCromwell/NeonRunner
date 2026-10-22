@@ -13,8 +13,9 @@ extends RefCounted
 ##   level without wall running has nothing on its walls, every broken stump standing opposite an arch
 ##   (check_boundary_walls, task O1), every block of a debris maze keeps its rules and is finishable with the dash
 ##   at its slowest recharge (check_debris_maze, task O2), every Cybernetic Centipede waits where its rules allow, its
-##   block escapable past it (check_centipedes, task O3), and every falling gantryway hangs where a runner who knocks it
-##   down always has a lane to step into (check_gantryways, task Q3).
+##   block escapable past it (check_centipedes, task O3), every falling gantryway hangs where a runner who knocks it
+##   down always has a lane to step into (check_gantryways, task Q3), and every teleporter stands where it's never
+##   needed and never lands its runner straight into a hazard (check_teleporters, task Q4).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -40,6 +41,7 @@ const FencedCeilingRules = preload("res://scripts/enemies/fenced_ceiling_rules.g
 const DangerDensityScript = preload("res://scripts/world/danger_density.gd")
 const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 const GantrywayRulesScript = preload("res://scripts/enemies/gantryway_rules.gd")
+const TeleporterRulesScript = preload("res://scripts/enemies/teleporter_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
@@ -95,6 +97,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_debris_maze(suite, layout, config, tag)
 	check_centipedes(suite, layout, config, tag)
 	check_gantryways(suite, layout, config, tag)
+	check_teleporters(suite, layout, config, tag)
 
 
 ## A level whose walls are a boundary (task O1; LevelConfig.wall_running off, which its layout carries: the Terminal,
@@ -443,6 +446,142 @@ static func check_gantryways(suite: TestSuite, layout: LevelLayout, config: Leve
 				"%s: no doodad near its pillar in its lane or beside it (%.1f m, lane %d)" % [at, span.x, int(d["lane"])])
 	var problems: PackedStringArray = GantrywayRulesScript.problems(gen)
 	suite.check(problems.is_empty(), "the gantryways keep every placement rule %s %s" % [tag, problems])
+
+
+## Teleporters (task Q4; GDD §5, Zone 9, the owner, October 21, 2026; scripts/enemies/teleporter_rules.gd), wherever the
+## generator stands one, at any lane count, at the level's own run speed:
+## - only in a level with the feature (a blinking antenna only with `teleporter_blinking`, from its start, between two
+##   output pads), never before the feature's start; its pad a square in an inner lane, with a lane beside it as the way
+##   around; one output pad or two (a left and a right at least output_lane_gap lanes apart, as the track allows, and a
+##   light on a side), side by side within the hops ahead, and its whole landing within the track a runner on its pad has
+##   built ahead (TrackBuilder.BUILD_AHEAD: the landing is there and in view before the touch);
+## - never needed, checked here on its own: its lane and the way around hold no hole, fence, anti-grav pad's zone, speed
+##   pad, ramp, floor cut's lane window, doodad or floor enemy from its approach to a lane switch's room past its far end;
+## - never a landing straight into a hazard: each output pad's lane holds none of them from just before its front
+##   (LANDING_BACK) to its landing's end, and no attack is timed on a runner there or lining up its pad
+##   (LevelLayout.doodad_between counts its calm stretches);
+## - neither its pad stretch nor a landing reaches into a fenced ceiling's pick (task I4: it plays out alone);
+## - and the generator's own re-check finds nothing (TeleporterRules.problems: every window lane by lane and in every lane,
+##   the lanes beside an output pad, the ceilings' landing zones, the introductions, the spacing).
+static func check_teleporters(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	if layout.teleporters.is_empty():
+		return
+	suite.check(config.has_feature(TeleporterRulesScript.FEATURE), "teleporters only in a level with the feature " + tag)
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var zones := CeilingZones.make(config, tuning)
+	var t: TeleporterTuning = TeleporterTuning.load_default()
+	var pt: PowerupTuning = TeleporterRulesScript.powerups()
+	var approach: float = t.approach_seconds * TeleporterRulesScript.fastest(gen, pt)
+	var room: float = gen.doodad_lane_room()
+	var pad: float = TeleporterRulesScript.pad_size(gen, t)
+	var back: float = TeleporterRulesScript.LANDING_BACK
+	var n: int = layout.lane_count
+	var start: float = gen.feature_start(TeleporterRulesScript.FEATURE)
+	var blink_start: float = gen.feature_start(TeleporterRulesScript.BLINKING)
+	var hop_lo: float = minf(t.hop_seconds_min, t.hop_seconds_max) * gen.speed
+	var hop_hi: float = maxf(t.hop_seconds_min, t.hop_seconds_max) * gen.speed
+	for tp: Dictionary in layout.teleporters:
+		var lane: int = int(tp["lane"])
+		var side: int = int(tp["side"])
+		var front: float = float(tp["at"])
+		var outs: Array = tp.get("outputs", [])
+		var at: String = "the teleporter at %.1f m in lane %d %s" % [front, lane, tag]
+		var landing: float = TeleporterRulesScript.landing_length(gen, t, pt, bool(tp.get("intro", false)))
+		suite.check(lane >= 1 and lane <= n - 2 and absi(side) == 1,
+			"%s stands in an inner lane, a lane beside it the way around" % at)
+		suite.check(front >= start - 0.01, "%s comes after its feature's start (%.0f m)" % [at, start])
+		suite.check(absf(float(tp["end"]) - front - pad) < 0.01, "%s has a %.2f m square pad" % [at, pad])
+		suite.check(outs.size() == 1 or outs.size() == 2, "%s has one output pad or two (%d)" % [at, outs.size()])
+		if outs.is_empty():
+			continue
+		var land: float = float((outs[0] as Dictionary)["at"])
+		suite.check(land - front >= hop_lo - 0.05 and land - front <= hop_hi + 0.05,
+			"%s leads %.1f m on, within sight ahead (%.1f-%.1f m)" % [at, land - front, hop_lo, hop_hi])
+		suite.check(land + landing <= front + TrackBuilder.BUILD_AHEAD,
+			"%s: its landing (to %.1f m) is built while its runner is on its pad" % [at, land + landing])
+		if float(tp.get("blink", 0.0)) > 0.0:
+			suite.check(config.has_feature(TeleporterRulesScript.BLINKING) and front >= blink_start - 0.01 and outs.size() == 2,
+				"%s blinks only where the level has blinking antennas, from their start, between two output pads" % at)
+		if outs.size() == 2:
+			suite.check(absi(int(tp.get("light", 0))) == 1
+				and int(outs[1]["lane"]) - int(outs[0]["lane"]) >= clampi(t.output_lane_gap, 1, n - 1),
+				"%s has a left and a right output pad, and a light on a side" % at)
+		# Never needed: its lane and the way around, from its approach to a lane switch's room past its far end.
+		var stretch := Vector2(front - approach, float(tp["end"]) + room)
+		for l: int in [lane, lane + side]:
+			if l < 0 or l >= n:
+				continue
+			var found: PackedStringArray = _lane_pieces_in(layout, tuning, zones, l, stretch)
+			suite.check(found.is_empty(), "%s: lane %d holds nothing from its approach on (%s)" % [at, l, ", ".join(found)])
+		suite.check(layout.doodad_between(front - approach + 0.01, front - 0.01, lane),
+			"%s: no attack is timed on a runner lining up its pad" % at)
+		# Never a landing into a hazard: each output pad's lane holds nothing to its landing's end.
+		for o: Dictionary in outs:
+			var o_lane: int = int(o["lane"])
+			var o_at: float = float(o["at"])
+			suite.check(o_lane >= 0 and o_lane < n and absf(o_at - land) < 0.01 and absf(float(o["end"]) - o_at - pad) < 0.01,
+				"%s: its output pads stand side by side, %.2f m square" % [at, pad])
+			var found: PackedStringArray = _lane_pieces_in(layout, tuning, zones, o_lane, Vector2(o_at - back, o_at + landing))
+			suite.check(found.is_empty(), "%s: its landing in lane %d holds nothing (%s)" % [at, o_lane, ", ".join(found)])
+			suite.check(layout.doodad_between(o_at + 0.01, o_at + landing - 0.01, o_lane),
+				"%s: no attack is timed on a runner landing in lane %d" % [at, o_lane])
+		# A fenced ceiling's pick (task I4: its hull's "pick", where the player reads which pad is the trap) plays out alone:
+		# neither its pad stretch nor a landing reaches into one.
+		var spans: Array[Vector2] = [stretch]
+		for o: Dictionary in outs:
+			spans.append(Vector2(float(o["at"]) - back, float(o["at"]) + landing))
+		for h: Dictionary in layout.hulls:
+			var pick: Variant = h.get("pick")
+			if not (pick is Array and (pick as Array).size() == 2):
+				continue
+			for s: Vector2 in spans:
+				suite.check(s.y <= float(pick[0]) + 0.05 or s.x >= float(pick[1]) - 0.05,
+					"%s: nothing of it (%.1f-%.1f m) in a fenced ceiling's pick (%.1f-%.1f m)" % [at, s.x, s.y, float(pick[0]),
+						float(pick[1])])
+	var problems: PackedStringArray = TeleporterRulesScript.problems(gen)
+	suite.check(problems.is_empty(), "the teleporters keep every placement rule %s %s" % [tag, problems])
+
+
+## What stands in `lane` over `window` (check_teleporters): its holes, fences, anti-grav pads' zones, speed pads, a ramp's
+## run in the outermost lane on its side, floor cuts' lane windows, doodads and the floor its enemies use, each named.
+static func _lane_pieces_in(layout: LevelLayout, tuning: MovementTuning, zones: CeilingZones, lane: int,
+		window: Vector2) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var half: float = tuning.fence_depth * 0.5
+	var hits := func(span: Vector2) -> bool:
+		return span.x < window.y - 0.05 and span.y > window.x + 0.05
+	for g: Dictionary in layout.gaps:
+		if int(g["lane"]) == lane and hits.call(Vector2(float(g["start"]), float(g["end"]))):
+			out.append("a hole at %.1f m" % float(g["start"]))
+	for f: Dictionary in layout.fences:
+		if int(f["lane"]) == lane and hits.call(Vector2(float(f["at"]) - half, float(f["at"]) + half)):
+			out.append("a fence at %.1f m" % float(f["at"]))
+	for p: Dictionary in layout.pads:
+		if int(p["lane"]) == lane and hits.call(zones.pad_zone(float(p["at"]))):
+			out.append("an anti-grav pad at %.1f m" % float(p["at"]))
+	for p: Dictionary in layout.speed_pads:
+		if int(p["lane"]) == lane and hits.call(Vector2(float(p["at"]), float(p["at"]) + tuning.speed_pad_length)):
+			out.append("a speed pad at %.1f m" % float(p["at"]))
+	for r: Dictionary in layout.ramps:
+		var run_end: float = maxf(RampLaunch.of(r, tuning, tuning.run_speed).end(), float(r["at"]) + tuning.ramp_length)
+		if layout.outer_lane(int(r["side"])) == lane and hits.call(Vector2(float(r["at"]), run_end)):
+			out.append("a ramp at %.1f m" % float(r["at"]))
+	for c: Dictionary in layout.cuts:
+		if int(c["lane"]) == lane and hits.call(FloorCutPlan.lane_window(c)):
+			out.append("a floor cut at %.1f m" % float(c["start"]))
+	for d: Dictionary in layout.doodads:
+		if int(d["lane"]) == lane and hits.call(LevelLayout.doodad_extent(d)):
+			out.append("a doodad at %.1f m" % float(d["start"]))
+	for e: Dictionary in layout.enemies:
+		if not LevelGenerator.enemy_uses_floor(e):
+			continue
+		var e_lane: int = int(e.get("lane", -1))
+		if (e_lane < 0 or e_lane >= layout.lane_count) and int(e.get("side", 0)) != 0:
+			e_lane = layout.outer_lane(int(e["side"]))
+		if e_lane == lane and hits.call(LevelGenerator.enemy_floor_span(e, tuning.pace())):
+			out.append("a %s at %.1f m" % [String(e["type"]), float(e["at"])])
+	return out
 
 
 ## Block `b`'s (the `index`th) debris, `pieces` every maze piece of the layout (check_debris_maze): exactly its walls'

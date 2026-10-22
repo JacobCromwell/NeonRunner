@@ -10,6 +10,8 @@ signal gantryway_fell(gantryway: Gantryway)
 signal gantryway_swept(gantryway: Gantryway)
 ## A falling gantryway landed (Gantryway.landed).
 signal gantryway_landed(gantryway: Gantryway)
+## A teleporter (task Q4; Teleporter) was built, its looks queued for the skin; its antenna's light ticks from update().
+signal teleporter_built(teleporter: Teleporter)
 
 const CHUNK_LENGTH: float = 40.0
 const BUILD_AHEAD: float = 180.0
@@ -91,6 +93,8 @@ var _ceiling_fence_nodes: Dictionary = {}
 var _dash_wall_nodes: Array[DashBreakable] = []
 ## Built falling gantryways (task Q3), in the order they were built (gantryway_for, gantryway_nodes).
 var _gantryway_nodes: Array[Gantryway] = []
+## Built teleporters (task Q4), in the order they were built (teleporter_for, teleporter_nodes).
+var _teleporter_nodes: Array[Teleporter] = []
 ## The skin's calls still to make (dress_budget_usec), in order: [chunk start, chunk root, Callable].
 var _dressing: Array[Array] = []
 ## The chunk being built (_build_chunk): its start and root, for the calls it queues.
@@ -113,6 +117,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_ceiling_fence_nodes.clear()
 	_dash_wall_nodes.clear()
 	_gantryway_nodes.clear()
+	_teleporter_nodes.clear()
 	_cut_nodes.clear()
 	_dressing.clear()
 	_next_chunk = 0
@@ -174,6 +179,7 @@ func update(player_distance: float, level_time: float) -> void:
 			(chunk["node"] as Node3D).queue_free()
 			_chunks.erase(index)
 	_dress_some(player_distance)
+	light_teleporters(level_time)
 	# Floor cuts: a hold after a block that's over lets go (FloorCut.tick), before the player moves.
 	for key: String in _cut_nodes.keys():
 		var cut: Variant = _cut_nodes[key]
@@ -313,6 +319,36 @@ func gantryway_nodes() -> Array[Gantryway]:
 	return out
 
 
+## The built teleporter for layout entry `tp` (LevelLayout.teleporters; task Q4), or null until the chunk where its pad
+## stands is built (and once it's freed behind the player).
+func teleporter_for(tp: Dictionary) -> Teleporter:
+	for node: Teleporter in teleporter_nodes():
+		if is_same(node.entry, tp):
+			return node
+	return null
+
+
+## Draws every built teleporter's antenna light for level time `level_time` (task Q4; Teleporter.tick): from update(),
+## and from RunWorld once the runner's step has moved the level clock on (RunWorld._process), so a frame shows the light
+## a touch at that moment decides by.
+func light_teleporters(level_time: float) -> void:
+	for i: int in range(_teleporter_nodes.size() - 1, -1, -1):
+		var tp: Teleporter = _teleporter_nodes[i]
+		if not is_instance_valid(tp) or tp.is_queued_for_deletion():
+			_teleporter_nodes.remove_at(i)
+		else:
+			tp.tick(level_time)
+
+
+## Every teleporter built and still on the track (tests, review tools), in track order.
+func teleporter_nodes() -> Array[Teleporter]:
+	var out: Array[Teleporter] = []
+	for node: Teleporter in _teleporter_nodes:
+		if is_instance_valid(node) and not node.is_queued_for_deletion():
+			out.append(node)
+	return out
+
+
 ## A dash wall's look's box (task H7a; GDD §9.14), `depth` long along the track: as wide as the floor less
 ## MovementTuning.dash_wall_wall_room beside each side wall (the strip a wall runner passes it in), and
 ## dash_wall_height tall. Vector3(width, height, depth), centred across the track.
@@ -362,6 +398,20 @@ func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int, f
 	_bucket("doodads", pieces.doodads, "start", 0.0, "end")
 	_bucket("dash_walls", pieces.dash_walls, "start", 0.0, "end")
 	_bucket("gantryways", pieces.gantryways, "start", 0.0, "end")
+	# A teleporter (task Q4) is built in the chunk where its pad stands, which stays until its output pads (its own nodes)
+	# are behind the player.
+	for tp: Dictionary in pieces.teleporters:
+		var reach: float = float(tp["end"])
+		for o: Dictionary in tp.get("outputs", []):
+			reach = maxf(reach, float(o["end"]))
+		var index: int = maxi(0, int(floor(float(tp["at"]) / CHUNK_LENGTH)))
+		if not _buckets.has(index):
+			_buckets[index] = {"max_end": 0.0}
+		var bucket: Dictionary = _buckets[index]
+		if not bucket.has("teleporters"):
+			bucket["teleporters"] = []
+		bucket["teleporters"].append(tp)
+		bucket["max_end"] = maxf(bucket["max_end"], reach)
 	for i: int in pieces.ceiling_fences.size():
 		pieces.ceiling_fences[i]["index"] = first_ceiling_fence + i
 	_bucket("ceiling_fences", pieces.ceiling_fences, "at", tuning.fence_depth)
@@ -467,6 +517,8 @@ func _build_chunk(index: int) -> void:
 		_build_dash_wall(root, w)
 	for g: Dictionary in bucket.get("gantryways", []):
 		_build_gantryway(root, g)
+	for tp: Dictionary in bucket.get("teleporters", []):
+		_build_teleporter(root, tp)
 	for f: Dictionary in bucket.get("ceiling_fences", []):
 		_build_ceiling_fence(root, f)
 	for p: Dictionary in bucket.get("return_pads", []):
@@ -838,6 +890,30 @@ func _build_gantryway(root: Node3D, g: Dictionary) -> void:
 		if pillar != null and is_instance_valid(pillar):
 			skin.gantry_pillar(pillar, look_size, -pillar_box.y * 0.5, side, look_seed)
 			pillar.debris_colors = skin.gantry_pillar_debris_colors(pillar, side, look_seed))
+
+
+## A teleporter (task Q4; GDD §5, Zone 9, the owner, October 21, 2026: "a square pad with a look all its own, with a
+## green, slightly space-age antenna on it. Touching it teleports the runner to an output pad further down the track";
+## LevelLayout.teleporters): a Teleporter over its layout entry, its input pad's trigger (LAYER_TRIGGER, kind &"teleporter",
+## its entry as Teleporter.META: the Player teleports a runner whose feet touch it, Player._teleport) and its output pads'
+## nodes further down the track, all in the chunk where its pad stands (which stays built until its output pads are behind
+## the player: _add_pieces). The skin dresses its pad and its antenna on the trigger, and each output pad
+## (ZoneSkin.teleporter_pad, teleporter_antenna, teleporter_output: the lamps' lit looks it returns are the teleporter's to
+## light, on the level clock, light_teleporters()). No hitbox and no collision but its trigger: nothing about it hurts.
+func _build_teleporter(root: Node3D, tp: Dictionary) -> void:
+	var node := Teleporter.new()
+	node.setup(tp, geo, tuning, TeleporterTuning.load_default())
+	root.add_child(node)
+	node.tick(_level_time)
+	_teleporter_nodes.append(node)
+	var size: Vector3 = node.size
+	var look_seed: int = int(tp.get("seed", 0))
+	_dress(func() -> void:
+		skin.teleporter_pad(node.pad, size, look_seed)
+		node.set_lamps(skin.teleporter_antenna(node.pad, size, look_seed))
+		for out: Node3D in node.outputs:
+			skin.teleporter_output(out, size, look_seed))
+	teleporter_built.emit(node)
 
 
 ## A dash wall (task H7a; GDD §9.14, owner, October 8, 2026: a building across the street "facing towards the

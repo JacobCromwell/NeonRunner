@@ -206,6 +206,30 @@ func update(player_distance: float) -> void:
 			e.retire()
 
 
+## The runner was teleported from track distance `from` to `to` (task Q4; RunWorld._on_teleported; GDD §5, Zone 9,
+## proposed: the runner "skips the track in between and whatever it holds"): every entry still to come whose spot lies
+## behind `to` never spawns (the runner skipped it); every enemy in play behind `to` (where it is now) leaves play
+## (Enemy.retire), but a boss's part and one that keeps its place relative to the runner (Enemy.follows_runner: a heli
+## drone, which comes along); and every enemy left hears it (Enemy.runner_teleported: an attack's charge-up or wind-up
+## under way is called off, so its next one warns from the start). Entries ahead of `to` spawn as the runner comes within
+## their lead, as ever (update).
+func runner_teleported(from: float, to: float) -> void:
+	# The spawned ones stay first, in their order (their count is still `_next`); of the rest, those ahead of `to`.
+	var kept: Array[Dictionary] = []
+	for i: int in _pending.size():
+		if i < _next or float(_pending[i].get("at", 0.0)) >= to:
+			kept.append(_pending[i])
+	_pending = kept
+	for e: Enemy in active.duplicate():
+		if not is_instance_valid(e) or e.is_queued_for_deletion():
+			continue
+		if not e.is_boss and not e.follows_runner and e.track_distance() < to:
+			e.retire()
+			continue
+		if e.alive:
+			e.runner_teleported(from, to)
+
+
 ## Creates one enemy from a layout entry now (tests call this directly). Null if the type has no script.
 func spawn(entry: Dictionary) -> Enemy:
 	var type: String = String(entry.get("type", ""))

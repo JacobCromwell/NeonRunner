@@ -207,6 +207,12 @@ func _first_at(trigger: String) -> float:
 			# hint's wording (data/hints/hints.json, "gantryway").
 			for gw: Dictionary in layout.gantryways:
 				found.append(float(gw["pillar"]))
+		"teleporter", "teleporter_blinking":
+			# Task Q4 (GDD §5, Zone 9): the first teleporter's pad, or the first one with a blinking antenna. DESIGN-TBD
+			# (docs/questions/q4.md 12): the hints' wording (data/hints/hints.json, "teleporter", "teleporter_blinking").
+			for tp: Dictionary in layout.teleporters:
+				if trigger == "teleporter" or float(tp.get("blink", 0.0)) > 0.0:
+					found.append(float(tp["at"]))
 		"debris_maze":
 			# Task O2 (GDD §5, Zone 8): the debris maze's first wall, where debris first stops the runner.
 			for b: Dictionary in layout.maze:

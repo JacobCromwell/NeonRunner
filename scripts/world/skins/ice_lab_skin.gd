@@ -366,6 +366,16 @@ func gantryway_material() -> Material:
 	return GantrywayKit.material({"sheen_color": srgb(sheen_color), "sheen_strength": sheen_strength})
 
 
+# --- Teleporters (task Q4) --------------------------------------------------------------------------
+
+## A teleporter's colours (ZoneSkin.teleporter_pad, teleporter_antenna; GDD §5, Zone 9: "a square pad with a look all its own,
+## with a green, slightly space-age antenna on it"): the default look (TeleporterKit) with its plate and rim in this hall's steel and
+## frame, so it sits in the catwalks' floor; its green, its lamps and its glow are the teleporter's own (GDD §5: "its green is the
+## owner's choice"). DESIGN-TBD (docs/questions/q4.md 9): a look of its own.
+func teleporter_colors() -> PackedColorArray:
+	return PackedColorArray([steel_color, frame_color])
+
+
 # --- Shared materials (built once per skin, shared by every mesh) ------------------------------------
 
 func solid_material() -> ShaderMaterial:

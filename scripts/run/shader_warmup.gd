@@ -19,7 +19,8 @@ extends Node3D
 ##   wall fences, a sign, a pad, a ramp, a speed pad, full and narrow ceilings, every doodad size, a dash
 ##   wall (task H7a, in a level that has them; its crumble's pieces and dust wait hidden in RunEffects, so
 ##   they're sampled with the hidden nodes), a falling gantryway's walkway, pillar, wreck, shadow and red line (task
-##   Q3, in a level that has them: Gantryway.warm_look), gap edges and the finish line;
+##   Q3, in a level that has them: Gantryway.warm_look), a teleporter's pad, antenna and lit lamps and an output pad (task
+##   Q4, in a level that has them: Teleporter.warm_look), gap edges and the finish line;
 ## - every credit denomination's look (CreditField.mesh_for/material_for), since a level's own layout
 ##   may carry only some of them, or none at all (a boss's track, Hostile Takeover's) and still drop
 ##   one later (a Tithe Collector's trail, a jackpot's fountain, CreditField.place).
@@ -289,6 +290,9 @@ func _sample_track(world: RunWorld) -> void:
 	# in a level that has them (its snow and debris are rubble bursts, sampled with the hidden nodes).
 	if world.layout != null and not world.layout.gantryways.is_empty():
 		Gantryway.warm_look(self, skin, geo, t)
+	# Task Q4: a teleporter's pad, antenna, lit lamps and an output pad as the skin dresses them, in a level that has them.
+	if world.layout != null and not world.layout.teleporters.is_empty():
+		Teleporter.warm_look(self, skin, geo, t)
 	var floor_root := Node3D.new()
 	add_child(floor_root)
 	var span: Vector2 = geo.lane_floor_span(0)

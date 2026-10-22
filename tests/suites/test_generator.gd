@@ -67,6 +67,7 @@ func run() -> void:
 	_test_arched_walls(base)
 	_test_debris_maze(base)
 	_test_gantryways(base)
+	_test_teleporters(base)
 	await _test_floor_routes_on_physics(base)
 
 
@@ -154,6 +155,54 @@ func _test_gantryways(base: LevelConfig) -> void:
 				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
 				counts.append(a.gantryways.size())
 	print("  gantryways in quick play's level with the feature: %s" % [counts])
+
+
+## Teleporters (task Q4; docs/ARCHITECTURE.md, Teleporters): quick play's level with the Ice Lab's enemies (cyborgs, window
+## cyborgs, Octodogs, heli drones, fence generators), its speed pads, the falling gantryways and the feature (blinking
+## antennas on half of them), at 3, 5 and 6 lanes over seeds and difficulties, at the reference run speed and the Ice
+## Lab's, half of them introducing the feature (and the blinking ones) from a start of its own: no warnings, the same seed
+## the same level, every fairness check (check_layout: its check_teleporters proves the way around clear, each landing
+## clear and calm, and the generator's own re-check, TeleporterRules.problems) and the rules (check_rules), and every one
+## of the level's count (and of its blinking ones) in every build.
+func _test_teleporters(base: LevelConfig) -> void:
+	var counts: Array[int] = []
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.3, 1.0]:
+			for level_seed: int in range(1, 4):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = level_seed
+				config.run_speed = 24.8 if (level_seed + lanes) % 2 == 0 else 0.0
+				var blinking: bool = (level_seed + int(difficulty * 10.0)) % 2 == 0
+				var features := PackedStringArray(config.features)
+				features.append_array(PackedStringArray(["cyborg", "window_cyborg", "speed_pads", "octodog", "generator", "drone",
+					"gantryway", "teleporter"]))
+				if blinking:
+					features.append("teleporter_blinking")
+				config.features = features
+				if level_seed % 2 == 1:
+					var starts: Dictionary[String, float] = {"teleporter": 0.2}
+					if blinking:
+						starts["teleporter_blinking"] = 0.3
+					config.feature_starts = starts
+				var tag: String = "(teleporters) lanes=%d diff=%.1f seed=%d speed=%.1f%s" % [lanes, difficulty, level_seed,
+					config.run_speed, " blinking" if blinking else ""]
+				var patterns: Array = LevelGenerator.load_for(config)
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				var blinks: int = 0
+				for tp: Dictionary in a.teleporters:
+					blinks += 1 if float(tp["blink"]) > 0.0 else 0
+				check(a.teleporters.size() == config.teleporters and blinks == (config.blinking_teleporters if blinking else 0),
+					"%d of the level's %d teleporters, %d blinking %s" % [a.teleporters.size(), config.teleporters, blinks, tag])
+				LayoutChecks.check_layout(self, a, config, tag)
+				LayoutChecks.check_rules(self, a, config, tag)
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				counts.append(a.teleporters.size())
+	print("  teleporters in quick play's level with the feature: %s" % [counts])
 
 
 ## Walls without wall running, standing in narrow arches (task O1; GDD §5 Zone 8, the Terminal: LevelConfig.wall_running

@@ -18,8 +18,10 @@ extends TestSuite
 ##   in (the ceiling scenarios, LayoutChecks.occasional).
 ## The zone's own mechanics come with their tasks, which add their features to the levels (and their checks here): Q3's
 ## falling gantryways (all three levels, introduced in Frost Foundry: every build hangs the level's count of them, each
-## where LayoutChecks.check_gantryways finds it fair; test_gantryways has the rest), Q4's teleporters (levels 2 and 3), Q5's
-## Octodog jars, and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in for them.
+## where LayoutChecks.check_gantryways finds it fair; test_gantryways has the rest), Q4's teleporters (introduced in Relay
+## Station, with blinking antennas from Specimen Vault: every build stands the level's count of them, and its count of
+## blinking ones, each where LayoutChecks.check_teleporters finds it fair; test_teleporters has the rest), Q5's Octodog
+## jars, and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in for them.
 
 const ZONE_PATH: String = "res://data/zones/ice_lab.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
@@ -168,6 +170,15 @@ func _test_level_data() -> void:
 		# Task Q3: every level hangs falling gantryways, and Frost Foundry introduces them.
 		check(level.has_feature("gantryway") and level.gantryways > 0 and level.feature_starts.has("gantryway") == (n == 0),
 			"%s hangs falling gantryways (%d)%s" % [tag, level.gantryways, ", introducing them" if n == 0 else ""])
+		# Task Q4 (GDD §5, Zone 9: "introduced in level 2, with blinking antennas added in level 3"): Relay Station brings
+		# in the teleporters with fixed antennas, Specimen Vault adds blinking ones.
+		check(level.has_feature("teleporter") == (n > 0) and (n == 0 or level.teleporters > 0)
+			and level.feature_starts.has("teleporter") == (n == 1),
+			"%s %s%s" % [tag, "stands no teleporter" if n == 0 else "stands teleporters (%d)" % level.teleporters,
+				", introducing them" if n == 1 else ""])
+		check(level.has_feature("teleporter_blinking") == (n == 2) and (n < 2 or level.blinking_teleporters > 0)
+			and level.feature_starts.has("teleporter_blinking") == (n == 2),
+			"%s %s" % [tag, "brings in blinking antennas (%d)" % level.blinking_teleporters if n == 2 else "has no blinking antenna"])
 
 
 ## Every build at 3, 5 and 6 lanes on the levels' own seeds and others, as the campaign configures it.
@@ -175,6 +186,7 @@ func _test_levels() -> void:
 	var builds: int = 0
 	var levels: int = 0
 	var gantryways: int = 0
+	var teleporters: int = 0
 	var enemies: Dictionary = {}
 	for n: int in [1, 2, 3]:
 		var step: CampaignStep = campaign.step("ice_lab/%d" % n)
@@ -212,6 +224,17 @@ func _test_levels() -> void:
 				check(layout.gantryways.size() == config.gantryways,
 					"%d of the level's %d falling gantryways %s" % [layout.gantryways.size(), config.gantryways, tag])
 				gantryways += layout.gantryways.size()
+				# Task Q4: as many teleporters as the level asks for, and blinking ones (LayoutChecks.check_teleporters:
+				# each fair).
+				var wanted: int = config.teleporters if config.has_feature("teleporter") else 0
+				var blinks: int = config.blinking_teleporters if config.has_feature("teleporter_blinking") else 0
+				var blinking: int = 0
+				for tp: Dictionary in layout.teleporters:
+					blinking += 1 if float(tp.get("blink", 0.0)) > 0.0 else 0
+				check(layout.teleporters.size() == wanted and blinking == blinks,
+					"%d of the level's %d teleporters, %d of %d blinking %s" % [layout.teleporters.size(), wanted, blinking,
+						blinks, tag])
+				teleporters += layout.teleporters.size()
 				check(not layout.gaps.is_empty() and not layout.fences.is_empty() and not layout.signs.is_empty()
 					and not layout.hulls.is_empty() and not layout.pads.is_empty() and not layout.doodads.is_empty(),
 					"the usual obstacles: %d holes, %d fences, %d signs, %d ceilings and %d pads, %d doodads %s" % [layout.gaps.size(),
@@ -223,5 +246,5 @@ func _test_levels() -> void:
 						continue
 					check(not LayoutChecks.feature_positions(layout, f).is_empty() or LayoutChecks.occasional(f),
 						"has `%s` (GDD §5: earlier features keep appearing) %s" % [f, tag])
-	print("  the Ice Lab's builds: %.2f generator builds a level over %d levels; enemies %s; %d falling gantryways" % [
-		float(builds) / maxf(levels, 1.0), levels, enemies, gantryways])
+	print("  the Ice Lab's builds: %.2f generator builds a level over %d levels; enemies %s; %d falling gantryways, %d teleporters"
+		% [float(builds) / maxf(levels, 1.0), levels, enemies, gantryways, teleporters])

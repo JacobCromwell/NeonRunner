@@ -101,6 +101,9 @@ func _test_campaign_relevance() -> void:
 		"terminal/1": ["debris_maze", "centipede"],
 		# Task Q3: Frost Foundry's falling gantryways.
 		"ice_lab/1": ["gantryway"],
+		# Task Q4: Relay Station's teleporters, Specimen Vault's blinking antennas.
+		"ice_lab/2": ["teleporter"],
+		"ice_lab/3": ["teleporter_blinking"],
 		"golden/1": ["resonator"],
 		"golden/2": ["gilded_sentinel"],
 	}

@@ -15,6 +15,13 @@ const POWERUPS_SCRIPT: String = "res://scripts/powerups/powerup_controller.gd"
 ## smashing a falling gantryway's pillar (task Q3) a doodad's crunch (its walkway's creak follows: Gantryway).
 const EVENT_SOUNDS: Dictionary = {&"lane_blocked": &"wall_blocked", &"ceiling_blocked": &"wall_blocked",
 	&"speed_pad": &"ramp", &"doodad_stop": &"doodad_push", &"gantry_pillar_smash": &"doodad_smash"}
+## The sparkle an output pad gives off as the runner arrives on it (task Q4): the teleporter's green-white.
+const TELEPORT_SPARKLE := Color(0.6, 1.0, 0.65)
+
+## The runner was teleported (task Q4; Player.teleported): from track distance `from_distance` to `to_distance`, from
+## teleporter `entry`'s pad onto its output pad `output`. What lay in between is skipped already (_on_teleported); the
+## camera cuts (RunCamera) and the flash shows (TeleportFlash).
+signal teleported(from_distance: float, to_distance: float, entry: Dictionary, output: Dictionary)
 
 var config: LevelConfig
 var layout: LevelLayout
@@ -104,6 +111,8 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	# Task Q3: a falling gantryway crushes what's in its path as it comes down, and shakes the camera as it lands.
 	track.gantryway_swept.connect(_on_gantryway_swept)
 	track.gantryway_landed.connect(_on_gantryway_landed)
+	# Task Q4: a teleporter skips the track between its pad and its output pad, and whatever it holds.
+	player.teleported.connect(_on_teleported)
 
 	director.setup(self)
 	projectiles.setup(self)
@@ -190,6 +199,13 @@ func _physics_process(_delta: float) -> void:
 	director.update(player.distance)
 
 
+## Task Q4: the teleporters' antenna lights drawn for the level time the runner's step reached (the track's update above
+## comes before it), so each frame shows the side a touch at that moment decides by (Player._teleport).
+func _process(_delta: float) -> void:
+	if player != null and not layout.teleporters.is_empty():
+		track.light_teleporters(player.elapsed)
+
+
 func _on_player_event(kind: StringName) -> void:
 	play_sfx(EVENT_SOUNDS.get(kind, kind))
 
@@ -208,6 +224,27 @@ func _on_gantryway_swept(g: Gantryway) -> void:
 ## the Screen shake setting scales it). Its crash, pieces and wreck are its own (Gantryway).
 func _on_gantryway_landed(g: Gantryway) -> void:
 	effects.shake(g.tuning.land_shake_strength, g.tuning.land_shake_seconds)
+
+
+## The runner was teleported (task Q4; Player.teleported; GDD §5, Zone 9, proposed: the runner "skips the track in between
+## and whatever it holds"), from `from` to `to` along the track, onto output pad `output` of teleporter `entry`:
+## - the enemies (EnemyDirector.runner_teleported): those still to come whose spot lies behind `to` never come, those in
+##   play behind it leave play, and every other one hears it (a charge-up or a wind-up under way is called off, so its next
+##   attack warns from the start: Enemy.runner_teleported); a heli drone keeps its place ahead of the runner;
+## - every shot in the air goes (ProjectilePool.clear_shots): none aimed at where the runner was flies on at where they are;
+## - the credits between (CreditField.skip: those the magnet was pulling are collected) are passed for good, and the best
+##   possible credit score leaves them out (ScoreKeeper.skip_credits), so taking a teleporter never costs a star;
+## - the track is built ahead of `to` at once (TrackBuilder.update), so the view past the landing is there this frame;
+## - the output pad gives off a sparkle, and `teleported` follows (RunCamera cuts, TeleportFlash shows; the sound is the
+##   `teleport` event's, through PlayerSfx).
+## DESIGN-TBD (docs/questions/q4.md 5 and 6): the credits skipped, and the shots in the air.
+func _on_teleported(from: float, to: float, entry: Dictionary, output: Dictionary) -> void:
+	director.runner_teleported(from, to)
+	projectiles.clear_shots()
+	score.skip_credits(credits.skip(from, to))
+	track.update(to, player.elapsed)
+	effects.burst(lane_point(int(output["lane"]), to + 0.5, 0.4), TELEPORT_SPARKLE, 18, 0.45)
+	teleported.emit(from, to, entry, output)
 
 
 func _add(node: Node, node_name: String) -> Node:
