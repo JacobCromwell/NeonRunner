@@ -61,8 +61,9 @@ extends RefCounted
 ## How many, and where: up to LevelConfig.teleporters, of which LevelConfig.blinking_teleporters blink in a level with
 ## `teleporter_blinking`. The introductions first, then the rest spread through the level past them (a part each, a seeded
 ## spot aimed for in the part, the best fair spot there: a blinking one only past the blinking start), then the best of
-## the rest. Among the fixed ones past the introduction, the first has two output pads (so a level that brings fixed
-## antennas in shows one's light) and each other one with two_output_share. Its own random stream
+## the rest. Of the fixed ones past the introduction, one is given two output pads (so a level that brings in fixed
+## antennas shows one's light; it stands with one where two find no room), each other one two_output_share. Its own random
+## stream
 ## (LevelGenerator.rng_for), after every other feature's rules (RUN_AFTER), so the passes before it place exactly what they
 ## did; a level without the feature draws nothing and is built byte for byte as before.
 ##
@@ -308,7 +309,7 @@ static func _intro(gen: LevelGenerator, t: TeleporterTuning, pt: PowerupTuning, 
 
 
 ## The kinds of the teleporters still to place past the introductions (`placed`), in a seeded order: the blinking ones
-## left of `blink_count`, and fixed ones for the rest, the first fixed one with two output pads and each later one with
+## left of `blink_count`, and fixed ones for the rest, one fixed one with two output pads and each other one with
 ## two_output_share (else one).
 static func _kinds(t: TeleporterTuning, rng: RandomNumberGenerator, count: int, blink_count: int,
 		placed: Array[StringName]) -> Array[StringName]:

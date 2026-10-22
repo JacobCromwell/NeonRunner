@@ -120,7 +120,7 @@ const LEFT_OUT: Dictionary = {
 	# (GDD §5, Zone 9 names them for its three levels; DESIGN-TBD, docs/questions/q3.md: GDD §5 says anything introduced
 	# keeps appearing, so whether the Golden Zone hangs them too is the owner's call).
 	"gantryway": ["golden/1", "golden/2", "golden/3"],
-	# Task Q4: the teleporters stay in the Ice Lab too, as the gantryways do (DESIGN-TBD, docs/questions/q4.md: GDD §5 says
+	# Task Q4: the teleporters stay in the Ice Lab too, as the gantryways do (DESIGN-TBD, docs/questions/q4.md 13: GDD §5 says
 	# anything introduced keeps appearing, so whether the Golden Zone stands them too is the owner's call).
 	"teleporter": ["golden/1", "golden/2", "golden/3"],
 	"teleporter_blinking": ["golden/1", "golden/2", "golden/3"],

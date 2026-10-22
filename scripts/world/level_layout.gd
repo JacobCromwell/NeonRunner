@@ -181,8 +181,8 @@ var gantryways: Array[Dictionary] = []
 ## each output pad's landing in that pad's lane (lane -1: every lane, an introduction's landing); `span` [from, to] the
 ## whole of what it keeps, from its approach to its last landing's end. `seed` varies its look. The generator places
 ## them (scripts/enemies/teleporter_rules.gd, only where they're fair), the track builder builds each (TrackBuilder,
-## Teleporter) and the skin dresses its pads and its antenna (ZoneSkin.teleporter_pad, ZoneSkin.teleporter_antenna).
-## Sorted by `at`.
+## Teleporter) and the skin dresses its pads and its antenna (ZoneSkin.teleporter_pad, ZoneSkin.teleporter_antenna,
+## ZoneSkin.teleporter_output). Sorted by `at`.
 var teleporters: Array[Dictionary] = []
 
 

@@ -15,7 +15,7 @@ extends TestSuite
 ##   output pad, straight ahead) and has a fixed light between two output pads, no blinking one; Specimen Vault its count
 ##   of blinking ones, the first introduced the same way from the blinking start, none before; every one fair
 ##   (LayoutChecks.check_teleporters); the same level on a second build; a level without the feature, with a count of 0, or
-##   with the blinking feature but no blinking count, hangs none (or no blinking one). A wall-run gap's stretch (with its
+##   with the blinking feature but no blinking count, stands none (or no blinking one). A wall-run gap's stretch (with its
 ##   margins) lies outside everything a teleporter keeps, and its own re-check passes beside one as near as it may stand.
 ##   Endless mode in the Ice Lab builds without warnings, its count spread along the whole of it, each fair. (Every build's
 ##   fairness on more seeds: test_ice_lab_levels; quick play's level over seeds and difficulties: test_generator.)
@@ -37,8 +37,9 @@ extends TestSuite
 ##   lands on each output pad (its light set each way) and runs through the landing alive; the way around and a switch out
 ##   at its approach pass it alive.
 ## - Every skin dresses its pads flat inside their squares (their halo aside) and its antenna on the pad's far half, no wider
-##   than the lane, glowing only green or green-white, with left, right and beacon lamps hidden until lit; the warm-up draws
-##   every part, nothing physical; every number reaches the F6 panel.
+##   than the lane, with left, right and beacon lamps hidden until lit, and an output pad's marker floating over its square
+##   above a runner's head, all glowing only green or green-white; the warm-up draws every part, nothing physical; every
+##   number reaches the F6 panel.
 
 const TeleporterRules := preload("res://scripts/enemies/teleporter_rules.gd")
 const DroneScript := preload("res://scripts/enemies/drone.gd")
@@ -424,9 +425,10 @@ func _test_physics() -> void:
 			check(_landed(r, target) and absf(float(r["to"]) - float(r["from"]) - _hop()) < 0.001,
 				"run onto, the runner lands on its output pad in lane %d, %.1f m on, and runs through the landing %s %s"
 				% [target, _hop(), _brief(r), tag])
-			check(absf(float(r["speed_after"]) - float(r["speed_before"])) < 0.001 and (r["events"] as Array).count(&"teleport") == 1,
-				"keeping their speed (%.2f, %.2f m/s), the `teleport` sound once %s" % [float(r["speed_before"]),
-					float(r["speed_after"]), tag])
+			check(absf(float(r["speed_after"]) - float(r["speed_before"])) < 0.001 and (r["events"] as Array).count(&"teleport") == 1
+				and int(r["sounds"]) == 1,
+				"keeping their speed (%.2f, %.2f m/s), the `teleport` event and its sound once (%d) %s" % [float(r["speed_before"]),
+					float(r["speed_after"]), int(r["sounds"]), tag])
 			# Two output pads, a fixed light each way, and a blinking light at two phases half a cycle apart.
 			var left: int = 0
 			var right: int = lanes - 1
@@ -492,6 +494,10 @@ func _take(sim: RunSim, layout: LevelLayout, start: int, actions: Array = [], pr
 	var last_speed: Array[float] = [0.0]
 	var track_speed := func() -> void: last_speed[0] = p.speed
 	world.get_tree().physics_frame.connect(track_speed)
+	out["sounds"] = 0
+	world.sounds.requested.connect(func(sound: StringName) -> void:
+		if sound == &"teleport":
+			out["sounds"] = int(out["sounds"]) + 1)
 	world.teleported.connect(func(from: float, to: float, _entry: Dictionary, output: Dictionary) -> void:
 		out["teleports"] = int(out["teleports"]) + 1
 		out["from"] = from
