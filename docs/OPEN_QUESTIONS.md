@@ -33,12 +33,8 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
-| 1053 | The Terminal's two levels (140 s and 145 s, like their neighbours) make a flawless run through every level about 49.6 minutes, against the GDD's "about 45". Shorten the levels, trim the others, or accept it? |
 | 1061 | The Terminal pays about half of what its neighbours do, yet the Heavy missile (line 15,800) now first fits at Terminal 1, a level earlier than the Golden Zone it was placed for, so Golden 1 gets easier for buyers. Raise the missile's price (8,000 puts it back), or let the Terminal pay like its neighbours? |
 | 1072 | A bot taking the quickest way through Rubble Line's maze finishes in 140 to 159 s (4 to 23 s of it waiting for the dash) on 138 s of track, so a run can outlast the level by up to 21 s. Are 1 or 2 breaks a block right, or should they scale with depth, difficulty or lane count? |
-| 1118 | The Ice Lab's three levels (140, 145 and 150 s) push a flawless run through every level to about 56.8 minutes, against the GDD's "about 45": shorten them (three of 120 s would give about 55.6), trim the other levels, or accept it? |
-| 1149 | Should the Golden Zone hang the falling gantryways too, in its own look, as GDD §5's rule that what a zone introduces keeps appearing later suggests, or should they stay in the Ice Lab? |
-| 1165 | Should the Golden Zone stand teleporters too, as GDD §5's rule that what a zone introduces keeps appearing later suggests, or should they stay in the Ice Lab? |
 
 ## The items in full
 
@@ -131,10 +127,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    would check it the next time it is online. Placeholder: none yet; work on the reward waits on this item.
 
 **The Terminal in the campaign** (task O1 of the Terminal workstream, October 20, 2026; from `docs/questions/o1.md`; GDD §5, Zone 8)
-1053. **The levels' lengths, and the campaign's total.** (GDD §5: "a flawless run through every level takes about 45
-   minutes".) Placeholder: Rubble Line 140 s and Last Stop 145 s (`duration_seconds`), like their neighbours'
-   (145-150 s). With them a flawless run through every level takes about 49.6 minutes (it was about 44.8). Should
-   the levels be shorter, or the other levels trimmed, to keep about 45?
 1061. **The Terminal's payouts, and the Heavy missile.** Placeholder: each Terminal level's completion bonus is Dead
    Zone 2's (425; an off-curve level pays the last on-curve level's, as the Beach's do), and its credits are a trail
    of six along one lane in each open stretch (`terminal_patterns.json`, the open track's credits) plus the usual
@@ -152,23 +144,3 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    quickest way with that dash (test_debris_maze) runs Rubble Line's 138 s of track in 140, 151 and 159 s at 3, 5 and 6
    lanes (4, 15 and 23 s of it waiting for the dash), and Last Stop's 143 s in about 141 s (its dashes make up for its
    stops). Should blocks need more breaks further into a level, or with the difficulty, or fewer at 6 lanes?
-
-### Filed on October 22, 2026 (tasks Q1-Q4, the Ice Lab)
-
-**The Ice Lab in the campaign** (task Q1 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q1.md`; GDD §5, Zone 9)
-1118. **The levels' lengths, and the campaign's total.** (GDD §5: "a flawless run through every level takes about 45
-   minutes"; item 1053 already asks this for the Terminal.) Placeholder: Frost Foundry 140 s, Relay Station 145 s and
-   Specimen Vault 150 s (`duration_seconds`), rising through the zone as Gangland's and the Terminal's do. With them a
-   flawless run through every level takes about 56.8 minutes (49.6 before the Ice Lab, 44.8 before the Terminal). Should
-   the Ice Lab's levels be shorter (three of 120 s would make it about 55.6), or the other levels trimmed, to keep nearer
-   45?
-
-**The Ice Lab's falling gantryways** (task Q3 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q3.md`; GDD §5, Zone 9)
-1149. **The Golden Zone.** (GDD §5: what a zone introduces keeps appearing later.) Placeholder: the gantryways stay in
-   the Ice Lab, the zone's own mechanic, as the Terminal's debris maze stays in the Terminal (`test_campaign`'s
-   `LEFT_OUT` lists golden/1 to golden/3). Should the Golden Zone hang them too (in its own look)?
-
-**The Ice Lab's teleporters** (task Q4 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q4.md`; GDD §5, Zone 9)
-1165. **The Golden Zone.** (GDD §5 says anything introduced keeps appearing later; GDD §5, Zone 9 calls the teleporters the
-   Ice Lab's mechanic.) Placeholder: the Golden Zone's levels don't list them (`test_campaign`, LEFT_OUT), as the falling
-   gantryways and the Terminal's maze stay in their zones. Should the Golden Zone stand teleporters too?

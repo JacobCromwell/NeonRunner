@@ -18,3 +18,10 @@ request that is now in the done file.
   safe, later ones may land before a gap or an enemy; with two output pads the antenna's left or right light picks one;
   fixed antennas in level 2, blinking ones added in level 3. Enemies: cyborg gangsters, Octodogs and heli drones. Its
   two new enemies come in later sessions. Tasks Q1-Q5 in `docs/TASK_PLAN.md`.
+
+## October 22, 2026
+
+- [ ] **Teleporters in the Golden Zone** (the owner, October 22, 2026, answering items 1149 and 1165): add the Ice Lab's
+  teleporters to the Golden Zone; the falling gantryways stay in the Ice Lab only for now. Also: a longer game is the
+  goal (answering items 1053 and 1118): a first playthrough should take on average at least 2 hours. Recorded in GDD §5.
+  Task Q6 in `docs/TASK_PLAN.md`.
