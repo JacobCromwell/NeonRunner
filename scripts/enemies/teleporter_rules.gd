@@ -39,12 +39,14 @@ extends RefCounted
 ##   re-check counts every rule's keep-outs in every lane), falling gantryway (its pillar's lead to past its walkway and its
 ##   calm stretch), fenced ceiling's pick (the I4 "pick the right pad", which plays out alone), Octodog's planned charge,
 ##   nor what the rules keep in every lane (a Bad Dream's chase, a treasure stash's floor, an Enforcer Truck's showing
-##   window): nothing that holds the track around the runner is under way as
-##   they touch the pad or arrive. Every enemy that holds an attack by a doodad holds it by a teleporter's calm stretches
-##   too (LevelLayout.doodad_between, teleporter_between: its approach in P, each landing in its output pad's lane): no
-##   bolt, lunge or barrage is timed onto a runner lining the pad up or just arrived, on every attempt. (What else is in
-##   play as they jump is the run world's to settle: EnemyDirector.runner_teleported leaves behind what's behind the landing,
-##   brings a heli drone along, and calls off any attack whose warning began before the jump.)
+##   window, a Gilded Sentinel's turn), nor what the zone doodads keep off around a Resonator (its visit and its waits: it
+##   holds a pulse by a doodad in any lane, so by a calm stretch; task Q6): nothing that holds the track around the
+##   runner is under way as they touch the pad or arrive. Every enemy that holds an attack by a doodad holds it by a
+##   teleporter's calm stretches too (LevelLayout.doodad_between, teleporter_between: its approach in P, each landing in
+##   its output pad's lane): no bolt, lunge, barrage, pulse or volley is timed onto a runner lining the pad up or just
+##   arrived, on every attempt. (What else is in play as they jump is the run world's to settle:
+##   EnemyDirector.runner_teleported leaves behind what's behind the landing, brings a heli drone along, and calls off any
+##   attack whose warning began before the jump.)
 ## - Its light (`light`, `blink`, `phase`): one output pad has none to choose (`light` 0); two have a fixed light on one
 ##   side (seeded), or with the `teleporter_blinking` feature a blinking one (blink_seconds a side, from a seeded side and
 ##   phase on the level clock), whose side lit at the touch decides. Either output pad may be taken, so both keep the rules.
@@ -97,6 +99,9 @@ const LANDING_BACK: float = 1.0
 const TOUCH: float = 0.05
 ## Fitting spots kept, best first, among which a later one looks for a hazard ahead (prefer_hazard_seconds).
 const BEST_KEPT: int = 24
+## Metres before what the zone doodads keep off around an enemy (every_keeps: a Resonator's visit) that every lane keeps
+## too: a pulse is held by a doodad from a metre before its warning (Resonator.pulse_clear), so by a calm stretch there.
+const PULSE_BACK: float = 1.0
 ## Kinds of teleporter (_kinds, _place).
 const SINGLE: StringName = &"single"
 const FIXED: StringName = &"fixed"
@@ -783,8 +788,12 @@ static func lane_pieces(gen: LevelGenerator, plain_ok: bool, powered: Array[Dict
 ## with its margins (WallRunGapPlacement.keep_out), every falling gantryway (from its pillar's lead to past its walkway and
 ## its calm stretch), every fenced ceiling's pick (task I4, its hull's "pick": from its first pad's run-up to its last safe
 ## pad, where the player reads which pad is the trap; it plays out alone, CeilingScenarios.event_spans), every Octodog's
-## planned charge (its window from a metre before its anchor), and what the rules keep in every lane (`keeps`,
-## LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own).
+## planned charge (its window from a metre before its anchor), what the rules keep in every lane (`keeps`,
+## LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own), and what the zone doodads
+## keep off around an enemy whose rules ask them to (a rules script's doodad_keep_out, LevelGenerator
+## .doodad_enemy_keep_out: a Resonator's visit and the waits its rules leave it after; task Q6, the Golden Zone) from
+## PULSE_BACK before it: such an enemy holds its attack by a doodad in any lane (Resonator.pulse_clear) and so by a
+## teleporter's calm stretch, and its rules' re-check (resonator_rules.gd's problems) asks every planned pulse again.
 static func every_keeps(gen: LevelGenerator, keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var lay: LevelLayout = gen.layout
 	var out: Array[Vector2] = []
@@ -815,7 +824,26 @@ static func every_keeps(gen: LevelGenerator, keeps: Array[Dictionary] = []) -> A
 				continue
 			for a: Variant in (e.get("params", {}) as Dictionary).get("charge_at", []):
 				out.append(Vector2(float(a) - 1.0, float(a) + window))
+	var hooks: Dictionary = {}
+	var asks: Dictionary = {}
+	for e: Dictionary in lay.enemies:
+		if not _keeps_doodads_off(String(e.get("type", "")), asks):
+			continue
+		var k: Vector2 = gen.doodad_enemy_keep_out(e, hooks)
+		if k.y >= k.x:
+			out.append(Vector2(k.x - PULSE_BACK, k.y))
 	return out
+
+
+## True if enemy type `type`'s rules script asks the zone doodads to keep off a stretch of its own around its entries
+## (`static func doodad_keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2`: the Resonator's), as every_keeps counts
+## it. `asks` caches the answer by type.
+static func _keeps_doodads_off(type: String, asks: Dictionary) -> bool:
+	if not asks.has(type):
+		var path: String = LevelGenerator.RULES_DIR.path_join("%s_rules.gd" % type)
+		var script: GDScript = load(path) as GDScript if type != "" and ResourceLoader.exists(path) else null
+		asks[type] = script != null and script.has_method("doodad_keep_out")
+	return bool(asks[type])
 
 
 ## The fences a fence generator powers (FenceGenerator.fences_in_reach): with the pulsing ones, the fences a teleporter
