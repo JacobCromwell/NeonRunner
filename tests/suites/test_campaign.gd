@@ -1237,7 +1237,8 @@ func _test_recency(campaign: Campaign) -> void:
 		check(s.level.feature_ages.is_empty() and s.level.feature_recency == null, "%s's own file has neither" % s.id)
 		for f: String in s.level.features:
 			var first: CampaignStep = campaign.step(String(FIRST_LEVEL.get(f, "")))
-			# A level on the curve counts the levels on it (their places); one off it (the Beach's, task D10c)
+			# A level on the curve counts the levels on it (their places), and a feature a level off it brought in (the
+			# Ice Lab's teleporters, task Q6) from the place that level takes; one off it (the Beach's, task D10c)
 			# every level before it, in the order they're played.
 			var age: int = -1
 			if first != null:
@@ -1252,6 +1253,12 @@ func _test_recency(campaign: Campaign) -> void:
 		and int(campaign.configure(campaign.step("beach/3"), 3).feature_ages["tithe_collector"]) == 2
 		and int(campaign.configure(campaign.step("dead_zone/1"), 3).feature_ages["buzz_overdrive"]) == 2,
 		"the Beach's Tithe Collectors are 1 and 2 levels old, and the levels after it keep their ages (Dead Zone 1's Buzz Overdrive 2)")
+	# Task Q6: the Golden Zone stands the Ice Lab's teleporters again with no introduction of its own (the Ice Lab, off the
+	# curve, taught them), so its first level dates them from Relay Station's and Specimen Vault's place, not as its own.
+	var golden_ages: Dictionary[String, int] = campaign.configure(campaign.step("golden/1"), 3).feature_ages
+	check(int(golden_ages.get("teleporter", -1)) == 1 and int(golden_ages.get("teleporter_blinking", -1)) == 1
+		and int(golden_ages.get("resonator", -1)) == 0,
+		"Golden 1's teleporters are a level old, the Ice Lab's, and its Resonators its own (%s)" % [golden_ages])
 
 	var intro: Array[int] = [0, 0]
 	var core: Array[int] = [0, 0]

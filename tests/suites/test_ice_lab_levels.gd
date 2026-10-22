@@ -54,6 +54,9 @@ const KEEPS: PackedStringArray = ["cyborg", "ceilings", "pulsing", "window_cybor
 ## walls"), and the Terminal's debris maze, its doodads that stop the runner and its centipedes' home.
 const LEAVES_OUT: PackedStringArray = ["hover_truck", "screech", "screech_vents", "barnacle_turret", "buzz_overdrive", "dash_wall",
 	"tithe_collector", "enforcer_truck", "host", "debris_maze", "centipede"]
+## The Ice Lab's own mechanics (tasks Q3, Q4 and Q5), none of them a later zone's though one stands them again: the Golden
+## Zone's teleporters, fixed and blinking (the owner, October 22, 2026, task Q6).
+const OWN: PackedStringArray = ["gantryway", "teleporter", "teleporter_blinking", "octodog_jar"]
 
 
 var campaign: Campaign
@@ -132,7 +135,7 @@ func _test_level_data() -> void:
 	for s: CampaignStep in campaign.steps():
 		if s.is_level() and s.zone_index > at:
 			for f: String in s.level.features:
-				if not before.has(f):
+				if not before.has(f) and not OWN.has(f):
 					later[f] = true
 	var seeds: Dictionary = {}
 	for s: CampaignStep in campaign.steps():

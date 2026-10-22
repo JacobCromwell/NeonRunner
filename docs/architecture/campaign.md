@@ -104,8 +104,10 @@ plays exactly as before:
   place of the level on it before it
   (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
 - a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
-  on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
-  (`Campaign.feature_ages`); a mini-game level (the volleyball match, off the curve with no features) counts for no
+  on it the levels on it and a level off it played before it at the place that level takes (a level ago at least),
+  which dates only what that level brought in itself (every feature the Beach lists an earlier level on the curve
+  did), so the Dead Zone and the Golden Zone keep their ages and recency, and the Golden Zone's teleporters date from
+  the Ice Lab's place, no introduction of its own (task Q6) (`Campaign.feature_ages`); a mini-game level (the volleyball match, off the curve with no features) counts for no
   level's ages, so Sunset Strip kept its own when the match came in before it; a boss fights at the scaling of the
   level before it (`Campaign.level_scaling`: the Beach's boss slot at Sunset Strip's).
 So the other 17 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
@@ -167,7 +169,9 @@ the teleporters (task Q4, Teleporters, `docs/architecture/teleporters.md`): `tel
 Vault's `features`, Relay Station introducing it from 0.15 (`feature_starts`), `teleporter_blinking` in Specimen Vault's,
 introduced there from 0.15; `LevelConfig.teleporters` (3 and 4) and `blinking_teleporters` (2 of Specimen Vault's),
 DESIGN-TBD; `test_campaign` lists both (FIRST_LEVEL, NEW_MECHANICS, so Relay Station and Specimen Vault are out of
-NOTHING_NEW) and keeps them out of the Golden Zone (LEFT_OUT, DESIGN-TBD, `docs/questions/q4.md`). The Octodog jars
+NOTHING_NEW). Since task Q6 (the owner, October 22, 2026: "we should add the teleporters to the golden zone") all three
+Golden levels stand them too, fixed and blinking alike with no `feature_starts` (LEFT_OUT no longer lists them; their
+ages there date from the Ice Lab's place, above; DESIGN-TBD, `docs/questions/q6.md`). The Octodog jars
 (task Q5) and the zone's two new enemies each add their feature the same way (with a `feature_starts` entry where a level
 introduces it) and their rules or patterns; until then the zone introduces no enemy (`NO_NEW_ENEMY` lists it, for those
 tasks to take out). A save from before the Ice Lab keeps the Golden Zone open (Economy and saving, Saves from before the Ice Lab); the

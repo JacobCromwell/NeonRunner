@@ -134,10 +134,13 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 ## How many levels ago the campaign introduced each of step `s`'s features: 0 for a feature `s`
 ## introduces (the first level that lists it), 1 for one the level before introduced, and so on.
 ## A feature left out of some levels in between (manhole screeches outside street zones) still
-## counts from its first level. A level on the curve counts the levels on it (their places, level_index) and
-## leaves out the levels off it (LevelConfig.off_curve, task D10c), so the levels after the Beach keep their
-## ages; a level off the curve counts every level before it, in the order they're played, mini-game levels aside
-## (LevelConfig.minigame: the Beach's volleyball match, which is off the curve and has no features).
+## counts from its first level. A level on the curve counts the levels on it (their places, level_index), and a
+## level off it (LevelConfig.off_curve, task D10c) played before it at the place that level takes (the one on the
+## curve before it), a level ago at least: it dates only a feature it brought in itself (the Ice Lab's teleporters,
+## which the Golden Zone stands again with no introduction of its own, task Q6), as every feature the Beach lists an
+## earlier level on the curve brought in, so the levels after the Beach keep their ages; a level off the curve counts
+## every level before it, in the order they're played, mini-game levels aside (LevelConfig.minigame: the Beach's
+## volleyball match, which is off the curve and has no features).
 func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 	var out: Dictionary[String, int] = {}
 	if s == null or s.level == null:
@@ -157,11 +160,18 @@ func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 					out[f] = maxi(out[f], before.size() - i)
 		return out
 	for other: CampaignStep in steps():
-		if not other.is_level() or other.level.off_curve or other.level_index >= s.level_index:
+		if not other.is_level():
+			continue
+		var ago: int = s.level_index - other.level_index
+		if other.level.off_curve:
+			if other.index >= s.index:
+				continue
+			ago = maxi(ago, 1)
+		elif ago <= 0:
 			continue
 		for f: String in other.level.features:
 			if out.has(f):
-				out[f] = maxi(out[f], s.level_index - other.level_index)
+				out[f] = maxi(out[f], ago)
 	return out
 
 
