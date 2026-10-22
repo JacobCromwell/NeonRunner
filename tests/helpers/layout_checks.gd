@@ -14,8 +14,9 @@ extends RefCounted
 ##   (check_boundary_walls, task O1), every block of a debris maze keeps its rules and is finishable with the dash
 ##   at its slowest recharge (check_debris_maze, task O2), every Cybernetic Centipede waits where its rules allow, its
 ##   block escapable past it (check_centipedes, task O3), every falling gantryway hangs where a runner who knocks it
-##   down always has a lane to step into (check_gantryways, task Q3), and every teleporter stands where it's never
-##   needed and never lands its runner straight into a hazard (check_teleporters, task Q4).
+##   down always has a lane to step into (check_gantryways, task Q3), every teleporter stands where it's never
+##   needed and never lands its runner straight into a hazard (check_teleporters, task Q4), and every jar holding an
+##   Octodog stands where the dog it lets out has room for its attack (check_octodog_jars, task Q5).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -42,6 +43,7 @@ const DangerDensityScript = preload("res://scripts/world/danger_density.gd")
 const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 const GantrywayRulesScript = preload("res://scripts/enemies/gantryway_rules.gd")
 const TeleporterRulesScript = preload("res://scripts/enemies/teleporter_rules.gd")
+const OctodogJarRulesScript = preload("res://scripts/enemies/octodog_jar_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
@@ -98,6 +100,39 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_centipedes(suite, layout, config, tag)
 	check_gantryways(suite, layout, config, tag)
 	check_teleporters(suite, layout, config, tag)
+	check_octodog_jars(suite, layout, config, tag)
+
+
+## Jars holding an Octodog (task Q5; GDD §5, Zone 9, the owner, October 21, 2026; scripts/enemies/octodog_jar_rules.gd),
+## wherever the generator stands one, at any lane count, at the level's own run speed: only in a level with the feature;
+## each a zone doodad of the small class whose push check_doodads checks as any doodad's, holding one Octodog of its own
+## (held, with no doghouse, its charges planned from the release); every held enemy in a jar; and the generator's own
+## re-check finds nothing (OctodogJarRules.problems: the dog's first wind-up where it's back in position, each charge's
+## stretch clear, its run off pads, ceiling landings, chases, what the rules keep and every other Octodog's run).
+static func check_octodog_jars(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var jars: Array[Dictionary] = []
+	for d: Dictionary in layout.doodads:
+		if LevelLayout.holds_enemy(d):
+			jars.append(d)
+	for e: Dictionary in layout.enemies:
+		if LevelLayout.is_held(e):
+			suite.check(not layout.holder_of(e).is_empty(), "a held %s at %.1f m stands in a jar %s" % [e["type"],
+				float(e["at"]), tag])
+	if jars.is_empty():
+		return
+	suite.check(config.has_feature(OctodogJarRulesScript.FEATURE), "jars holding an Octodog only in a level with the feature "
+		+ tag)
+	for d: Dictionary in jars:
+		var at: String = "the jar at %.1f m in lane %d %s" % [float(d["start"]), int(d["lane"]), tag]
+		var dog: Dictionary = layout.held_by(d)
+		suite.check(StringName(d["size"]) == OctodogJarRulesScript.JAR_SIZE and not d.has("row") and not d.has("stash"),
+			"%s is one small zone doodad" % at)
+		suite.check(not dog.is_empty() and String(dog["type"]) == "octodog"
+			and not bool((dog.get("params", {}) as Dictionary).get("doghouse", true)),
+			"%s holds an Octodog of its own, with no doghouse" % at)
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var problems: PackedStringArray = OctodogJarRulesScript.problems(gen)
+	suite.check(problems.is_empty(), "the Octodog jars keep every placement rule %s %s" % [tag, problems])
 
 
 ## A level whose walls are a boundary (task O1; LevelConfig.wall_running off, which its layout carries: the Terminal,
@@ -1600,7 +1635,7 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 		+ config.doodad_reaction_seconds * speed
 	var half: float = tuning.fence_depth * 0.5
 	var n: int = layout.lane_count
-	# What each lane holds: [what, lane, Vector2].
+	# What each lane holds: [what, lane, Vector2], and the entry of a floor enemy's (a jar's own dog keeps off it: below).
 	var pieces: Array[Array] = []
 	for g: Dictionary in layout.gaps:
 		pieces.append(["a hole", int(g["lane"]), Vector2(g["start"], g["end"])])
@@ -1623,8 +1658,8 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 			lane = layout.outer_lane(int(e["side"]))
 		var span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
 		if span.y >= span.x:
-			pieces.append(["a floor enemy's stretch (%s at %.0f)" % [e["type"], float(e["at"])], lane, span])
-	# What every lane keeps: [what, Vector2].
+			pieces.append(["a floor enemy's stretch (%s at %.0f)" % [e["type"], float(e["at"])], lane, span, e])
+	# What every lane keeps: [what, Vector2], and the entry of an enemy's attack.
 	var every: Array[Array] = []
 	for h: Dictionary in layout.hulls:
 		every.append(["a ceiling or its landing zone", Vector2(h["start"], zones.landing_zone(h).y)])
@@ -1639,7 +1674,7 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 		# What the doodads keep off around it (a Resonator's visit and the waits its rules leave it after, task L6).
 		var k: Vector2 = gen.doodad_enemy_keep_out(e)
 		if k.y >= k.x:
-			every.append(["an enemy's attack (%s at %.0f)" % [e["type"], at], k])
+			every.append(["an enemy's attack (%s at %.0f)" % [e["type"], at], k, e])
 		match String(e["type"]):
 			"cyborg":
 				if bool((e.get("params", {}) as Dictionary).get("host", false)):
@@ -1706,6 +1741,9 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 			continue
 		var s: float = extent.x
 		var e: float = extent.y
+		# A jar holding an Octodog (task Q5): its own dog stands in it, comes out only if it breaks, and plans its run from
+		# there (OctodogJarRules: check_octodog_jars), so the jar keeps off everything but its own dog.
+		var own_dog: Dictionary = layout.held_by(d) if LevelLayout.holds_enemy(d) else {}
 		if outer:
 			check_wall_lane_doodad(suite, layout, config, gen, d, t)
 		# One at a time, never a slalom.
@@ -1723,6 +1761,8 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 		var last: float = e - (end - start)
 		var landed: float = maxf(e + room, last + reaction)
 		for piece: Array in pieces:
+			if piece.size() > 3 and is_same(piece[3], own_dog):
+				continue
 			var p_lane: int = piece[1]
 			var span: Vector2 = piece[2]
 			var to: float = -INF
@@ -1742,6 +1782,8 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 			suite.check(span.x > hidden or span.y < s - lead - room,
 				"no other doodad in a doodad's lane from its push to the spacing past it (%.1f) %s" % [span.x, t])
 		for b: Array in every:
+			if b.size() > 2 and is_same(b[2], own_dog):
+				continue
 			var span: Vector2 = b[1]
 			suite.check(span.x > e + room or span.y < s - lead,
 				"nothing kept in every lane reaches a doodad: %s at %.1f-%.1f %s" % [b[0], span.x, span.y, t])
@@ -1758,6 +1800,8 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 		# It never takes away a way on: wherever something else stands near it in any lane, from every lane.
 		var near: bool = false
 		for piece: Array in pieces:
+			if piece.size() > 3 and is_same(piece[3], own_dog):
+				continue
 			var span: Vector2 = piece[2]
 			near = near or (span.x <= hidden and span.y >= s - lead - room - ROUTE_LOOK_BACK * speed)
 		if not near:

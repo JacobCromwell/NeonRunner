@@ -315,6 +315,29 @@ static func dog_at(plan: Plan, j: float, wanted: int, least: int = MIN_CHARGES) 
 	return _no(why_not)
 
 
+## For a jar with its front at `j` whose dog makes `least` charges at the fewest: `j` if the shortest run its dog can make
+## (dog_at) meets no pad's zone, ceiling landing, chase, what a rule keeps or other Octodog's run, else the first front past
+## all it meets there (every front before that meets one of them too: _best skips them).
+static func _past_blocks(plan: Plan, j: float, least: int) -> float:
+	var a0: float = j + plan.release
+	var from: float = j - plan.before
+	var shortest: float = a0 + (least - 1) * plan.cycle + plan.window
+	var past: float = j
+	for s: Vector2 in plan.zones:
+		if s.x <= shortest and s.y >= from:
+			past = maxf(past, s.y + plan.before + 0.001)
+	for s: Vector2 in plan.keeps:
+		if s.x <= shortest and s.y >= from:
+			past = maxf(past, s.y + plan.before + 0.001)
+	for s: Vector2 in plan.chases:
+		if s.x <= shortest + plan.stop and s.y >= from:
+			past = maxf(past, s.y + plan.before + 0.001)
+	for s: Vector2 in plan.dogs:
+		if s.x <= shortest + plan.stop + plan.gap and s.y >= from - plan.gap:
+			past = maxf(past, s.y + plan.gap + plan.before + 0.001)
+	return past
+
+
 ## A jar with its front at `j` and its dog's plan (dog_at: `least` charges at the fewest), if both fit as `plan`'s layout
 ## stands: {front, anchors, span, fits}, `fits` the lanes the jar fits in, each [lane, its sides that fit], or {}.
 static func _fits_at(plan: Plan, j: float, wanted: int, least: int) -> Dictionary:
@@ -409,13 +432,18 @@ static func _best(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, ai
 		least: int) -> Dictionary:
 	var gen: LevelGenerator = plan.gen
 	var lay: LevelLayout = gen.layout
-	var going: Dictionary = _removable(gen)
+	var going: Going = _removable(gen)
 	var saved: Dictionary = _save(lay)
-	_strip(gen, going)
+	_strip(gen, _all_of(going))
 	refresh(plan)
 	var options: Array[Dictionary] = []
 	var j: float = maxf(a, plan.lo)
 	while j <= minf(b, plan.hi):
+		# Past whatever its shortest run meets, on the fronts' grid.
+		var past: float = _past_blocks(plan, j, least)
+		if past > j:
+			j = plan.lo + ceilf((past - plan.lo) / plan.step - 0.0001) * plan.step
+			continue
 		var o: Dictionary = _fits_at(plan, j, wanted, least)
 		if not o.is_empty():
 			options.append(o)
@@ -426,15 +454,8 @@ static func _best(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, ai
 		return {}
 	# [taken out, off the aim, front, option, lane, what's in its way]
 	var ranked: Array[Array] = []
-	var middle: float = (lay.lane_count - 1) * 0.5
 	for o: Dictionary in options:
-		var pick: Array = []
-		for f: Array in o["fits"]:
-			var lane: int = int(f[0])
-			var items: Dictionary = _in_way(plan, o, lane, going)
-			var n: int = _count(items)
-			if pick.is_empty() or n < int(pick[0]) or (n == int(pick[0]) and absf(lane - middle) < absf(int(pick[1]) - middle)):
-				pick = [n, lane, items]
+		var pick: Array = _in_way(plan, o, going)
 		ranked.append([int(pick[0]), absf(float(o["front"]) - aim), float(o["front"]), o, int(pick[1]), pick[2]])
 	ranked.sort_custom(func(x: Array, y: Array) -> bool:
 		if int(x[0]) != int(y[0]):
@@ -468,9 +489,36 @@ static func _best(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, ai
 	return {}
 
 
-## What may go from `gen`'s layout to make room for a jar (see the header): {enemies, hulls, fences, gaps}.
-static func _removable(gen: LevelGenerator) -> Dictionary:
+## What may go from a layout to make room for a jar (_removable), with where each reaches along the track (metres),
+## worked out once for every spot _in_way looks at: parallel lists, one entry each.
+class Going:
+	extends RefCounted
+	## The plain enemies: each one's spot, what doodads keep off around it (LevelGenerator.doodad_enemy_keep_out; x > y
+	## for nothing), its floor lane and the floor it uses (-1 and nothing for one off the floor).
+	var enemies: Array[Dictionary] = []
+	var enemy_at := PackedFloat64Array()
+	var enemy_keep := PackedVector2Array()
+	var enemy_lane := PackedInt32Array()
+	var enemy_floor := PackedVector2Array()
+	## The pattern ceilings: each one's reach, from its start (its pads' zones and Octodog.CEILING_LEAD before them, if
+	## earlier) to its landing zone's end or Octodog.CEILING_LANDING past its end, whichever is later.
+	var hulls: Array[Dictionary] = []
+	var hull_reach := PackedVector2Array()
+	## The plain fences (their spots) and holes (their stretches), with their lanes.
+	var fences: Array[Dictionary] = []
+	var fence_at := PackedFloat64Array()
+	var fence_lane := PackedInt32Array()
+	var gaps: Array[Dictionary] = []
+	var gap_span := PackedVector2Array()
+	var gap_lane := PackedInt32Array()
+	## Every hole of the layout, in its order (LevelLayout.gaps): its index among `gaps`, or -1 for one that can't go.
+	var gap_index := PackedInt32Array()
+
+
+## What may go from `gen`'s layout to make room for a jar (see the header).
+static func _removable(gen: LevelGenerator) -> Going:
 	var lay: LevelLayout = gen.layout
+	var out := Going.new()
 	var first_drone: float = INF
 	var hung: Array[float] = []
 	for e: Dictionary in lay.enemies:
@@ -479,36 +527,67 @@ static func _removable(gen: LevelGenerator) -> Dictionary:
 				first_drone = minf(first_drone, float(e["at"]))
 			"barnacle_turret":
 				hung.append(float((e.get("params", {}) as Dictionary).get("hull_start", -INF)))
-	var enemies: Array[Dictionary] = []
+	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		if not MAKE_ROOM_TYPES.has(String(e.get("type", ""))):
 			continue
 		var plain: bool = true
 		for key: Variant in (e.get("params", {}) as Dictionary).keys():
 			plain = plain and PLAIN_PARAMS.has(String(key))
-		if plain:
-			enemies.append(e)
-	var hulls: Array[Dictionary] = []
+		if not plain:
+			continue
+		var lane: int = -1
+		var span := Vector2(INF, -INF)
+		if LevelGenerator.enemy_uses_floor(e):
+			lane = int(e.get("lane", -1))
+			if (lane < 0 or lane >= lay.lane_count) and int(e.get("side", 0)) != 0:
+				lane = lay.outer_lane(int(e["side"]))
+			span = LevelGenerator.enemy_floor_span(e, gen.pace)
+		out.enemies.append(e)
+		out.enemy_at.append(float(e["at"]))
+		out.enemy_keep.append(gen.doodad_enemy_keep_out(e, hooks))
+		out.enemy_lane.append(lane)
+		out.enemy_floor.append(span)
+	var lead: float = Octodog.CEILING_LEAD * gen.pace
 	for h: Dictionary in lay.hulls:
 		if h.has(CeilingScenarios.KEY):
 			continue
 		var keep: bool = false
 		for at: float in hung:
 			keep = keep or absf(at - float(h["start"])) < 0.01
+		var reach := Vector2(float(h["start"]), maxf(gen.zones.landing_zone(h).y,
+			float(h["end"]) + Octodog.CEILING_LANDING * gen.pace))
 		for p: Dictionary in _pads_of(lay, h):
-			keep = keep or float(p["at"]) >= first_drone
+			var at: float = float(p["at"])
+			keep = keep or at >= first_drone
+			var zone: Vector2 = gen.zones.pad_zone(at)
+			reach = Vector2(minf(reach.x, minf(zone.x, at - lead)), maxf(reach.y, maxf(zone.y, at + lead)))
 		if not keep:
-			hulls.append(h)
+			out.hulls.append(h)
+			out.hull_reach.append(reach)
 	var powered: Array[Dictionary] = GantrywayRules.powered_fences(gen)
-	var fences: Array[Dictionary] = []
 	for f: Dictionary in lay.fences:
-		if not bool(f.get("pulsing", false)) and not powered.has(f):
-			fences.append(f)
-	var gaps: Array[Dictionary] = []
+		var lit: bool = false
+		for p: Dictionary in powered:
+			lit = lit or is_same(p, f)
+		if not bool(f.get("pulsing", false)) and not lit:
+			out.fences.append(f)
+			out.fence_at.append(float(f["at"]))
+			out.fence_lane.append(int(f["lane"]))
 	for g: Dictionary in lay.gaps:
-		if not LevelLayout.is_wall_run_hole(g):
-			gaps.append(g)
-	return {"enemies": enemies, "hulls": hulls, "fences": fences, "gaps": gaps}
+		if LevelLayout.is_wall_run_hole(g):
+			out.gap_index.append(-1)
+			continue
+		out.gap_index.append(out.gaps.size())
+		out.gaps.append(g)
+		out.gap_span.append(Vector2(float(g["start"]), float(g["end"])))
+		out.gap_lane.append(int(g["lane"]))
+	return out
+
+
+## Everything `going` holds, as _strip takes it: {enemies, hulls, fences, gaps}.
+static func _all_of(going: Going) -> Dictionary:
+	return {"enemies": going.enemies, "hulls": going.hulls, "fences": going.fences, "gaps": going.gaps}
 
 
 ## The pads of ceiling `h` in `lay` (under it, in its lanes).
@@ -523,15 +602,15 @@ static func _pads_of(lay: LevelLayout, h: Dictionary) -> Array[Dictionary]:
 	return out
 
 
-## Of `going` (_removable), what stands in the way of option `o` (_fits_at, found with all of it gone) with its jar in
-## `lane`: {enemies, hulls, fences, gaps}. The enemies standing near one of its charges (Octodog.charge_clear's margins),
-## at work where the jar keeps every lane clear (LevelGenerator.doodad_enemy_keep_out, doodad_fits) or on the floor
-## around it in its lane or a lane beside it; the ceilings whose stretch, landing zone and landing margin, or pads' zones
-## and margins reach from the jar's lead to past its dog's run; the fences in a charge's stretch, and the holes there in
-## every lane but one (the one with a hole that can't go, else the one with the most there); and the holes and fences
-## around the jar in its lane and the lanes beside it (LevelGenerator._doodad_lane_fits' and _doodad_push_fits'
-## stretches).
-static func _in_way(plan: Plan, o: Dictionary, lane: int, going: Dictionary) -> Dictionary:
+## Of `going` (_removable), what stands in the way of option `o` (_fits_at, found with all of it gone), as `gen`'s layout
+## stands (the one `going` was worked out on), in the lane of the jar it fits in that takes the fewest out (the nearest
+## the middle of those): [how many, lane, {enemies, hulls, fences, gaps}]. Whatever the lane: the enemies standing near
+## one of its charges (Octodog.charge_clear's margins) or at work where the jar keeps every lane clear
+## (LevelGenerator.doodad_enemy_keep_out, doodad_fits); the ceilings whose reach (Going) meets the jar's lead or its dog's
+## run with its margins; the fences in a charge's stretch, and the holes there in every lane but one (the one with a hole
+## that can't go, else the one with the most there). In the jar's lane and the lanes beside it: the floor enemies, holes
+## and fences around it (LevelGenerator._doodad_lane_fits' and _doodad_push_fits' stretches).
+static func _in_way(plan: Plan, o: Dictionary, going: Going) -> Array:
 	var gen: LevelGenerator = plan.gen
 	var lay: LevelLayout = gen.layout
 	var j: float = float(o["front"])
@@ -545,86 +624,110 @@ static func _in_way(plan: Plan, o: Dictionary, lane: int, going: Dictionary) -> 
 	var region := Vector2(j - LevelGenerator.doodad_lead_for(gen.tuning) - 0.02, j + gen.doodad_reach(plan.length) + 0.02)
 	var own := Vector2(from - 0.01, end + gen.doodad_after(end))
 	var beside := Vector2(from - 0.01, maxf(end + gen.doodad_lane_room(), gen.doodad_landing(j)))
-	var enemies: Array[Dictionary] = []
-	var hooks: Dictionary = {}
-	for e: Dictionary in going["enemies"]:
-		var at: float = float(e["at"])
-		var k: Vector2 = gen.doodad_enemy_keep_out(e, hooks)
+	var before_charge: float = Octodog.OTHER_ENEMY_BEFORE * gen.pace
+	var after_charge: float = plan.window + Octodog.OTHER_ENEMY_MARGIN * gen.pace
+	var half: float = gen.tuning.fence_depth * 0.5
+	# Whatever the lane: 1 for what goes, 2 for what's on the floor around the jar's stretch (in the way in its lane or a
+	# lane beside it), 0 for the rest.
+	var enemy_mark := PackedByteArray()
+	enemy_mark.resize(going.enemies.size())
+	for i: int in going.enemies.size():
+		var at: float = going.enemy_at[i]
+		var k: Vector2 = going.enemy_keep[i]
 		var hit: bool = k.y >= k.x and k.x <= region.y and k.y >= region.x
 		for a: float in anchors:
-			hit = hit or (at >= a - Octodog.OTHER_ENEMY_BEFORE * gen.pace and at <= a + plan.window
-				+ Octodog.OTHER_ENEMY_MARGIN * gen.pace)
-		if not hit and LevelGenerator.enemy_uses_floor(e):
-			var l: int = int(e.get("lane", -1))
-			if (l < 0 or l >= lay.lane_count) and int(e.get("side", 0)) != 0:
-				l = lay.outer_lane(int(e["side"]))
-			var s: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
-			hit = (l == lane and s.x <= own.y and s.y >= own.x) or (absi(l - lane) == 1 and s.x <= beside.y and s.y >= beside.x)
-		if hit:
-			enemies.append(e)
+			hit = hit or (at >= a - before_charge and at <= a + after_charge)
+		var s: Vector2 = going.enemy_floor[i]
+		enemy_mark[i] = 1 if hit else (2 if going.enemy_lane[i] >= 0 and s.x <= beside.y and s.y >= own.x else 0)
 	var reach := Vector2(from, to + plan.stop + gen.metres(PAD_AFTER))
-	var lead: float = Octodog.CEILING_LEAD * gen.pace
 	var hulls: Array[Dictionary] = []
-	for h: Dictionary in going["hulls"]:
-		var hit: bool = float(h["start"]) <= reach.y and maxf(gen.zones.landing_zone(h).y,
-			float(h["end"]) + Octodog.CEILING_LANDING * gen.pace) >= reach.x
-		for p: Dictionary in _pads_of(lay, h):
-			var zone: Vector2 = gen.zones.pad_zone(float(p["at"]))
-			hit = hit or (minf(zone.x, float(p["at"]) - lead) <= reach.y and maxf(zone.y, float(p["at"]) + lead) >= reach.x)
-		if hit:
-			hulls.append(h)
-	var fences: Array[Dictionary] = []
-	var gaps: Array[Dictionary] = []
-	var half: float = gen.tuning.fence_depth * 0.5
-	for f: Dictionary in going["fences"]:
-		var at: float = float(f["at"])
-		var l: int = int(f["lane"])
-		var hit: bool = (l == lane and at + half >= own.x and at - half <= own.y) \
-			or (absi(l - lane) == 1 and at + half >= beside.x and at - half <= beside.y)
+	for i: int in going.hulls.size():
+		var r: Vector2 = going.hull_reach[i]
+		if r.x <= reach.y and r.y >= reach.x:
+			hulls.append(going.hulls[i])
+	var fence_mark := PackedByteArray()
+	fence_mark.resize(going.fences.size())
+	for i: int in going.fences.size():
+		var at: float = going.fence_at[i]
+		var hit: bool = false
 		for a: float in anchors:
 			hit = hit or (at >= a - 1.0 and at <= a + plan.window)
-		if hit:
-			fences.append(f)
-	var plain_gaps: Array[Dictionary] = going["gaps"]
-	for g: Dictionary in plain_gaps:
-		var l: int = int(g["lane"])
-		var s := Vector2(float(g["start"]), float(g["end"]))
-		if (l == lane and s.x <= own.y and s.y >= own.x) or (absi(l - lane) == 1 and s.x <= beside.y and s.y >= beside.x):
-			gaps.append(g)
+		fence_mark[i] = 1 if hit else (2 if at + half >= own.x and at - half <= maxf(own.y, beside.y) else 0)
+	var gap_mark := PackedByteArray()
+	gap_mark.resize(going.gaps.size())
+	for i: int in going.gaps.size():
+		var s: Vector2 = going.gap_span[i]
+		gap_mark[i] = 2 if s.x <= maxf(own.y, beside.y) and s.y >= own.x else 0
 	# In each charge's stretch, the holes of every lane but one.
 	for a: float in anchors:
 		var by_lane: Dictionary = {}
 		var fixed: int = -1
-		for g: Dictionary in lay.gaps:
-			if float(g["start"]) <= a + plan.window and float(g["end"]) >= a:
-				var l: int = int(g["lane"])
+		for g: int in lay.gaps.size():
+			var hole: Dictionary = lay.gaps[g]
+			if float(hole["start"]) <= a + plan.window and float(hole["end"]) >= a:
+				var l: int = int(hole["lane"])
 				if not by_lane.has(l):
-					by_lane[l] = []
-				(by_lane[l] as Array).append(g)
-				if not plain_gaps.has(g):
+					by_lane[l] = PackedInt32Array()
+				var in_lane: PackedInt32Array = by_lane[l]
+				in_lane.append(going.gap_index[g])
+				by_lane[l] = in_lane
+				if going.gap_index[g] < 0:
 					fixed = l
 		if by_lane.size() <= 1:
 			continue
 		var kept: int = fixed
 		if kept < 0:
 			for l: int in by_lane:
-				if kept < 0 or (by_lane[l] as Array).size() > (by_lane[kept] as Array).size():
+				if kept < 0 or (by_lane[l] as PackedInt32Array).size() > (by_lane[kept] as PackedInt32Array).size():
 					kept = l
 		for l: int in by_lane:
 			if l == kept:
 				continue
-			for g: Dictionary in by_lane[l]:
-				if plain_gaps.has(g) and not gaps.has(g):
-					gaps.append(g)
-	return {"enemies": enemies, "hulls": hulls, "fences": fences, "gaps": gaps}
+			for i: int in (by_lane[l] as PackedInt32Array):
+				if i >= 0:
+					gap_mark[i] = 1
+	# The lane that takes the fewest out.
+	var best: Array = []
+	var middle: float = (lay.lane_count - 1) * 0.5
+	for f: Array in o["fits"]:
+		var lane: int = int(f[0])
+		var n: int = hulls.size()
+		for i: int in going.enemies.size():
+			n += 1 if enemy_mark[i] == 1 or (enemy_mark[i] == 2 and _near_jar(going.enemy_lane[i], going.enemy_floor[i], lane,
+				own, beside)) else 0
+		for i: int in going.fences.size():
+			var at: float = going.fence_at[i]
+			n += 1 if fence_mark[i] == 1 or (fence_mark[i] == 2 and _near_jar(going.fence_lane[i], Vector2(at - half, at + half),
+				lane, own, beside)) else 0
+		for i: int in going.gaps.size():
+			n += 1 if gap_mark[i] == 1 or (gap_mark[i] == 2 and _near_jar(going.gap_lane[i], going.gap_span[i], lane, own,
+				beside)) else 0
+		if best.is_empty() or n < int(best[0]) or (n == int(best[0]) and absf(lane - middle) < absf(int(best[1]) - middle)):
+			best = [n, lane]
+	var lane: int = int(best[1])
+	var enemies: Array[Dictionary] = []
+	for i: int in going.enemies.size():
+		if enemy_mark[i] == 1 or (enemy_mark[i] == 2 and _near_jar(going.enemy_lane[i], going.enemy_floor[i], lane, own,
+				beside)):
+			enemies.append(going.enemies[i])
+	var fences: Array[Dictionary] = []
+	for i: int in going.fences.size():
+		var at: float = going.fence_at[i]
+		if fence_mark[i] == 1 or (fence_mark[i] == 2 and _near_jar(going.fence_lane[i], Vector2(at - half, at + half), lane,
+				own, beside)):
+			fences.append(going.fences[i])
+	var gaps: Array[Dictionary] = []
+	for i: int in going.gaps.size():
+		if gap_mark[i] == 1 or (gap_mark[i] == 2 and _near_jar(going.gap_lane[i], going.gap_span[i], lane, own, beside)):
+			gaps.append(going.gaps[i])
+	return [int(best[0]), lane, {"enemies": enemies, "hulls": hulls, "fences": fences, "gaps": gaps}]
 
 
-## How many pieces and enemies `items` ({enemies, hulls, fences, gaps}) holds.
-static func _count(items: Dictionary) -> int:
-	var n: int = 0
-	for key: String in ["enemies", "hulls", "fences", "gaps"]:
-		n += (items[key] as Array).size()
-	return n
+## True if what stands in lane `l` over `span` is in the way of a jar in `lane` (_in_way): in its lane within `own`, or in
+## a lane beside it within `beside`.
+static func _near_jar(l: int, span: Vector2, lane: int, own: Vector2, beside: Vector2) -> bool:
+	return (l == lane and span.x <= own.y and span.y >= own.x) \
+		or (absi(l - lane) == 1 and span.x <= beside.y and span.y >= beside.x)
 
 
 ## The layout's lists that making room changes, as they are (shallow copies: the entries stay the same dictionaries).
