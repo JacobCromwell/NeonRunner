@@ -6,8 +6,9 @@ extends SceneTree
 ## GantrywayRules.problems(), which counts every rule's keep-outs (nothing, on every build the suites check). From the
 ## project folder:
 ##   godot --headless -s res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
-## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3). --why prints why an
-## introduction found no spot in its window (TeleporterRules.debug).
+##     [--seed-list=a,b,c] [--why]
+## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3), --seed-list on its own and the
+## seeds listed. --why prints why an introduction found no spot in its window (TeleporterRules.debug).
 
 const TeleporterRules = preload("res://scripts/enemies/teleporter_rules.gd")
 const GantrywayRules = preload("res://scripts/enemies/gantryway_rules.gd")
@@ -15,6 +16,8 @@ const GantrywayRules = preload("res://scripts/enemies/gantryway_rules.gd")
 var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
 var _seeds: int = 3
+## --seed-list=a,b: these seeds instead of 9001, 9002, ...
+var _seed_list: Array[int] = []
 
 
 func _initialize() -> void:
@@ -31,6 +34,9 @@ func _run() -> void:
 				_lanes.append(int(s))
 		elif arg.begins_with("--seeds="):
 			_seeds = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--seed-list="):
+			for v: String in arg.get_slice("=", 1).split(",", false):
+				_seed_list.append(int(v))
 		elif arg == "--why":
 			TeleporterRules.debug = true
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
@@ -50,10 +56,10 @@ func _run() -> void:
 		if not _levels.is_empty() and not _levels.has(s.id):
 			continue
 		for lanes: int in _lanes:
-			for k: int in _seeds + 1:
+			for k: int in (_seed_list.size() if not _seed_list.is_empty() else _seeds) + 1:
 				var config: LevelConfig = campaign.configure(s, lanes)
 				if k > 0:
-					config.level_seed = 9000 + k
+					config.level_seed = _seed_list[k - 1] if not _seed_list.is_empty() else 9000 + k
 				var patterns: Array = LevelGenerator.load_for(config)
 				TeleporterRules.spent_usec = 0
 				var t0: int = Time.get_ticks_usec()
@@ -85,6 +91,14 @@ func _run() -> void:
 				# The falling gantryways' re-check counts every rule's keep-outs, the teleporters' among them.
 				if config.has_feature(GantrywayRules.FEATURE):
 					found.append_array(GantrywayRules.problems(gen))
+				# A fenced ceiling's pick plays out alone (CeilingScenarios.event_spans): no teleporter's window in it.
+				for tp: Dictionary in layout.teleporters:
+					for w: Vector2 in TeleporterRules.windows_of(gen, tp).get(-1, []):
+						for h: Dictionary in layout.hulls:
+							var pick: Variant = h.get("pick")
+							if pick is Array and (pick as Array).size() == 2 and w.x < float(pick[1]) and w.y > float(pick[0]):
+								found.append("the teleporter at %.1f m: its window %.1f-%.1f m in a fenced ceiling's pick %.1f-%.1f m"
+									% [float(tp["at"]), w.x, w.y, float(pick[0]), float(pick[1])])
 				problems += found.size()
 				var parts: PackedStringArray = []
 				for tp: Dictionary in layout.teleporters:

@@ -24,7 +24,8 @@ var shown: int = 0
 var _rect: ColorRect
 
 
-## Rebinds to `p_world` (a level restart builds a fresh RunWorld); builds the overlay once.
+## Rebinds to `p_world` (a level restart builds a fresh RunWorld); builds the overlay once. A tint still showing from a
+## jump just before the restart goes with the old run.
 func setup(p_world: RunWorld, p_tuning: TeleporterTuning = null) -> void:
 	if world != null and is_instance_valid(world) and world.teleported.is_connected(_on_teleported):
 		world.teleported.disconnect(_on_teleported)
@@ -36,15 +37,16 @@ func setup(p_world: RunWorld, p_tuning: TeleporterTuning = null) -> void:
 		_rect = ColorRect.new()
 		_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_rect.color = Color(COLOR, 0.0)
-		_rect.visible = false
 		add_child(_rect)
+	_rect.color = Color(COLOR, 0.0)
+	_rect.visible = false
 	world.teleported.connect(_on_teleported)
 
 
 ## The tint's alpha `t` seconds after a teleport: flash_alpha fading out linearly over flash_seconds; with Reduced
 ## flashing (`reduced`) reduced_flash_alpha at most, easing in over the first fifth of reduced_flash_seconds and out over
-## the rest. 0 before and after.
+## the rest. 0 before and after. DESIGN-TBD (docs/questions/q4.md 10): the soft tint that stands in for the flash with
+## Reduced flashing (and the flash itself, q4.md 1 and 4).
 static func alpha_at(tt: TeleporterTuning, t: float, reduced: bool) -> float:
 	if t < 0.0:
 		return 0.0

@@ -80,8 +80,10 @@ func set_lamps(lit: Dictionary) -> void:
 	tick(maxf(drawn_at, 0.0))
 
 
-## Draws its antenna's light for level time `level_time` (TrackBuilder.update, every physics frame): each side lamp
-## scaled by lamp_level() (hidden when it's out), the beacon of a one-output teleporter steady.
+## Draws its antenna's light for level time `level_time` (TrackBuilder.light_teleporters, after every physics step): each
+## side lamp scaled by lamp_level() (hidden when it's out), the beacon of a one-output teleporter steady. DESIGN-TBD
+## (docs/questions/q4.md 7): a teleporter with one output pad lights neither side lamp but a green beacon on the
+## antenna's tip (GDD §5 only says what the light shows between two output pads).
 func tick(level_time: float) -> void:
 	drawn_at = level_time
 	var fade: float = tuning.reduced_blink_fade_seconds if Settings.flashing_reduced else tuning.blink_fade_seconds
@@ -100,7 +102,8 @@ func tick(level_time: float) -> void:
 ## The side of teleporter `tp`'s antenna lit at level time `level_time` (-1 left, 1 right; 0 with one output pad: no
 ## choice): a fixed light's `light`; a blinking one's, which changes side every `blink` seconds from `light` at its
 ## `phase` (0–1 of a whole cycle of both sides) at the run's start. What decides where a touch at that moment lands
-## (output_at), the same on every attempt.
+## (output_at), the same on every attempt. DESIGN-TBD (docs/questions/q4.md 8): the blinking runs on the level clock from
+## a seeded side and phase (slow time slows it), with no cue before a change.
 static func lit_side(tp: Dictionary, level_time: float) -> int:
 	if (tp.get("outputs", []) as Array).size() < 2:
 		return 0
@@ -115,6 +118,8 @@ static func lit_side(tp: Dictionary, level_time: float) -> int:
 ## How brightly teleporter `tp`'s lamp on `side` shows at level time `level_time` (0–1): a fixed light's lamp on or off;
 ## a blinking one's fades over to the other side over `fade` seconds centred on each change (both at one half at the
 ## change itself), so the brighter lamp is always the side lit_side() gives. A one-output teleporter lights neither.
+## DESIGN-TBD (docs/questions/q4.md 8): the crossfade (TeleporterTuning.blink_fade_seconds, and with Reduced flashing
+## reduced_blink_fade_seconds: q4.md 10).
 static func lamp_level(tp: Dictionary, side: int, level_time: float, fade: float) -> float:
 	var lit: int = lit_side(tp, level_time)
 	if lit == 0:

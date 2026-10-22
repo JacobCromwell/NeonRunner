@@ -265,6 +265,8 @@ var _off_wall_claims: Dictionary = {}
 var return_drops: int = 0
 ## How many times a teleporter sent the runner on this run (task Q4; tests and tools).
 var teleports: int = 0
+## True from a teleport (_teleport) to the end of that physics step: the hazard check then sweeps no run back.
+var _teleported_now: bool = false
 ## How many dash walls the runner crashed through without the dash (one hit each, GDD §9.14), and passed on a
 ## side wall, this run (task H7a; tests and tools).
 var crashes: int = 0
@@ -646,8 +648,11 @@ func _physics_process(delta: float) -> void:
 	_apply_transform(delta)
 	_check_doodads(motion)
 	_check_dash_walls(motion)
+	_teleported_now = false
 	_check_triggers(motion)
-	_check_hazards(motion)
+	# Task Q4: a teleport this step put the runner on its output pad, so the track just behind them there was never
+	# crossed: no sweep back over this step's run.
+	_check_hazards(0.0 if _teleported_now else motion)
 
 
 # --- Input -----------------------------------------------------------------
@@ -1772,9 +1777,10 @@ func _check_triggers(motion: float) -> void:
 ## boost or the dash goes on as it was), a slide and the dash, their protection and the invulnerability window as they were
 ## (GDD §5, proposed: "no protection after landing"), and arrive running: a lane switch, a bump or a doodad's push under
 ## way stops in the output pad's lane, a jump pressed before the touch is let go, what the dash claimed and what the body
-## was going through (the track behind) are forgotten. `teleported` and the `teleport` event follow (RunWorld skips the
-## track in between and what it holds; the camera cuts and the flash shows: RunCamera, TeleportFlash). False if `entry`
-## leads nowhere. DESIGN-TBD (docs/questions/q4.md 4): the jump itself.
+## was going through (the track behind) are forgotten, and the step's hazard check sweeps nothing back (_teleported_now:
+## the track just behind the output pad was never crossed). `teleported` and the `teleport` event follow (RunWorld skips
+## the track in between and what it holds; the camera cuts and the flash shows: RunCamera, TeleportFlash). False if
+## `entry` leads nowhere. DESIGN-TBD (docs/questions/q4.md 4): the jump itself.
 func _teleport(entry: Dictionary) -> bool:
 	var output: Dictionary = Teleporter.output_at(entry, elapsed)
 	if output.is_empty() or not alive:
@@ -1804,6 +1810,7 @@ func _teleport(entry: Dictionary) -> bool:
 	_passing.clear()
 	_blocked_ramp = 0
 	teleports += 1
+	_teleported_now = true
 	_apply_transform(0.0)
 	teleported.emit(from, distance, entry, output)
 	_event(&"teleport")

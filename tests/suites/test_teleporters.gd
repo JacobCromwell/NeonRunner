@@ -15,8 +15,9 @@ extends TestSuite
 ##   output pad, straight ahead) and has a fixed light between two output pads, no blinking one; Specimen Vault its count
 ##   of blinking ones, the first introduced the same way from the blinking start, none before; every one fair
 ##   (LayoutChecks.check_teleporters); the same level on a second build; a level without the feature, with a count of 0, or
-##   with the blinking feature but no blinking count, stands none (or no blinking one). A wall-run gap's stretch (with its
-##   margins) lies outside everything a teleporter keeps, and its own re-check passes beside one as near as it may stand.
+##   with the blinking feature but no blinking count, stands none (or no blinking one); none in a fenced ceiling's pick
+##   (builds the review found one in, among them). A wall-run gap's stretch (with its margins) lies outside everything a
+##   teleporter keeps, and its own re-check passes beside one as near as it may stand; so does a falling gantryway's.
 ##   Endless mode in the Ice Lab builds without warnings, its count spread along the whole of it, each fair. (Every build's
 ##   fairness on more seeds: test_ice_lab_levels; quick play's level over seeds and difficulties: test_generator.)
 ## - The track: a Teleporter over each entry, its pad's trigger (a square on LAYER_TRIGGER, kind &"teleporter", carrying
@@ -37,9 +38,9 @@ extends TestSuite
 ##   lands on each output pad (its light set each way) and runs through the landing alive; the way around and a switch out
 ##   at its approach pass it alive.
 ## - Every skin dresses its pads flat inside their squares (their halo aside) and its antenna on the pad's far half, no wider
-##   than the lane, with left, right and beacon lamps hidden until lit, and an output pad's marker floating over its square
-##   above a runner's head, all glowing only green or green-white; the warm-up draws every part, nothing physical; every
-##   number reaches the F6 panel.
+##   than the lane, with left, right and beacon lamps hidden until lit, and an output pad's marker floating over it within
+##   its lane above a runner's head, light only and fading out near the camera, all glowing only green or green-white; the
+##   warm-up draws every part, nothing physical; every number reaches the F6 panel.
 
 const TeleporterRules := preload("res://scripts/enemies/teleporter_rules.gd")
 const GantrywayRules := preload("res://scripts/enemies/gantryway_rules.gd")
@@ -174,6 +175,21 @@ func _test_generator() -> void:
 			var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 			check(JSON.stringify(again.teleporters) == JSON.stringify(layout.teleporters), "the same teleporters every attempt " + tag)
 	print("  teleporters in the Ice Lab's own builds: %d, %d with two output pads, %d blinking" % [stood, two, blinking])
+	# Task Q4's review: builds where a teleporter stood in a fenced ceiling's pick (an introduction's approach, a whole
+	# teleporter, a landing reaching a pick's run-up) before the rules kept off picks; check_teleporters names any.
+	for repro: Array in [["ice_lab/2", 3, 7005], ["ice_lab/3", 5, 7008], ["ice_lab/2", 5, 7007]]:
+		var config: LevelConfig = campaign.configure(campaign.step(String(repro[0])), int(repro[1]))
+		config.level_seed = int(repro[2])
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		var tag: String = "%s lanes=%d seed=%d" % repro
+		var picks: int = 0
+		for h: Dictionary in layout.hulls:
+			picks += 1 if h.has("pick") else 0
+		check(picks > 0 and layout.teleporters.size() == config.teleporters and gen.warnings.is_empty(),
+			"a level with a fenced ceiling's pick (%d) stands every teleporter (%d of %d) %s" % [picks, layout.teleporters.size(),
+				config.teleporters, tag])
+		LayoutChecks.check_teleporters(self, layout, config, tag)
 	# A level without the feature, with a count of 0, or with blinking antennas but no count of them.
 	var step_3: CampaignStep = campaign.step("ice_lab/3")
 	for c: int in 3:
@@ -550,6 +566,34 @@ func _test_physics() -> void:
 			p.invulnerable_left = 100.0)
 		check(_landed(r, mid) and bool(r["armor"]) and int(r["shield"]) == 1 and float(r["invulnerable"]) > 90.0,
 			"the armor, the shield and an invulnerability window carry through it as they were %s %s" % [_brief(r), at])
+	await _test_no_sweep_back(sim)
+
+
+## The step a runner is teleported in sweeps nothing back over its run (Player._physics_process, _teleported_now): the
+## track just behind an output pad was never crossed. A runner at 90 m/s (a step's run 1.5 m) touches the pad as early in
+## a step as the feet's sensor allows, so they arrive about 0.2 m short of the output pad's front; a fence in its lane
+## 1.2 m behind its front, clear of the body but within that step's run behind it, never hits them. (The rules keep a
+## landing clear from LANDING_BACK before the pad; this holds on any hand-built track too.)
+func _test_no_sweep_back(sim: RunSim) -> void:
+	var layout: LevelLayout = _layout(5, 2, 1, [2])
+	var tp: Dictionary = layout.teleporters[0]
+	var land: float = float((tp["outputs"] as Array)[0]["at"])
+	layout.fences.append(RunSim.fence(2, land - 1.2, "full"))
+	var world: RunWorld = sim.build_world(layout)
+	world.player.setup(world.tuning, world.geo, 2)
+	var p: Player = world.player
+	var step: float = 90.0 / float(Engine.physics_ticks_per_second)
+	p.speed_override = 90.0
+	p.distance = PAD - Player.SENSOR_SIZE.z * 0.5 - step + 0.01
+	var arrived: Array[float] = [-1.0]
+	world.teleported.connect(func(_f: float, to: float, _e: Dictionary, _o: Dictionary) -> void: arrived[0] = to)
+	var r: Dictionary = await sim.step_world(world, 0.3)
+	var back: float = arrived[0] - world.tuning.hurtbox_size.z * 0.5
+	check(bool(r["alive"]) and p.teleports == 1 and arrived[0] < land and back - step < land - 1.2 - 0.15
+		and back > land - 1.2 + 0.15,
+		"a fence just behind the output pad, never crossed, doesn't hit the runner arriving (at %.2f m, the pad's front %.2f m) %s"
+		% [arrived[0], land, _brief(r)])
+	await sim.free_world(world)
 
 
 ## One take on real physics: `layout`'s teleporter, the runner starting in lane `start`, `actions` ([distance, action],
@@ -759,6 +803,16 @@ func _test_flash() -> void:
 		check(flash.alpha() == 0.0 and most > 0.0 and most <= (tt.reduced_flash_alpha if reduced else tt.flash_alpha) + 0.001,
 			"it shows on a teleport and clears (at most %.2f, Reduced flashing %s)" % [most, "on" if reduced else "off"])
 	check(flash.shown == 2, "it counts the teleports it showed")
+	# A restart right after a jump (LevelRun.restart: a fresh RunWorld, the same overlay): the tint goes with the old run.
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		world.teleported.emit(PAD, PAD + 60.0, {}, {"lane": 2, "at": PAD + 60.0})
+		await tree.process_frame
+		var showing: float = flash.alpha()
+		flash.setup(world, tt)
+		check(showing > 0.0 and flash.alpha() == 0.0,
+			"a restart right after a jump clears the tint (%.2f, then %.2f; Reduced flashing %s)" % [showing, flash.alpha(),
+				"on" if reduced else "off"])
 	Settings.flashing_reduced = false
 	await sim.free_world(world)
 
@@ -956,9 +1010,15 @@ func _test_skins() -> void:
 					flat += 1
 					continue
 				over += 1
-				check(aabb.position.y >= floor_y + 1.4 and AABB(Vector3(-side * 0.5, floor_y, -side * 0.5), Vector3(side, 3.2, side))
-					.grow(0.01).encloses(aabb), "its output pad's %s floats over its square, above a runner's head (%s) %s"
+				# Over it, above a runner's head and under a ceiling, no wider than a lane and a half (two output pads stand two
+				# lanes apart at the least), no deeper than the pad.
+				var over_box := AABB(Vector3(-tuning.lane_width * 0.75, floor_y, -side * 0.5),
+					Vector3(tuning.lane_width * 1.5, tuning.ceiling_height, side))
+				check(aabb.position.y >= floor_y + 1.4 and over_box.grow(0.01).encloses(aabb),
+					"its output pad's %s floats over it, above a runner's head, no wider than a lane and a half (%s) %s"
 					% [mi.name, aabb, tag])
+				# Light only (it hides nothing behind it), fading out near the camera: a runner who lands under it sees on.
+				check(_light_fading_near(mi), "its output pad's %s is light only, fading out near the camera %s" % [mi.name, tag])
 			check(flat >= 1 and over >= 1, "its output pad lies flat with a marker over it (%d, %d) %s" % [flat, over, tag])
 			output.free()
 		check(TeleporterKit.GLOW_FADE.y >= 200.0, "its glow reads from 200 m off, as an output pad from its teleporter's approach")
@@ -981,6 +1041,22 @@ func _check_look(root: Node3D, bounds: AABB, what: String) -> void:
 		var aabb: AABB = mi.transform * mi.mesh.get_aabb()
 		check(bounds.grow(0.01).encloses(aabb), "%s stays flat inside its square, its halo aside (%s in %s)" % [what, aabb, bounds])
 		_check_glow(mi, what)
+
+
+## True if every surface of `mi` draws with the additive glow shader (kit_glow: light that hides nothing behind it) and
+## every vertex asks it to fade out near the camera (UV2.y below 0: MeshKit.near_fade).
+static func _light_fading_near(mi: MeshInstance3D) -> bool:
+	if mi.mesh == null or mi.mesh.get_surface_count() == 0:
+		return false
+	for s: int in mi.mesh.get_surface_count():
+		var mat := mi.get_active_material(s) as ShaderMaterial
+		if mat == null or mat.shader == null or not mat.shader.resource_path.ends_with("kit_glow.gdshader"):
+			return false
+		var uv2: PackedVector2Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_TEX_UV2]
+		for v: Vector2 in uv2:
+			if v.y >= 0.0:
+				return false
+	return true
 
 
 ## `mi` glows (vertex COLOR.a above 0) only in green or green-white: never a hazard's red, pink, orange or yellow, nor

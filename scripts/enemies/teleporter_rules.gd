@@ -37,8 +37,9 @@ extends RefCounted
 ## - Every lane keeps, over the pad stretch and over each landing (from LANDING_BACK before L to `landing` past it), no
 ##   floor cut's window, dash wall, debris maze block, wall-run gap's stretch (WallRunGapPlacement.keep_out: its own
 ##   re-check counts every rule's keep-outs in every lane), falling gantryway (its pillar's lead to past its walkway and its
-##   calm stretch), Octodog's planned charge, nor what the rules keep in every lane (a Bad Dream's chase, a treasure
-##   stash's floor, an Enforcer Truck's showing window): nothing that holds the track around the runner is under way as
+##   calm stretch), fenced ceiling's pick (the I4 "pick the right pad", which plays out alone), Octodog's planned charge,
+##   nor what the rules keep in every lane (a Bad Dream's chase, a treasure stash's floor, an Enforcer Truck's showing
+##   window): nothing that holds the track around the runner is under way as
 ##   they touch the pad or arrive. Every enemy that holds an attack by a doodad holds it by a teleporter's calm stretches
 ##   too (LevelLayout.doodad_between, teleporter_between: its approach in P, each landing in its output pad's lane): no
 ##   bolt, lunge or barrage is timed onto a runner lining the pad up or just arrived, on every attempt. (What else is in
@@ -780,13 +781,19 @@ static func lane_pieces(gen: LevelGenerator, plain_ok: bool, powered: Array[Dict
 ## What every lane keeps clear of a teleporter's pad stretch and its landings (plan_for, problems): every floor cut's
 ## window, every dash wall's footprint, every debris maze block (its run-in to its breather), every wall-run gap's stretch
 ## with its margins (WallRunGapPlacement.keep_out), every falling gantryway (from its pillar's lead to past its walkway and
-## its calm stretch), every Octodog's planned charge (its window from a metre before its anchor), and what the rules keep
-## in every lane (`keeps`, LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own).
+## its calm stretch), every fenced ceiling's pick (task I4, its hull's "pick": from its first pad's run-up to its last safe
+## pad, where the player reads which pad is the trap; it plays out alone, CeilingScenarios.event_spans), every Octodog's
+## planned charge (its window from a metre before its anchor), and what the rules keep in every lane (`keeps`,
+## LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own).
 static func every_keeps(gen: LevelGenerator, keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var lay: LevelLayout = gen.layout
 	var out: Array[Vector2] = []
 	for c: Dictionary in lay.cuts:
 		out.append(FloorCutPlan.window(c, gen.speed))
+	for h: Dictionary in lay.hulls:
+		var pick: Variant = h.get("pick")
+		if pick is Array and (pick as Array).size() == 2:
+			out.append(Vector2(float(pick[0]), float(pick[1])))
 	for w: Dictionary in lay.dash_walls:
 		out.append(LevelGenerator.DashWallRules.footprint(gen, w))
 	for b: Dictionary in lay.maze:

@@ -11,9 +11,9 @@ extends RefCounted
 ##   thin green lines over its middle (four by four cells) around a glowing hexagonal emitter, a light at each corner, and
 ##   a soft green halo on the floor around it that the distance never fogs out before 220 m (kit_glow fades by itself).
 ##   Square, green and gridded, nothing like the anti-grav pad (cyan rings and a light column) or a speed pad (arrows).
-## - An output pad: the same pad, without the antenna, and a marker floating over it at the antenna's lamps' height (the
-##   pad's hexagonal emitter again, standing up as a glowing ring facing the runner, and its halo), so it reads from the
-##   start of its teleporter's approach, where a flat pad down the track is a sliver.
+## - An output pad: the same pad, without the antenna, and a marker of light floating over it, 3 m up (a soft green glow
+##   with a bright core and the pad's hexagon traced round it, facing the runner, fading out as the camera comes near), so
+##   it reads from the start of its teleporter's approach, about 90 m off, where a flat pad down the track is a sliver.
 ## - The antenna, at the input pad's far edge, the side away from the runner (who's teleported as their feet touch the
 ##   pad's near edge, so they never reach it): a slim dark mast on a round foot, ringed with green bands, a green halo ring
 ##   two thirds up (the "space-age" look), a crossbar near the top with a lamp housing at each end (dark glass when out),
@@ -38,10 +38,16 @@ const BAR_HALF: float = 0.62
 const RING_HEIGHT: float = 1.45
 ## How far in from the pad's far edge the antenna's mast stands (metres): its halo ring stays over the pad.
 const ANTENNA_INSET: float = 0.32
-## The marker over an output pad (marker_mesh): its middle's height over the floor (over a runner's head, level with the
-## antenna's lamps) and its ring's radius (metres).
-const MARKER_HEIGHT: float = 2.15
-const MARKER_RADIUS: float = 0.3
+## The marker over an output pad (marker_mesh, metres): its middle's height over the floor (well over a runner's head,
+## above the antenna's lamps), its hexagon's radius and line width, its soft glow's radius (a lane and a half across: two
+## output pads stand two lanes apart at the least, so their glows never meet), and how near the camera it fades out
+## (MeshKit.near_fade: from 40% of this to nothing), so a runner who lands under it sees the track ahead through
+## nothing. From the start of its teleporter's approach, about 95 m from the camera, its hexagon is 2 m across.
+const MARKER_HEIGHT: float = 3.4
+const MARKER_RADIUS: float = 1.0
+const MARKER_LINE: float = 0.22
+const MARKER_GLOW: float = 1.8
+const MARKER_NEAR_FADE: float = 20.0
 ## Its glow material's fade (metres from the camera): whole to fade_begin, gone by fade_end.
 const GLOW_FADE := Vector2(40.0, 220.0)
 
@@ -192,9 +198,13 @@ static func dress_marker(body: Node3D, size: Vector3, look_seed: int, colors: Pa
 	return MeshBatch.add_instance(body, marker_mesh(size, look_seed, colors), "Marker")
 
 
-## The marker floating over an output pad (MARKER_HEIGHT over the floor, over its middle), in `colors` (as pad_mesh's): the
-## pad's hexagonal emitter again, standing up as a glowing ring facing the runner, a smaller hexagon lit in it, and its
-## halo; never a column of light (the anti-grav pads') nor anything across the lane (a fence's). Cached.
+## The marker floating over an output pad (MARKER_HEIGHT over the floor, over its middle), in `colors` (as pad_mesh's), all
+## facing the runner: a soft green glow MARKER_GLOW across, its bright green-white core, and the pad's hexagon traced in
+## light round it. Light only (additive glow cards: it hides nothing behind it), fading out as the camera comes within
+## MARKER_NEAR_FADE, so a runner who lands under it sees the track ahead clear; it fogs out no sooner than the rest of the
+## look (GLOW_FADE). From the start of its teleporter's approach (about 90 m from the camera), a green light a couple of
+## metres across over its lane: where the pad leads, on a phone's screen too. Never a column of light (the anti-grav
+## pads') nor anything across the lane (a fence's). Cached.
 static func marker_mesh(size: Vector3, look_seed: int, colors: PackedColorArray = PackedColorArray()) -> ArrayMesh:
 	var key: String = var_to_str(["marker", size, posmod(look_seed, 2), colors])
 	if _antennas.has(key):
@@ -202,20 +212,29 @@ static func marker_mesh(size: Vector3, look_seed: int, colors: PackedColorArray 
 	var green: Color = _color(colors, 2, GREEN)
 	var lamp: Color = _color(colors, 3, LAMP)
 	var batch := MeshBatch.new()
-	var s: MeshLayer = batch.layer(solid_material())
 	var g: MeshLayer = batch.layer(glow_material())
 	var c := Vector3(0.0, -size.y * 0.5 + MARKER_HEIGHT, 0.0)
+	var near: float = MeshKit.near_fade(MARKER_NEAR_FADE)
+	# The soft glow, and its bright core in front of it.
+	var glow: float = MARKER_GLOW
+	g.rect(c + Vector3(-glow, -glow, 0.0), Vector3(glow * 2.0, 0.0, 0.0), Vector3(0.0, glow * 2.0, 0.0), green, 1.0,
+		MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE, near)
+	var core: float = MARKER_RADIUS * 0.6
+	g.rect(c + Vector3(-core, -core, 0.02), Vector3(core * 2.0, 0.0, 0.0), Vector3(0.0, core * 2.0, 0.0), green.lerp(lamp, 0.5),
+		2.0, MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE, near)
+	# The hexagon traced in light round it: six soft lines.
 	var r: float = MARKER_RADIUS
 	for k: int in 6:
 		var a0: float = TAU * (float(k) + 0.5) / 6.0
 		var a1: float = TAU * (float(k) + 1.5) / 6.0
-		s.box_xform(_bar(c + Vector3(cos(a0), sin(a0), 0.0) * r, c + Vector3(cos(a1), sin(a1), 0.0) * r, 0.05), green, 1.1)
-	# The small hexagon lit in it, standing up: the unit prism's axis along the track, its faces toward the runner.
-	var hr: float = r * 0.42
-	s.prism_xform(Transform3D(Basis(Vector3(hr, 0.0, 0.0), Vector3(0.0, 0.0, 0.04), Vector3(0.0, -hr, 0.0)),
-		c + Vector3(0.0, 0.0, -0.02)), 6, green.lerp(lamp, 0.4), 1.3)
-	g.rect(c + Vector3(-r * 2.0, -r * 2.0, 0.05), Vector3(r * 4.0, 0.0, 0.0), Vector3(0.0, r * 4.0, 0.0), green, 0.55,
-		MeshKit.SHAPE_RADIAL)
+		var p0: Vector3 = c + Vector3(cos(a0), sin(a0), 0.0) * r
+		var p1: Vector3 = c + Vector3(cos(a1), sin(a1), 0.0) * r
+		var along: Vector3 = p1 - p0
+		var across: Vector3 = Vector3(-along.y, along.x, 0.0).normalized() * MARKER_LINE
+		# Each line a little longer than its side, so the corners close.
+		var reach: Vector3 = along.normalized() * MARKER_LINE * 0.5
+		g.rect(p0 - reach - across * 0.5 + Vector3(0.0, 0.0, 0.01), along + reach * 2.0, across, green, 1.5,
+			MeshKit.SHAPE_FLAT, Vector2.ZERO, Vector2.ONE, near)
 	var mesh: ArrayMesh = batch.to_mesh()
 	_antennas[key] = mesh
 	return mesh

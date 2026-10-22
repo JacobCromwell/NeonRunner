@@ -460,6 +460,7 @@ static func check_gantryways(suite: TestSuite, layout: LevelLayout, config: Leve
 ## - never a landing straight into a hazard: each output pad's lane holds none of them from just before its front
 ##   (LANDING_BACK) to its landing's end, and no attack is timed on a runner there or lining up its pad
 ##   (LevelLayout.doodad_between counts its calm stretches);
+## - neither its pad stretch nor a landing reaches into a fenced ceiling's pick (task I4: it plays out alone);
 ## - and the generator's own re-check finds nothing (TeleporterRules.problems: every window lane by lane and in every lane,
 ##   the lanes beside an output pad, the ceilings' landing zones, the introductions, the spacing).
 static func check_teleporters(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
@@ -525,6 +526,19 @@ static func check_teleporters(suite: TestSuite, layout: LevelLayout, config: Lev
 			suite.check(found.is_empty(), "%s: its landing in lane %d holds nothing (%s)" % [at, o_lane, ", ".join(found)])
 			suite.check(layout.doodad_between(o_at + 0.01, o_at + landing - 0.01, o_lane),
 				"%s: no attack is timed on a runner landing in lane %d" % [at, o_lane])
+		# A fenced ceiling's pick (task I4: its hull's "pick", where the player reads which pad is the trap) plays out alone:
+		# neither its pad stretch nor a landing reaches into one.
+		var spans: Array[Vector2] = [stretch]
+		for o: Dictionary in outs:
+			spans.append(Vector2(float(o["at"]) - back, float(o["at"]) + landing))
+		for h: Dictionary in layout.hulls:
+			var pick: Variant = h.get("pick")
+			if not (pick is Array and (pick as Array).size() == 2):
+				continue
+			for s: Vector2 in spans:
+				suite.check(s.y <= float(pick[0]) + 0.05 or s.x >= float(pick[1]) - 0.05,
+					"%s: nothing of it (%.1f-%.1f m) in a fenced ceiling's pick (%.1f-%.1f m)" % [at, s.x, s.y, float(pick[0]),
+						float(pick[1])])
 	var problems: PackedStringArray = TeleporterRulesScript.problems(gen)
 	suite.check(problems.is_empty(), "the teleporters keep every placement rule %s %s" % [tag, problems])
 

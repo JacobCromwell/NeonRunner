@@ -454,7 +454,10 @@ the director's entries behind the landing never spawning); the flash (and Reduce
 of the campaign at 3, 5 and 6 lanes on real physics on a cut of its level at the level's speed, landed on each output pad
 (its light set each way) and run through, and passed in the lane beside it and by a switch out at its approach; every
 skin's looks (the pad flat in its square, the antenna on its far half within the lane, the output pad's marker over a
-runner's head, glowing only green or green-white), the warm-up, and every number on the F6 panel. About 2 minutes.
+runner's head, light only and fading out near the camera, glowing only green or green-white), the warm-up, and every number
+on the F6 panel; the builds where task Q4's review found a teleporter in a fenced ceiling's pick; a fence just behind an
+output pad, never crossed, not hitting the runner who arrives (no sweep back on the step of the jump); and the flash
+cleared by a restart right after a jump. About 2 minutes.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls
