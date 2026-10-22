@@ -39,7 +39,9 @@ extends RefCounted
 ##   pillar's lead to past its walkway and calm stretch, a teleporter's way around, pad stretch and landings, a wall-run
 ##   gap's clear stretch, a treasure stash's floor), so no freed dog attacks in a gantryway's step out or a teleporter's
 ##   approach or landing; and every other Octodog's run kept apart from it (one at a time, as octodog_rules.gd keeps
-##   them: a stop distance and DOG_GAP between them).
+##   them: a stop distance and DOG_GAP between them). What the fill pass keeps for the dog, from 2 s before its jar
+##   (LevelGenerator.enemy_keep_out), keeps off every wall-run gap's stretch (WallRunGapPlacement.keep_out), as a
+##   wall-run gap keeps every enemy's.
 ## - Between the run-up (and the feature's start) and the end-clear stretch.
 ## Every pass after the rules keeps off the dog's run as off any enemy's (its entry's keep-out reaches back past the jar:
 ## the fill pass, the danger density pass, the wider gaps, the cyborgs planted in charge paths, the zone doodads), so the
@@ -144,6 +146,11 @@ class Plan:
 	var step: float = 2.0
 	## Every Bad Dream's chase and kept extended wall run.
 	var chases: Array[Vector2] = []
+	## Every wall-run gap's stretch (WallRunGapPlacement.keep_out), which no enemy's keep-out may reach, and how far the
+	## dog's reaches back before its jar (LevelGenerator.FILL_ENEMY_LEAD_SECONDS at run speed: what the fill pass keeps
+	## for an enemy without a keep-out of its own, enemy_keep_out).
+	var wall_runs: Array[Vector2] = []
+	var fill_lead: float = 0.0
 	## What the layout holds now (refresh()): what the rules keep (every lane and lane by lane, all counted in every lane),
 	## every Octodog's run as far as it keeps a new one off (busy_of), every pad's zone and ceiling landing zone
 	## (CeilingZones), and the zone doodads' room.
@@ -173,8 +180,19 @@ static func plan_for(gen: LevelGenerator, t: OctodogTuning, pt: PowerupTuning) -
 	p.hi = p.last_ok - p.window - p.release
 	p.chases = HostRules.chase_stretches(gen)
 	p.chases.append_array(gen.extended_wall_run_reserve)
+	p.wall_runs = _wall_runs(gen.layout)
+	p.fill_lead = LevelGenerator.FILL_ENEMY_LEAD_SECONDS * gen.speed
 	refresh(p)
 	return p
+
+
+## Every wall-run gap's stretch in `lay` (WallRunGapPlacement.keep_out: its clear stretch and margins), which a wall-run
+## gap keeps every enemy's keep-out off (WallRunGapPlacement.problem).
+static func _wall_runs(lay: LevelLayout) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for w: Dictionary in lay.wall_run_gaps:
+		out.append(WallRunGapPlacement.keep_out(w))
+	return out
 
 
 ## Metres from a jar's front to its dog's planned first wind-up at `gen`'s level (OctodogTuning.release_distance, with
@@ -234,7 +252,8 @@ static func dog_at(plan: Plan, j: float, wanted: int, least: int = MIN_CHARGES) 
 	var shortest: float = a0 + (least - 1) * plan.cycle + plan.window
 	if shortest > plan.last_ok:
 		return _no("its dog's charges reach the end")
-	if _hits(plan.zones, from, shortest) or _hits(plan.chases, from, shortest + plan.stop) or _hits(plan.keeps, from, shortest):
+	if _hits(plan.zones, from, shortest) or _hits(plan.chases, from, shortest + plan.stop) or _hits(plan.keeps, from, shortest) \
+			or _hits(plan.wall_runs, j - plan.fill_lead, shortest):
 		return _no("a pad, a landing, a chase or what a rule keeps in its shortest run")
 	if _hits(plan.dogs, from - plan.gap, shortest + plan.stop + plan.gap):
 		return _no("another Octodog's run")
@@ -275,7 +294,7 @@ static func dog_at(plan: Plan, j: float, wanted: int, least: int = MIN_CHARGES) 
 			why_not = "a pad's zone or a ceiling landing in its run"
 		elif _hits(plan.chases, from, anchors[-1] + plan.window + plan.stop):
 			why_not = "a chase in its run"
-		elif _hits(plan.keeps, from, span.y):
+		elif _hits(plan.keeps, from, span.y) or _hits(plan.wall_runs, j - plan.fill_lead, span.y):
 			why_not = "what a rule keeps in its run"
 		elif _hits(plan.dogs, from - plan.gap, span.y + plan.stop + plan.gap):
 			why_not = "another Octodog's run"
@@ -302,6 +321,9 @@ static func _past_blocks(plan: Plan, j: float, least: int) -> float:
 	for s: Vector2 in plan.chases:
 		if s.x <= shortest + plan.stop and s.y >= from:
 			past = maxf(past, s.y + plan.before + 0.001)
+	for s: Vector2 in plan.wall_runs:
+		if s.x <= shortest and s.y >= j - plan.fill_lead:
+			past = maxf(past, s.y + plan.fill_lead + 0.001)
 	for s: Vector2 in plan.dogs:
 		if s.x <= shortest + plan.stop + plan.gap and s.y >= from - plan.gap:
 			past = maxf(past, s.y + plan.gap + plan.before + 0.001)
@@ -843,6 +865,8 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 	var chases: Array[Vector2] = HostRules.chase_stretches(gen)
 	chases.append_array(gen.extended_wall_run_reserve)
 	var zones: Array[Vector2] = _ceiling_zones(gen)
+	var wall_runs: Array[Vector2] = _wall_runs(lay)
+	var fill_lead: float = LevelGenerator.FILL_ENEMY_LEAD_SECONDS * gen.speed
 	for e: Dictionary in lay.enemies:
 		if LevelLayout.is_held(e) and lay.holder_of(e).is_empty():
 			out.append("a held %s at %.1f m has no doodad holding it" % [e.get("type", "?"), float(e["at"])])
@@ -905,6 +929,10 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 		for s: Vector2 in chases:
 			if s.x <= last + window + stop and s.y >= loose:
 				out.append("%s: its dog's run meets a Bad Dream's chase or a kept wall run (%.1f-%.1f m)" % [tag, s.x, s.y])
+		# What the fill pass keeps for its dog (from FILL_ENEMY_LEAD_SECONDS before the jar) off every wall-run gap.
+		for s: Vector2 in wall_runs:
+			if s.x <= run.y and s.y >= j - fill_lead:
+				out.append("%s: its dog's keep-out reaches a wall-run gap's stretch (%.1f-%.1f m)" % [tag, s.x, s.y])
 		# Its run never in what a rule keeps, in any lane (a falling gantryway's calm stretch and lane, a teleporter's way
 		# around, pad stretch and landings, a wall-run gap's clear stretch, a treasure stash's floor).
 		for k: Vector2 in keeps:
