@@ -804,7 +804,8 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 3 by level, DESIGN-
   that leaves the level with none (then one stands in a quiet stretch). Where the doodads leave a level short of its
   count (task L6: they stand in far more of its room than they did), the zone doodads in the way of the rest go
   (`_clear_doodads`: the face that fits with them out of the way, the fewest of them in its way; scenery, never a
-  feature, nor a treasure stash's walls; a row goes whole; DESIGN-TBD, item 974 in `docs/OPEN_QUESTIONS*.md`), before the
+  feature, nor a treasure stash's walls or a falling gantryway's pillar, `DashWallRules._fixed_doodad`; a row goes whole;
+  DESIGN-TBD, item 974 in `docs/OPEN_QUESTIONS*.md`), before the
   wall-run gaps give way (task J2). A level left with no wall at all even then makes room for one as an
   introduction does (`_make_room` over the whole level; never a planted cyborg or its charger, nor a Buzz Overdrive
   an Enforcer Truck counts among its baits; the spacing of every bait it can't take out stays), and where even that

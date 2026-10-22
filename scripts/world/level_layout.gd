@@ -160,8 +160,8 @@ var wall_hops: Array[Dictionary] = []
 ## the lane on its `side` like by any doodad; the dash smashes it, and the walkway falls on its lane over about a second,
 ## crushing every enemy under it and hitting a runner still under it as it lands (Gantryway). `calm` [from, to] is its
 ## calm stretch, from the pillar's front to the end of the step out of the lane, which nothing is timed onto
-## (doodad_between counts it in its lane). `seed` varies its look. Marked "fallen" once it fell on an attempt (the
-## attempt's own copy, as a smashed doodad is marked). The generator places them (scripts/enemies/gantryway_rules.gd,
+## (doodad_between counts it in its lane). `seed` varies its look. Marked "fallen" once it fell on an attempt and
+## "landed" once it lay flat (the attempt's own copy, as a smashed doodad is marked). The generator places them (scripts/enemies/gantryway_rules.gd,
 ## only where they're fair), the track builder builds each (TrackBuilder, Gantryway) and the skin dresses its walkway and
 ## its pillar (ZoneSkin.gantryway, ZoneSkin.gantry_pillar). Sorted by start.
 var gantryways: Array[Dictionary] = []

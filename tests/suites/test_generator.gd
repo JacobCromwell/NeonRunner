@@ -116,7 +116,7 @@ func _test_debris_maze(base: LevelConfig) -> void:
 	print("  debris maze blocks in quick play's level made like a Terminal one: %s" % [blocks])
 
 
-## Falling gantryways (task Q3; docs/ARCHITECTURE.md, The generator, Falling gantryways): quick play's level with the
+## Falling gantryways (task Q3; docs/ARCHITECTURE.md, Falling gantryways): quick play's level with the
 ## Ice Lab's enemies (cyborgs, window cyborgs, Octodogs, heli drones, fence generators), its speed pads and ramps, and the
 ## feature, at 3, 5 and 6 lanes over seeds and difficulties, at the reference run speed and the Ice Lab's, half of them
 ## introducing the feature from a start of its own: no warnings, the same seed the same level, every fairness check

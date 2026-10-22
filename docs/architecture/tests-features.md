@@ -407,7 +407,23 @@ nothing of a later zone's; and every build at 3, 5 and 6 lanes on the levels' ow
 configures them: no warnings, the campaign's fairness checks (LayoutChecks), the same level on a second build, no enemy
 but its own (no host among the cyborgs), no dash walls, floor cuts, maze or arch stumps, the usual obstacles (holes,
 fences, signs, ceilings and pads, doodads) and every listed feature but the sprinkled-in ceiling scenarios. About 30 s.
-Tasks Q3 to Q5 add their mechanics' checks here.
+Tasks Q3 to Q5 add their mechanics' checks here: the falling gantryways (Q3) in every level's data (Frost Foundry the
+only one with a `feature_starts` for them), and every build hanging its level's count, each re-checked by
+`LayoutChecks.check_gantryways`.
+`test_gantryways` checks the falling gantryways (task Q3; Falling gantryways): the layout data (no key without them,
+`copy` and `append_pieces` keeping each pillar its own, the calm stretch counted as a doodad in its lane); the generator
+over the Ice Lab's levels at 3, 5 and 6 lanes (Frost Foundry's introduction within `intro_window_seconds` of the start,
+both lanes beside it clear and a cyborg under it; every planted cyborg plain, standing, holding its fire through the calm
+stretch, where its walkway lands on it; none without the feature or with a count of 0); the track (each walkway at the
+ceilings' height, no collision, its hitbox off; its pillar a `gantry_pillar` DashBreakable with a small doodad's body);
+the damage rules (solid, the armor then the shield absorbing it, the dash passing through, god mode); on real physics at 3,
+5 and 6 lanes in every inner lane both ways: the pillar pushing a runner without the dash aside with the walkway staying
+up, a runner who dashes it and steps out either side living while it crushes the cyborg (a kill the score counts), one
+who stays (or jumps or slides) hit only once it drops, the armor, the shield and god mode, the wreck harmless; the warning
+(the creak, the shadow darkening, the red line pulsing or steady with Reduced flashing, the hitbox off through the hold,
+the crash); the crush (every enemy in its path, a heli drone low over the lane too, none beside, above or past its ends);
+every skin's looks inside their boxes, lit, never glowing, in the dissolving material, and drawn by the warm-up with
+nothing physical; and every number on the F6 panel.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls

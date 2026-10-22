@@ -261,7 +261,7 @@ func _surfaces(skin: IceLabSkin, level_path: String) -> void:
 	var layout: LevelLayout = level(level_path, 5, 0.6)
 	var lane_half_cm: int = roundi(tuning.lane_width * 50.0)
 	await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
-		if under_hazard(m) or _under(m, func(n: Node) -> bool: return n is Area3D) or material == skin.drift_material():
+		if under_hazard(m) or _set_piece(m) or material == skin.drift_material():
 			return
 		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 		var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
@@ -354,7 +354,7 @@ func _gaps(skin: IceLabSkin, level_path: String) -> void:
 		var bad: PackedStringArray = []
 		var count: Array[int] = [0]
 		await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
-			if under_hazard(m) or _under(m, func(n: Node) -> bool: return n is Area3D) or material == skin.drift_material():
+			if under_hazard(m) or _set_piece(m) or material == skin.drift_material():
 				return
 			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 			var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
@@ -573,7 +573,8 @@ func _hall_census(batch: MeshBatch, skin: IceLabSkin) -> Dictionary:
 	return out
 
 
-## Between the floor and the ceiling, over the lanes, the skin builds nothing solid but hazards and triggers, anywhere in a whole level; nothing sticks out of
+## Between the floor and the ceiling, over the lanes, the skin builds nothing solid but hazards, triggers and the play's set pieces (_set_piece: doodads,
+## falling gantryways), anywhere in a whole level; nothing sticks out of
 ## the walls through the wall-run band by more than 5 cm (`wall - 0.05`, as the Corporate, Golden and Beach suites check it) and nothing on the walls or the
 ## lane side of them glows there but the orange edges.
 func _clear_play_space(skin: IceLabSkin, level_path: String) -> void:
@@ -587,7 +588,7 @@ func _clear_play_space(skin: IceLabSkin, level_path: String) -> void:
 		var lit: PackedStringArray = []
 		var band: float = minf(skin.calm_top, tuning.ceiling_height - 0.1)
 		await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
-			if _under(m, func(n: Node) -> bool: return n is Area3D) or material == skin.drift_material():
+			if _set_piece(m) or material == skin.drift_material():
 				return
 			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 			var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
@@ -747,3 +748,11 @@ func _under(node: Node, test: Callable) -> bool:
 			return true
 		parent = parent.get_parent()
 	return false
+
+
+## Part of the play rather than the hall's scenery, so the whole-level checks leave it to its own suite: under an area (a
+## hazard, a trigger, a doodad's or a pillar's body), or a falling gantryway's (task Q3: its walkway hangs over a lane at a
+## ceiling's height, its wreck lies flat in the lane once it has fallen, built hidden; its shadow and its red warning line
+## are drawn on the lane; test_gantryways checks every skin's gantryway looks: lit, never glowing, inside their boxes).
+func _set_piece(node: Node) -> bool:
+	return _under(node, func(n: Node) -> bool: return n is Area3D or n is Gantryway)

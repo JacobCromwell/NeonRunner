@@ -354,3 +354,11 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   Scores nothing (DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 653). The layout counts a wall as a doodad in every lane
   (`LevelLayout.doodad_between`, and `dash_wall_between`), broken or not, so every enemy that holds an attack
   by a doodad holds it by a wall the same on every attempt.
+- **Falling gantryways: a hit the armor and the shield block** (GDD §5, Zone 9, owner, October 21, 2026: "a runner under
+  it when it lands is hit: armor and the shield block it, as they block any hit"; task Q3). Its pillar is a doodad to the
+  rules (pushes, blocks, smashes with the dash; `gantry_pillar_smash`). Its walkway's hitbox is a Hazard that declares
+  `is_solid`, `armor_blocks_solid` and `passes_after_block` (one blocked hit pays for the whole walkway, as for a sign):
+  OFF while it stands, WARNING through the hold after its pillar goes, live only while it drops and lands (swept over
+  what the walkway went through each tick). Armor that is up absorbs it, then the shield, else it kills ("falling
+  gantryway"); god mode and the window ignore it, the dash passes it. Enemies in its path die by `Enemy.defeat(&"gantryway")` (RunWorld), the usual kill path, which the score
+  counts. The whole of it: Falling gantryways (`docs/architecture/gantryways.md`).

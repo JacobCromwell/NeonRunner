@@ -188,8 +188,8 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 @export_group("Gantryways")
 ## The colours of the default falling gantryway look (gantryway(), gantry_pillar(), gantryway_wreck(), task Q3;
 ## GantrywayKit), sRGB: its steel, its steel's lighter edges, frost, snow and ice. Lit, never glowing. Empty: the kit's
-## frosted steel (GantrywayKit.STEEL ...), the Ice Lab's own look; a zone may set its own, or draw its own look by
-## overriding the three.
+## frosted steel (GantrywayKit.STEEL ...); a zone may set its own, return its own from gantryway_colors() (the Ice Lab
+## does), or draw its own look by overriding the three.
 @export var gantryway_palette: PackedColorArray = PackedColorArray()
 
 @export_group("Wall-run gaps")
@@ -1194,9 +1194,9 @@ static func _dash_wall_crack(s: MeshLayer, from: Vector2, angle: float, segments
 ## - drawn with materials that dissolve near the camera (gantryway_material()): the chase camera passes under it as it
 ##   falls, and through its pillar's column when the runner is in the lane beside it;
 ## - everything under `body`; cheap: one mesh from cached templates, drawn on the Compatibility renderer.
-## The default is a frosted steel catwalk (GantrywayKit.walkway_mesh) in gantryway_palette.
+## The default is a frosted steel catwalk (GantrywayKit.walkway_mesh) in gantryway_colors().
 func gantryway(body: Node3D, size: Vector3, look_seed: int) -> void:
-	GantrywayKit.dress(body, GantrywayKit.walkway_mesh(size, look_seed, gantryway_palette), gantryway_material())
+	GantrywayKit.dress(body, GantrywayKit.walkway_mesh(size, look_seed, gantryway_colors()), gantryway_material())
 
 
 ## A falling gantryway's pillar (task Q3; GDD §5: "pillars stand in the floor lanes holding them up. Dashing through a
@@ -1207,7 +1207,7 @@ func gantryway(body: Node3D, size: Vector3, look_seed: int) -> void:
 ## everything under `body` (the dash's break hides it whole); its colours tagged for the pieces it breaks into
 ## (gantry_pillar_debris_colors). The default is an icy steel column (GantrywayKit.pillar_mesh).
 func gantry_pillar(body: Node3D, size: Vector3, floor_y: float, side: int, look_seed: int) -> void:
-	var look: MeshInstance3D = GantrywayKit.dress(body, GantrywayKit.pillar_mesh(size, side, look_seed, gantryway_palette),
+	var look: MeshInstance3D = GantrywayKit.dress(body, GantrywayKit.pillar_mesh(size, side, look_seed, gantryway_colors()),
 		gantryway_material())
 	look.position = Vector3(0.0, floor_y + size.y * 0.5, 0.0)
 
@@ -1217,11 +1217,19 @@ func gantry_pillar(body: Node3D, size: Vector3, floor_y: float, side: int, look_
 ## Low and flat: the runner runs through it (it has no collision), so nothing stands above its box. As gantryway()'s
 ## looks otherwise. The default is the catwalk crushed flat (GantrywayKit.wreck_mesh).
 func gantryway_wreck(body: Node3D, size: Vector3, look_seed: int) -> void:
-	GantrywayKit.dress(body, GantrywayKit.wreck_mesh(size, look_seed, gantryway_palette), gantryway_material())
+	GantrywayKit.dress(body, GantrywayKit.wreck_mesh(size, look_seed, gantryway_colors()), gantryway_material())
+
+
+## The colours the default gantryway looks are built in (GantrywayKit: steel, its lighter edges, frost, snow and ice; sRGB,
+## lit): gantryway_palette, or the kit's own where it's empty. A zone may return its own (the Ice Lab's: its catwalks' steel
+## and its ice and snow).
+func gantryway_colors() -> PackedColorArray:
+	return gantryway_palette
 
 
 ## The material the default gantryway looks draw with (GantrywayKit.material(): the kit's lit look, dissolving near
-## the camera). A zone drawing its own looks draws them in materials that do the same.
+## the camera). A zone may give it its own sky sheen (GantrywayKit.material's params); a zone drawing its own looks draws
+## them in materials that dissolve the same way.
 func gantryway_material() -> Material:
 	return GantrywayKit.material()
 
@@ -1240,9 +1248,9 @@ func gantryway_debris_colors(body: Node3D, _look_seed: int) -> PackedColorArray:
 
 
 ## The snow and ice that shake loose from a gantryway as it shudders, and fly as it lands (Gantryway): lit, never
-## glowing. The default: snow, frost and ice in gantryway_palette (GantrywayKit.snow_colors).
+## glowing. The default: snow, frost and ice in gantryway_colors() (GantrywayKit.snow_colors).
 func gantryway_snow_colors() -> PackedColorArray:
-	return GantrywayKit.snow_colors(gantryway_palette)
+	return GantrywayKit.snow_colors(gantryway_colors())
 
 
 ## The main lit colours tagged on the meshes under `body` (tag_debris_colors), or `fallback` where none is.

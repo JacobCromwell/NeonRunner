@@ -54,9 +54,12 @@ static var _pillars: Dictionary = {}
 static var _wrecks: Dictionary = {}
 
 
-## The material every default look draws with: the kit's lit surfaces, dissolving near the camera (gantryway.gdshader).
-static func material() -> ShaderMaterial:
-	return MeshKit.material("gantryway.gdshader", {"near_fade_begin": NEAR_FADE.x, "near_fade_end": NEAR_FADE.y})
+## The material every default look draws with: the kit's lit surfaces, dissolving near the camera (gantryway.gdshader), with
+## `params` for its other uniforms (a zone's sky sheen: `sheen_color` as an sRGB Vector3, `sheen_strength`). Cached by them.
+static func material(params: Dictionary = {}) -> ShaderMaterial:
+	var all: Dictionary = {"near_fade_begin": NEAR_FADE.x, "near_fade_end": NEAR_FADE.y}
+	all.merge(params, true)
+	return MeshKit.material("gantryway.gdshader", all)
 
 
 ## `body` dressed with `mesh` drawn in `mat` (one shadowless instance, "Look").

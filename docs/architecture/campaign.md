@@ -156,12 +156,15 @@ zone's after the Marketplace its skin shows no wall-run gap guide, `show_wall_ru
 levels play the Corporate zone's song (`data/audio/music_library.tres`, DESIGN-TBD). **The per-level lean** (GDD §5: level 1
 snow and industry, level 3 the lab) is the existing hook, `LevelConfig.skin_path`: a level's own skin wins over its zone's
 (`Campaign.configure`, as Checkpoint Plaza's and the Golden Palace's do), and must be a variant of the zone's skin (the same
-script, or a subclass: `test_campaign`, `_test_skins`). **What comes later goes in as features:** the falling gantryways
-(task Q3, all three levels), the teleporters (task Q4, levels 2 and 3, blinking antennas in level 3), the Octodog jars
-(task Q5) and the zone's two new enemies each add their feature to the levels' `features` (with a `feature_starts` entry
-where a level introduces it) and their rules or patterns, like every feature before them; until then the Ice Lab brings
-nothing new and introduces no enemy (`test_campaign`'s `NOTHING_NEW` and `NO_NEW_ENEMY` list it, for those tasks to take
-out). A save from before the Ice Lab keeps the Golden Zone open (Economy and saving, Saves from before the Ice Lab); the
+script, or a subclass: `test_campaign`, `_test_skins`). **Its mechanics go in as features.** The falling gantryways are in
+(task Q3, Falling gantryways): `gantryway` in all three levels' `features`, Frost Foundry introducing them from 0.15 of the
+level (`feature_starts`), `LevelConfig.gantryways` a level's count (3, DESIGN-TBD); `test_campaign` lists them (FIRST_LEVEL
+Frost Foundry, the Ice Lab's NEW_MECHANICS, so Frost Foundry is out of NOTHING_NEW) and keeps them out of the Golden Zone
+(LEFT_OUT, DESIGN-TBD, `docs/questions/q3.md`: the zone's own mechanic, as the Terminal's maze is the Terminal's). The
+teleporters (task Q4, levels 2 and 3, blinking antennas in level 3), the Octodog jars (task Q5) and the zone's two new
+enemies each add their feature the same way (with a `feature_starts` entry where a level introduces it) and their rules or
+patterns; until then Relay Station and Specimen Vault bring nothing new and the zone introduces no enemy (`NOTHING_NEW`
+and `NO_NEW_ENEMY` list them, for those tasks to take out). A save from before the Ice Lab keeps the Golden Zone open (Economy and saving, Saves from before the Ice Lab); the
 weekly challenge's rotation has it (its week on Specimen Vault's rules). `test_campaign` checks the Ice Lab's steps,
 numbers, schedule and saves, and `test_ice_lab_levels` its data and its levels at 3, 5 and 6 lanes (only its own enemies,
 no dash walls or maze, wall running, the usual obstacles, every feature). DESIGN-TBD (`docs/questions/q1.md`): the

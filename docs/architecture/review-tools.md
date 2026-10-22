@@ -34,7 +34,13 @@ any zone's look at its speed, `--take=smash` (the dash), `crash` (the armor, the
 them, the right wall lit then the left, in any zone's look at its speed, `--take=cross` (onto the lit wall midway
 along the lit stretch), `grapple` (the grapple's save onto the wall), `fall` or `look` (a still at the lit wall),
 `--guide=on|off` (the lit wall whatever the skin says; only the Marketplace's skin lights it, task L5), `--lanes=N`, `--close`, `--god`; `tools/measure/wall_run_gaps.gd` counts them per campaign build and zone, lists
-their constraints and dumps a level's as text with `--dump=<step id>`), side wall gaps (`wall_gap_review`, task L4:
+their constraints and dumps a level's as text with `--dump=<step id>`), falling gantryways (`gantryway_review`, task Q3:
+one over an inner lane with the cyborg the generator plants under it, in any zone's look (the Ice Lab's by default) at
+its speed, `--take=drop` (dash the pillar and step out while it lands on the cyborg), `stay` (stay under it: the armor
+takes the hit, `--bare` none), `push` (no dash: the pillar pushes the runner aside) or `look` (a still of it standing),
+`--lanes=N`, `--lane=L`, `--side=-1|1`, `--close`, `--beside` (a camera beside the track), `--hitboxes`,
+`--reduced-flashing`, `--god`; `tools/measure/gantryways.gd` lists where each campaign build hangs them and what they
+cost a build), side wall gaps (`wall_gap_review`, task L4:
 an open street in any zone's look with side wall gaps as the generator places them (a left, a right and a both-walls
 one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
 the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across
