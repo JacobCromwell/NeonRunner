@@ -180,10 +180,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       pads, the zone doodads (they push, as everywhere but the Terminal) and wall running, and no dash walls. It
       wears the Ice Lab's look (task Q2: a snow-and-industry lean, level 3 the laboratory, level 2 between), and plays the
       Corporate zone's song. Octodog jars (task Q5, all three levels): among the specimen jars, some hold a curled-up
-      Octodog, and dashing one may let its dog out. It bursts out with the glass, tumbles ahead, runs on to its usual
-      distance and attacks like any Octodog, each lunge after its wind-up (sidestep or jump it, or dash it to kill it).
-      One jar a level holds one that comes out (placeholder count, usually early on, before the heli drone's pads start);
-      the others look the same and hold nothing. Its two new enemies are still to come.
+      Octodog, and dashing one may let its dog out. The jar breaks as any doodad, and the dog bursts out, tumbles ahead,
+      runs on to its usual distance and attacks like any Octodog, at least two lunges, each after its wind-up (sidestep or
+      jump it, or dash it to kill it). One jar a level holds one that comes out (placeholder count, usually early on,
+      before the heli drone's pads start, and none in a build where its attack has no room); two or three more hold one
+      that never does, and the rest hold nothing, all looking the same. Its two new enemies are still to come.
   21. Ice Lab 2 *Relay Station*: the same set, the falling gantryways too, and the teleporters (task Q4). A square pad
       in a lane, with a green antenna on it: run onto it and you're sent straight to its output pad further down the
       track (the same pad, without the antenna, a green marker floating over it), keeping your speed, with a flash and
@@ -708,11 +709,12 @@ introductions), what the generator's own re-check finds (nothing), and what they
 res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--why]`).
 
 `tools/measure/octodog_jars.gd` builds every campaign level with Octodog jars (the Ice Lab's) on its own seed and others
-at 3, 5 and 6 lanes: where each jar holding an Octodog stands (its front as a share of the level, its lane, the charges
-planned for its dog), how much the rules took out to make room, how many of the level's other doodads are the skin's
-empty Octodog jars, what the generator's own re-check finds (nothing), and what they cost a build (`godot --headless -s
-res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1] [--lanes=3,5,6] [--seeds=N] [--seed-base=8800] [--why]
-[--without]`).
+at 3, 5 and 6 lanes: where each jar that releases an Octodog stands (its front as a share of the level, its lane, the
+charges planned for its dog), how much the rules took out to make room, how many decoys stand and how many of the
+level's other doodads are the skin's empty Octodog jars, what the generator's own re-check finds (nothing), and what
+they cost a build (`godot --headless -s res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1] [--lanes=3,5,6]
+[--seeds=N] [--seed-base=8800] [--why] [--without] [--start=S] [--max-taken=N] [--max-intro-taken=N]
+[--max-ceilings=N]`; the last three try other caps on what a jar takes out).
 
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, at the City's
 speed (21 m/s) in metres and in seconds: the latest lane switch onto the ramp that still stomps, the stretch of jump

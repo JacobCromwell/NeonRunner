@@ -12,7 +12,8 @@ extends TestSuite
 ##   jars that release their dog (LevelConfig.octodog_jars; an occasional feature: at five lanes every level has its own,
 ##   and two in three builds at the least), each holding a dog of its own making MIN_CHARGES (two) charges at least, its
 ##   first wind-up from release_distance past the jar to jar_pace_seconds later, the rules' re-check clean, no warning;
-##   decoys (LevelConfig.octodog_jar_decoys), small doodads holding no dog; in Frost Foundry, which introduces them, no jar
+##   decoys (LevelConfig.octodog_jar_decoys, all of them at five and six lanes), small doodads holding no dog that comes
+##   out; in Frost Foundry, which introduces them, no jar
 ##   before the feature's start; built again it's the same; a level without the feature, or with no jars and no decoys,
 ##   stands none and is built as without it, and decoys alone change only the doodads they dress. (Every build's fairness:
 ##   test_ice_lab_levels and test_campaign through LayoutChecks.check_octodog_jars and check_doodads.)

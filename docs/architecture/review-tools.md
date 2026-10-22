@@ -52,8 +52,8 @@ at its speed, through the game's camera, `--take=release` (dash it: the dog brea
 runner sidestepping each wind-up), `stay` (dash it and stay in line: the armor takes the lunge, `--bare` none), `pass` (no
 dash: pushed aside, nothing comes out) or `look` (a still beside it), `--lanes=N`, `--lane=L`, `--side=-1|1`,
 `--charges=N`, `--close`, `--beside`, `--hitboxes`, `--god`; the dog's phases print with their times;
-`tools/measure/octodog_jars.gd` lists where each campaign build stands them, what they took out and what they cost a
-build), side wall gaps (`wall_gap_review`, task L4:
+`tools/measure/octodog_jars.gd` lists where each campaign build stands them, what they took out, its decoys and what
+they cost a build, `--max-taken`, `--max-intro-taken` and `--max-ceilings` trying other caps on what a jar takes out), side wall gaps (`wall_gap_review`, task L4:
 an open street in any zone's look with side wall gaps as the generator places them (a left, a right and a both-walls
 one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
 the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across
