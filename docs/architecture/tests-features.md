@@ -458,6 +458,23 @@ runner's head, light only and fading out near the camera, glowing only green or 
 on the F6 panel; the builds where task Q4's review found a teleporter in a fenced ceiling's pick; a fence just behind an
 output pad, never crossed, not hitting the runner who arrives (no sweep back on the step of the jump); and the flash
 cleared by a restart right after a jump. About 2 minutes.
+`test_octodog_jars` checks the Octodog jars that break open (task Q5; Octodog jars): the layout's marks (a jar and its dog
+finding each other, `copy` and `to_dict` keeping them, a held dog none of the level's standing Octodogs, a decoy holding
+no dog and never one of the feature's jars); the generator over the Ice Lab's levels at 3, 5 and 6 lanes (up to the count
+of jars that release their dog, one in every level at 5 lanes and in two builds of three at the least, each dog's own
+plan from the release, two charges at least, its first wind-up from release_distance past the jar to jar_pace_seconds
+later, the re-check clean, no warning; the decoys, all of them at 5 lanes on the levels' own seeds; Frost Foundry's jars never before the
+feature's start; the same jars and decoys on a fresh build; none without the feature or with no jars and no decoys, which
+builds as without it, and decoys alone changing only the doodads they dress); the skin (the Ice Lab dresses a jar holding
+a dog as its Octodog jar, the look of the empty ones; other skins as any doodad); and on real physics at 3, 5 and 6 lanes,
+middle and outermost lanes, and once at Specimen Vault's own speed and enemy scaling: the held dog out of play and the
+track's jar in the Octodog jar's look; a dashed jar letting its dog out (the release sound, harmless while it tumbles and
+runs ahead), which makes its planned charges no sooner than planned, each lunge after its wind-up's growl and telegraph, a
+runner who sidesteps each living, one who stays in line hit, one who dashes its lunge killing it (an Octodog kill); a
+runner pushed aside by an unbroken jar never meeting its dog, which leaves play; a wall runner breaking a jar by their
+wall letting its dog out too; a decoy dressed and broken exactly as a jar that releases (the same meshes, colours,
+crunch and pieces) letting nothing out, as a plain doodad in the jar's look; a freed dog waiting for a standing dog's
+charges to end; every jar number on the F6 panel. About 20 seconds.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls

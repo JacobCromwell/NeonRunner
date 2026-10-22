@@ -210,6 +210,7 @@ volume_db = {
 "mumble_vendor": -6.5,
 "mumble_vendor_point": -6.0,
 "octodog_lunge": -5.0,
+"octodog_release": -6.0,
 "octodog_tackle": -3.0,
 "octodog_windup": -1.5,
 "pad": -4.0,

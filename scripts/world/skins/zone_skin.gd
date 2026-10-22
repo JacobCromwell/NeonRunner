@@ -929,6 +929,18 @@ func doodad(body: Node3D, size: Vector3, _size_class: StringName, side: int, _lo
 	body.add_child(inst)
 
 
+## The look seed a zone doodad of `size_class` that holds an enemy of type `held` until it's smashed is dressed with
+## (task Q5; LevelLayout.HOLDS: GDD §5, Zone 9, the owner, October 21, 2026, "some jars hold a curled-up Octodog"), from
+## its own `look_seed`: one of the zone's looks that shows such a container with that enemy inside, the very look the
+## zone's other doodads of it have (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that
+## won't"). TrackBuilder asks it before doodad() and doodad_debris_colors(), which then dress the doodad with the seed it
+## returns. The default keeps `look_seed`: in a zone with no such look the doodad looks as any other of its size (the
+## Ice Lab overrides it: its Octodog jar, IceLabDoodads.OCTODOG_JAR). Pure: the same seed for the same arguments
+## wherever and whenever it's asked.
+func held_doodad_look(_size_class: StringName, _held: StringName, look_seed: int) -> int:
+	return look_seed
+
+
 ## The colours a zone doodad's pieces fly off in when the dash smashes it (GDD §3, owner, October 8,
 ## 2026; task H5; RunEffects.rubble), for `body` as doodad() dressed it (TrackBuilder asks right after).
 ## By default its look's own: the main lit colours its meshes were built from, which the look's builder

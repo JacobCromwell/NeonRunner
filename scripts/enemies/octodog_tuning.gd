@@ -81,6 +81,30 @@ extends EnemyTuning
 ## over the player's whole profile, come with a doghouse (FB 79: 3).
 @export_range(0, 10) var doghouse_appearances: int = 3
 
+@export_group("Jars")
+## Task Q5 (GDD §5, Zone 9, the owner, October 21, 2026: "sometimes smashing an Octodog jar doodad releases its Octodog
+## into the world"; proposed: "the freed Octodog tumbles out, runs ahead to its usual distance and starts its usual
+## attack from the first wind-up, with its cue"). DESIGN-TBD (docs/questions/q5.md 4, 5 and 14): every number here.
+## Seconds the freed dog tumbles out of its smashed jar, flung on ahead of the runner and rolling over once, harmless
+## (no hitbox: nothing it does before its first wind-up can hurt), before it lands running (its sprint, as after a lunge).
+@export_range(0.1, 1.5, 0.05, "suffix:s") var jar_tumble_time: float = 0.45
+## How much faster than the runner it's flung on while it tumbles (at the reference speed, stretched by the pace).
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var jar_tumble_speed: float = 7.0
+## The height of its tumble's arc (visual only).
+@export_range(0.0, 2.0, 0.05, "suffix:m") var jar_tumble_height: float = 0.7
+## The generator's margin, in seconds of run, for the freed dog to get into position after its sprint (crossing a lane
+## to line up, settling at its distance) on top of the tumble and the sprint (release_distance): its first wind-up is
+## planned that far on, and a dog in position sooner paces there until the runner reaches it.
+@export_range(0.0, 3.0, 0.05, "suffix:s") var jar_settle_seconds: float = 0.5
+## The most seconds of run a freed dog may pace at its usual distance before its first wind-up, past the moment it's in
+## position (release_distance), as a standing dog paces until its planned moment: the generator may plan its charges that
+## much later, where they have room further on (octodog_jar_rules.gd).
+@export_range(0.0, 10.0, 0.25, "suffix:s") var jar_pace_seconds: float = 4.0
+## Seconds of run past the feature's start within which the level that introduces the jars (Frost Foundry, the one that
+## gives `octodog_jar` a start) stands its first one, where it has room there (octodog_jar_rules.gd): test_campaign's
+## introduction reach, as the gantryways' and the teleporters' intro_window_seconds.
+@export_range(2.0, 40.0, 0.5, "suffix:s") var jar_intro_window_seconds: float = 11.5
+
 
 func windup_time(t: float) -> float:
 	return scaled(windup_time_early, windup_time_late, t)
@@ -123,6 +147,16 @@ func window_length(speed: float, t: float, pace: float = 1.0) -> float:
 ## Seconds a lunge lasts, from its start until it's lunge_overshoot behind the player.
 func lunge_duration(speed: float, t: float, pace: float = 1.0) -> float:
 	return (lunge_start_distance + lunge_overshoot) * pace / maxf(speed + lunge_speed(t) * pace, 1.0)
+
+
+## Metres the runner runs from smashing a jar (task Q5) until the dog it held is in position for its first wind-up, at
+## `speed` in a level at `pace`, plus `dash_metres` (how much further the dash that smashed it carries them meanwhile,
+## at most): its tumble, its sprint to its usual distance ahead (stop_distance, less what the tumble gained on the
+## runner) and jar_settle_seconds. Its first wind-up is planned there (octodog_jar_rules.gd).
+func release_distance(speed: float, t: float, pace: float = 1.0, dash_metres: float = 0.0) -> float:
+	var gained: float = jar_tumble_time * jar_tumble_speed * pace
+	var sprint: float = maxf(stop_distance(speed, t, pace) - gained, 0.0) / maxf(sprint_speed_over_player * pace, 0.1)
+	return (jar_tumble_time + sprint + jar_settle_seconds) * speed + dash_metres
 
 
 ## Metres the player runs from one wind-up's start to the earliest possible next one.

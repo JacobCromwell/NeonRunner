@@ -351,6 +351,18 @@ func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look
 	doodads().build(body, size, size_class, side, look_seed)
 
 
+## A doodad holding an Octodog until it's smashed (task Q5; LevelLayout.HOLDS; GDD §5, Zone 9: "some jars hold a
+## curled-up Octodog") wears the Octodog jar (IceLabDoodads.OCTODOG_JAR): the first look seed from its own that picks it at
+## this level's lean (IceLabDoodads.look_seed_for), so it looks exactly as the zone's other Octodog jars, which hold
+## nothing (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't"). Any other enemy,
+## or a size class without the jar, keeps its own look.
+func held_doodad_look(size_class: StringName, held: StringName, look_seed: int) -> int:
+	if held != &"octodog":
+		return look_seed
+	var s: int = doodads().look_seed_for(size_class, IceLabDoodads.OCTODOG_JAR, look_seed)
+	return s if s >= 0 else look_seed
+
+
 # --- Falling gantryways (task Q3) --------------------------------------------------------------------
 
 ## A falling gantryway's colours (ZoneSkin.gantryway, gantry_pillar, gantryway_wreck; GDD §5, Zone 9: "an upper walkway over one

@@ -155,7 +155,11 @@ enemy takes part like this, opting in for whichever of its attacks count as big:
   Resonator leaves, the Bad Dream dissolves. One that leaves play loses its place at once.
 - **An attack that may only come within a window** (the Octodog's planned charges) moves the window
   on while `held_for_turn(self)` says it's waiting for another type, up to a limit of its own
-  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. Once held it
+  (`OctodogTuning.turn_wait_max`), and keeps every fairness rule it was planned with. The Octodog also
+  waits so for another Octodog (`Octodog._another_dog_charging`: while another dog's charges are on, its
+  own first wind-up is held as for another type's turn, whether or not big attacks take turns, as drones fire one
+  barrage at a time; task Q5, a dog let out of an Octodog jar can come out late; DESIGN-TBD,
+  `docs/questions/q5.md` 8). Once held it
   keeps asking every frame until its turn comes, whether or not its stretch is clear by then, and if
   the wait made it miss its planned stretch, the window keeps moving on until the stretch ahead is
   clear again (within the same limit), so waiting for its turn never costs it its charges. After

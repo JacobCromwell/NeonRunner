@@ -90,6 +90,9 @@ const FIRST_LEVEL: Dictionary = {
 	# Task Q4 (GDD §5, Zone 9, owner, October 21, 2026: "introduced in level 2, with blinking antennas added in level 3"):
 	# the teleporters, from Relay Station, and their blinking antennas, from Specimen Vault.
 	"teleporter": "ice_lab/2", "teleporter_blinking": "ice_lab/3",
+	# Task Q5 (GDD §5, Zone 9, owner, October 21, 2026; its level schedule lists them for Frost Foundry): the Octodog jars
+	# that break open, from Frost Foundry.
+	"octodog_jar": "ice_lab/1",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
@@ -124,6 +127,9 @@ const LEFT_OUT: Dictionary = {
 	# anything introduced keeps appearing, so whether the Golden Zone stands them too is the owner's call).
 	"teleporter": ["golden/1", "golden/2", "golden/3"],
 	"teleporter_blinking": ["golden/1", "golden/2", "golden/3"],
+	# Task Q5: the Octodog jars stay in the Ice Lab, its own doodads; the Golden Zone has no Octodogs to hold anyway
+	# (DESIGN-TBD, docs/questions/q5.md 12).
+	"octodog_jar": ["golden/1", "golden/2", "golden/3"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
@@ -137,7 +143,7 @@ const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "
 ## volleyball match, beach/2, places no features at all: the schedule leaves it out. The Casino's two, "the
 ## Marketplace's enemies and mechanics in a new setting" (owner, October 8, 2026), bring the ceiling scenarios since
 ## task I4. The Ice Lab's three bring its mechanics, NEW_MECHANICS: Frost Foundry the falling gantryways, task Q3, Relay
-## Station the teleporters and Specimen Vault their blinking antennas, task Q4.)
+## Station the teleporters and Specimen Vault their blinking antennas, task Q4, and the three the Octodog jars, task Q5.)
 const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "terminal/2", "golden/3"]
 ## Zones that introduce no new enemy, the exceptions to GDD §5's rule, and why: the Casino ("every zone introduces
 ## at least one new enemy, except the Casino, which reuses the Marketplace's", owner, October 8, 2026) and the Beach,
@@ -152,10 +158,10 @@ const NO_NEW_ENEMY: Dictionary = {
 ## The mechanics a zone of NO_NEW_ENEMY introduces all the same: the Casino's ceiling scenarios (task I4; GDD §3,
 ## "Ceiling scenarios": never in zones 1-2, sprinkled into later zones; DESIGN-TBD where they start,
 ## items 836–845 (docs/OPEN_QUESTIONS*.md)), and the Ice Lab's falling gantryways (task Q3) and teleporters with their
-## blinking antennas (task Q4; GDD §5, Zone 9).
+## blinking antennas (task Q4; GDD §5, Zone 9) and its Octodog jars (task Q5).
 const NEW_MECHANICS: Dictionary = {
 	"casino": ["treasure_stash", "fenced_ceiling"],
-	"ice_lab": ["gantryway", "teleporter", "teleporter_blinking"],
+	"ice_lab": ["gantryway", "teleporter", "teleporter_blinking", "octodog_jar"],
 }
 ## The seed sweep: the levels with the most features (the Beach's remix has as many as Corporate 2), The
 ## Hush (paced in bursts) and the Terminal's (task O1: its own patterns, arches and walls without wall running), on

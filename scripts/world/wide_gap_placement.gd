@@ -366,9 +366,12 @@ static func fits(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: Dict
 	return blocker(gen, t, span, row, keeps) == ""
 
 
-## What keeps a wider gap over `span` from fitting (fits): the level's ends, the first of `keeps` in its way, or
-## another hole; "" if it fits. Something that only touches the zone's end (a pass that kept exactly its margin)
-## isn't in its way.
+## What keeps a wider gap over `span` from fitting (fits): the level's ends, the first of `keeps` in its way, a doodad
+## or a stretch that counts as one (LevelLayout.doodad_between: a rule's doodad and its push's lead, a falling
+## gantryway's or a teleporter's calm stretch, a dash wall) at its take-off or landing, as LayoutChecks.check_wide_gaps
+## asks and the zone doodads keep (task Q5: a jar holding an Octodog moved a wider gap to just before a teleporter's calm
+## stretch, which the keeps only kept off the zone), or another hole; "" if it fits. Something that only touches the
+## zone's end (a pass that kept exactly its margin) isn't in its way.
 static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: Dictionary, keeps: Array[Dictionary]) -> String:
 	var zone: Vector2 = zone_of(gen, t, span)
 	if zone.x < gen.config.start_clear_distance or zone.y > gen.layout.length - gen.config.end_clear_distance:
@@ -383,6 +386,8 @@ static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: D
 		if lane >= 0 and not lanes.is_empty() and not lanes.has(lane):
 			continue
 		return String(k["what"])
+	if gen.layout.doodad_between(zone.x + EPSILON, zone.y + LevelGenerator.doodad_lead_for(gen.tuning) - EPSILON):
+		return "a doodad or a calm stretch"
 	for g: Dictionary in gen.layout.gaps:
 		if not row.is_empty() and float(g["start"]) == float(row["start"]) and float(g["end"]) == float(row["end"]):
 			continue
