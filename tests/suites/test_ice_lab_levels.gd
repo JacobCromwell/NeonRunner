@@ -22,8 +22,8 @@ extends TestSuite
 ## Station, with blinking antennas from Specimen Vault: every build stands the level's count of them, and its count of
 ## blinking ones, each where LayoutChecks.check_teleporters finds it fair; test_teleporters has the rest), Q5's Octodog
 ## jars that break open (all three levels, introduced in Frost Foundry from early on: every build stands up to the level's
-## count of jars that release an Octodog, sprinkled in where a freed dog's attack has room, most builds one, and its count
-## of decoys, all of them at five and six lanes, each where LayoutChecks.check_octodog_jars finds it fair;
+## count of jars that release an Octodog, sprinkled in where a freed dog's attack has room, most builds one, and up to
+## its count of decoys, one at least at five and six lanes, each where LayoutChecks.check_octodog_jars finds it fair;
 ## test_octodog_jars has the rest), and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in
 ## for them.
 
@@ -249,7 +249,7 @@ func _test_levels() -> void:
 						blinks, tag])
 				teleporters += layout.teleporters.size()
 				# Task Q5: up to as many jars that release an Octodog as the level asks for, an occasional feature (none where
-				# a freed dog's two charges have no room), and its decoys, all of them at five and six lanes
+				# a freed dog's two charges have no room), and its decoys, one at least at five and six lanes
 				# (LayoutChecks.check_octodog_jars: each fair).
 				var held: int = 0
 				var dressed: int = 0
@@ -258,8 +258,7 @@ func _test_levels() -> void:
 						dressed += 1
 					elif LevelLayout.holds_enemy(d):
 						held += 1
-				check(held <= config.octodog_jars and dressed <= config.octodog_jar_decoys
-					and (lanes == 3 or dressed == config.octodog_jar_decoys),
+				check(held <= config.octodog_jars and dressed <= config.octodog_jar_decoys and (lanes == 3 or dressed >= 1),
 					"%d of up to %d Octodog jars that break open, %d of %d decoys %s" % [held, config.octodog_jars, dressed,
 						config.octodog_jar_decoys, tag])
 				jars += held

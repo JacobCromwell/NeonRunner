@@ -48,7 +48,8 @@ extends RefCounted
 ## - Between the jar and that floor the dog is harmless (it tumbles, runs ahead and paces): nothing is kept for it there.
 ##   What the passes after the rules keep off are the floor its charges use (its keep-out, OctodogRules.keep_out) and its
 ##   jar's own room (jar_region, in every lane: doodad_keep_outs and fill_keep_outs), which keeps off every wall-run gap's
-##   stretch and every chase too.
+##   stretch, every chase and what the rules keep in every lane too (a gantryway's calm stretch and a teleporter's pad
+##   stretch and landings keep every lane's keep-outs off them).
 ## - Between the run-up (and the feature's start) and the end-clear stretch.
 ## So the jar stays as fair as it was placed; problems() re-checks a finished layout (LayoutChecks.check_octodog_jars),
 ## and the jar's push is checked as any doodad's (LayoutChecks.check_doodads, which leaves its own dog and its own room out
@@ -199,9 +200,12 @@ class Plan:
 	## Every wall-run gap's stretch (WallRunGapPlacement.keep_out), which no keep-out may reach.
 	var wall_runs: Array[Vector2] = []
 	## What the layout holds now (refresh()): what the rules keep (every lane and lane by lane, all counted in every lane;
-	## not the jars' own rooms), every Octodog's charges' floor as far as it keeps a new one off (busy_of), every pad's
-	## zone and ceiling landing zone (CeilingZones), and the zone doodads' room.
+	## not the jars' own rooms), of that what they keep in every lane (`every`, which a jar's own room keeps off: a
+	## gantryway's calm stretch and a teleporter's pad stretch and landings keep every lane's keep-outs off them), every
+	## Octodog's charges' floor as far as it keeps a new one off (busy_of), every pad's zone and ceiling landing zone
+	## (CeilingZones), and the zone doodads' room.
 	var keeps: Array[Vector2] = []
+	var every: Array[Vector2] = []
 	var dogs: Array[Vector2] = []
 	var zones: Array[Vector2] = []
 	var room: LevelGenerator.DoodadRoom
@@ -263,7 +267,8 @@ static func release_distance(gen: LevelGenerator, t: OctodogTuning = null, pt: P
 ## before it to the level's spacing past it, or its push's landing and the reaction after it, or a lane switch's room
 ## past it, whichever is latest (what LayoutChecks.check_doodads keeps around a doodad, lane by lane and in every lane),
 ## and a fence's depth more either side (the fill pass keeps a fence's middle off it, the checks its faces). The passes
-## after the rules keep off it (doodad_keep_outs, fill_keep_outs); it keeps off what every rule keeps (dog_at).
+## after the rules keep off it (doodad_keep_outs, fill_keep_outs); it keeps off what the rules keep in every lane
+## (dog_at).
 static func jar_region(gen: LevelGenerator, j: float) -> Vector2:
 	var end: float = j + gen.tuning.doodad_size(JAR_SIZE).z
 	var to: float = maxf(maxf(end + gen.doodad_after(end), end + gen.doodad_lane_room()), gen.doodad_landing(j))
@@ -276,9 +281,12 @@ static func refresh(plan: Plan) -> void:
 	var gen: LevelGenerator = plan.gen
 	plan.room = gen.doodad_room()
 	plan.keeps.clear()
+	plan.every.clear()
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if not k.has(JAR):
 			plan.keeps.append(Vector2(float(k["from"]), float(k["to"])))
+			if not k.has("lane"):
+				plan.every.append(Vector2(float(k["from"]), float(k["to"])))
 	plan.dogs.clear()
 	for e: Dictionary in gen.layout.enemies:
 		if String(e.get("type", "")) == TYPE:
@@ -313,13 +321,12 @@ static func _ceiling_zones(gen: LevelGenerator) -> Array[Vector2]:
 ## release_distance past the jar to pace_room later (the dog paces meanwhile), where its charges fit (_charges_at): at
 ## `prefer` where they fit there, else the soonest; while _best looks for spots with all that may go gone (plan.going),
 ## the one whose charges need the least taken out of their way (_run_cost), the soonest of those. The jar's own room
-## keeps off every wall-run gap's stretch, every chase and what every rule keeps (a gantryway's calm stretch keeps every
-## lane's keep-outs off it).
+## keeps off every wall-run gap's stretch, every chase and what the rules keep in every lane (plan.every).
 static func dog_at(plan: Plan, j: float, wanted: int, prefer: float = -INF) -> Dictionary:
 	var region: Vector2 = jar_region(plan.gen, j)
 	if _hits(plan.wall_runs, region.x, region.y) or _hits(plan.chases, region.x, region.y) \
-			or _hits(plan.keeps, region.x, region.y):
-		return _no("a wall-run gap, a chase or what a rule keeps at the jar")
+			or _hits(plan.every, region.x, region.y):
+		return _no("a wall-run gap, a chase or what a rule keeps in every lane at the jar")
 	var first: float = j + plan.release
 	var last: float = first + plan.pace_room + 0.001
 	if prefer >= first - 0.001 and prefer <= last:
@@ -508,13 +515,13 @@ static func _past_charges(plan: Plan, a0: float) -> float:
 	return past
 
 
-## For a jar with its front at `j`: `j` if its own room (jar_region) meets no wall-run gap's stretch, chase or what a rule
-## keeps, else the first front past all it meets there (every front before that meets one of them too: _best skips
-## them).
+## For a jar with its front at `j`: `j` if its own room (jar_region) meets no wall-run gap's stretch, chase or what the
+## rules keep in every lane, else the first front past all it meets there (every front before that meets one of them
+## too: _best skips them).
 static func _past_blocks(plan: Plan, j: float) -> float:
 	var region: Vector2 = jar_region(plan.gen, j)
 	var past: float = j
-	for list: Array[Vector2] in [plan.wall_runs, plan.chases, plan.keeps]:
+	for list: Array[Vector2] in [plan.wall_runs, plan.chases, plan.every]:
 		for s: Vector2 in list:
 			if s.x <= region.y and s.y >= region.x:
 				past = maxf(past, s.y + (j - region.x) + 0.001)
@@ -1217,9 +1224,12 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 	var most: int = maxi(t.charges_range(scaling).y, MIN_CHARGES)
 	var pace_room: float = t.jar_pace_seconds * gen.speed
 	var keeps: Array[Vector2] = []
+	var every: Array[Vector2] = []
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if not k.has(JAR):
 			keeps.append(Vector2(float(k["from"]), float(k["to"])))
+			if not k.has("lane"):
+				every.append(Vector2(float(k["from"]), float(k["to"])))
 	var chases: Array[Vector2] = HostRules.chase_stretches(gen)
 	chases.append_array(gen.extended_wall_run_reserve)
 	var zones: Array[Vector2] = _ceiling_zones(gen)
@@ -1306,9 +1316,10 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 			if k.x <= run.y and k.y >= run.x:
 				out.append("%s: what a rule keeps (%.1f-%.1f m) reaches its dog's charges (%.1f-%.1f m)" % [tag, k.x, k.y,
 					run.x, run.y])
+		for k: Vector2 in every:
 			if k.x <= region.y and k.y >= region.x:
-				out.append("%s: what a rule keeps (%.1f-%.1f m) reaches its room (%.1f-%.1f m)" % [tag, k.x, k.y, region.x,
-					region.y])
+				out.append("%s: what a rule keeps in every lane (%.1f-%.1f m) reaches its room (%.1f-%.1f m)" % [tag, k.x,
+					k.y, region.x, region.y])
 		var mine: Vector2 = busy_of(gen, dog, stop)
 		for e: Dictionary in lay.enemies:
 			if is_same(e, dog) or String(e.get("type", "")) != TYPE:
