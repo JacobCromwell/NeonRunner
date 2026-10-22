@@ -562,10 +562,11 @@ on the wall face, facing the street, seamless across chunks; and a heli drone's 
 Enforcer Truck's volley and an Octodog's wind-up hold off only while a crossing is in their reach. `test_campaign`'s sweep
 of The Hush lists the builds crowded past any wall-run gap (`WALL_RUN_GAP_CROWDED`: they warn of that and nothing
 else), and `test_danger_density` lets the final band land lower at 3 lanes where the wall-run gaps take the pass's room
-(`WALL_RUN_GAP_ROOM`, and its rise past the middle band fall short by as much there since task L6's review); its route
-cases (`ROUTE_CASES`: a doodad without `DangerDensity.doodad_ok` leaving no way on; none of 1,620 builds shows one
-since task L6's review, whose lanes beside a doodad keep a way around it) and `test_gilded_sentinel`'s Sentinel wall
-case are built without them.
+(`WALL_RUN_GAP_ROOM`, and its rise past the middle band fall short by as much there since task L6's review), and lower
+again where the Golden Zone's teleporters take it too (task Q6, `TELEPORTER_ROOM`: built without them the band keeps
+the floor before); its route cases (`ROUTE_CASES`: a doodad without `DangerDensity.doodad_ok` leaving no way on; none
+of 1,620 builds shows one since task L6's review, whose lanes beside a doodad keep a way around it) are built without
+them, as `test_gilded_sentinel`'s Sentinel wall case was until task Q6 (now Golden 2 at 3 lanes as shipped).
 `test_ceiling_scenarios` checks the ceiling scenarios (task I4; The generator, Ceiling scenarios): their numbers and
 heights (a ceiling fence above a floor runner's jump, a hover truck roof's, a wall runner's body and the chase
 camera); none in the City's, Gangland's or the Marketplace's levels; in every level that lists them, at 3, 5 and 6

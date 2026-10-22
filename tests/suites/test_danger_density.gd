@@ -76,6 +76,15 @@ const TOLERANCE: float = 0.05
 ## a little of the room the wall fences placed after them would have had (x1.260 against the middle band's x1.265;
 ## x1.277 against x1.271 before task L6).
 const WALL_RUN_GAP_ROOM: Dictionary = {"late": {3: 0.04}}
+## Task Q6 (the owner, October 22, 2026: "we should add the teleporters to the golden zone"): Sentinel Row's and the
+## Golden Palace's teleporters keep their pad stretches and landings clear in every lane (TeleporterRules: their calm
+## stretches), where this pass would otherwise add enemies and rows, as the wall-run gaps do. At 3 lanes the final band
+## then lands at about x1.27 for enemies and x1.23 for obstacles over this sample (x1.29 and x1.26 built without them,
+## at the floor above): its floor is this much lower again there, and only for them: the band built without its
+## teleporters (TELEPORTER_FEATURES) still keeps the floor above. By band, then lane count. DESIGN-TBD
+## (docs/questions/q6.md item 11): which request gives way at 3 lanes (as with the wall-run gaps, item 874).
+const TELEPORTER_ROOM: Dictionary = {"late": {3: 0.05}}
+const TELEPORTER_FEATURES: Array[String] = ["teleporter", "teleporter_blinking"]
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
 ## final ones' and above the first band and below the last (less WALL_RUN_GAP_ROOM), at every lane count, for
 ## both counts.
@@ -173,6 +182,11 @@ func _test_density(campaign: Campaign) -> void:
 		var floors: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
 		var walls: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
 		var credits: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
+		# Task Q6: the band's enemies and obstacles built without its teleporters, at the lane counts TELEPORTER_ROOM
+		# lowers its floor at (the same builds for a level without them).
+		var bare_enemies: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
+		var bare_obstacles: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
+		var teleporter_room: Dictionary = TELEPORTER_ROOM.get(band, {})
 		for id: String in BANDS[band]:
 			for li: int in LANES.size():
 				for k: int in OTHER_SEEDS.size() + 1:
@@ -182,17 +196,25 @@ func _test_density(campaign: Campaign) -> void:
 					var built: Dictionary = _build_pair(config)
 					off_ms += int(built["off_ms"])
 					on_ms += int(built["on_ms"])
-					var off: LevelLayout = built["off"]
-					var on: LevelLayout = built["on"]
-					# Not the cyborgs planted in charge paths (task G7, ChargePathPlacement): the same few with and
-					# without the dial, after the pass's count.
-					enemies[li] += Vector2i(off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
-						on.enemies.size() - ChargePathPlacement.planted_in(on).size())
-					floors[li] += Vector2i(DangerDensity.floor_count(off), DangerDensity.floor_count(on))
-					walls[li] += Vector2i(off.wall_fences.size(), on.wall_fences.size())
-					credits[li] += Vector2i(off.total_credit_value(), on.total_credit_value())
-					_check_fair(config, built["gen"], off, "%s lanes=%d seed=%d" % [id, LANES[li], config.level_seed],
+					var counts: Array[Vector2i] = _counts(built)
+					enemies[li] += counts[0]
+					floors[li] += counts[1]
+					walls[li] += counts[2]
+					credits[li] += counts[3]
+					_check_fair(config, built["gen"], built["off"], "%s lanes=%d seed=%d" % [id, LANES[li], config.level_seed],
 						built["off_gen"])
+					if teleporter_room.has(LANES[li]):
+						var bare: Array[Vector2i] = counts
+						if config.has_feature(TELEPORTER_FEATURES[0]):
+							var without: LevelConfig = config.duplicate() as LevelConfig
+							var features: PackedStringArray = config.features.duplicate()
+							for feature: String in TELEPORTER_FEATURES:
+								if features.has(feature):
+									features.remove_at(features.find(feature))
+							without.features = features
+							bare = _counts(_build_pair(without))
+						bare_enemies[li] += bare[0]
+						bare_obstacles[li] += bare[1] + bare[2]
 		var band_ratios: Array[Vector2] = []
 		for li: int in LANES.size():
 			var obstacles: Vector2i = floors[li] + walls[li]
@@ -212,15 +234,29 @@ func _test_density(campaign: Campaign) -> void:
 				lo = float(TARGET_RATIO[band]) - TOLERANCE
 				hi = float(TARGET_RATIO[band]) + TOLERANCE
 			lo -= float((WALL_RUN_GAP_ROOM.get(band, {}) as Dictionary).get(LANES[li], 0.0))
-			check(e >= lo - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, lo, hi])
-			check(o >= lo - 0.0005 and o <= hi + 0.0005, "%s: obstacles x%.3f, within x%.2f..x%.2f" % [tag, o, lo, hi])
+			var room: float = float(teleporter_room.get(LANES[li], 0.0))
+			check(e >= lo - room - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, lo - room, hi])
+			check(o >= lo - room - 0.0005 and o <= hi + 0.0005, "%s: obstacles x%.3f, within x%.2f..x%.2f" % [tag, o, lo - room,
+				hi])
+			if teleporter_room.has(LANES[li]):
+				# Built without its teleporters the band keeps the floor without TELEPORTER_ROOM.
+				var be: float = float(bare_enemies[li].y) / maxi(bare_enemies[li].x, 1)
+				var bo: float = float(bare_obstacles[li].y) / maxi(bare_obstacles[li].x, 1)
+				print("  danger density %s without its teleporters: enemies %d -> %d (x%.3f), obstacles %d -> %d (x%.3f)" % [
+					tag, bare_enemies[li].x, bare_enemies[li].y, be, bare_obstacles[li].x, bare_obstacles[li].y, bo])
+				check(be >= lo - 0.0005 and be <= hi + 0.0005, "%s without its teleporters: enemies x%.3f, within x%.2f..x%.2f" % [
+					tag, be, lo, hi])
+				check(bo >= lo - 0.0005 and bo <= hi + 0.0005, "%s without its teleporters: obstacles x%.3f, within x%.2f..x%.2f" % [
+					tag, bo, lo, hi])
 		ratios[band] = band_ratios
 	for li: int in LANES.size():
 		var early: Vector2 = ratios["early"][li]
 		var middle: Vector2 = ratios["middle"][li]
 		var late: Vector2 = ratios["late"][li]
-		# Where the final band's floor is lower (WALL_RUN_GAP_ROOM), its rise past the middle band may fall short by as much.
-		var room: float = float((WALL_RUN_GAP_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0))
+		# Where the final band's floor is lower (WALL_RUN_GAP_ROOM, TELEPORTER_ROOM), its rise past the middle band may
+		# fall short by as much.
+		var room: float = float((WALL_RUN_GAP_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0)) \
+			+ float((TELEPORTER_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0))
 		check(early.x < middle.x and middle.x < late.x + room, "lanes=%d: enemies rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
 			LANES[li], early.x, middle.x, late.x])
 		check(early.y < middle.y and middle.y < late.y + room, "lanes=%d: obstacles rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
@@ -263,6 +299,22 @@ func _build_pair(config: LevelConfig) -> Dictionary:
 	var on: LevelLayout = gen.generate(config, tuning, patterns)
 	var t2: int = Time.get_ticks_msec()
 	return {"gen": gen, "on": on, "off_gen": off_gen, "off": off, "off_ms": t1 - t0, "on_ms": t2 - t1}
+
+
+## A built pair's counts (_build_pair), each as (without the dial, with it): the enemies (not the cyborgs planted in
+## charge paths, task G7, ChargePathPlacement: the same few with and without the dial, after the pass's count), the
+## floor pieces, the wall fences and the credits' value.
+func _counts(built: Dictionary) -> Array[Vector2i]:
+	var off: LevelLayout = built["off"]
+	var on: LevelLayout = built["on"]
+	var out: Array[Vector2i] = [
+		Vector2i(off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
+			on.enemies.size() - ChargePathPlacement.planted_in(on).size()),
+		Vector2i(DangerDensity.floor_count(off), DangerDensity.floor_count(on)),
+		Vector2i(off.wall_fences.size(), on.wall_fences.size()),
+		Vector2i(off.total_credit_value(), on.total_credit_value()),
+	]
+	return out
 
 
 ## The pass's fairness on `gen`'s build (with the dial) of `config`; `off` is the build without it, by `off_gen`.
