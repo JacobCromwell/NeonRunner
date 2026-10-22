@@ -14,7 +14,7 @@ extends SceneTree
 
 const OUT_DIR: String = "res://assets/sprites/doodads"
 const REVIEW_DIR: String = "res://build/doodad_review"
-const ZONES: Array[String] = ["city", "gangland", "marketplace", "corporate", "dead_zone", "terminal", "golden"]
+const ZONES: Array[String] = ["city", "gangland", "marketplace", "corporate", "dead_zone", "terminal", "ice_lab", "golden"]
 ## Pixels between pictures in the atlas (so mipmaps don't bleed one into the next).
 const PADDING: int = 8
 

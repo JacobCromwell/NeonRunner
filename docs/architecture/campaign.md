@@ -150,9 +150,9 @@ the features of every earlier zone but their enemies: its enemies are the cyborg
 Octodogs and the heli drones (GDD §5, Zone 9), with the fence generators of the electric fences; no screeches (manhole or
 vent), hover trucks, Barnacle Turrets, Buzz Overdrives, Tithe Collectors, Enforcer Trucks, hosts and Bad Dreams, nor the
 Terminal's debris maze and centipedes. Its dials are its neighbours' (two wider gaps, a cyborg in an Octodog's charge path,
-wall-hop credits, the fill pass, Golden 1's ceiling and doodad shares). Until task Q2's skin, the Corporate zone's stands in
-(`skin_path` in the zone's data, so the switch is that one line; its cyborgs wear the Corporate look meanwhile, and like
-every zone's after the Marketplace its skin shows no wall-run gap guide, `show_wall_run_guide` off: `test_wall_run_gaps`), and its
+wall-hop credits, the fill pass, Golden 1's ceiling and doodad shares). Its look is task Q2's `IceLabSkin` (`skin_path` in the zone's data is `ice_lab_skin.tres`; levels 1 and 3 name their own
+leans, `ice_lab_frost_skin.tres` and `ice_lab_lab_skin.tres`; its cyborgs wear the Dead Zone's burned base, and like every
+zone's after the Marketplace its skin shows no wall-run gap guide, `show_wall_run_guide` off: `test_wall_run_gaps`), and its
 levels play the Corporate zone's song (`data/audio/music_library.tres`, DESIGN-TBD). **The per-level lean** (GDD §5: level 1
 snow and industry, level 3 the lab) is the existing hook, `LevelConfig.skin_path`: a level's own skin wins over its zone's
 (`Campaign.configure`, as Checkpoint Plaza's and the Golden Palace's do), and must be a variant of the zone's skin (the same
