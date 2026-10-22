@@ -422,14 +422,16 @@ the damage rules (solid, the armor then the shield absorbing it, the dash passin
 5 and 6 lanes in every inner lane both ways: the pillar pushing a runner without the dash aside with the walkway staying
 up, a runner who dashes it and steps out either side living while it crushes the cyborg (a kill the score counts), one
 who stays (or jumps or slides) hit only once it drops, the armor, the shield and god mode, the wreck harmless; the warning
-(the creak, the shadow darkening, the red line pulsing or steady with Reduced flashing, the hitbox off through the hold,
-the crash); the crush (every enemy in its path, a heli drone low over the lane too, none beside, above or past its ends);
+(the creak, the shadow darkening, the red line pulsing and the walkway shuddering, or with Reduced flashing the line
+steady and the walkway only lurching, the hitbox off through the hold, the crash); the crush (every enemy in its path, a heli drone low over the lane too, none beside, above or past its ends);
 every skin's looks inside their boxes, lit, never glowing, in the dissolving material, and drawn by the warm-up with
 nothing physical; every number on the F6 panel; a wall-run gap's stretch kept outside everything a gantryway keeps,
 whatever lane it names (the plan and the re-check, at 3, 5 and 6 lanes: the wall-run gaps' own re-check counts every
 rule's keep-outs in every lane); and every gantryway of the Ice Lab's levels at 3, 5 and 6 lanes on real physics on a
 cut of its level at the level's speed: its pillar pushing a runner without the dash onto clear floor beside it, and a
-runner who dashes it stepping out a reaction later (both ways for the introduction), alive, as it lands on its cyborg.
+runner who dashes it stepping out a reaction later (both ways for the introduction), alive, as it lands on its cyborg;
+and endless mode in the Ice Lab on one seed (no warnings, its count along the whole level, each fair; such a build takes
+about a minute, with or without the gantryways). About 75 s.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls

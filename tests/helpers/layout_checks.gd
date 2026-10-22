@@ -340,9 +340,6 @@ static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: Leve
 			% [float(found["recharge"]), found["reason"], x])
 
 
-## Block `b`'s (the `index`th) debris, `pieces` every maze piece of the layout (check_debris_maze): exactly its walls'
-## closed lanes, one piece of the wall's size each, and its dividers, pieces TOUCH apart from the room's start to its end;
-## nothing in an opening, a cell, its run-in or its breather.
 ## Falling gantryways (task Q3; GDD §5, Zone 9, the owner, October 21, 2026; scripts/enemies/gantryway_rules.gd),
 ## wherever the generator hangs one, at any lane count, at the level's own run speed:
 ## - only in a level with the feature, never before the feature's start, over an inner lane, its walkway length_seconds
@@ -448,6 +445,9 @@ static func check_gantryways(suite: TestSuite, layout: LevelLayout, config: Leve
 	suite.check(problems.is_empty(), "the gantryways keep every placement rule %s %s" % [tag, problems])
 
 
+## Block `b`'s (the `index`th) debris, `pieces` every maze piece of the layout (check_debris_maze): exactly its walls'
+## closed lanes, one piece of the wall's size each, and its dividers, pieces TOUCH apart from the room's start to its end;
+## nothing in an opening, a cell, its run-in or its breather.
 static func _check_maze_debris(suite: TestSuite, layout: LevelLayout, tuning: MovementTuning, index: int, b: Dictionary,
 		pieces: Array[Dictionary], x: String) -> void:
 	var n: int = layout.lane_count

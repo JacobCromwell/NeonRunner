@@ -150,20 +150,20 @@ var maze: Array[Dictionary] = []
 ## the stars' best score: star_credit_value). The generator places them (WallHopPlacement, in its credit pass).
 var wall_hops: Array[Dictionary] = []
 ## {id, lane, start, end, pillar, side, calm, seed}, with `intro` on a level's first where it gives the feature a start,
-## and `both` where both lanes beside it are kept clear for the whole calm stretch (an introduction's, GDD §5: "plenty of
-## room to step out"; GantrywayTuning.intro_both_sides), else only the lane on its `side`: a
+## and `both` where both lanes beside it are kept clear for the whole calm stretch (an introduction's: room to step out
+## either way, task Q3's proposal, DESIGN-TBD; GantrywayTuning.intro_both_sides), else only the lane on its `side`: a
 ## falling gantryway (task Q3; GDD §5, Zone 9, the owner, October 21, 2026: "an upper walkway over one lane only, looking
-## like a ceiling section", held up by "pillars [that] stand in the floor lanes"; "dashing through a pillar knocks down
-## its long section of gantryway"): a walkway hanging at a ceiling's height over `lane` from track distance `start` to
-## `end`, never walked on, held by a pillar standing in that lane under its near end, its front at `pillar`. The pillar is
-## an ordinary entry of `doodads` marked GANTRY_PILLAR (its `id`): a runner who meets it without the dash is pushed into
-## the lane on its `side` like by any doodad; the dash smashes it, and the walkway falls on its lane over about a second,
-## crushing every enemy under it and hitting a runner still under it as it lands (Gantryway). `calm` [from, to] is its
-## calm stretch, from the pillar's front to the end of the step out of the lane, which nothing is timed onto
-## (doodad_between counts it in its lane). `seed` varies its look. Marked "fallen" once it fell on an attempt and
-## "landed" once it lay flat (the attempt's own copy, as a smashed doodad is marked). The generator places them (scripts/enemies/gantryway_rules.gd,
-## only where they're fair), the track builder builds each (TrackBuilder, Gantryway) and the skin dresses its walkway and
-## its pillar (ZoneSkin.gantryway, ZoneSkin.gantry_pillar). Sorted by start.
+## like a ceiling section"; "pillars stand in the floor lanes holding them up"; "dashing through a pillar knocks down its
+## long section of gantryway"): a walkway hanging at a ceiling's height over `lane` from track distance `start` to `end`,
+## never walked on, held by a pillar standing in that lane under its near end (both GDD §5's proposals), its front at
+## `pillar`. The pillar is an ordinary entry of `doodads` marked GANTRY_PILLAR (its `id`): a runner who meets it without
+## the dash is pushed into the lane on its `side` like by any doodad; the dash smashes it, and the walkway falls on its
+## lane over about a second, crushing every enemy under it and hitting a runner still under it as it lands (Gantryway).
+## `calm` [from, to] is its calm stretch, from the pillar's front to the end of the step out of the lane, which nothing is
+## timed onto (doodad_between counts it in its lane). `seed` varies its look. Marked "fallen" once it fell on an attempt
+## and "landed" once it lay flat (the attempt's own copy, as a smashed doodad is marked). The generator places them
+## (scripts/enemies/gantryway_rules.gd, only where they're fair), the track builder builds each (TrackBuilder, Gantryway)
+## and the skin dresses its walkway and its pillar (ZoneSkin.gantryway, ZoneSkin.gantry_pillar). Sorted by start.
 var gantryways: Array[Dictionary] = []
 
 

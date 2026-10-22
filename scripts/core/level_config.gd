@@ -273,7 +273,8 @@ var _skin: ZoneSkin
 ## generator hangs up to this many one-lane walkways over the level's inner lanes, each held by a pillar the dash knocks
 ## down (gantryway_rules.gd), spread through the level where they're fair (data/tuning/gantryways.tres); fewer where the
 ## level leaves no room, never none. 0 turns them off. Without the feature it does nothing. DESIGN-TBD
-## (docs/questions/q3.md): 3 in each of the Ice Lab's levels; quick play's prototype level takes this default.
+## (docs/questions/q3.md 1 and 14): 3 in each of the Ice Lab's levels; quick play's prototype level takes this default,
+## endless mode its level's (3 over its 20 minutes from the Ice Lab) and a weekly challenge's week Sentinel Row's.
 @export_range(0, 8) var gantryways: int = 3
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings

@@ -12,7 +12,8 @@ extends TestSuite
 ##   where it lands; a level without the feature, or with a count of 0, hangs none. (Every build's fairness, the count
 ##   and the same level twice: test_ice_lab_levels, through LayoutChecks.check_gantryways; quick play's level over seeds
 ##   and difficulties: test_generator.) A wall-run gap's stretch (with its margins) lies outside everything a gantryway
-##   keeps, whatever lane it names, as the wall-run gaps' own re-check asks of every rule's keep-outs.
+##   keeps, whatever lane it names, as the wall-run gaps' own re-check asks of every rule's keep-outs. Endless mode in the
+##   Ice Lab builds without warnings, its count of gantryways along the whole of it, each fair.
 ## - The track: a Gantryway over each entry, its walkway hanging at the ceilings' height over its lane, no collision but a
 ##   hitbox that is off; its pillar a DashBreakable of kind gantry_pillar with a small doodad's body (the doodad and lane
 ##   blocker layers, its entry as its "doodad"), its look rising to the walkway's underside.
@@ -28,7 +29,8 @@ extends TestSuite
 ##   its cyborg.
 ## - The warning (CLAUDE.md: seen and heard before it can hurt): the creak as the pillar goes, the shadow on its lane
 ##   darkening and the lane's red line from then until it lands, its hitbox off for hold_seconds and live only while it
-##   drops and as it lands, the crash as it lands; the line pulses, steady with Reduced flashing; the crush: every enemy in
+##   drops and as it lands, the crash as it lands; the line pulses and the walkway shudders, with Reduced flashing the line
+##   steady and the walkway only lurching down; the crush: every enemy in
 ##   its path (a heli drone low over the lane too), none beside it, above it or past its ends.
 ## - Every skin dresses its walkway, its pillar and its wreck inside their boxes (railings and icicles aside), lit and never
 ##   glowing, in materials that dissolve near the camera, and names their pieces' colours; the warm-up draws them, with
@@ -55,6 +57,7 @@ func run() -> void:
 	_test_layout()
 	_test_generator()
 	_test_wall_run_gaps()
+	_test_endless()
 	await _test_track()
 	_test_damage_rules()
 	await _test_physics()
@@ -210,6 +213,56 @@ func _test_wall_run_gaps() -> void:
 				else "well before", tag])
 
 
+## Endless mode with the Ice Lab as the furthest zone (App.start_endless: the zone's last level, Specimen Vault, made a
+## 20-minute level of everything the zone has from the start, at the zone's speed, on a random seed), here on an
+## arbitrary seed at 5 lanes, as test_debris_maze's _test_endless does for the Terminal: it builds without warnings and
+## hangs its level's count of gantryways spread along the whole of it (DESIGN-TBD, docs/questions/q3.md 14: 3 over its 20
+## minutes), each kept fair (check_gantryways, the generator's own re-check among it: a wall-run gap's stretch outside all
+## it keeps too). One seed: such a build takes about a minute here with the gantryways or without them (their rules take
+## a fraction of a second of it, printed).
+func _test_endless() -> void:
+	var zone := load("res://data/zones/ice_lab.tres") as ZoneDef
+	for level_seed: int in [7310]:
+		var config: LevelConfig = (zone.levels[zone.levels.size() - 1] as LevelConfig).duplicate() as LevelConfig
+		# As App.start_endless makes it.
+		config.id = &"endless"
+		config.level_seed = level_seed
+		config.lane_count = 5
+		config.duration_seconds = App.ENDLESS_SECONDS
+		config.difficulty = 0.2
+		config.difficulty_ramp = 0.8
+		config.enemy_scaling = 1.0
+		var starts: Dictionary[String, float] = {}
+		config.feature_starts = starts
+		config.guarantee_features = false
+		config.quiet_seconds = 0.0
+		config.extended_wall_runs = []
+		var features: PackedStringArray = config.features.duplicate()
+		for f: String in config.features_left_out:
+			if not features.has(f):
+				features.append(f)
+		config.features = features
+		config.features_left_out = PackedStringArray()
+		config.darkness = 0.0
+		config.sky = null
+		if config.run_speed <= 0.0:
+			config.run_speed = zone.run_speed
+		var tag: String = "(endless in the Ice Lab, seed %d)" % level_seed
+		var gen := LevelGenerator.new()
+		var spent_before: int = GantrywayRules.spent_usec
+		var started: int = Time.get_ticks_usec()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		var build_ms: float = (Time.get_ticks_usec() - started) / 1000.0
+		check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+		var fronts: Array[float] = GantrywayRules.positions(layout)
+		check(fronts.size() == config.gantryways and not fronts.is_empty() and fronts[0] < layout.length * 0.4
+			and fronts[-1] > layout.length * 0.6,
+			"its %d gantryways spread along the whole of it (%s of %.0f m) %s" % [config.gantryways, fronts, layout.length, tag])
+		LayoutChecks.check_gantryways(self, layout, config, tag)
+		print("  endless in the Ice Lab, seed %d: %d gantryways in %.0f m, a build %.0f ms (%.0f ms of it the gantryways' rules)"
+			% [level_seed, fronts.size(), layout.length, build_ms, (GantrywayRules.spent_usec - spent_before) / 1000.0])
+
+
 # --- The track ----------------------------------------------------------------------------------
 
 func _test_track() -> void:
@@ -267,7 +320,7 @@ func _test_damage_rules() -> void:
 	var d := DamageRules.Defense.new()
 	check(h.is_solid and DamageRules.resolve(h, d) == DamageRules.Outcome.KILL, "the falling walkway is solid: unprotected, it kills")
 	d.armor = true
-	check(DamageRules.resolve(h, d) == DamageRules.Outcome.BLOCKED_ARMOR, "the armor absorbs it (GDD §5: \"armor ... block[s] it\")")
+	check(DamageRules.resolve(h, d) == DamageRules.Outcome.BLOCKED_ARMOR, "the armor absorbs it (GDD §5: \"armor and the shield block it\")")
 	d.armor = false
 	d.shield = true
 	check(DamageRules.resolve(h, d) == DamageRules.Outcome.BLOCKED_SHIELD, "the shield absorbs it")
@@ -384,6 +437,12 @@ func _take(sim: RunSim, lanes: int, lane: int, side: int, how: String, out: int 
 	return r
 
 
+## How far gantryway `node`'s walkway look is from where it hangs now (metres across and up, and its roll): its shudder.
+static func _shake(node: Gantryway) -> float:
+	var tr: Transform3D = node.look_node().transform
+	return absf(tr.origin.x) + absf(tr.origin.y - (node.underside_y + node.size.y * 0.5)) + absf(tr.basis.get_euler().z)
+
+
 func _brief(r: Dictionary) -> String:
 	return "(alive %s, cause '%s', lane %d, fell %s, landed %s, crushed %d)" % [r.get("alive"), r.get("cause", ""), int(r.get("lane", -1)),
 		r.get("fell"), r.get("landed"), int(r.get("crushed", 0))]
@@ -419,7 +478,7 @@ func _test_warning() -> void:
 				frames.append({"t": node.t, "state": node.state, "hit": node.hitbox.state, "layer": node.hitbox.collision_layer,
 					"shadow": node.shadow().visible, "dark": node.shadow_darkness(), "line": node.warning_line().visible,
 					"width": line.basis.get_scale().x, "under": node.underside_y, "bottom": node.hitbox.bottom_y(),
-					"sounds": node.sounds_played.duplicate()})
+					"sounds": node.sounds_played.duplicate(), "shake": _shake(node)})
 		var tag: String = "(Reduced flashing %s)" % ("on" if reduced else "off")
 		check(not frames.is_empty() and (frames[0]["sounds"] as Array).has(Gantryway.CREAK_SOUND),
 			"the creak plays as the pillar goes " + tag)
@@ -444,6 +503,19 @@ func _test_warning() -> void:
 			% [first_live, gt.hold_seconds(), tag])
 		check(lowest_hold >= world.tuning.ceiling_height - gt.sag - gt.shudder_amplitude - 0.01,
 			"it hangs where it was while it shudders, only lurched down by its sag " + tag)
+		# The shudder is a fast shake (18 a second), a flicker of motion: none with Reduced flashing (as a Barnacle Turret's
+		# death shudder), which leaves the lurch, the snow, the creak, the shadow and the steady line to warn.
+		var most_shake: float = 0.0
+		var holds: int = 0
+		for f: Dictionary in frames:
+			if int(f["state"]) == Gantryway.State.SHUDDERING:
+				most_shake = maxf(most_shake, float(f["shake"]))
+				holds += 1
+		if reduced:
+			check(holds > 3 and most_shake < 0.0001, "with Reduced flashing it doesn't shake as it holds, it only lurches down (%.4f over %d ticks) %s"
+				% [most_shake, holds, tag])
+		else:
+			check(holds > 3 and most_shake > 0.01, "it shudders as it holds (%.3f over %d ticks) %s" % [most_shake, holds, tag])
 		# The earliest a standing runner's body can meet it: when its hitbox comes down to their head.
 		var reach_head: float = INF
 		for f: Dictionary in frames:

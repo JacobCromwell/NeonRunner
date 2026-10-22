@@ -36,7 +36,8 @@ fronts):
   switch's room past the walkway's far end: it lands flat on whole floor, and only its planted cyborg stands under it;
 - its **calm stretch**, from F to the fall and escape_after_seconds more at the fastest a runner comes through the pillar
   (`calm_length`): the lane on its side (where a runner who dashed it steps out) holds nothing of that, and nor does the
-  other side's for an introduction (`both`, intro_both_sides: "plenty of room to step out"); otherwise the other side holds
+  other side's for an introduction (`both`, intro_both_sides: room to step out either way, task Q3's proposal for an easy
+  first one, DESIGN-TBD); otherwise the other side holds
   nothing until a caught corner's push has landed, as beside any doodad. Every lane keeps the calm stretch clear of floor
   cuts' windows, dash walls, wider gaps' zones, quiet stretches, what the other rules keep in every lane, and every Octodog's
   planned charge window;
@@ -56,7 +57,8 @@ plain enemies (`_make_room`; never a feature's last one, nor another feature's i
 level past it, a part each, at a seeded spot. The rules run after every other feature's (RUN_AFTER), on their own random
 stream, so a level without the feature builds byte for byte as before.
 
-**The enemy beneath** (plant_cyborg). Under each gantryway the rules plant a plain cyborg (params `stand`, `hold_fire`,
+**The enemy beneath** (plant_cyborg; GDD §5's level schedule row: "dash a pillar to drop a one-lane walkway on the enemies
+below"; one under every gantryway is task Q3's proposal, DESIGN-TBD). Under each gantryway the rules plant a plain cyborg (params `stand`, `hold_fire`,
 `gantryway`: its id) where the walkway lands on it before a runner who stays in the lane could reach it
 (`plant_range`: crush_margin_seconds past where the fastest runner who stays in the lane is at the landing, and as much before
 the walkway's far end), keeping a cyborg's obstacle margin and every ceiling's safe floor, holding its fire from
@@ -85,10 +87,11 @@ walks on it or rides it. Its pillar's `smashed` signal calls `Gantryway.fall()`;
 **The fall** (`Gantryway`, on its own physics clock, so a walkway that hit the runner still lands though the level clock
 stops). From the break, for fall_seconds:
 - the warning: the creak (`gantry_creak`, at the pillar), the walkway lurching down by `sag` and shuddering for
-  `hold_seconds()` while snow and ice shake loose from it ahead of the runner (a RubbleBurst) and the pillar's column breaks
-  up; its shadow on the lane (a soft rectangle, darker as it comes down; lighter on the Compatibility renderer) and the
-  lane's red line under its whole length (BossProps' lane warning: the floor warnings' red, widening and pulsing, steady
-  with Reduced flashing), from the break until it lands;
+  `hold_seconds()` (with Reduced flashing it only lurches and holds still: a fast shake is a flicker of motion, as a
+  Barnacle Turret's death shudder is) while snow and ice shake loose from it ahead of the runner (a RubbleBurst) and the
+  pillar's column breaks up; its shadow on the lane (a soft rectangle, darker as it comes down; lighter on the
+  Compatibility renderer) and the lane's red line under its whole length (BossProps' lane warning: the floor warnings'
+  red, widening and pulsing, steady with Reduced flashing), from the break until it lands;
 - the drop, from rest and faster and faster (`drop_seconds()`), then the landing: the walkway swapped for its wreck (flat on
   the floor, under WRECK_HEIGHT, which the runner runs through), its pieces and snow flung out where the camera is, the crash
   (`gantry_land`, at the walkway's point nearest the camera), and the camera's shake (RunWorld, land_shake_*).
@@ -122,7 +125,8 @@ spacing from the pillar, and `GantrywayRules.problems()`; `check_doodads` leaves
 leaving it out, LEFT_OUT, DESIGN-TBD as the Terminal's maze stays in the Terminal).
 
 **Tests.** `test_gantryways` (Tests, features; among it every campaign gantryway on real physics on a cut of its level,
-pushed into and dashed through), `test_ice_lab_levels` (every Ice Lab build hangs its count, each fair),
+pushed into and dashed through, and endless mode in the Ice Lab), `test_ice_lab_levels` (every Ice Lab build hangs its
+count, each fair),
 `test_generator`'s `_test_gantryways` (quick play's level with the feature over lane counts, seeds, difficulties and both run
 speeds), `test_hints`, `test_audio`, and the weekly challenge's suites (an Ice Lab week hangs Sentinel Row's count:
 `gantryways` is one of `WeeklyChallenge.GOLDEN_FIELDS`, as the dash walls' count is). `test_doodads` leaves the campaign's
@@ -133,4 +137,5 @@ DESIGN-TBD: `docs/questions/q3.md`.
 **Measured** (`tools/measure/gantryways.gd`, task Q3): the Ice Lab's three levels at 3, 5 and 6 lanes on their own seeds and
 three others (36 builds) hang 108 of 108, 106 with a cyborg under them, with no problems; the introduction lands 0.15 to 0.22
 of Frost Foundry in. The rules take about 44 ms of a generator build on average and 100 ms at most (a desktop CPU shared
-with other runs).
+with other runs), and about 0.2 s of an endless-mode Ice Lab build, which takes about a minute here with them or without
+them (the zone's other features over 20 minutes of track).

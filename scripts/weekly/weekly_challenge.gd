@@ -49,7 +49,8 @@ const WEEK_FIELDS: PackedStringArray = [
 ##   on the curve): how many things there are, how dense, how hard and how fast, and everything else about the shape of
 ##   the level: its length, pacing, gaps, ceilings, doodads' density, credits, fairness rules and dials for features a
 ##   zone may lack (a dial for a feature the zone doesn't list does nothing: the generator runs a rules script per feature
-##   the level lists).
+##   the level lists). The falling gantryways' count is one (task Q3), as the dash walls' is, so an Ice Lab week hangs
+##   Sentinel Row's (DESIGN-TBD, docs/questions/q3.md 14).
 const GOLDEN_FIELDS: PackedStringArray = [
 	"duration_seconds", "run_speed", "difficulty", "difficulty_bias", "difficulty_ramp", "enemy_scaling",
 	"start_clear_distance", "end_clear_distance", "spacing_seconds_easy", "spacing_seconds_hard", "fill_empty_seconds",

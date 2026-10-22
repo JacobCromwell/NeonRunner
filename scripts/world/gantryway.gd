@@ -12,15 +12,19 @@ extends Node3D
 ## (DashBreakable.smashed). Then it falls over fall_seconds, warning for all of it, as every attack must (CLAUDE.md:
 ## seen and heard first):
 ## - the groan and creak of its steel as the pillar goes (`gantry_creak`, at the pillar);
-## - it lurches down by `sag` and shudders for hold_seconds(), shaking snow and ice loose;
+## - it lurches down by `sag` and shudders for hold_seconds() (with Reduced flashing it only lurches, then holds
+##   still), shaking snow and ice loose;
 ## - its shadow darkens on its lane, and the lane lights red under its whole length (the floor warnings' red,
 ##   BossProps.WARNING_COLOR, widening and pulsing as BossProps' lane warnings do, steady with Reduced flashing);
 ## - then it drops, faster and faster, and lands flat on its lane: the crash (`gantry_land`), its pieces and snow flung
 ##   out, and the camera shakes (RunWorld). It lies there crushed flat (its wreck), and the runner runs over it.
+## DESIGN-TBD (docs/questions/q3.md 4 and 7): the warning's parts, the red line among them; the wreck, flat and harmless.
 ## Its hitbox (a Hazard, solid, which the armor and the shield absorb: armor_blocks_solid; a hit of it pays for the whole
 ## of it: passes_after_block) is live only while it drops and as it lands: each tick it spans what the walkway's box went
 ## through since the last, less hitbox_inset across, at its ends and at its underside (forgiving, CLAUDE.md principle 4:
-## a runner under it is hit as it reaches them, on contact only), and LANDING_TICKS ticks after it lands it's off. Each
+## a runner under it is hit as it reaches them, on contact only), and LANDING_TICKS ticks after it lands it's off
+## (DESIGN-TBD, docs/questions/q3.md 5 and 8: hit as it reaches the runner, not only as it lands; one blocked hit pays
+## for the whole of it). Each
 ## of those ticks every enemy in its path (crushes(): its footprint from its underside up to where it was, a heli drone
 ## low over the lane too) is destroyed (RunWorld: Enemy.defeat with CRUSH_CAUSE, a kill the runner's score counts, as a
 ## gap an Octodog was baited into is). DESIGN-TBD (docs/questions/q3.md): the dash passes through its hitbox as through
@@ -44,17 +48,19 @@ const CRUSH_CAUSE: StringName = &"gantryway"
 ## How far beyond its footprint an enemy's middle may be and still be in its path (metres): an enemy's body.
 const ENEMY_REACH: float = 0.4
 ## Its pillar's box: a small zone doodad's (LevelLayout.DOODAD_SIZES; MovementTuning.doodad_size), whose push it is
-## (GantrywayRules places it so).
+## (GantrywayRules places it so). DESIGN-TBD (docs/questions/q3.md 3): one pillar, under the walkway's near end, a small
+## doodad's box whose top can be stood on; the column above it is only its look.
 const PILLAR_SIZE: StringName = &"small"
 ## Its walkway's look is this share of its lane wide, as is its footprint.
 const WIDTH_SHARE: float = 0.92
 ## Its wreck's box (the walkway crushed flat on the floor) is this tall: low enough that the runner's feet, which pass
-## through it, show nothing.
+## through it, show nothing. DESIGN-TBD (docs/questions/q3.md 7): it lies flat and harmless for the rest of the attempt.
 const WRECK_HEIGHT: float = 0.14
 ## Ticks its hitbox stays live counting the one it lands on (a runner under it as it lands is hit, however the physics
-## server orders the contact).
+## server orders the contact). DESIGN-TBD (docs/questions/q3.md 5).
 const LANDING_TICKS: int = 2
 ## The red line on its lane: this share of a lane wide (BossProps.lane_warning's), its glow and see-through alpha.
+## DESIGN-TBD (docs/questions/q3.md 4): whether the red line belongs in its warning at all.
 const LINE_WIDTH_SHARE: float = 0.34
 ## Its shadow: this much wider and longer than its walkway at each side and end, with edges this soft (metres), and
 ## its darkness on the Compatibility renderer, a share of the tuning's (it blends in sRGB: GoldenConvergenceFist's
@@ -279,11 +285,15 @@ func advance(dt: float) -> void:
 	var hold: float = tuning.hold_seconds()
 	var sag: float = tuning.sag * _ease_out(clampf(t / LURCH_SECONDS, 0.0, 1.0))
 	if t < hold:
-		# The shudder: shaking where it hangs, lurched down on its broken end.
-		var w: float = TAU * tuning.shudder_hz * t
-		var a: float = tuning.shudder_amplitude
+		# The shudder: shaking where it hangs, lurched down on its broken end. With Reduced flashing it only lurches and
+		# holds still (a fast shake is a flicker of motion, as a Barnacle Turret's death shudder is: none then).
 		underside_y = hang_y - sag
-		_place_look(underside_y, Vector2(sin(w) * a, sin(w * 1.37 + 1.0) * a * 0.6), sin(w * 0.71) * 0.012)
+		if Settings.flashing_reduced:
+			_place_look(underside_y, Vector2.ZERO, 0.0)
+		else:
+			var w: float = TAU * tuning.shudder_hz * t
+			var a: float = tuning.shudder_amplitude
+			_place_look(underside_y, Vector2(sin(w) * a, sin(w * 1.37 + 1.0) * a * 0.6), sin(w * 0.71) * 0.012)
 		_update_warning()
 		return
 	if state == State.SHUDDERING:
@@ -412,6 +422,8 @@ func _build(geo: TrackGeometry, show_hitboxes: bool) -> void:
 	hitbox = Hazard.new()
 	hitbox.name = "Hitbox"
 	hitbox.hazard_name = "falling gantryway"
+	# DESIGN-TBD (docs/questions/q3.md 8): the armor, then the shield, absorb it (GDD §5), and one blocked hit pays for the
+	# whole walkway (passes_after_block, as for a sign).
 	hitbox.is_solid = true
 	hitbox.armor_blocks_solid = true
 	hitbox.passes_after_block = true

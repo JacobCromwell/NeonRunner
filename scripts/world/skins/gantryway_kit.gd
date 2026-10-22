@@ -1,10 +1,11 @@
 class_name GantrywayKit
 extends RefCounted
 ## The default look of a falling gantryway (task Q3; GDD §5, Zone 9: "an upper walkway over one lane only, looking like a
-## ceiling section", held up by "pillars [that] stand in the floor lanes"; the Ice Lab's reference image: "steel catwalks
-## and grated walkways, girders ... snow drifts and ice crystals"): a frosted steel catwalk, an icy steel pillar and the
-## catwalk crushed flat once it has fallen, built in code from the mesh kit (MeshBatch), for any zone skin that has no
-## look of its own (ZoneSkin.gantryway, gantry_pillar, gantryway_wreck; the Ice Lab's skin may draw its own).
+## ceiling section"; "pillars stand in the floor lanes holding them up"; the Ice Lab's look, from its reference image:
+## "steel catwalks and grated walkways, girders ... snow drifts and ice crystals"): a frosted steel catwalk, an icy steel
+## pillar and the catwalk crushed flat once it has fallen, built in code from the mesh kit (MeshBatch), for any zone skin
+## that has no look of its own (ZoneSkin.gantryway, gantry_pillar, gantryway_wreck; the Ice Lab's skin draws it in its own
+## colours). DESIGN-TBD (docs/questions/q3.md 15): the look, and its dissolving near the camera.
 ##
 ## Every look keeps to these (test_gantryways):
 ## - inside its box, but for the walkway's railings, which stand up to RAIL_HEIGHT above its deck, and its icicles, which

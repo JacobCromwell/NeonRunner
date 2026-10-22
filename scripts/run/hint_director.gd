@@ -203,7 +203,8 @@ func _first_at(trigger: String) -> float:
 			for dw: Dictionary in layout.dash_walls:
 				found.append(float(dw["start"]))
 		"gantryway":
-			# Task Q3 (GDD §5, Zone 9): the first falling gantryway's pillar.
+			# Task Q3 (GDD §5, Zone 9): the first falling gantryway's pillar. DESIGN-TBD (docs/questions/q3.md 12): the
+			# hint's wording (data/hints/hints.json, "gantryway").
 			for gw: Dictionary in layout.gantryways:
 				found.append(float(gw["pillar"]))
 		"debris_maze":

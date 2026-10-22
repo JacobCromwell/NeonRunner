@@ -806,7 +806,8 @@ func _doodad_body(root: Node3D, d: Dictionary, kind: StringName, node_name: Stri
 ## (gantryway_fell, gantryway_swept, gantryway_landed). Its sounds come from the run's library (sfx: the creak, the crash).
 ## The skin dresses its walkway, its pillar (whose look rises from its doodad box to the walkway's underside: the box
 ## stays a doodad's, so the chase camera rides over it as over any doodad, RunCamera.doodad_floor) and its wreck
-## (ZoneSkin.gantryway, gantry_pillar, gantryway_wreck), and names the colours their pieces fly in.
+## (ZoneSkin.gantryway, gantry_pillar, gantryway_wreck), and names the colours their pieces fly in. DESIGN-TBD
+## (docs/questions/q3.md 3): the pillar, a doodad's body under the walkway's near end, its smash the doodads' crunch.
 func _build_gantryway(root: Node3D, g: Dictionary) -> void:
 	var node := Gantryway.new()
 	node.setup(g, GantrywayTuning.load_default(), geo, tuning, show_hitboxes)

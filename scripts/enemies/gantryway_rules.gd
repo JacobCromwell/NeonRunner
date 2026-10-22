@@ -17,7 +17,8 @@ extends RefCounted
 ## - Its pillar is a zone doodad's small box (PILLAR_SIZE) in L from F, pushing into the lane on its `side` like any
 ##   doodad (Player._check_doodads), and kept like one (LevelGenerator._doodad_lane_fits' rules): L holds nothing from its
 ##   push's lead and a lane switch's room before it; the lane beside it on the other side holds nothing until a push's
-##   landing and a reaction past it (a caught corner pushes back the way the runner came: `corner`).
+##   landing and a reaction past it (a caught corner pushes back the way the runner came: `corner`). (GDD §5's proposals:
+##   one pillar under the near end, pushing like a doodad; DESIGN-TBD, docs/questions/q3.md 3.)
 ## - Its walkway hangs at the ceilings' height over L from NEAR_OVERHANG before F, length_seconds of run long. L holds
 ##   nothing under it (no hole, fence, pad, speed pad, floor cut's lane window, doodad, or floor enemy but the one planted
 ##   under it, below) from the pillar's lead to a lane switch's room past its far end: it lands flat on whole floor.
@@ -29,9 +30,10 @@ extends RefCounted
 ##   counts the calm stretch: LevelLayout.doodad_between). Every enemy that holds an attack by a doodad holds it by the
 ##   calm stretch too (doodad_between: a cyborg's bolts, CyborgGun.path_clear; an Octodog's lunge; a heli drone's
 ##   barrage, Drone._doodad_in_reach), so a runner who dashed the pillar steps out under no fire, on every attempt. Its
-##   introduction (the level's first where the level gives the feature a start: Frost Foundry, GDD §5 "an easy first
-##   one") keeps both lanes beside it clear for the whole calm stretch (intro_both_sides). No cyborg stands within its
-##   obstacle margin of the pillar, in any lane (CyborgRules: a pillar is a doodad).
+##   introduction (the level's first where the level gives the feature a start: Frost Foundry) keeps both lanes beside
+##   it clear for the whole calm stretch (intro_both_sides: an easy first one, task Q3's brief, DESIGN-TBD
+##   docs/questions/q3.md). No cyborg stands within its obstacle margin of the pillar, in any lane (CyborgRules: a pillar
+##   is a doodad).
 ## - No ceiling over L or the lanes beside it, nor its landing zone, from the pillar's lead to past the walkway's far end
 ##   (the walkway hangs at a ceiling's height and looks like a ceiling section, but is never walked on: nobody rides a
 ##   ceiling beside it, nor drops off one into its step out). A ceiling over lanes further out may stand meanwhile, its
@@ -45,14 +47,16 @@ extends RefCounted
 ## Plain holes and fences in those windows (never a pulsing fence, one a fence generator powers, or a wall-run gap's hole)
 ## are taken out to make room where clear_plain_pieces allows (taking content out never makes a level unfair); a spot
 ## that needs nothing taken out is preferred.
-## The enemy beneath (plant_cyborg; GDD §5: "it destroys any enemy in its path", the introduction "with an enemy
-## beneath"): a plain floor cyborg (never a host or the panic variant) planted in L under the walkway, standing where it
-## is put (params `stand`), past where the fastest runner who stays in L is as it lands by crush_margin_seconds and as
-## much before the walkway's far end (so a runner who stays in the lane is hit, or the armor takes it, before they could
-## reach it), keeping a cyborg's obstacle margin (CyborgRules) and every ceiling's safe floor (CeilingZones), holding its
-## fire from hold_before_seconds before the pillar until the calm stretch is over (`hold_fire`, CyborgGun.hold). Its
-## params name its gantryway (PARAM): LevelGenerator.feature_positions counts it out of the level's own `cyborg`
-## encounters, as it counts a cyborg planted in a charge's path. A spot where none fits is taken only where no other is.
+## The enemy beneath (plant_cyborg; GDD §5, Zone 9: "it destroys any enemy in its path", and its level schedule row:
+## "dash a pillar to drop a one-lane walkway on the enemies below"; one under every gantryway is task Q3's proposal,
+## DESIGN-TBD docs/questions/q3.md): a plain floor cyborg (never a host or the panic variant) planted in L under the
+## walkway, standing where it is put (params `stand`), past where the fastest runner who stays in L is as it lands by
+## crush_margin_seconds and as much before the walkway's far end (so a runner who stays in the lane is hit, or the armor
+## takes it, before they could reach it), keeping a cyborg's obstacle margin (CyborgRules) and every ceiling's safe floor
+## (CeilingZones), holding its fire from hold_before_seconds before the pillar until the calm stretch is over
+## (`hold_fire`, CyborgGun.hold). Its params name its gantryway (PARAM): LevelGenerator.feature_positions counts it out of
+## the level's own `cyborg` encounters, as it counts a cyborg planted in a charge's path. A spot where none fits is taken
+## only where no other is.
 ##
 ## How many, and where: up to LevelConfig.gantryways. A level that gives the feature a start introduces it at the best
 ## fair spot (both lanes beside it clear) within intro_window_seconds from there, taking the fewest plain pieces out, then
@@ -94,7 +98,8 @@ const OVER_MARGIN: float = 1.0
 ## Spots tried for a planted cyborg, metres apart, from the nearest the pillar it may stand.
 const PLANT_STEP: float = 1.0
 ## Fitting spots tried, best first, for one where a cyborg can be planted (a spot with none is taken only if no other is);
-## for an introduction, which wants its enemy beneath (GDD §5: "an easy first one ... with an enemy beneath"), more.
+## for an introduction, which wants its enemy beneath (task Q3's brief: an easy first one with an enemy beneath,
+## DESIGN-TBD docs/questions/q3.md), more.
 const PLANT_TRIES: int = 60
 const INTRO_TRIES: int = 600
 
@@ -417,7 +422,8 @@ static func _better(x: Array, y: Array) -> bool:
 ## cyborg, a fence generator, an Octodog), never a host. Never the last of a feature, nor the introduction of one the
 ## level gives a start (the first of it from there): every feature and introduction stays. Taking content out never
 ## makes a level unfair (as the dash walls' introduction makes its room), and the introduction gets the calm stretch it
-## should have (GDD §6: one new thing at a time; GDD §5: "an easy first one"). True if anything went.
+## should have (GDD §5, Level schedule: each level introduces about one new thing; an easy first one, task Q3's brief,
+## DESIGN-TBD docs/questions/q3.md). True if anything went.
 static func _make_room(gen: LevelGenerator, t: GantrywayTuning, pt: PowerupTuning, a: float, b: float,
 		fronts: Array[float], spacing: float) -> bool:
 	var lay: LevelLayout = gen.layout

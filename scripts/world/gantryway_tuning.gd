@@ -34,8 +34,8 @@ const PATH: String = "res://data/tuning/gantryways.tres"
 @export_range(0.1, 1.2, 0.05, "suffix:s") var warning_seconds: float = 0.45
 ## How far (metres) the walkway sags on its broken end as the pillar goes, before it drops.
 @export_range(0.0, 1.0, 0.05, "suffix:m") var sag: float = 0.3
-## How far (metres) the walkway shakes while it shudders, and how fast (shakes a second). Motion, never a flash: the
-## same with Reduced flashing.
+## How far (metres) the walkway shakes while it shudders, and how fast (shakes a second). With Reduced flashing it
+## doesn't shake (a fast shake is a flicker of motion): it only lurches down by `sag` and holds still.
 @export_range(0.0, 0.3, 0.01, "suffix:m") var shudder_amplitude: float = 0.08
 @export_range(4.0, 40.0, 1.0, "suffix:Hz") var shudder_hz: float = 18.0
 ## How much smaller its falling hitbox is than its look, across its lane and at each end (forgiving, CLAUDE.md
@@ -55,17 +55,18 @@ const PATH: String = "res://data/tuning/gantryways.tres"
 ## and have this long to see what comes next. The fall and this make the gantryway's calm stretch (GantrywayRules
 ## .calm_length), which every lane keeps quiet.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var escape_after_seconds: float = 0.5
-## The level's first gantryway (where it gives the feature a start: its introduction, GDD §5: "an easy first one")
-## keeps both lanes beside it clear for the whole calm stretch, not only the one its pillar pushes into: plenty of room
-## to step out either way.
+## The level's first gantryway (where it gives the feature a start: its introduction) keeps both lanes beside it clear
+## for the whole calm stretch, not only the one its pillar pushes into: room to step out either way (an easy first one,
+## task Q3's brief; DESIGN-TBD, docs/questions/q3.md).
 @export var intro_both_sides: bool = true
 
 @export_group("The enemy beneath")
-## A plain cyborg stands under each gantryway (GDD §5: "it destroys any enemy in its path"; the introduction "with an
-## enemy beneath"), where a runner who stays in the lane meets it only after the walkway has landed: crush_margin_seconds
-## past the fastest runner's spot at the landing, and the same (at run speed) before the walkway's far end. It stands
-## where it's put and holds its fire from hold_before_seconds before the runner reaches the pillar until the calm
-## stretch is over (CyborgGun.hold), so the dash and the step out are never shot at. Off: none is planted.
+## A plain cyborg stands under each gantryway (GDD §5, Zone 9: "it destroys any enemy in its path"; its level schedule
+## row: "dash a pillar to drop a one-lane walkway on the enemies below"; one under every gantryway is task Q3's proposal,
+## DESIGN-TBD docs/questions/q3.md), where a runner who stays in the lane meets it only after the walkway has landed:
+## crush_margin_seconds past the fastest runner's spot at the landing, and the same (at run speed) before the walkway's far
+## end. It stands where it's put and holds its fire from hold_before_seconds before the runner reaches the pillar until
+## the calm stretch is over (CyborgGun.hold), so the dash and the step out are never shot at. Off: none is planted.
 @export var plant_cyborg: bool = true
 @export_range(0.0, 1.0, 0.05, "suffix:s") var crush_margin_seconds: float = 0.2
 @export_range(0.0, 5.0, 0.1, "suffix:s") var hold_before_seconds: float = 2.0
@@ -76,7 +77,8 @@ const PATH: String = "res://data/tuning/gantryways.tres"
 ## A level that gives the feature a start (LevelConfig.feature_starts: Frost Foundry) introduces it at the best fair
 ## spot within this many seconds of run from there (the one taking the fewest plain pieces out, then the earliest), so
 ## the player meets it right after its first-encounter hint: within the reach every introduction keeps from its start
-## (test_campaign's INTRODUCTION_REACH, 210 m at 18 m/s, about 11.7 s).
+## (test_campaign's INTRODUCTION_REACH, 210 m at 18 m/s, about 11.7 s). DESIGN-TBD (docs/questions/q3.md 12): the
+## introduction, Frost Foundry's from 0.15 of the level (its feature_starts).
 @export_range(2.0, 40.0, 0.5, "suffix:s") var intro_window_seconds: float = 11.5
 ## Plain holes and fences (never a pulsing fence or one a fence generator powers) that stand where a gantryway needs
 ## clear floor may be taken out to make room for it (taking content out never makes a level unfair); a spot that needs
