@@ -313,18 +313,19 @@ var _skin: ZoneSkin
 ## it"): with the `octodog_jar` feature, the generator stands up to this many jars holding an Octodog
 ## (octodog_jar_rules.gd), each where its push is a doodad's and the dog it lets out has room for its usual attack, two
 ## charges at least, each charge's stretch clear (what stands on a charge's path or in the jar's room taken out of its
-## way where that's the only room); fewer where the level leaves no room, none in a crowded build (an occasional feature,
-## octodog_jar_rules.gd's OCCASIONAL: no warning, and its decoys stand all the same). 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1): 1 in each of the Ice
-## Lab's levels (a heli drone's pad schedule leaves a freed dog's attack little room once it has started); quick play's
-## prototype level takes this default, endless mode its level's and a weekly challenge's week Sentinel Row's.
+## way where that's the only room); fewer where the level leaves no room, none in a crowded build (an occasional
+## feature, octodog_jar_rules.gd's OCCASIONAL: no warning, and its decoys stand all the same). 0 turns them off. Without
+## the feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1 and 6): 1 in each of the Ice Lab's levels (a heli
+## drone's pad schedule leaves a freed dog's attack little room once it has started); quick play's prototype level
+## takes this default, endless mode its level's and a weekly challenge's week Sentinel Row's.
 @export_range(0, 8) var octodog_jars: int = 1
 ## How many of the level's own small zone doodads standing alone become Octodog jars whose dog never comes out (task Q5;
 ## LevelLayout.DECOY; octodog_jar_rules.gd, after_doodads): dressed and broken exactly as the jars that release theirs
 ## (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't"), so "sometimes" holds in
 ## every level, whatever the skin's own variety of jars adds. Where the level has too few, new small doodads where a
-## zone doodad may stand (the doodad pass's own rules); fewer only where none fits. Without the `octodog_jar` feature it
-## does nothing. DESIGN-TBD (docs/questions/q5.md 1): 2 in Frost Foundry, 3 in Relay Station
-## and Specimen Vault, and this default elsewhere.
+## zone doodad may stand (the doodad pass's own rules); fewer only where none fits (at three lanes, now and then).
+## Without the `octodog_jar` feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1): 2 in Frost Foundry, 3 in
+## Relay Station and Specimen Vault, and this default elsewhere.
 @export_range(0, 8) var octodog_jar_decoys: int = 2
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings

@@ -5,24 +5,28 @@ extends TestSuite
 ## tumbling out, running ahead and starting its usual attack from the first wind-up, with its cue, fought and killed like
 ## any Octodog).
 ## - The layout: a doodad marked LevelLayout.HOLDS holds the Octodog marked LevelLayout.HELD at its front in its lane
-##   (holder_of, held_by), both kept by copy() and to_dict(); a plain doodad holds nothing; a held dog is never one of the
-##   level's standing Octodogs (LevelGenerator.feature_positions, OctodogRules.dogs_in).
-## - The generator (octodog_jar_rules.gd) over the Ice Lab's three levels at 3, 5 and 6 lanes: each has its jars
-##   (LevelConfig.octodog_jars), each holding a dog of its own with its charges planned from the release, its first wind-up
-##   release_distance past the jar, the rules' re-check clean; in Frost Foundry, which introduces them, none before the
-##   feature's start and the first right after it at five lanes; built again it's the same; a level without the feature,
-##   or with a count of 0, stands none and is built as without it. (Every build's fairness: test_ice_lab_levels and
-##   test_campaign through LayoutChecks.check_octodog_jars and check_doodads.)
+##   (holder_of, held_by), both kept by copy() and to_dict(); a plain doodad holds nothing; a decoy (HOLDS and
+##   LevelLayout.DECOY) holds no dog that comes out; a held dog is never one of the level's standing Octodogs
+##   (LevelGenerator.feature_positions, OctodogRules.dogs_in), nor a decoy one of the feature's jars.
+## - The generator (octodog_jar_rules.gd) over the Ice Lab's three levels at 3, 5 and 6 lanes: up to the level's count of
+##   jars that release their dog (LevelConfig.octodog_jars; an occasional feature: at five lanes every level has its own,
+##   and two in three builds at the least), each holding a dog of its own making MIN_CHARGES (two) charges at least, its
+##   first wind-up from release_distance past the jar to jar_pace_seconds later, the rules' re-check clean, no warning;
+##   decoys (LevelConfig.octodog_jar_decoys), small doodads holding no dog; in Frost Foundry, which introduces them, no jar
+##   before the feature's start; built again it's the same; a level without the feature, or with no jars and no decoys,
+##   stands none and is built as without it, and decoys alone change only the doodads they dress. (Every build's fairness:
+##   test_ice_lab_levels and test_campaign through LayoutChecks.check_octodog_jars and check_doodads.)
 ## - The skin: the Ice Lab dresses a jar holding an Octodog as its Octodog jar, the look its other Octodog jars (which hold
 ##   nothing) have too; every other skin dresses it as any doodad.
-## - On real physics at 3, 5 and 6 lanes (inner and outermost lanes): held, the dog is out of play (no look of its own, no
-##   hitbox, no target, immune); a runner who passes the jar without smashing it (pushed aside) never meets it, and it
-##   leaves play; a runner who dashes it lets it out (the octodog_release sound), it tumbles out harmless, runs ahead and
-##   makes its planned charges, each from its wind-up with the growl and the telegraph, never sooner than planned: a
-##   runner who sidesteps each wind-up lives, one who stays in line is hit by its lunge, one who dashes its lunge kills it
-##   (an Octodog kill). A wall runner who breaks a jar by its side wall (task L3) lets its dog out too. A plain doodad
-##   dashed lets nothing out. One dog at a time: a freed dog whose wind-up comes due while another dog's charges are on
-##   waits for them to end.
+## - On real physics at 3, 5 and 6 lanes (inner and outermost lanes), and once at the Ice Lab's own speed and enemy
+##   scaling: held, the dog is out of play (no look of its own, no hitbox, no target, immune); a runner who passes the jar
+##   without smashing it (pushed aside) never meets it, and it leaves play; a runner who dashes it lets it out (the
+##   octodog_release sound), it tumbles out harmless, runs ahead and makes its planned charges, each from its wind-up with
+##   the growl and the telegraph, never sooner than planned: a runner who sidesteps each wind-up lives, one who stays in
+##   line is hit by its lunge, one who dashes its lunge kills it (an Octodog kill). A wall runner who breaks a jar by its
+##   side wall (task L3) lets its dog out too. A decoy looks and breaks exactly as a jar that releases its dog, and lets
+##   nothing out; so does a plain doodad dressed as an Octodog jar. One dog at a time: a freed dog whose wind-up comes due
+##   while another dog's charges are on waits for them to end.
 ## - Every number of the jars' tuning reaches the F6 panel.
 
 const OctodogJarRules := preload("res://scripts/enemies/octodog_jar_rules.gd")
@@ -53,7 +57,7 @@ func run() -> void:
 	await _test_held()
 	await _test_release()
 	await _test_wall_runner()
-	await _test_empty_jar()
+	await _test_decoy()
 	await _test_one_dog_at_a_time()
 	_test_tuning()
 
@@ -99,8 +103,9 @@ func _test_layout() -> void:
 
 func _test_generator() -> void:
 	var campaign := load(CAMPAIGN_PATH) as Campaign
-	var twos: int = 0
 	var jars: int = 0
+	var builds: int = 0
+	var released: int = 0
 	for n: int in [1, 2, 3]:
 		var step: CampaignStep = campaign.step("ice_lab/%d" % n)
 		for lanes: int in LANE_COUNTS:
@@ -109,66 +114,102 @@ func _test_generator() -> void:
 			var patterns: Array = LevelGenerator.load_for(config)
 			var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
 			var lay: LevelLayout = gen.layout
-			var held: Array[Dictionary] = _jars_of(lay)
-			check(config.has_feature(OctodogJarRules.FEATURE) and config.octodog_jars >= 1 and held.size() == config.octodog_jars,
-				"%d of %d jars holding an Octodog %s" % [held.size(), config.octodog_jars, tag])
-			check(OctodogJarRules.positions(lay) == LevelGenerator.feature_positions(lay, OctodogJarRules.FEATURE),
-				"the every-feature check finds them at their fronts " + tag)
+			var releasing: Array[Dictionary] = []
+			var decoys: Array[Dictionary] = []
+			for d: Dictionary in _jars_of(lay):
+				if LevelLayout.is_decoy(d):
+					decoys.append(d)
+				else:
+					releasing.append(d)
+			builds += 1
+			released += 0 if releasing.is_empty() else 1
+			check(config.has_feature(OctodogJarRules.FEATURE) and config.octodog_jars >= 1
+				and releasing.size() <= config.octodog_jars,
+				"%d of up to %d jars that release an Octodog %s" % [releasing.size(), config.octodog_jars, tag])
+			# Every decoy the level asks for, but at three lanes, where a zone doodad may have no room left to stand.
+			check(config.octodog_jar_decoys >= 1 and decoys.size() <= config.octodog_jar_decoys
+				and (lanes == 3 or decoys.size() == config.octodog_jar_decoys),
+				"%d of the level's %d decoys %s" % [decoys.size(), config.octodog_jar_decoys, tag])
+			for d: Dictionary in decoys:
+				check(lay.held_by(d).is_empty() and StringName(d["size"]) == OctodogJarRules.JAR_SIZE and not d.has("row"),
+					"the decoy at %.0f m is a small doodad standing alone, holding no dog that comes out %s" % [float(d["start"]),
+						tag])
+			var fronts: Array[float] = OctodogJarRules.positions(lay)
+			check(fronts == LevelGenerator.feature_positions(lay, OctodogJarRules.FEATURE) and fronts.size() == releasing.size(),
+				"the every-feature check finds the jars that release theirs at their fronts, never a decoy " + tag)
 			var release: float = OctodogJarRules.release_distance(gen)
-			var most: int = t.charges_range(config.enemy_scaling).y
-			for d: Dictionary in held:
+			var pace_room: float = t.jar_pace_seconds * gen.speed
+			var most: int = maxi(t.charges_range(config.enemy_scaling).y, OctodogJarRules.MIN_CHARGES)
+			for d: Dictionary in releasing:
 				jars += 1
 				var dog: Dictionary = lay.held_by(d)
 				var p: Dictionary = dog.get("params", {})
 				var anchors: Array = p.get("charge_at", [])
 				check(String(dog.get("type", "")) == "octodog" and int(dog["lane"]) == int(d["lane"])
 					and not bool(p.get("doghouse", true)) and int(p.get("charges", 0)) == anchors.size()
-					and anchors.size() >= 1 and anchors.size() <= most,
-					"the jar at %.0f m holds a dog of its own, with no doghouse and its charges planned (%d) %s"
-					% [float(d["start"]), anchors.size(), tag])
+					and anchors.size() >= OctodogJarRules.MIN_CHARGES and anchors.size() <= most,
+					"the jar at %.0f m holds a dog of its own, with no doghouse, making %d charges (%d to %d) %s"
+					% [float(d["start"]), anchors.size(), OctodogJarRules.MIN_CHARGES, most, tag])
 				if anchors.is_empty():
 					continue
-				twos += 1 if anchors.size() >= OctodogJarRules.MIN_CHARGES else 0
-				check(absf(float(anchors[0]) - float(d["start"]) - release) < 0.01,
-					"... its first wind-up release_distance (%.1f m) past the jar %s" % [release, tag])
+				var first: float = float(anchors[0]) - float(d["start"])
+				check(first >= release - 0.01 and first <= release + pace_room + 0.01,
+					"... its first wind-up %.1f m past the jar (release_distance %.1f m, and up to jar_pace_seconds more: %.1f m) %s"
+					% [first, release, pace_room, tag])
 			check(OctodogJarRules.problems(gen).is_empty(), "the jars keep every placement rule %s %s"
 				% [tag, OctodogJarRules.problems(gen)])
-			# The level that introduces them (a start of its own: Frost Foundry): nothing before the start, and at five
-			# lanes (the game's own count) its first jar within the introduction's window of it (_intro).
-			if config.feature_starts.has(OctodogJarRules.FEATURE) and not held.is_empty():
+			# The level that introduces them (a start of its own: Frost Foundry): nothing before the start.
+			if config.feature_starts.has(OctodogJarRules.FEATURE) and not fronts.is_empty():
 				var start: float = gen.feature_start(OctodogJarRules.FEATURE)
-				var fronts: Array[float] = OctodogJarRules.positions(lay)
 				fronts.sort()
-				var first: float = fronts[0]
-				check(first >= start, "no jar before the feature's start (%.0f m: %.0f) %s" % [start, first, tag])
-				if lanes == 5:
-					check(first <= start + t.jar_intro_window_seconds * gen.speed,
-						"the introduction comes right after its start (%.0f m: %.0f) %s" % [start, first, tag])
-			var warned: bool = false
-			for w: String in gen.warnings:
-				warned = warned or w.begins_with("octodog jars")
-			check(not warned, "no warning for the jars " + tag)
+				check(fronts[0] >= start, "no jar before the feature's start (%.0f m: %.0f) %s" % [start, fronts[0], tag])
+			check(gen.warnings.is_empty(), "no warning, a build without room for a jar that releases among them %s %s"
+				% [tag, gen.warnings])
 			if lanes == 5:
-				# Built again, the same jars and dogs.
+				# At the game's own count every level has its jar that releases (other counts and seeds may have none:
+				# OctodogJarRules.OCCASIONAL); built again, the same jars, decoys and dogs.
+				check(not releasing.is_empty(), "at five lanes the level has a jar that releases its Octodog " + tag)
 				var again := LevelGenerator.new()
 				var lay2: LevelLayout = again.generate(config, tuning, patterns)
-				check(var_to_str(_jar_data(lay2)) == var_to_str(_jar_data(lay)), "built again, the same jars and dogs " + tag)
-	check(jars >= 9 and twos * 4 >= jars * 3, "most freed dogs make their usual charges, 2 at least (%d of %d)" % [twos, jars])
-	# A level without the feature, or with none of them, stands none and is built as without them.
+				check(var_to_str(_jar_data(lay2)) == var_to_str(_jar_data(lay)), "built again, the same jars, decoys and dogs "
+					+ tag)
+	# Sprinkled in, never forced: most builds of the levels' own seeds have one (two in three at the least; the rest
+	# have no room for a freed dog's two charges, tools/measure/octodog_jars.gd).
+	check(released * 3 >= builds * 2, "most of the Ice Lab's builds have a jar that releases its Octodog (%d of %d)"
+		% [released, builds])
+	# A level without the feature, or with no jars and no decoys, stands none and is built as without them; decoys alone
+	# change nothing but the doodads they dress, or add where the level has too few.
 	var config: LevelConfig = campaign.configure(campaign.step("ice_lab/1"), 5)
 	var without: LevelConfig = config.duplicate() as LevelConfig
 	without.features = config.features.duplicate()
 	without.features.remove_at(without.features.find(OctodogJarRules.FEATURE))
 	var none: LevelConfig = config.duplicate() as LevelConfig
 	none.octodog_jars = 0
+	none.octodog_jar_decoys = 0
+	var decoys_only: LevelConfig = config.duplicate() as LevelConfig
+	decoys_only.octodog_jars = 0
 	var lay_without: LevelLayout = LevelGenerator.new().generate(without, tuning, LevelGenerator.load_for(without))
 	var lay_none: LevelLayout = LevelGenerator.new().generate(none, tuning, LevelGenerator.load_for(none))
-	check(_jars_of(lay_without).is_empty() and _jars_of(lay_none).is_empty(), "no feature or a count of 0: no jar holds a dog")
+	var lay_decoys: LevelLayout = LevelGenerator.new().generate(decoys_only, tuning, LevelGenerator.load_for(decoys_only))
+	check(_jars_of(lay_without).is_empty() and _jars_of(lay_none).is_empty(),
+		"no feature, or no jars and no decoys: no doodad holds an Octodog")
 	check(var_to_str(lay_without.to_dict()) == var_to_str(lay_none.to_dict()),
-		"a count of 0 builds the level exactly as without the feature")
+		"no jars and no decoys build the level exactly as without the feature")
+	var dressed: int = 0
+	for d: Dictionary in lay_decoys.doodads:
+		dressed += 1 if LevelLayout.is_decoy(d) else 0
+	var plain: Dictionary = lay_decoys.to_dict()
+	for d: Dictionary in plain.get("doodads", []):
+		d.erase(LevelLayout.HOLDS)
+		d.erase(LevelLayout.DECOY)
+	check(dressed == decoys_only.octodog_jar_decoys and OctodogJarRules.positions(lay_decoys).is_empty(),
+		"decoys only: %d of %d, no jar that releases" % [dressed, decoys_only.octodog_jar_decoys])
+	if lay_decoys.doodads.size() == lay_none.doodads.size():
+		check(var_to_str(plain) == var_to_str(lay_none.to_dict()),
+			"decoys from the level's own doodads change nothing but how those are dressed")
 
 
-## Every jar holding an Octodog in `lay`.
+## Every jar holding an Octodog in `lay`, decoys too.
 func _jars_of(lay: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for d: Dictionary in lay.doodads:
@@ -177,7 +218,7 @@ func _jars_of(lay: LevelLayout) -> Array[Dictionary]:
 	return out
 
 
-## The jars of `lay` and the dogs they hold, as plain data (the determinism check).
+## The jars of `lay` (decoys too) and the dogs they hold, as plain data (the determinism check).
 func _jar_data(lay: LevelLayout) -> Array:
 	var out: Array = []
 	for d: Dictionary in _jars_of(lay):
@@ -267,6 +308,25 @@ func _test_release() -> void:
 				and int(r["windups"]) == 0 and (r["sounds"] as Array).is_empty() and bool(r["dog_gone"]),
 				"a runner who runs into the jar without the dash is pushed aside and never meets its dog, which leaves play %s %s"
 				% [_brief(r), tag])
+	# At the Ice Lab's own speed and enemy scaling (Specimen Vault's, its hardest: a quicker wind-up and lunge, and every
+	# distance the jar rules plan at that speed): the same release, its charges each warned, a dodging runner living and
+	# one who stays in line hit after the wind-up.
+	var campaign := load(CAMPAIGN_PATH) as Campaign
+	var lab: LevelConfig = campaign.configure(campaign.step("ice_lab/3"), 5)
+	var lab_pace: float = lab.movement_for(tuning).pace()
+	var tag: String = "(Specimen Vault: %.1f m/s, enemy scaling %.3f)" % [lab.run_speed, lab.enemy_scaling]
+	var r: Dictionary = await _take(5, 2, -1, "dodge", lab)
+	check(bool(r["alive"]) and int(r["smashes"]) == 1 and bool(r["released"]) and bool(r["harmless_out"])
+		and int(r["windups"]) == int(r["charges"]) and int(r["lunges"]) == int(r["charges"]) and bool(r["warned"]),
+		"dashed at the zone's own speed, the jar lets its dog out and it makes its %d charges, each warned %s %s"
+		% [int(r["charges"]), _brief(r), tag])
+	check(float(r["first_windup"]) >= float(r["a0"]) - 0.5 * lab_pace
+		and float(r["first_windup"]) <= float(r["a0"]) + 10.0 * lab_pace,
+		"... its first wind-up where it's planned (%.1f m, planned %.1f m) %s" % [float(r["first_windup"]), float(r["a0"]), tag])
+	r = await _take(5, 2, -1, "stay", lab)
+	check(not bool(r["alive"]) and String(r["event"]).contains("Octodog") and int(r["windups"]) >= 1
+		and float(r["died_at"]) >= float(r["first_windup"]),
+		"... and a runner who stays in its line is hit by its lunge, after its wind-up %s %s" % [_brief(r), tag])
 
 
 ## A wall runner low on a side wall breaks a jar by it (task L3), and it lets its dog out too.
@@ -282,19 +342,64 @@ func _test_wall_runner() -> void:
 			"... and it attacks as any freed dog, warned, a runner who sidesteps it living %s %s" % [_brief(r), tag])
 
 
-## A plain doodad dashed lets nothing out, even dressed as an Octodog jar.
-func _test_empty_jar() -> void:
-	var lay := RunSim.layout(5, 400.0)
+## A decoy (LevelLayout.DECOY: a jar whose dog never comes out) and a jar that releases its dog are one look and one
+## break (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't"): the Ice Lab's track
+## dresses both as its Octodog jar, the same for the same seed, and the dash breaks both with the crunch (doodad_smash)
+## and the same pieces (RunEffects.rubble: the same box, colours and seed); only the releasing one's dog comes out, with
+## its snarl (octodog_release). A plain doodad dressed as an Octodog jar lets nothing out either.
+func _test_decoy() -> void:
 	var lab := load(ICE_LAB_SKIN) as IceLabSkin
-	var look_seed: int = lab.doodads().look_seed_for(&"small", IceLabDoodads.OCTODOG_JAR) if lab != null else 7
-	lay.doodads.append(_jar(2, 1, JAR, false, look_seed))
-	var w: RunWorld = sim.build_world(lay, null, null, _config())
-	w.player.setup(tuning, w.geo, 2)
-	var dash_at: float = JAR - 0.5 * pt.dash_duration * (tuning.run_speed + pt.dash_speed_bonus)
-	var r: Dictionary = await sim.step_world(w, (JAR + 60.0) / tuning.run_speed, [[dash_at, &"dash"]])
-	check(bool(r["alive"]) and w.player.smashes == 1 and w.director.active.is_empty(),
+	var takes: Dictionary = {}
+	for how: String in ["releasing", "decoy", "plain"]:
+		var lay := RunSim.layout(5, 400.0)
+		var look_seed: int = 7
+		if how == "plain" and lab != null:
+			look_seed = lab.doodads().look_seed_for(&"small", IceLabDoodads.OCTODOG_JAR)
+		var jar: Dictionary = _jar(2, 1, JAR, how != "plain", look_seed, how == "decoy")
+		lay.doodads.append(jar)
+		if how == "releasing":
+			lay.enemies.append(_held_dog(2, JAR, (_plan_for(lay, JAR, 2))["anchors"]))
+		var w: RunWorld = sim.build_world(lay, null, null, _config())
+		w.player.setup(tuning, w.geo, 2)
+		await _until(func() -> bool:
+			var b: DashBreakable = _breakable_for(w, jar)
+			return b != null and b.has_meta(IceLabDoodads.META_LOOK), 3.0)
+		var node: DashBreakable = _breakable_for(w, jar)
+		var take := {"look": node.get_meta(IceLabDoodads.META_LOOK, &"") if node != null else &"none",
+			"shape": _shape_of(node), "colors": node.debris_colors.duplicate() if node != null else PackedColorArray(),
+			"box": node.world_box() if node != null else AABB()}
+		var broke: Array = []
+		var on_smashed := func(b: DashBreakable) -> void: broke.append([b.debris_colors.duplicate(), b.world_box(),
+			int(b.entry.get("seed", 0))])
+		w.player.smashed.connect(on_smashed)
+		w.player.god_mode = true
+		var dash_at: float = JAR - 0.5 * pt.dash_duration * (tuning.run_speed + pt.dash_speed_bonus)
+		var r: Dictionary = await sim.step_world(w, (JAR + 40.0) / tuning.run_speed, [[dash_at, &"dash"]])
+		var dog: Octodog = _find_dog(w)
+		take["smashes"] = w.player.smashes
+		take["crunch"] = (r["events"] as Array).count(&"doodad_smash")
+		take["broke"] = broke
+		take["dog_out"] = dog != null and dog.phase != Octodog.Phase.HELD
+		take["snarl"] = dog != null and dog.sounds_played.has(&"octodog_release")
+		take["enemies"] = w.director.active.size()
+		takes[how] = take
+		await sim.free_world(w)
+	var rel: Dictionary = takes["releasing"]
+	var dec: Dictionary = takes["decoy"]
+	var plain: Dictionary = takes["plain"]
+	check(rel["look"] == IceLabDoodads.OCTODOG_JAR and dec["look"] == IceLabDoodads.OCTODOG_JAR
+		and not (rel["shape"] as Array).is_empty() and var_to_str(rel["shape"]) == var_to_str(dec["shape"])
+		and rel["colors"] == dec["colors"] and (rel["box"] as AABB).is_equal_approx(dec["box"]),
+		"a decoy is dressed exactly as a jar that releases its dog (%s, %s; %d and %d meshes)" % [rel["look"], dec["look"],
+			(rel["shape"] as Array).size(), (dec["shape"] as Array).size()])
+	check(int(rel["smashes"]) == 1 and int(dec["smashes"]) == 1 and int(rel["crunch"]) == 1 and int(dec["crunch"]) == 1
+		and var_to_str(rel["broke"]) == var_to_str(dec["broke"]),
+		"the dash breaks both the same way: the crunch and the same pieces (%s, %s)" % [rel["crunch"], dec["crunch"]])
+	check(bool(rel["dog_out"]) and bool(rel["snarl"]), "only the jar that releases lets its dog out, with its snarl")
+	check(not bool(dec["dog_out"]) and not bool(dec["snarl"]) and int(dec["enemies"]) == 0,
+		"a decoy's dog never comes out (%d enemies in play)" % int(dec["enemies"]))
+	check(int(plain["smashes"]) == 1 and int(plain["enemies"]) == 0 and plain["look"] == IceLabDoodads.OCTODOG_JAR,
 		"an Octodog jar that holds nothing breaks and lets nothing out")
-	await sim.free_world(w)
 
 
 ## GDD §9: one dog at a time. A standing dog's charges are on as a freed dog's first wind-up comes due: the freed one
@@ -365,6 +470,11 @@ func _test_tuning() -> void:
 		if String(p["name"]) == "octodog_jars":
 			found = int(p["hint"]) == PROPERTY_HINT_RANGE
 	check(found, "LevelConfig.octodog_jars has a range for the F6 panel")
+	found = false
+	for p: Dictionary in LevelConfig.new().get_property_list():
+		if String(p["name"]) == "octodog_jar_decoys":
+			found = int(p["hint"]) == PROPERTY_HINT_RANGE
+	check(found and LevelConfig.new().octodog_jar_decoys >= 0, "LevelConfig.octodog_jar_decoys has a range for the F6 panel")
 
 
 # --- Helpers ------------------------------------------------------------------------------------
@@ -541,6 +651,19 @@ func _breakable_for(w: RunWorld, d: Dictionary) -> DashBreakable:
 		if n is DashBreakable and is_same((n as DashBreakable).entry, d):
 			return n as DashBreakable
 	return null
+
+
+## The look the skin gave the node the track built for a doodad, as plain data: each mesh under it, in order (its kind,
+## size and place), [] for none.
+func _shape_of(node: Node) -> Array:
+	var out: Array = []
+	if node == null:
+		return out
+	for n: Node in node.find_children("*", "MeshInstance3D", true, false):
+		var m := n as MeshInstance3D
+		var size: Vector3 = m.mesh.get_aabb().size if m.mesh != null else Vector3.ZERO
+		out.append([m.mesh.get_class() if m.mesh != null else "", (size * 1000.0).round(), (m.position * 1000.0).round()])
+	return out
 
 
 ## Steps physics frames until `cond` is true (true) or `seconds` pass (false).
