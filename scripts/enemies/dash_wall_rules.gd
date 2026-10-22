@@ -84,7 +84,10 @@ extends RefCounted
 ## most that fit, as far apart as they can be; still short, the zone doodads in the way of the rest go (task
 ## L6, _clear_doodads: scenery, so it gives way before any feature does); still short, its wall-run gaps but
 ## its first give way (task J2, WallRunGapPlacement.set_aside: the best spots again with them out of the way,
-## then each comes back where the walls left its way as it was, put_back). A level left with no wall at all,
+## then each comes back where the walls left its way as it was, put_back); still short, its teleporters but an
+## introduction and its first blinking one the same (task Q6, the Golden Zone's crowded levels; TeleporterRules
+## .set_aside, put_back: each stands again where it stood if the walls left its windows as they were, else the level
+## has one fewer). A level left with no wall at all,
 ## even with every zone doodad in the way gone, makes room for one as an
 ## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
 ## Overdrive an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way
@@ -110,6 +113,7 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"floor_cutter", "treasure_stash", "fenced_ceiling"]
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
+const TeleporterRules = preload("res://scripts/enemies/teleporter_rules.gd")
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 const TITHE: String = "tithe_collector"
 const GENERATOR: String = "generator"
@@ -364,6 +368,21 @@ static func after_doodads(gen: LevelGenerator) -> void:
 					break
 				_place(gen, plan, at, faces)
 			WallRunGapPlacement.put_back(gen, aside, "the dash walls")
+	if faces.size() < count:
+		# Task Q6 (the Golden Zone's crowded levels): then its teleporters but an introduction and its first blinking one
+		# give way the same (TeleporterRules.set_aside): the best spots of the rest with them out of the way; then each
+		# stands again where it stood if the walls left its windows as they were, else the level has one fewer (put_back,
+		# not moving one: the fill pass and the zone doodads have kept off where each stood, not off anywhere else).
+		# DESIGN-TBD (docs/questions/q6.md): the dash walls go first.
+		var gone: Array[Dictionary] = TeleporterRules.set_aside(gen, true)
+		if not gone.is_empty():
+			plan = plan_for(gen, t)
+			while faces.size() < count:
+				var at: float = plan.best(plan.lo, plan.hi, plan.lo, faces)
+				if is_nan(at):
+					break
+				_place(gen, plan, at, faces)
+			TeleporterRules.put_back(gen, gone, [], false)
 	# Kept out of the quiet stretches, a level paced in bursts may have no room left: one stands in a quiet
 	# stretch rather than none at all.
 	if faces.is_empty() and not gen.quiet_stretches().is_empty():
