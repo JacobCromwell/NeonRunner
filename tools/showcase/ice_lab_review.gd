@@ -202,10 +202,10 @@ func _shot_list() -> Array:
 		var at: Vector2 = bays[kind]
 		var side: float = at.x
 		var z: float = -(at.y + 2.5)
-		out.append([at.y - 20.0, Vector3(-side * 0.5, 2.2, z + 5.5), Vector3(side * w, 3.0, z), "a bay of %s (%s side, at %.0f m)" % [
+		out.append([at.y - 20.0, Vector3(-side * 0.5, 2.2, z + 5.5), Vector3(side * w, 4.0, z), "a bay of %s (%s side, at %.0f m)" % [
 			BAY_NAMES[kind], "left" if side < 0.0 else "right", at.y + 2.5]])
 		if kind == IceLabWalls.BAY_JARS or kind == IceLabWalls.BAY_OCTODOG:
-			out.append([at.y - 20.0, Vector3(side * (w - 3.4), 1.9, z + 3.0), Vector3(side * w, 2.2, z - 0.4), "the jars of that bay, close up"])
+			out.append([at.y - 20.0, Vector3(side * (w - 3.4), 1.9, z + 3.0), Vector3(side * w, 7.6, z - 0.4), "the jars of that bay, close up"])
 	# Ceilings: each coming up from the floor, ridden under, and from beside.
 	for h: Vector3 in _hulls:
 		out.append([h.x - 24.0, Vector3(0.0, cam_h, -(h.x - 18.0)), Vector3(0.0, 5.0, -(h.x + 2.0)), "a ceiling's near end (%.0f m)" % h.x])

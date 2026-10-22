@@ -313,8 +313,9 @@ const TERMINAL_GUTTER: int = 4
 
 ## The Ice Lab's surface patterns of the solid kit shader (kit_ice_lab.gdshaderinc), ids 110-119 (task Q2): a frozen
 ## industrial laboratory (GDD §5, Zone 9). Only the machine lamps (PAT_IL_LAMP, a small amber point, breathing slowly and
-## holding still with Reduced flashing), the screens, the jars' liquid and the panels' status LEDs glow, all dimly and
-## under the bloom threshold, the last three a pale desaturated blue-white; give every other pattern's vertices COLOR.a = 0.
+## holding still with Reduced flashing), the screens and the jars' liquid glow, all dimly, over the wall-run band and under the
+## bloom threshold, the last two a pale desaturated blue-white; give every other pattern's vertices COLOR.a = 0 (the panels'
+## status LEDs are paint, never lit).
 ## A lane of catwalk grating with packed snow and ice (world position; UV.x -1 to 1 across the lane): param = the lane's
 ## half width in centimetres times 8 plus IL_* flags (IceLabFloor.half_width_param).
 const PAT_IL_GRATING: int = 110

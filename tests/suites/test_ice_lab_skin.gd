@@ -11,7 +11,8 @@ extends SkinSuite
 ##   Vector3s, the lamps' slow breathing holds still with Reduced flashing (kit_ice_lab.gdshaderinc: il_lamp_surface);
 ## - gaps read as holes: below the catwalk only deep shade far darker than the grating as rendered, the orange edge on both of its edges;
 ## - the walls: bays laid from the wall's own distance, built once in wall space and set on either wall by a transform; below the wall-run band's top nothing
-##   stands out of the face more than IceLabParts.PROUD, and the jar alcoves are recessed; no alcove beside a window cyborg; the frost lean has the
+##   stands out of the face more than 4.5 cm (IceLabParts.PROUD, the convention of every wall-running zone: `wall - 0.05`), nothing is recessed or lit
+##   there, the jar alcoves and the lit screens are above it; no alcove beside a window cyborg; the frost lean has the
 ##   industrial bays and the lab lean the laboratory's, the Octodog bays turn up in the lab;
 ## - the hall beyond the walls is drawn once however the walls are cut, with a far wall, crane runways and cross girders;
 ## - the play space stays clear and nothing glows on the lane side of the wall line;
@@ -39,7 +40,8 @@ const SLOT_SHADE: float = 0.42
 ## The showcase track's gap (SkinSuite.showcase_track): lane 3 of 5, 50-57 m.
 const GAP_LANE := Vector2(1.2, 3.6)
 const GAP := Vector2(50.0, 57.0)
-const WALL_RUN_BAND: float = 6.0
+## The most a thing on the wall may stand out of its face where a runner can touch it, as every wall-running zone's suite checks it (wall - 0.05).
+const WALL_RELIEF: float = 0.05
 
 
 func run() -> void:
@@ -421,9 +423,11 @@ func _bays(frost: IceLabSkin, skin: IceLabSkin, lab: IceLabSkin) -> void:
 		"the walls lean the way the owner asked: the laboratory's bays are %.0f%% of the frost level's, %.0f%% of the middle's, %.0f%% of the lab's" % [shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0])
 	check(octo[lab.lab_share] > 0.02 and octo[lab.lab_share] > octo[frost.lab_share] * 3.0 and octo[frost.lab_share] < 0.03,
 		"Octodog jars turn up on the lab level's walls and hardly on the frost level's (%.1f%%, %.1f%%)" % [octo[lab.lab_share] * 100.0, octo[frost.lab_share] * 100.0])
-	# Relief: below the band every bay (every kind, every variant) stands out of the wall face PROUD at most; the jar bays reach back into the wall.
-	var worst: float = -INF
-	var deepest: float = 0.0
+	# Relief: in the wall-run band (up to calm_top) every bay (every kind, every variant) stands out of the wall face 5 cm at most, has no opening
+	# in it (the half-sunk pipes and the ice's bases bury themselves in the wall, never more than 0.4 m) and does not glow; the jar alcoves (0.8 m
+	# deep) and the lit screens are above it.
+	var recess_low: float = INF
+	var glow_low: float = INF
 	var over: PackedStringArray = []
 	for each: IceLabSkin in [frost, skin, lab]:
 		for kind: int in IceLabWalls.BAY_COUNT + 1:
@@ -431,17 +435,22 @@ func _bays(frost: IceLabSkin, skin: IceLabSkin, lab: IceLabSkin) -> void:
 				var mesh: ArrayMesh = each.walls().bay(kind, variant).to_mesh()
 				var bay_worst: float = -INF
 				for s: int in mesh.get_surface_count():
-					for v: Vector3 in mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
-						# The wall's snow banks (0.28 m high, within the gutter) are below the wall run's lowest step: harmless.
-						if v.y > 0.3 and v.y < each.calm_top - 0.05:
+					var verts: PackedVector3Array = mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+					var colors: PackedColorArray = mesh.surface_get_arrays(s)[Mesh.ARRAY_COLOR]
+					for i: int in verts.size():
+						var v: Vector3 = verts[i]
+						if v.y > 0.06 and v.y < each.calm_top:
 							bay_worst = maxf(bay_worst, v.x)
-						if v.y > 0.0:
-							deepest = minf(deepest, v.x)
-				worst = maxf(worst, bay_worst)
-				if bay_worst > IceLabParts.PROUD + 0.002:
+						if v.x < -0.4:
+							recess_low = minf(recess_low, v.y)
+						if colors[i].a > 0.0 and v.y > 0.0:
+							glow_low = minf(glow_low, v.y)
+				if bay_worst > WALL_RELIEF + 0.0005:
 					over.append("lean %.2f kind %d variant %d: %.3f" % [each.lab_share, kind, variant, bay_worst])
-	check(over.is_empty(), "nothing on a wall stands out of its face more than %.2f m below the band's top (%.1f m): %s" % [IceLabParts.PROUD, skin.band_top, ", ".join(over.slice(0, 4))])
-	check(deepest < -IceLabWalls.ALCOVE_DEPTH + 0.05, "the jar alcoves are recessed behind the face (%.2f m)" % deepest)
+	check(IceLabParts.PROUD <= WALL_RELIEF, "the parts' wall relief (%.3f m) is within the convention (%.2f m)" % [IceLabParts.PROUD, WALL_RELIEF])
+	check(over.is_empty(), "nothing on a wall stands out of its face more than %.2f m in the wall-run band (below %.1f m): %s" % [WALL_RELIEF, skin.calm_top, ", ".join(over.slice(0, 4))])
+	check(recess_low >= skin.calm_top, "the jar alcoves are recessed only above the wall-run band (the lowest recessed point at %.2f m, the band's top at %.1f m)" % [recess_low, skin.calm_top])
+	check(glow_low >= skin.calm_top, "nothing on a bay glows below %.1f m: the screens, jars and lamps are over the band (the lowest glow at %.2f m)" % [skin.calm_top, glow_low])
 	# A bay is built once: the same mesh for the same kind and variant, and the right wall is the left wall's bay turned.
 	var walls: IceLabWalls = skin.walls()
 	check(walls.bay(IceLabWalls.BAY_RACKS, 1) == walls.bay(IceLabWalls.BAY_RACKS, 1), "a bay is built once and shared")
@@ -452,8 +461,17 @@ func _bays(frost: IceLabSkin, skin: IceLabSkin, lab: IceLabSkin) -> void:
 	walls.build(left, -1, -geo_wall(5), float(k_first) * IceLabWalls.SLOT, float(k_first + 1) * IceLabWalls.SLOT)
 	var right_kind: int = walls.bay_kind(1, k_first)
 	walls.build(right, 1, geo_wall(5), float(k_first) * IceLabWalls.SLOT, float(k_first + 1) * IceLabWalls.SLOT)
-	check(left.vertex_count() == walls.bay(kind, walls.bay_variant(-1, k_first)).vertex_count() and right.vertex_count() == walls.bay(right_kind, walls.bay_variant(1, k_first)).vertex_count(),
-		"a bay of the wall is exactly its template (%d, %d vertices)" % [left.vertex_count(), right.vertex_count()])
+	var rail_5: int = walls.rail(IceLabWalls.SLOT).vertex_count()
+	check(left.vertex_count() == walls.bay(kind, walls.bay_variant(-1, k_first)).vertex_count() + rail_5
+		and right.vertex_count() == walls.bay(right_kind, walls.bay_variant(1, k_first)).vertex_count() + rail_5,
+		"a bay of the wall is exactly its template and its stretch of rail (%d, %d vertices)" % [left.vertex_count(), right.vertex_count()])
+	# The gantry rail along the top is one for a whole wall piece, not one in every bay: a chunk's wall is its bays and one rail.
+	var chunk := MeshBatch.new()
+	walls.build(chunk, -1, -geo_wall(5), 80.0, 80.0 + TrackBuilder.CHUNK_LENGTH)
+	var expected: int = walls.rail(TrackBuilder.CHUNK_LENGTH).vertex_count()
+	for kb: int in 8:
+		expected += walls.bay(walls.bay_kind(-1, 16 + kb), walls.bay_variant(-1, 16 + kb)).vertex_count()
+	check(chunk.vertex_count() == expected, "a chunk's wall is its eight bays and one gantry rail (%d vertices, %d expected)" % [chunk.vertex_count(), expected])
 	# A window cyborg's place is plain, and the span of a wall gap is cut to plain plating.
 	var jar_k: int = -1
 	for k: int in 200:
@@ -511,6 +529,8 @@ func _hall_once(skin: IceLabSkin) -> void:
 		var a: Dictionary = _hall_census(whole, skin)
 		var b: Dictionary = _hall_census(parts, skin)
 		check(int(a["girders"]) >= 1 and int(a["far"]) >= 2 and int(a["pillars"]) >= 2, "a chunk's hall has its girders, far walls and pillars (%s)" % [a])
+		check(int(a["roof"]) >= 6 and int(a["trusses"]) >= 4, "a chunk's hall is closed overhead: a roof across it at %.0f m with its trusses (%s)" % [skin.roof_height, a])
+		check(a["trusses"] == b["trusses"] and int(b["roof"]) >= 6, "the roof's trusses are built once however the walls are cut (%s)" % [b])
 		check(a["girders"] == b["girders"] and a["pillars"] == b["pillars"] and a["crystals"] == b["crystals"],
 			"the hall holds its girders (%d), pillars (%d) and crystals (%d) once however the walls are cut (%s)" % [a["girders"], a["pillars"], a["crystals"], b])
 	await tree.process_frame
@@ -519,13 +539,14 @@ func _hall_once(skin: IceLabSkin) -> void:
 ## What a hall batch holds, counted from its vertices: girder boxes (the cross girders' plating, a box 0.9 m deep), far wall quads, pillars (0.9 m square
 ## boxes from the frozen floor up) and crystals (the far walls' big ones).
 func _hall_census(batch: MeshBatch, skin: IceLabSkin) -> Dictionary:
-	var out := {"girders": 0, "far": 0, "pillars": 0, "crystals": 0}
+	var out := {"girders": 0, "far": 0, "pillars": 0, "crystals": 0, "roof": 0, "trusses": 0}
 	var mesh: ArrayMesh = batch.to_mesh()
 	var wall: float = geo_wall(5)
 	var far: float = wall + skin.hall_extra
 	var pillar_low: Dictionary = {}
 	var girder_z: Dictionary = {}
 	var crystal_z: Dictionary = {}
+	var truss_z: Dictionary = {}
 	for s: int in mesh.get_surface_count():
 		var arrays: Array = mesh.surface_get_arrays(s)
 		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -536,6 +557,10 @@ func _hall_census(batch: MeshBatch, skin: IceLabSkin) -> Dictionary:
 				out["far"] += 1
 			if roundi(uv2[i].x) == MeshKit.PAT_IL_STEEL and absf(v.y - (skin.crane_height + 0.55 + 0.45)) < 0.01 and absf(v.x) > wall + 3.0:
 				girder_z[snappedf(v.z, 0.01)] = true
+			if roundi(uv2[i].x) == MeshKit.PAT_IL_STEEL and roundi(uv2[i].y) == 1 and absf(v.y - skin.roof_height) < 0.001 and absf(absf(v.x) - far) < 0.01:
+				out["roof"] += 1
+			if roundi(uv2[i].x) == MeshKit.PAT_IL_STEEL and absf(v.y - (skin.roof_height - IceLabHall.ROOF_TRUSS)) < 0.001 and absf(absf(v.x) - far) < 0.01:
+				truss_z[snappedf(v.z, 0.01)] = true
 			if roundi(uv2[i].x) == MeshKit.PAT_IL_STEEL and absf(v.y + skin.pit_depth) < 0.001:
 				pillar_low[Vector2i(roundi(v.x * 10.0), roundi(v.z * 10.0))] = true
 			if roundi(uv2[i].x) == MeshKit.PAT_IL_ICE and roundi(uv2[i].y) == 1 and absf(v.x) > far - 5.0 and v.y > 4.0:
@@ -544,11 +569,13 @@ func _hall_census(batch: MeshBatch, skin: IceLabSkin) -> Dictionary:
 	out["girders"] = girder_z.size()
 	out["pillars"] = pillar_low.size()
 	out["crystals"] = crystal_z.size()
+	out["trusses"] = truss_z.size()
 	return out
 
 
 ## Between the floor and the ceiling, over the lanes, the skin builds nothing solid but hazards and triggers, anywhere in a whole level; nothing sticks out of
-## the wall line through the wall-run band by more than PROUD, and nothing on the lane side of the wall line glows (but the dim screens and lights).
+## the walls through the wall-run band by more than 5 cm (`wall - 0.05`, as the Corporate, Golden and Beach suites check it) and nothing on the walls or the
+## lane side of them glows there but the orange edges.
 func _clear_play_space(skin: IceLabSkin, level_path: String) -> void:
 	for lanes: int in [3, 6]:
 		var layout: LevelLayout = level(level_path, lanes, 0.6, 5)
@@ -558,6 +585,7 @@ func _clear_play_space(skin: IceLabSkin, level_path: String) -> void:
 		var intruders: PackedStringArray = []
 		var sticking: PackedStringArray = []
 		var lit: PackedStringArray = []
+		var band: float = minf(skin.calm_top, tuning.ceiling_height - 0.1)
 		await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
 			if _under(m, func(n: Node) -> bool: return n is Area3D) or material == skin.drift_material():
 				return
@@ -569,22 +597,16 @@ func _clear_play_space(skin: IceLabSkin, level_path: String) -> void:
 				var at_finish: bool = absf(-p.z - layout.length) < 1.0
 				if not additive and absf(p.x) < half - 0.01 and p.y > 0.06 and p.y < tuning.ceiling_height - 0.1 and not at_finish and intruders.size() < 4:
 					intruders.append(str(p))
-				elif not additive and absf(p.x) >= half - 0.01 and absf(p.x) < wall - IceLabParts.PROUD - 0.001 and p.y > 0.06 and p.y < WALL_RUN_BAND \
-						and not at_finish and sticking.size() < 4 and not _is_gutter_snow(p, wall):
+				elif not additive and absf(p.x) >= half - 0.01 and absf(p.x) < wall - WALL_RELIEF and p.y > 0.06 and p.y < band \
+						and not at_finish and sticking.size() < 4:
 					sticking.append(str(p))
 				var glowing: bool = additive or (material == skin.solid_material() and colors[i].a > 0.0)
-				if glowing and absf(p.x) < wall - 0.01 and p.y > 0.06 and p.y < WALL_RUN_BAND and not at_finish \
-						and not _same_rgb(colors[i], skin.gap_edge_color) and not _same_rgb(colors[i], skin.screen_color) \
-						and not _same_rgb(colors[i], skin.liquid_color) and lit.size() < 4:
+				if glowing and absf(p.x) < wall + 1.0 and p.y > 0.06 and p.y < band and not at_finish \
+						and not _same_rgb(colors[i], skin.gap_edge_color) and lit.size() < 4:
 					lit.append("%s %s" % [colors[i], p]))
 		check(intruders.is_empty(), "nothing decorative stands in the play space (%d lanes): %s" % [lanes, ", ".join(intruders)])
-		check(sticking.is_empty(), "nothing sticks out of the wall line through the wall-run band (%d lanes): %s" % [lanes, ", ".join(sticking)])
-		check(lit.is_empty(), "nothing glows over the lanes in the wall-run band but the dim screens, status lights and jars (%d lanes): %s" % [lanes, ", ".join(lit)])
-
-
-## The wall's snow banks at its foot (0.28 m high, below the wall run's lowest step, within the gutter): harmless to the runner.
-func _is_gutter_snow(p: Vector3, wall: float) -> bool:
-	return p.y < 0.3 and absf(p.x) > wall - 0.3
+		check(sticking.is_empty(), "nothing sticks out of the walls through the wall-run band by more than %.2f m (%d lanes): %s" % [WALL_RELIEF, lanes, ", ".join(sticking)])
+		check(lit.is_empty(), "nothing glows over the lanes or on the walls in the wall-run band, but the orange edges (%d lanes): %s" % [lanes, ", ".join(lit)])
 
 
 # --- Ceilings and doodads -------------------------------------------------------------------------

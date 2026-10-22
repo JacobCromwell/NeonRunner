@@ -11,8 +11,8 @@ extends ZoneSkin
 ## of dark ice (PAT_IL_UNDER). The walls are lab machinery (IceLabWalls): bays of 5 m laid from the wall's own distance, each a run
 ## of pipes and girders, a lattice pillar, a pressure tank, a wall of ice, a bank of consoles, a row of server racks, clean-room
 ## tile, a service door, or an alcove of specimen jars (a brain in each, some holding an Octodog), their detail painted flush with the
-## wall below the wall-run band's top and standing out from it only above (nothing sticks out more than a few centimetres where a
-## runner can touch it). Over the wall stand the hall's gantry rail with its railing, ice crust and icicles, and beyond it the hall
+## wall below the wall-run band's top and standing out from it only above (nothing sticks out more than 4.5 cm where a
+## runner can touch it, nothing is recessed or lit there; the specimen jars' alcoves are above it). Over the wall stand the hall's gantry rail with its railing, ice crust and icicles, and beyond it the hall
 ## (IceLabHall): the far ice wall, crane runways and cross girders overhead with hanging chains and crane blocks, drifting snow and
 ## cold mist. Ceilings are crane gantries and overhead grated walkways (IceLabCeilings), each built from the lanes it covers. The
 ## doodads are brain jars, lab equipment, ice crystal clusters and crates of lab supplies, and the Octodog jar (IceLabDoodads, picture
@@ -36,6 +36,7 @@ extends ZoneSkin
 @export_group("Lean")
 ## 0 the snow and the industrial side (level 1), 1 the laboratory (the last level), about 0.5 in between (the owner, October 21,
 ## 2026). The one number a level's skin sets; everything below that depends on it takes its two ends from the exports below.
+## DESIGN-TBD (docs/questions/q2.md item 8): the three values, 0.1, 0.5 and 0.9, and every end of the lean below, are proposals.
 @export_range(0.0, 1.0, 0.01) var lab_share: float = 0.5
 ## How much of the floor, the ledges and the machinery lies under snow and frost at each end of the lean (0 none, 1 a drift
 ## everywhere).
@@ -76,8 +77,9 @@ extends ZoneSkin
 ## The same on the Compatibility renderer (web, low-end Android), which scales emissive colours in sRGB space where the others scale
 ## them in linear space: the same number draws far dimmer there, so this one draws about as bright as lamp_glow does on the others.
 @export_range(0.0, 0.6, 0.01) var lamp_glow_compat: float = 0.16
-## The lowest a lamp hangs: never at floor level, where a gap edge's orange is.
-@export_range(6.2, 10.0, 0.1, "suffix:m") var lamp_min_height: float = 6.7
+## The lowest a lamp hangs: never at floor level, where a gap edge's orange is, and with its faint halo wholly over the wall-run band (so
+## at least calm_top + 0.55: nothing lit down where a runner can touch the wall).
+@export_range(6.2, 10.0, 0.1, "suffix:m") var lamp_min_height: float = 7.2
 ## The pale blue-white of the screens and the status LEDs and its glow (dim, and well under a gap edge's), and the same on the
 ## Compatibility renderer.
 @export var screen_color: Color = Color(0.5, 0.74, 0.84)
@@ -129,17 +131,20 @@ extends ZoneSkin
 ## at crane_height and the cross girders every girder_pitch metres.
 @export_range(9.0, 16.0, 0.1, "suffix:m") var wall_height: float = 12.0
 @export_range(7.0, 11.0, 0.1, "suffix:m") var band_top: float = 9.0
-## Where a runner can touch the wall (wall running reaches about 6 m): below it nothing on the wall stands out of its face more than a few
-## centimetres (IceLabParts.PROUD) and nothing glows but the dim screens, status lights and jars; above it up to band_top the wall may be
-## deeper, and from band_top (above every ceiling's top) the machinery's depth, the crane gantry and the hall begin.
+## Where a runner can touch the wall (wall running reaches about 6 m): below it the wall is calm, as in every wall-running zone: nothing
+## stands out of its face more than 4.5 cm (IceLabParts.PROUD), nothing is recessed into it and nothing glows (its screens and status lights
+## are dull and flush); above it up to band_top the wall may be deeper and lit (the jars' alcoves, bezelled screens, the machine lamps), and
+## from band_top (above every ceiling's top) the machinery's depth, the crane gantry and the hall begin.
 @export_range(6.2, 8.0, 0.1, "suffix:m") var calm_top: float = 6.6
 @export_range(6.0, 30.0, 0.5, "suffix:m") var hall_extra: float = 14.0
 @export_range(13.0, 22.0, 0.1, "suffix:m") var crane_height: float = 16.0
+## The hall's roof (IceLabHall): its dim steel and ice underside over the whole hall, high over the cranes (DESIGN-TBD).
+@export_range(20.0, 32.0, 0.5, "suffix:m") var roof_height: float = 25.0
 @export_range(10.0, 40.0, 0.5, "suffix:m") var girder_pitch: float = 20.0
 ## The wall bays' share of lit amber lamps (a lamp on this share of the bays, from lamp_min_height up).
 @export_range(0.0, 1.0, 0.01) var lamp_share: float = 0.45
 ## The share of jar bays whose middle jar is an Octodog's, scaled by the lean (DESIGN-TBD, docs/questions/q2.md item 6).
-@export_range(0.0, 1.0, 0.01) var octodog_in_jar_share: float = 0.2
+@export_range(0.0, 1.0, 0.01) var octodog_in_jar_share: float = 0.15
 ## The share of 40 m chunks a side whose far wall carries a crystal cluster, at each end of the lean.
 @export_range(0.0, 1.0, 0.01) var crystal_frost: float = 0.8
 @export_range(0.0, 1.0, 0.01) var crystal_lab: float = 0.3

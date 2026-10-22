@@ -4,8 +4,8 @@
 // cranes, snow and ice, lab consoles and server racks, specimen jars (docs/art/reference/ice_lab_zone.webp).
 // Nothing here is neon. The only things that glow are small and dim, well under the bloom threshold and far
 // under a hazard: the machine lamps (a small amber point, the Terminal's), the screens and the jars' liquid
-// (pale, desaturated blue-white) and the panels' status LEDs (the same pale colour); everything else is lit
-// paint, steel, ice and snow. Each function takes the fragment's world position `w`, world normal `n`, the eye
+// (pale, desaturated blue-white), all of them over the wall-run band (the skin keeps the band calm: its screens and
+// panels' status LEDs are lit paint like the rest); everything else is lit paint, steel, ice and snow. Each function takes the fragment's world position `w`, world normal `n`, the eye
 // vector `eye` (world, from the surface toward the camera), UV and the pattern parameter, and returns the
 // albedo (sRGB, like COLOR); the kit then lights it like any lit surface. Pixel footprints are taken at the top
 // of each function and passed down (docs/ARCHITECTURE.md, Zone skins: the kit's shader rules).
@@ -70,20 +70,24 @@ vec3 il_grating(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float param) {
 	float tread = max(filtered_pulse((p.x + p.y) / 0.11, (fwp.x + fwp.y) / 0.11, 0.0, 0.2),
 		filtered_pulse((p.x - p.y) / 0.11, (fwp.x + fwp.y) / 0.11, 0.0, 0.2));
 	float steel = mix(max(bars, rods), 1.0, plate);
-	vec3 col = mix(base * 0.42, base * (0.78 + 0.4 * ph), steel);
+	// The slots between the bars are the darkest the street is drawn (base x 0.42, with little snow about; frost lifts them toward the
+	// bars as the snow thickens, so a level deep in snow shows no black patches that could be taken for holes).
+	vec3 col = mix(base * mix(0.42, 0.68, il_snow_amount), base * (0.78 + 0.4 * ph), steel);
 	col = mix(col, base * (0.8 + 0.4 * tread) * (0.85 + 0.3 * ph), plate * 0.85);
 	col = mix(col, base * 1.3, frame * 0.8);
 	// Snow: drifts, deeper toward the lane's edges and in the gutter; the grating shows through where it is thin.
 	float edge = smoothstep(0.35, 1.0, abs(x) / half_w) * 0.3 + float((flags & 4) != 0) * 0.45;
-	float cover = clamp(il_snow_amount * 1.1 + edge - 0.2, 0.0, 1.0);
+	float cover = clamp(il_snow_amount * 1.1 + edge - 0.2 + 0.28 * smoothstep(0.55, 0.9, il_snow_amount), 0.0, 1.0);
 	float drift = value_noise(p * vec2(0.55, 0.28) + 3.0) * 0.6 + value_noise(p * vec2(1.7, 1.1) + 9.0) * 0.4;
 	float thresh = 1.0 - cover * 0.82;
-	float snow = smoothstep(thresh, thresh + 0.13, drift);
+	float snow = smoothstep(thresh, thresh + 0.2, drift);
 	float thick = smoothstep(thresh + 0.1, thresh + 0.3, drift);
 	float grain = value_noise(p * 5.5 + 1.0) * 0.5 + value_noise(p * 14.0) * 0.5;
 	vec3 snow_col = il_snow * (0.78 + 0.34 * grain) * (0.88 + 0.12 * thick);
 	snow_col = mix(snow_col, il_ice * 0.95, (1.0 - thick) * 0.22);
 	col = mix(col, snow_col, snow * (0.6 + 0.38 * thick));
+	// Rime on the bars where the snow is thin or absent, the more the snow lies about: the exposed grating is frosted mid-grey, never near black.
+	col = mix(col, il_frost * (0.5 + 0.3 * grain), (1.0 - snow) * il_snow_amount * 0.5);
 	// Ice: glossy patches where the snow is not, with cracks and the sheen of the cold.
 	float n2 = value_noise(p * vec2(0.45, 0.33) + 31.0) * 0.65 + value_noise(p * 1.3 + 5.0) * 0.35;
 	float ice = smoothstep(0.68, 0.76, n2) * (1.0 - snow);
@@ -217,9 +221,9 @@ vec3 il_ice_surface(vec3 base, vec3 w, vec3 n, vec3 eye, float param) {
 // PAT_IL_PANEL (114): lab machinery fronts, flush with the wall (UV in metres, x along the face to the viewer's right,
 // y up from the floor; param = kind + 4 * a seed 0-99). Kind 0 a cabinet (seams, louvres low down, a handle), 1 a server
 // rack (units 10 cm tall in alternating tones, vent slots, a pale status LED here and there), 2 clean-room tile (30 cm
-// tiles, grout, frost low down), 3 a service door (flush seams, a hand wheel, a pale indicator). The LEDs are the only
-// glow here: tiny and dim, the same pale blue-white as the screens, never a hazard's colour.
-vec3 il_panel(vec3 base, vec3 w, vec3 n, vec2 uv, float param, inout float glow) {
+// tiles, grout, frost low down), 3 a service door (flush seams, a hand wheel, a pale indicator). The panels are all in
+// the wall-run band, where nothing glows: the LEDs are tiny pale dots of paint (the screens' blue-white), never lit.
+vec3 il_panel(vec3 base, vec3 w, vec3 n, vec2 uv, float param) {
 	int v = int(param + 0.5);
 	int kind = v % 4;
 	float seed = float(v / 4);
@@ -267,8 +271,7 @@ vec3 il_panel(vec3 base, vec3 w, vec3 n, vec2 uv, float param, inout float glow)
 		led = 1.0 - smoothstep(0.03, 0.045 + aa, length(uv - vec2(0.9, 1.8)));
 	}
 	if (led > 0.5) {
-		glow = 0.05;
-		return il_screen;
+		return il_screen * 0.8;
 	}
 	return col;
 }
@@ -373,7 +376,7 @@ vec3 ice_lab_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec3 e
 	} else if (pattern == 113) {
 		return il_ice_surface(base, w, n, eye, param);
 	} else if (pattern == 114) {
-		return il_panel(base, w, n, uv, param, glow);
+		return il_panel(base, w, n, uv, param);
 	} else if (pattern == 115) {
 		return il_screen_surface(base, uv, param, glow);
 	} else if (pattern == 116) {

@@ -6,15 +6,16 @@ extends RefCounted
 ## `s` runs along the face to the viewer's right (z = -s), y is up. A bay is built once in it and set on either wall by a
 ## transform (a half turn about y for the right wall: the left wall's frame seen from the other side), so nothing on a wall is
 ## drawn twice, and the same bay reads the same way from both sides. Where a runner can touch the wall (below the skin's calm_top)
-## nothing stands out of it more than PROUD (a few centimetres: the wall-run path); the machinery's depth is recessed behind the
-## face instead (an alcove), or above the band.
+## nothing stands out of it more than PROUD (4.5 cm, every wall-running zone's rule: ZoneSkin.WALL_RUN_LINE_PROUD), nothing is
+## recessed into it and nothing glows; the machinery's depth, its lit screens and its specimen jars are above the band.
 ## Every vertex is a cost: a chunk of wall is sixteen bays, drawn every frame on a phone, so a part leaves out every face nobody
 ## sees (a box on a wall has no back and no bottom), keeps its curves to a few sides (a pipe six, an icicle three), and leaves
 ## the detail to the shader (the panels' vents, rivets, lights and frost are PAT_IL_*).
 ## Everything is cached by whoever builds it (IceLabWalls keeps its bays, this class holds no state but the skin).
 
-## The most anything on a wall stands out of its face below the band (metres): a pipe's half, a frame, a screen's bezel.
-const PROUD: float = 0.12
+## The most anything on a wall stands out of its face below the band (metres, as the Terminal's and every wall-running zone's): a pipe's
+## half, a pilaster, a frame, a screen's bezel.
+const PROUD: float = 0.045
 ## The faces of a box on the wall that anyone sees from the street: the front, the top and the two ends (not the back, nor the bottom).
 const FRONT_FACES: int = MeshKit.FACE_PX | MeshKit.FACE_PY | MeshKit.FACE_PZ | MeshKit.FACE_NZ
 
@@ -43,8 +44,8 @@ func wdiag(l: MeshLayer, s0: float, y0: float, s1: float, y1: float, t: float, x
 		MeshKit.FACE_PX | MeshKit.FACE_PY | MeshKit.FACE_NY, param)
 
 
-## A bank of snow along the foot of the wall from s0 to s1, never more than 0.28 m high or out of the wall (below the wall-run's lowest
-## step, 0.3 m): lumps by a seed, over `share` of the stretch.
+## A fringe of snow along the foot of the wall from s0 to s1, never more than 0.2 m high or PROUD out of the wall (it is in the wall-run
+## band: the deep drifts are the floor's, in the gutter by the wall): lumps by a seed, over `share` of the stretch.
 func foot_snow(l: MeshLayer, s0: float, s1: float, share: float, seed: int) -> void:
 	var count: int = maxi(int((s1 - s0) / 1.2), 1)
 	for i: int in count:
@@ -52,8 +53,8 @@ func foot_snow(l: MeshLayer, s0: float, s1: float, share: float, seed: int) -> v
 			continue
 		var a: float = lerpf(s0, s1, float(i) / float(count))
 		var b: float = lerpf(s0, s1, float(i + 1) / float(count))
-		var h: float = 0.1 + 0.18 * MeshKit.hash01(seed, i, 52)
-		var d: float = 0.18 + 0.1 * MeshKit.hash01(seed, i, 53)
+		var h: float = 0.08 + 0.12 * MeshKit.hash01(seed, i, 52)
+		var d: float = PROUD * (0.7 + 0.3 * MeshKit.hash01(seed, i, 53))
 		var inside := Vector3(d * 0.3, h * 0.3, -(a + b) * 0.5)
 		quad_out(l, Vector3(0.0, h, -a), Vector3(0.0, h, -b), Vector3(d, 0.0, -b), Vector3(d, 0.0, -a), inside, skin.snow_color, 0.0,
 			MeshKit.PAT_IL_SNOW, 0.0)
@@ -64,9 +65,9 @@ func foot_snow(l: MeshLayer, s0: float, s1: float, share: float, seed: int) -> v
 func shards(l: MeshLayer, s: float, y: float, count: int, max_length: float, seed: int) -> void:
 	for i: int in count:
 		var a: float = (float(i) - float(count - 1) * 0.5) * 0.3 + 0.12 * (MeshKit.hash01(seed, i, 61) - 0.5)
-		var dir := Vector3(0.025, cos(a), -sin(a))
+		var dir := Vector3(0.012, cos(a), -sin(a))
 		var length: float = max_length * (0.4 + 0.6 * MeshKit.hash01(seed, i, 62))
-		spike(l, Vector3(-0.04, y, -s - 0.05 * float(i)), dir, length, 0.07 + 0.04 * MeshKit.hash01(seed, i, 63), 4,
+		spike(l, Vector3(-0.075, y, -s - 0.05 * float(i)), dir, length, 0.05 + 0.03 * MeshKit.hash01(seed, i, 63), 4,
 			skin.crystal_color.lerp(skin.ice_color, 0.3 * MeshKit.hash01(seed, i, 64)), MeshKit.PAT_IL_ICE, 1.0, 0.7)
 
 
@@ -228,22 +229,29 @@ func lamp(l: MeshLayer, g: MeshLayer, s: float, y: float, seed: int, proud: floa
 		MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE, MeshKit.near_fade(10.0))
 
 
-## A row of `count` tiny pale status lights along a console at height y from s0 to s1 (the screens' colour, dim).
+## A row of `count` tiny pale status lights along a console at height y from s0 to s1 (the screens' colour): flush with the face and unlit,
+## they are in the wall-run band, where nothing glows.
 func status_lights(l: MeshLayer, s0: float, s1: float, y: float, count: int, seed: int) -> void:
 	for i: int in count:
 		if MeshKit.hash01(seed, i, 5) < 0.3:
 			continue
 		var s: float = lerpf(s0, s1, (float(i) + 0.5) / float(count))
-		wbox(l, s - 0.025, s + 0.025, y - 0.025, y + 0.025, 0.0, PROUD * 0.5, skin.screen_color, skin.screen_tube_glow(),
-			MeshKit.PAT_IL_LAMP, float(seed + i), MeshKit.FACE_PX)
+		wrect(l, s - 0.025, s + 0.025, y - 0.025, y + 0.025, 0.02, skin.screen_color.darkened(0.15))
 
 
-## A wall screen at (s0, y0), `w` by `h` metres: a dark bezel proud of the face and the pale, dim readout (PAT_IL_SCREEN) in it.
-func screen(l: MeshLayer, s0: float, y0: float, w: float, h: float, seed: int) -> void:
-	wbox(l, s0 - 0.07, s0 + w + 0.07, y0 - 0.07, y0 + h + 0.07, 0.0, PROUD * 0.8, skin.steel_color, 0.0, MeshKit.PAT_IL_STEEL, 2.0,
-		MeshKit.FACE_PX | MeshKit.FACE_PY)
-	wrect(l, s0, s0 + w, y0, y0 + h, PROUD * 0.8 + 0.004, skin.screen_color, skin.screen_tube_glow(), MeshKit.PAT_IL_SCREEN,
-		screen_param(seed, w, h), Vector2.ZERO, Vector2(w, h))
+## A wall screen at (s0, y0), `w` by `h` metres, the pale readout (PAT_IL_SCREEN) of a console. In the wall-run band (`lit` false) it is a
+## dull dark monitor flush with the face: a painted frame and the readout, no bezel and no glow. Above it (`lit`) it has a bezel standing
+## out of the face and glows dimly.
+func screen(l: MeshLayer, s0: float, y0: float, w: float, h: float, seed: int, lit: bool = false) -> void:
+	if lit:
+		wbox(l, s0 - 0.07, s0 + w + 0.07, y0 - 0.07, y0 + h + 0.07, 0.0, 0.1, skin.steel_color, 0.0, MeshKit.PAT_IL_STEEL, 2.0,
+			MeshKit.FACE_PX | MeshKit.FACE_PY)
+		wrect(l, s0, s0 + w, y0, y0 + h, 0.104, skin.screen_color, skin.screen_tube_glow(), MeshKit.PAT_IL_SCREEN,
+			screen_param(seed, w, h), Vector2.ZERO, Vector2(w, h))
+		return
+	wrect(l, s0 - 0.06, s0 + w + 0.06, y0 - 0.06, y0 + h + 0.06, 0.012, skin.steel_color.darkened(0.2), 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+	wrect(l, s0, s0 + w, y0, y0 + h, 0.02, skin.screen_color.darkened(0.4), 0.0, MeshKit.PAT_IL_SCREEN, screen_param(seed, w, h),
+		Vector2.ZERO, Vector2(w, h))
 
 
 ## PAT_IL_SCREEN's parameter: a seed 0-99, the width and height in decimetres.
@@ -299,11 +307,11 @@ func crystals(l: MeshLayer, at: Vector3, up: Vector3, count: int, max_length: fl
 # --- Specimen jars ------------------------------------------------------------------------------
 
 ## A brain in a jar's liquid, at `c`, hanging in it: a squashed pink-grey blob (the lobes and folds are the shader's) with a cable rising
-## from it to the lid.
-func brain(l: MeshLayer, c: Vector3, scale: float, seed: int) -> void:
-	ellipsoid(l, c, Vector3(0.2, 0.15, 0.2) * scale, 8, 4, skin.brain_color, MeshKit.PAT_IL_BRAIN, 0.0)
+## from it up to the lid (`cable_top`, the height of the lid's underside).
+func brain(l: MeshLayer, c: Vector3, scale: float, seed: int, cable_top: float = INF) -> void:
+	ellipsoid(l, c, Vector3(0.2, 0.15, 0.2) * scale, 6, 4, skin.brain_color, MeshKit.PAT_IL_BRAIN, 0.0)
 	var from: Vector3 = c + Vector3(0.0, 0.12 * scale, 0.0)
-	var to := Vector3(c.x, c.y + 1.4, c.z + 0.04 * (MeshKit.hash01(seed, 1, 31) - 0.5))
+	var to := Vector3(c.x, minf(c.y + 1.4, cable_top), c.z + 0.04 * (MeshKit.hash01(seed, 1, 31) - 0.5))
 	var cable: Color = skin.steel_color.darkened(0.2)
 	tube(l, PackedVector3Array([from, to]), PackedFloat32Array([0.02, 0.015]), 3, PackedColorArray([cable, cable]))
 
@@ -317,26 +325,25 @@ func octodog(l: MeshLayer, c: Vector3, scale: float, seed: int) -> void:
 	var tip_green: Color = OctodogModel.TENTACLE_GREEN_TIP.darkened(0.4)
 	var metal := Color(0.34, 0.38, 0.45)
 	ellipsoid(l, c, Vector3(0.3, 0.2, 0.34) * scale, 6, 3, base_green)
-	# The folded robot chassis under the mass and its four legs tucked up beside it (hip, knee out, foot back in: a dog asleep).
+	# The folded robot chassis under the mass and its four legs tucked up beside it (hip, foot out and down: a dog asleep).
 	l.box(c + Vector3(0.0, -0.2 * scale, 0.0), Vector3(0.34, 0.06, 0.5) * scale, metal.darkened(0.2), 0.0, 0, FRONT_FACES)
 	for sx: float in [-1.0, 1.0]:
 		for sz: float in [-1.0, 1.0]:
 			var hip: Vector3 = c + Vector3(sx * 0.15, -0.2, sz * 0.2) * scale
-			var knee: Vector3 = hip + Vector3(sx * 0.2, 0.02, sz * 0.12) * scale
-			var foot: Vector3 = knee + Vector3(-sx * 0.04, -0.2, sz * 0.08) * scale
-			tube(l, PackedVector3Array([hip, knee, foot]), PackedFloat32Array([0.04 * scale, 0.035 * scale, 0.03 * scale]), 3,
-				PackedColorArray([metal, metal, metal.lightened(0.15)]))
+			var foot: Vector3 = hip + Vector3(sx * 0.16, -0.16, sz * 0.2) * scale
+			tube(l, PackedVector3Array([hip, foot]), PackedFloat32Array([0.045 * scale, 0.03 * scale]), 3,
+				PackedColorArray([metal, metal.lightened(0.15)]))
 	# Tentacles spiralling round the mass, thinning to a tip curled inward.
-	var count: int = 5
+	var count: int = 4
 	for i: int in count:
 		var a0: float = TAU * float(i) / float(count) + 0.4 * MeshKit.hash01(seed, i, 41)
 		var points := PackedVector3Array()
 		var radii := PackedFloat32Array()
 		var colors := PackedColorArray()
-		var steps: int = 3
+		var steps: int = 2
 		for k: int in steps + 1:
 			var t: float = float(k) / float(steps)
-			var ang: float = a0 + t * PI * 1.25 * (1.0 if i % 2 == 0 else -1.0)
+			var ang: float = a0 + t * PI * 1.5 * (1.0 if i % 2 == 0 else -1.0)
 			var rad: float = (0.3 + 0.12 * sin(t * PI)) * (1.0 - 0.45 * t * t)
 			var h: float = lerpf(0.04, 0.3, t) - 0.12 * float(i % 3) * 0.3
 			points.append(c + Vector3(sin(ang) * rad, h - 0.04, cos(ang) * rad * 1.15) * scale)
@@ -351,9 +358,10 @@ func octodog(l: MeshLayer, c: Vector3, scale: float, seed: int) -> void:
 
 ## A specimen jar standing in an alcove: the liquid's pale, dim backdrop (PAT_IL_JAR), the brain (or the curled Octodog) hanging in front of
 ## it, a lid with a tube up into the alcove's roof, a pedestal, and a pale glass glint down its front. Its middle is at `s`, standing on
-## y0, `width` wide and `height` tall (the liquid), its backdrop at x = back (the alcove's back wall is further behind); nothing reaches
-## past x = 0 (the wall face).
-func jar(l: MeshLayer, s: float, y0: float, width: float, height: float, back: float, holds_octodog: bool, seed: int) -> void:
+## y0, `width` wide and `height` tall (the liquid), its backdrop at x = back (the alcove's back wall is further behind), the alcove's roof
+## at `roof` (the tube from the lid reaches it); nothing reaches past x = 0 (the wall face).
+func jar(l: MeshLayer, s: float, y0: float, width: float, height: float, back: float, holds_octodog: bool, seed: int,
+		roof: float = INF) -> void:
 	var glow: float = skin.liquid_tube_glow()
 	var kind: float = 1.0 if holds_octodog else 0.0
 	var hw: float = width * 0.5
@@ -365,31 +373,35 @@ func jar(l: MeshLayer, s: float, y0: float, width: float, height: float, back: f
 	wbox(l, s - hw - 0.1, s + hw + 0.1, y0 + height, y0 + height + 0.2, back, back + 0.2, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 2.0,
 		FRONT_FACES | MeshKit.FACE_NY)
 	wbox(l, s - hw - 0.14, s + hw + 0.14, y0 - 0.4, y0, back, back + 0.24, skin.frame_color.darkened(0.2), 0.0, MeshKit.PAT_IL_STEEL, 2.0)
-	l.prism_xform(Transform3D(Basis.from_scale(Vector3(0.04, 0.9, 0.04)), Vector3(back + 0.1, y0 + height + 0.2, -(s + 0.2 * width))), 4,
+	var tube_length: float = clampf(roof - (y0 + height + 0.2), 0.05, 0.9)
+	l.prism_xform(Transform3D(Basis.from_scale(Vector3(0.04, tube_length, 0.04)), Vector3(back + 0.1, y0 + height + 0.2, -(s + 0.2 * width))), 4,
 		skin.steel_color.lightened(0.05), 0.0, MeshKit.PAT_IL_STEEL, false, 2.0)
 	# What it holds, hanging in the liquid a little in front of the backdrop.
 	if holds_octodog:
 		octodog(l, Vector3(back + 0.25, y0 + height * 0.5, -s), minf(width * 0.95, 1.0), seed)
 	else:
-		brain(l, Vector3(back + 0.28, y0 + height * 0.5 + 0.2, -s), width * 1.4, seed)
+		brain(l, Vector3(back + 0.28, y0 + height * 0.5 + 0.12, -s), width * 1.3, seed, y0 + height)
 
 
 # --- The gantry rail on top of the wall -------------------------------------------------------------
 
-## The hall's gantry rail along the top of the wall from s0 to s1 at height y (the wall's top): a grated deck standing out over the street,
-## its edge, a bracket down to the wall, a railing on posts (every 2.5 m) with two rails, snow on the deck and icicles hanging from its
-## edge. All of it above the band (the deck's underside at y - 0.3).
+## The hall's gantry rail along the top of the wall from s0 to s1 at height y (the wall's top), built once for a whole wall piece (not per
+## bay: a rail is one long thing): a grated deck standing out over the street, its edge, a bracket down to the wall every 10 m, a railing
+## on posts (every 2.5 m) with two rails, snow on the deck in a lump every 3.3 m and an icicle hanging from its edge every 3.6 m. All of
+## it above the band (the deck's underside at y - 0.3).
 func gantry(l: MeshLayer, s0: float, s1: float, y: float, seed: int) -> void:
 	var reach: float = 1.4
 	wbox(l, s0, s1, y - 0.3, y, 0.0, reach, skin.steel_color, 0.0, MeshKit.PAT_IL_STEEL, 4.0,
 		MeshKit.FACE_PX | MeshKit.FACE_NY | MeshKit.FACE_PZ | MeshKit.FACE_NZ)
 	wbox(l, s0, s1, y - 0.12, y + 0.14, reach - 0.06, reach, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX | MeshKit.FACE_PY)
-	snow_cap(l, s0, s1, y, 0.1, reach - 0.1, seed, 0.1)
-	# A bracket: a diagonal strut from the wall up to the deck at the middle, and a railing post every 2.5 m.
-	var mid: float = (s0 + s1) * 0.5
+	snow_cap(l, s0, s1, y, 0.1, reach - 0.1, seed, 0.1, 3.3)
+	# A bracket: a diagonal strut from the wall up to the deck every 10 m, and a railing post every 2.5 m.
 	var strut := Basis.from_euler(Vector3(0.0, 0.0, -0.9)).scaled_local(Vector3(0.1, 1.8, 0.1))
-	l.box_xform(Transform3D(strut, Vector3(0.7, y - 1.2, -mid)), skin.steel_color.lightened(0.04), 0.0, MeshKit.PAT_IL_STEEL,
-		MeshKit.FACE_PX | MeshKit.FACE_PZ | MeshKit.FACE_NZ, 0.0)
+	var bs: float = s0 + 2.5
+	while bs < s1:
+		l.box_xform(Transform3D(strut, Vector3(0.7, y - 1.2, -bs)), skin.steel_color.lightened(0.04), 0.0, MeshKit.PAT_IL_STEEL,
+			MeshKit.FACE_PX | MeshKit.FACE_PZ | MeshKit.FACE_NZ, 0.0)
+		bs += 10.0
 	var s: float = s0 + 0.1
 	while s < s1:
 		wbox(l, s - 0.03, s + 0.03, y, y + 1.15, reach - 0.12, reach - 0.06, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 2.0,
@@ -398,4 +410,4 @@ func gantry(l: MeshLayer, s0: float, s1: float, y: float, seed: int) -> void:
 	for ry: float in [y + 0.55, y + 1.12]:
 		wbox(l, s0, s1, ry - 0.025, ry + 0.025, reach - 0.12, reach - 0.06, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 2.0,
 			MeshKit.FACE_PX | MeshKit.FACE_PY)
-	icicles(l, s0 + 0.3, s1 - 0.3, y - 0.3, reach - 0.05, maxi(int((s1 - s0) / 1.2), 1), 1.1, seed + 3)
+	icicles(l, s0 + 0.3, s1 - 0.3, y - 0.3, reach - 0.05, maxi(int((s1 - s0) / 3.6), 1), 1.1, seed + 3)

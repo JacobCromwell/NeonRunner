@@ -10,14 +10,20 @@ extends RefCounted
 ## - the crane runways, two beams along the track a side at the skin's crane_height, with cross girders every girder_pitch metres
 ##   spanning the street, each hanging an icicle fringe, a crane trolley, a chain down to a hook (never lower than 9.5 m, over every
 ##   ceiling's top) and a small amber lamp; pillars in the hall beyond the wall (steel, snow-capped, in the fog);
+## - the roof (GDD §5: "an indoor frozen hall with no sky, like the Terminal's vault"): a dim underside of dark steel and ice at the skin's
+##   roof_height over the whole hall, a truss across it every ROOF_PITCH metres with great icicles hanging from them, so the hall is closed
+##   overhead and the dark above the cranes reads as a roof, never a night sky;
 ## - snow drifting down, puffs of cold mist and speed streaks (the still floor's motion cues: kit drift shader).
 ## None of it is in the play space (nothing below crane_height - 7 over the street), nothing of it glows but the small lamps, and
 ## nothing flickers. Chunk space: x across, y up (the street at y = 0), z = -distance.
 
 ## The lowest a chain's hook hangs (over every ceiling's top, a hull's thickness and the gantry's rise above it).
 const HOOK_MIN: float = 9.6
-## The tallest the far wall reaches.
+## The tallest the far wall reaches (over the roof, which closes the hall).
 const FAR_TOP: float = 34.0
+## The roof's trusses across the hall, every this many metres, and their depth.
+const ROOF_PITCH: float = 10.0
+const ROOF_TRUSS: float = 1.3
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: IceLabSkin:
@@ -42,6 +48,7 @@ func build(batch: MeshBatch, wall_x: float, start: float, end: float) -> void:
 	_runways(s, wall_x, start, end)
 	_girders(s, g, wall_x, start, end)
 	_pillars(s, wall_x, start, end)
+	_roof(s, wall_x, start, end)
 	_crystal_clusters(s, wall_x, start, end)
 	_motion(batch, wall_x, start, end)
 
@@ -93,11 +100,11 @@ func _girders(s: MeshLayer, g: MeshLayer, wall_x: float, start: float, end: floa
 			s.box(Vector3(0.0, y + 1.03, z), Vector3(half * 2.0 - 1.0, 0.08, 0.7), skin.snow_color, 0.0, MeshKit.PAT_IL_SNOW,
 				MeshKit.FACE_PY | MeshKit.FACE_PZ | MeshKit.FACE_NZ, 0.0)
 			# A fringe of icicles along its underside.
-			for i: int in 9:
-				var ix: float = lerpf(-half + 1.0, half - 1.0, (float(i) + MeshKit.hash01(h, i, 502)) / 9.0)
+			for i: int in 6:
+				var ix: float = lerpf(-half + 1.0, half - 1.0, (float(i) + MeshKit.hash01(h, i, 502)) / 6.0)
 				_parts.spike(s, Vector3(ix, y + 0.1, z + 0.35 * (MeshKit.hash01(h, i, 503) - 0.5)), Vector3(0.0, -1.0, 0.0),
-					0.4 + 1.6 * pow(MeshKit.hash01(h, i, 504), 1.6), 0.05 + 0.05 * MeshKit.hash01(h, i, 505), 3, skin.crystal_color,
-					MeshKit.PAT_IL_ICE, 1.0, 0.4)
+					0.5 + 1.8 * pow(MeshKit.hash01(h, i, 504), 1.6), 0.06 + 0.06 * MeshKit.hash01(h, i, 505), 3, skin.crystal_color,
+					MeshKit.PAT_IL_ICE, 1.0, 0.0)
 			# The trolley, its chain and hook.
 			var tx: float = (MeshKit.hash01(h, 1, 506) - 0.5) * wall_x * 1.4
 			s.box(Vector3(tx, y - 0.3, z), Vector3(1.8, 0.6, 1.3), skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, MeshKit.ALL_FACES, 0.0)
@@ -129,12 +136,12 @@ func _hang_lamp(s: MeshLayer, g: MeshLayer, at: Vector3, seed: int) -> void:
 		Vector2.ZERO, Vector2.ONE, MeshKit.near_fade(14.0))
 
 
-## Steel pillars standing in the hall beyond each wall, from the frozen floor up past the runways: dark shapes in the fog.
+## Steel pillars standing in the hall beyond each wall, from the frozen floor up to the roof: dark shapes in the fog.
 func _pillars(s: MeshLayer, wall_x: float, start: float, end: float) -> void:
 	var pitch: float = skin.girder_pitch * 0.5
 	var k: int = ceili(start / pitch - 0.0001)
 	var y0: float = -skin.pit_depth
-	var y1: float = skin.crane_height + 3.0
+	var y1: float = skin.roof_height
 	while float(k) * pitch < end:
 		var at: float = float(k) * pitch
 		if at >= start:
@@ -142,6 +149,28 @@ func _pillars(s: MeshLayer, wall_x: float, start: float, end: float) -> void:
 				var x: float = side * (wall_x + 3.6 + 2.2 * MeshKit.hash01(k, int(side), 511))
 				s.box(Vector3(x, (y0 + y1) * 0.5, -at), Vector3(0.9, y1 - y0, 0.9), skin.steel_color, 0.0, MeshKit.PAT_IL_STEEL,
 					MeshKit.ALL_FACES, 0.0)
+		k += 1
+
+
+## The roof: the underside of the hall over both far walls (dim steel with a touch of ice, PAT_IL_STEEL's underside: beams every 3 m), a truss
+## across it every ROOF_PITCH metres and a few great icicles hanging from each truss. Dim by design: it only has to close the hall.
+func _roof(s: MeshLayer, wall_x: float, start: float, end: float) -> void:
+	var y: float = skin.roof_height
+	var x: float = wall_x + skin.hall_extra
+	var color: Color = skin.steel_color.lerp(skin.ice_color, 0.2)
+	# Facing down: its normal is u x v.
+	s.rect(Vector3(-x, y, -start), Vector3(0.0, 0.0, -(end - start)), Vector3(x * 2.0, 0.0, 0.0), color, 0.0, MeshKit.PAT_IL_STEEL,
+		Vector2.ZERO, Vector2.ONE, 1.0)
+	var k: int = ceili(start / ROOF_PITCH - 0.0001)
+	while float(k) * ROOF_PITCH < end:
+		var at: float = float(k) * ROOF_PITCH
+		if at >= start:
+			s.box(Vector3(0.0, y - ROOF_TRUSS * 0.5, -at), Vector3(x * 2.0, ROOF_TRUSS, 0.8), color.lightened(0.05), 0.0, MeshKit.PAT_IL_STEEL,
+				MeshKit.FACE_NY | MeshKit.FACE_PZ | MeshKit.FACE_NZ, 0.0)
+			for i: int in 3:
+				var ix: float = lerpf(-x + 3.0, x - 3.0, MeshKit.hash01(k, i, 515))
+				_parts.spike(s, Vector3(ix, y - ROOF_TRUSS, -at), Vector3(0.0, -1.0, 0.0), 1.8 + 3.4 * MeshKit.hash01(k, i, 516),
+					0.12 + 0.12 * MeshKit.hash01(k, i, 517), 3, skin.ice_color.lightened(0.12), MeshKit.PAT_IL_ICE, 1.0, 0.0)
 		k += 1
 
 

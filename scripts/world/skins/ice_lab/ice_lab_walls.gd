@@ -9,11 +9,13 @@ extends RefCounted
 ## (IceLabParts) and set on the wall by a transform, left or right, so a chunk costs a handful of appends; a stretch a wall gap's cut
 ## leaves short of a whole bay, and a bay beside a window cyborg (note_wall_enemies), is a plain stretch of plating. Chunks' edges are
 ## always bay edges (40 m is eight bays), so bays are never cut but by a wall gap's ends.
-## A runner can touch the wall (wall running) up to the skin's calm_top, so below it nothing stands out of the face more than
-## IceLabParts.PROUD (pipes half-sunk, frames and bezels, screens) and the jars' depth is recessed behind the face, in an alcove; the
-## machinery's real depth is above the band (the cornice at band_top, the trunk pipes, ice crust, icicles, the gantry rail along the top).
-## Nothing in the band is a window (a window cyborg's must be the only one): the alcoves are filled with jars, their frames and lids and
-## tubes reading as a rack of specimens, and none opens beside a window cyborg. The machine lamps stand above the band (lamp_min_height).
+## A runner can touch the wall (wall running) up to the skin's calm_top, so below it, as in every wall-running zone, the wall is calm: nothing
+## stands out of the face more than IceLabParts.PROUD (4.5 cm: pipes half sunk, pilasters, frames), nothing is recessed into it, nothing
+## glows (the screens and status lights down there are dull and flush) and nothing is a window (a window cyborg's window must be the only
+## opening in its stretch of wall). The machinery's depth and light are above the band: the jars' alcoves (from calm_top up to the cornice,
+## 2 or 3 specimen jars each, the walls' brain jars), the console bays' lit screens, the machine lamps (lamp_min_height), the cornice at
+## band_top (above every ceiling's top), the trunk pipes, ice crust and icicles, and the gantry rail along the top (built once for a
+## whole wall piece, not in every bay). A bay beside a window cyborg is plain plating.
 ## The wall below the street is the dark shade of the holes (PAT_IL_UNDER), so a hole beside the wall is as dark as any.
 ## A bay is a few hundred vertices (a chunk's walls are sixteen of them, and a phone draws every one every frame): faces nobody sees are
 ## left out, curves have few sides and the detail is the shader's (PAT_IL_PANEL's vents and lights, PAT_IL_STEEL's rivets and frost).
@@ -38,7 +40,7 @@ const BAY_COUNT: int = 10
 const BAY_PLAIN: int = 10
 ## How close a window cyborg's track keeps an alcove, past the bay's own half length.
 const CYBORG_MARGIN: float = 2.2
-## A recessed alcove's depth behind the wall face.
+## A jar alcove's depth behind the wall face (the alcove is above the wall-run band).
 const ALCOVE_DEPTH: float = 0.8
 ## How tall a wall gap's cut-away ends stand behind the wall line (the recess).
 const RECESS_TOP: float = 22.0
@@ -52,6 +54,8 @@ var skin: IceLabSkin:
 var _skin: WeakRef
 var _parts: IceLabParts
 var _bays: Dictionary = {}
+## The gantry rails built so far, by length in centimetres (a whole chunk's is the one that matters).
+var _rails: Dictionary = {}
 
 
 func _init(p_skin: IceLabSkin) -> void:
@@ -110,10 +114,30 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 			batch.append(tpl, Transform3D(Basis.IDENTITY, Vector3(face_x, 0.0, -u0)))
 		else:
 			batch.append(tpl, Transform3D(Basis(Vector3.UP, PI), Vector3(face_x, 0.0, -u1)))
+	# The gantry rail along the top: one for the whole piece, whatever bays and plain stretches it holds.
+	if end - start > 0.001:
+		var strip: MeshBatch = rail(end - start)
+		if side < 0:
+			batch.append(strip, Transform3D(Basis.IDENTITY, Vector3(face_x, 0.0, -start)))
+		else:
+			batch.append(strip, Transform3D(Basis(Vector3.UP, PI), Vector3(face_x, 0.0, -end)))
 
 
-## A stretch of wall `a` to `b` where a whole bay would not fit (cut by a wall gap): the face, the cornice and the gantry's deck, in world
-## space (nothing that needs the bay's length).
+## The gantry rail for a stretch of `length` metres, in wall space starting at s = 0 (cached by length).
+func rail(length: float) -> MeshBatch:
+	var key: int = roundi(length * 100.0)
+	if _rails.has(key):
+		return _rails[key]
+	if _rails.size() > 40:
+		_rails.clear()
+	var b := MeshBatch.new()
+	_parts.gantry(b.layer(skin.solid_material()), 0.0, length, skin.wall_height, key)
+	_rails[key] = b
+	return b
+
+
+## A stretch of wall `a` to `b` where a whole bay would not fit (cut by a wall gap, or beside a window cyborg): the face and the cornice, in
+## world space (nothing that needs the bay's length; the piece's gantry rail runs over it).
 func _plain(batch: MeshBatch, side: int, face_x: float, a: float, b: float, kind: int) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var top: float = skin.wall_height
@@ -123,9 +147,6 @@ func _plain(batch: MeshBatch, side: int, face_x: float, a: float, b: float, kind
 	_face(s, side, face_x, a, b, -skin.pit_depth, 0.0, skin.gap_inside_color, MeshKit.PAT_IL_UNDER, 1.0)
 	var band: float = skin.band_top
 	_box(s, side, face_x, a, b, band, band + 0.55, 0.0, 0.4, skin.frame_color)
-	_box(s, side, face_x, a, b, top - 0.3, top, 0.0, 1.4, skin.steel_color, MeshKit.PAT_IL_STEEL, 4.0)
-	_box(s, side, face_x, a, b, top - 0.12, top + 0.14, 1.34, 1.4, skin.frame_color)
-	_box(s, side, face_x, a, b, top + 1.07, top + 1.17, 1.28, 1.34, skin.frame_color)
 
 
 ## A rectangle on the wall's plane, in world space, between track distances a and b (UV: distance, height), facing the street.
@@ -181,13 +202,12 @@ func bay(kind: int, variant: int) -> MeshBatch:
 		_:
 			_blank(s, g, variant, k)
 	_upper(s, kind, k)
-	_parts.gantry(s, 0.0, SLOT, skin.wall_height, k)
 	_bays[id] = b
 	return b
 
 
 ## What every bay has: the body's face (plating, or ice for an ice wall; the jars' alcove opens its own), the dark shade below the street,
-## a pilaster at its left edge, a kick plate at its foot and the cornice at the top of the band with snow on it.
+## a pilaster at its left edge and a kick plate at its foot (PROUD out of the face) and the cornice over the band with snow on it.
 func _frame(s: MeshLayer, kind: int, k: int) -> void:
 	var p: IceLabParts = _parts
 	var top: float = skin.wall_height
@@ -201,10 +221,10 @@ func _frame(s: MeshLayer, kind: int, k: int) -> void:
 	p.wrect(s, 0.0, SLOT, -skin.pit_depth, 0.0, 0.0, skin.gap_inside_color, 0.0, MeshKit.PAT_IL_UNDER, 1.0)
 	if kind != BAY_ICE:
 		p.wbox(s, 0.0, 0.14, 0.3, skin.calm_top, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
-		p.wbox(s, 0.0, SLOT, 0.0, 0.3, 0.0, 0.06, skin.steel_color.darkened(0.1), 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+		p.wbox(s, 0.0, SLOT, 0.0, 0.3, 0.0, IceLabParts.PROUD, skin.steel_color.darkened(0.1), 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	# The cornice: a girder along the top of the band, standing out over the street (above the band's reach), snow on it.
 	p.wbox(s, 0.0, SLOT, band, band + 0.55, 0.0, 0.4, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, FACES_BELOW)
-	p.snow_cap(s, 0.0, SLOT, band + 0.55, 0.02, 0.38, k + 3, 0.1, 1.25)
+	p.snow_cap(s, 0.0, SLOT, band + 0.55, 0.02, 0.38, k + 3, 0.1, 2.5)
 
 
 ## The wall above the band (the machinery's depth, where nothing touches it): trunk pipes and brackets for the industrial bays, a duct and
@@ -230,11 +250,11 @@ func _upper(s: MeshLayer, kind: int, k: int) -> void:
 		p.wpipe(s, y0 + 1.75, 0.2, 0.0, SLOT, cold.darkened(0.25), 6, 0.5)
 		for bs: float in [0.8, SLOT - 0.8]:
 			p.wbox(s, bs - 0.1, bs + 0.1, y0, y0 + 1.5, 0.0, 0.4, cold.darkened(0.3), 0.0, MeshKit.PAT_IL_STEEL, 0.0)
-		p.snow_cap(s, 0.0, SLOT, y0 + 1.07, 0.1, 0.75, k + 5, 0.14, 1.25)
+		p.snow_cap(s, 0.0, SLOT, y0 + 1.07, 0.1, 0.75, k + 5, 0.14, 2.5)
 		return
 	# The laboratory's upper wall: a long duct and a cable tray, hanging cables.
 	p.wbox(s, 0.0, SLOT, y0 + 0.2, y0 + 1.0, 0.0, 0.7, cold.darkened(0.1), 0.0, MeshKit.PAT_IL_STEEL, 0.0, FACES_BELOW)
-	p.snow_cap(s, 0.0, SLOT, y0 + 1.0, 0.1, 0.62, k + 9, 0.08, 1.25)
+	p.snow_cap(s, 0.0, SLOT, y0 + 1.0, 0.1, 0.62, k + 9, 0.08, 2.5)
 	p.wbox(s, 0.0, SLOT, y0 + 1.5, y0 + 1.7, 0.0, 0.5, cold.darkened(0.2), 0.0, MeshKit.PAT_IL_STEEL, 0.0, IceLabParts.FRONT_FACES)
 	for i: int in 3:
 		var cs: float = (float(i) + 0.5) * SLOT / 3.0
@@ -259,8 +279,8 @@ func _pipes(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	p.wriser(s, 0.55, 0.09, 0.3, skin.calm_top, pipe.darkened(0.1))
 	# A hand wheel on a valve, a gauge, a lamp.
 	var vs: float = 2.0 + 1.2 * MeshKit.hash01(k, 3, 83)
-	p.wdisc(s, vs, heights[1] + 0.3, 0.2, 0.01, 0.05, pipe.lightened(0.12), 6, MeshKit.PAT_IL_STEEL, 2.0)
-	p.wdisc(s, SLOT - 1.2, 3.3, 0.16, 0.01, 0.04, skin.door_color.lightened(0.15), 6, MeshKit.PAT_IL_STEEL, 2.0)
+	p.wdisc(s, vs, heights[1] + 0.3, 0.2, 0.0, 0.04, pipe.lightened(0.12), 6, MeshKit.PAT_IL_STEEL, 2.0)
+	p.wdisc(s, SLOT - 1.2, 3.3, 0.16, 0.0, 0.04, skin.door_color.lightened(0.15), 6, MeshKit.PAT_IL_STEEL, 2.0)
 	if MeshKit.hash01(k, 5, 84) < skin.lamp_share + 0.3:
 		p.lamp(s, g, 3.5, 6.9 + 1.2 * MeshKit.hash01(k, 6, 84), k)
 
@@ -277,10 +297,10 @@ func _lattice(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 		var y0: float = 0.3 + step * float(i)
 		var y1: float = y0 + step
 		var flip: bool = (i + variant) % 2 == 0
-		p.wdiag(s, 0.67 if flip else SLOT - 0.67, y0, SLOT - 0.67 if flip else 0.67, y1, 0.07, 0.0, 0.1, col.darkened(0.1))
+		p.wdiag(s, 0.67 if flip else SLOT - 0.67, y0, SLOT - 0.67 if flip else 0.67, y1, 0.07, 0.0, IceLabParts.PROUD * 0.8, col.darkened(0.1))
 	for i: int in 3:
 		var y: float = 0.3 + step * float(i + 1)
-		p.wbox(s, 0.67, SLOT - 0.67, y - 0.035, y + 0.035, 0.0, 0.1, col.darkened(0.1), 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+		p.wbox(s, 0.67, SLOT - 0.67, y - 0.035, y + 0.035, 0.0, IceLabParts.PROUD * 0.8, col.darkened(0.1), 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	# A hoist chain hanging from the gantry rail over the lattice, a hook block at its end (above the band: it hangs in the open).
 	if variant != 1:
 		var wall_top: float = skin.wall_height
@@ -297,12 +317,12 @@ func _lattice(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 func _tank(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	var p: IceLabParts = _parts
 	var body: Color = skin.frame_color.lerp(skin.steel_color, 0.4)
-	p.wbox(s, 0.4, SLOT - 0.4, 0.35, 6.2, 0.0, 0.07, body, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+	p.wbox(s, 0.4, SLOT - 0.4, 0.35, 6.2, 0.0, IceLabParts.PROUD * 0.7, body, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	for y: float in [1.6, 3.5, 5.4]:
 		p.wbox(s, 0.3, SLOT - 0.3, y - 0.07, y + 0.07, 0.0, IceLabParts.PROUD, skin.frame_color.lightened(0.05), 0.0, MeshKit.PAT_IL_STEEL, 0.0,
 			MeshKit.FACE_PX | MeshKit.FACE_PY)
-	p.wdisc(s, SLOT * 0.32, 4.4, 0.18, 0.06, 0.05, skin.door_color.lightened(0.2), 6, MeshKit.PAT_IL_STEEL, 2.0)
-	p.wdisc(s, SLOT * 0.58, 2.5, 0.13, 0.06, 0.05, skin.door_color.lightened(0.2), 6, MeshKit.PAT_IL_STEEL, 2.0)
+	p.wdisc(s, SLOT * 0.32, 4.4, 0.18, 0.0, 0.04, skin.door_color.lightened(0.2), 6, MeshKit.PAT_IL_STEEL, 2.0)
+	p.wdisc(s, SLOT * 0.58, 2.5, 0.13, 0.0, 0.04, skin.door_color.lightened(0.2), 6, MeshKit.PAT_IL_STEEL, 2.0)
 	# A ladder up the tank's side: two rails and a few rungs.
 	for rs: float in [SLOT - 0.95, SLOT - 0.7]:
 		p.wbox(s, rs - 0.015, rs + 0.015, 0.35, skin.calm_top, 0.0, IceLabParts.PROUD - 0.02, skin.steel_color.lightened(0.08), 0.0,
@@ -327,7 +347,7 @@ func _ice(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	for i: int in 3:
 		var a: float = 0.3 + (SLOT - 1.6) * MeshKit.hash01(k, i, 91)
 		var y: float = 0.6 + (skin.calm_top - 3.0) * MeshKit.hash01(k, i, 92)
-		p.wbox(s, a, a + 0.8 + 0.8 * MeshKit.hash01(k, i, 93), y, y + 0.7 + 1.0 * MeshKit.hash01(k, i, 94), 0.0, 0.07 + 0.04 * MeshKit.hash01(k, i, 95),
+		p.wbox(s, a, a + 0.8 + 0.8 * MeshKit.hash01(k, i, 93), y, y + 0.7 + 1.0 * MeshKit.hash01(k, i, 94), 0.0, 0.02 + 0.02 * MeshKit.hash01(k, i, 95),
 			skin.ice_color.lightened(0.1 * MeshKit.hash01(k, i, 96)), 0.0, MeshKit.PAT_IL_ICE, 0.0)
 	var clusters: int = 2
 	for i: int in clusters:
@@ -344,7 +364,8 @@ func _ice(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 func _consoles(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	var p: IceLabParts = _parts
 	var seed: int = k * 3
-	# The cabinet under the desk and the cabinets over the screens, painted flush; the desk and its status lights.
+	# The cabinet under the desk and the cabinets over the screens, painted flush; the desk and its status lights (down here, in the wall-run
+	# band, the screens are dull monitors flush with the face and the lights unlit); over the band a row of bezelled screens, lit dimly.
 	p.wrect(s, 0.1, SLOT - 0.1, 0.3, 1.05, 0.012, skin.enamel_color, 0.0, MeshKit.PAT_IL_PANEL, float(MeshKit.IL_PANEL_CABINET + 4 * (seed % 100)))
 	p.wbox(s, 0.0, SLOT, 1.05, 1.17, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	p.status_lights(s, 0.3, SLOT - 0.3, 1.0, 9, seed)
@@ -356,12 +377,14 @@ func _consoles(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	p.wbox(s, 0.0, SLOT, 4.5, 4.75, 0.0, IceLabParts.PROUD, skin.steel_color.lightened(0.05), 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	for i: int in 3:
 		var cs: float = 0.5 + 4.0 * MeshKit.hash01(k, i, 101)
-		p.wbox(s, cs - 0.025, cs + 0.025, 3.7 + 0.5 * MeshKit.hash01(k, i, 102), 4.5, 0.0, 0.05, Color(0.05, 0.06, 0.08), 0.0, MeshKit.PAT_IL_STEEL, 2.0,
-			MeshKit.FACE_PX)
+		p.wbox(s, cs - 0.025, cs + 0.025, 3.7 + 0.5 * MeshKit.hash01(k, i, 102), 4.5, 0.0, IceLabParts.PROUD, Color(0.05, 0.06, 0.08), 0.0,
+			MeshKit.PAT_IL_STEEL, 2.0, MeshKit.FACE_PX)
 	if variant != 2:
 		p.status_lights(s, 0.3, SLOT - 0.3, 2.4, 6, seed + 5)
+	for i: int in 3:
+		p.screen(s, sx + float(i) * (sw + 0.2), skin.calm_top + 0.3, sw, 0.8, seed + 40 + i * 17, true)
 	if MeshKit.hash01(k, 6, 103) < skin.lamp_share + 0.2:
-		p.lamp(s, g, SLOT * 0.5, 7.0 + 1.0 * MeshKit.hash01(k, 7, 103), k)
+		p.lamp(s, g, SLOT * 0.5, 8.3 + 0.5 * MeshKit.hash01(k, 7, 103), k)
 
 
 func _racks(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
@@ -379,10 +402,10 @@ func _racks(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	for fs: float in [1.52, 3.2, 4.88]:
 		p.wbox(s, fs, fs + 0.28, 0.3, 5.85, 0.0, IceLabParts.PROUD * 0.8, skin.steel_color.lightened(0.04), 0.0, MeshKit.PAT_IL_STEEL, 0.0,
 			MeshKit.FACE_PX)
-	p.wpipe(s, 3.075, 0.045, 0.0, SLOT, Color(0.05, 0.06, 0.08), 4, 0.1)
+	p.wpipe(s, 3.075, 0.045, 0.0, SLOT, Color(0.05, 0.06, 0.08), 4, IceLabParts.PROUD)
 	for i: int in 3:
 		var cs: float = 0.5 + 1.7 * float(i) + 0.3 * MeshKit.hash01(k, i, 111)
-		p.wriser(s, cs, 0.03, 5.85, skin.calm_top, Color(0.05, 0.06, 0.08), 4, 0.08)
+		p.wriser(s, cs, 0.03, 5.85, skin.calm_top, Color(0.05, 0.06, 0.08), 4, IceLabParts.PROUD * 0.8)
 	if variant == 1:
 		p.foot_snow(s, 0.0, SLOT, skin.snow_amount() * 0.5, k)
 	if MeshKit.hash01(k, 7, 112) < skin.lamp_share:
@@ -401,7 +424,7 @@ func _tile(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 		p.screen(s, SLOT * 0.5 - 0.6, 2.2, 1.2, 0.8, seed * 7)
 	elif variant == 1:
 		for i: int in 2:
-			p.wdisc(s, 1.3 + 2.4 * float(i), 2.6, 0.2, 0.01, 0.04, skin.frame_color.lightened(0.1), 6, MeshKit.PAT_IL_STEEL, 2.0)
+			p.wdisc(s, 1.3 + 2.4 * float(i), 2.6, 0.2, 0.0, 0.04, skin.frame_color.lightened(0.1), 6, MeshKit.PAT_IL_STEEL, 2.0)
 	p.lamp(s, g, SLOT * 0.5, 7.2, k)
 
 
@@ -410,9 +433,9 @@ func _door(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	var seed: int = k * 11
 	var ds: float = 1.9 + 0.3 * float(variant - 1)
 	# The door flush in its frame, a lamp over it, a conduit and a console beside it.
-	p.wbox(s, ds - 0.12, ds, 0.3, 2.85, 0.0, 0.09, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
-	p.wbox(s, ds + 1.2, ds + 1.32, 0.3, 2.85, 0.0, 0.09, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
-	p.wbox(s, ds - 0.12, ds + 1.32, 2.7, 2.85, 0.0, 0.09, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX)
+	p.wbox(s, ds - 0.12, ds, 0.3, 2.85, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+	p.wbox(s, ds + 1.2, ds + 1.32, 0.3, 2.85, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+	p.wbox(s, ds - 0.12, ds + 1.32, 2.7, 2.85, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX)
 	p.wrect(s, ds, ds + 1.2, 0.3, 2.7, 0.012, skin.door_color, 0.0, MeshKit.PAT_IL_PANEL, float(MeshKit.IL_PANEL_DOOR + 4 * (seed % 100)),
 		Vector2(0.0, 0.0), Vector2(1.2, 2.4))
 	p.wpipe(s, 3.3, 0.06, 0.0, SLOT, skin.frame_color.darkened(0.1), 6)
@@ -422,22 +445,26 @@ func _door(s: MeshLayer, g: MeshLayer, variant: int, k: int) -> void:
 	p.foot_snow(s, 0.0, SLOT, skin.snow_amount() * 0.6, k)
 
 
-## An alcove of specimen jars (GDD §5: brain jars on the walls): a recess ALCOVE_DEPTH deep behind the wall's face, framed, its back and
-## sides dark steel, with two or three jars standing in it, each a pale dim liquid with a brain hanging in it. The middle jar of an
-## Octodog bay holds a curled-up Octodog. Nothing stands out of the face but the frame (PROUD); the jars are behind it.
-func _jars(s: MeshLayer, g: MeshLayer, variant: int, k: int, octodog: bool) -> void:
+## The specimen jars (GDD §5: brain jars on the walls): over the wall-run band, so the wall below stays as calm as everywhere (clean-room tile
+## and a pipe, flush), a recess ALCOVE_DEPTH deep behind the face from calm_top up to the cornice (which is its lintel), its back and sides dark
+## steel, framed, with two or three jars standing in it, each a pale dim liquid with a brain hanging in it. The middle jar of an Octodog bay
+## holds a curled-up Octodog. Only the alcove's frame stands out of the face (over the band, where nothing touches it).
+func _jars(s: MeshLayer, _g: MeshLayer, variant: int, k: int, octodog: bool) -> void:
 	var p: IceLabParts = _parts
 	var top: float = skin.wall_height
-	var y0: float = 0.55
-	var y1: float = 5.35
+	var y0: float = skin.calm_top + 0.2
+	var y1: float = skin.band_top - 0.05
 	var a0: float = 0.45
 	var a1: float = SLOT - 0.45
 	var steel: Color = skin.steel_color
-	# The wall's face around the opening: below it, above it, and either side.
+	# The wall's face around the opening: below it (the band's, with a flush panel of clean-room tile), above it, and either side.
 	p.wrect(s, 0.0, SLOT, 0.0, y0, 0.0, steel, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	p.wrect(s, 0.0, SLOT, y1, top, 0.0, steel, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	p.wrect(s, 0.0, a0, y0, y1, 0.0, steel, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
 	p.wrect(s, a1, SLOT, y0, y1, 0.0, steel, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+	p.wrect(s, 0.2, SLOT - 0.2, 0.3, 3.2, 0.012, skin.tile_color, 0.0, MeshKit.PAT_IL_PANEL, float(MeshKit.IL_PANEL_TILE + 4 * (k % 100)))
+	p.wbox(s, 0.2, SLOT - 0.2, 3.2, 3.32, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0)
+	p.wpipe(s, 4.6, 0.07, 0.14, SLOT, skin.frame_color.darkened(0.1), 6)
 	# The alcove inside, in darker steel: back, floor, roof and the two sides.
 	var d: float = -ALCOVE_DEPTH
 	var dark: Color = steel.darkened(0.45)
@@ -448,24 +475,21 @@ func _jars(s: MeshLayer, g: MeshLayer, variant: int, k: int, octodog: bool) -> v
 		Vector2.ONE, 0.0)
 	s.rect(Vector3(0.0, y0, -a0), Vector3(d, 0.0, 0.0), Vector3(0.0, y1 - y0, 0.0), dark, 0.0, MeshKit.PAT_IL_STEEL)
 	s.rect(Vector3(d, y0, -a1), Vector3(-d, 0.0, 0.0), Vector3(0.0, y1 - y0, 0.0), dark, 0.0, MeshKit.PAT_IL_STEEL)
-	# The frame round the opening, proud of the face by the bezel's depth.
+	# The frame round the opening's sill and sides (the cornice over the top), standing out of the face: it is above the band.
 	var fw: float = 0.16
-	p.wbox(s, a0 - fw, a1 + fw, y0 - fw, y0, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX | MeshKit.FACE_PY)
-	p.wbox(s, a0 - fw, a1 + fw, y1, y1 + fw, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX)
-	p.wbox(s, a0 - fw, a0, y0, y1, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX)
-	p.wbox(s, a1, a1 + fw, y0, y1, 0.0, IceLabParts.PROUD, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX)
-	# The jars: two or three, in a row, the middle one an Octodog's in an Octodog bay.
+	p.wbox(s, a0 - fw, a1 + fw, y0 - fw, y0, 0.0, 0.14, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX | MeshKit.FACE_PY)
+	p.wbox(s, a0 - fw, a0, y0, y1, 0.0, 0.1, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX)
+	p.wbox(s, a1, a1 + fw, y0, y1, 0.0, 0.1, skin.frame_color, 0.0, MeshKit.PAT_IL_STEEL, 0.0, MeshKit.FACE_PX)
+	# The jars: two or three, in a row, the middle one an Octodog's in an Octodog bay. Each stands on a pedestal on the alcove's floor.
 	var count: int = 2 if variant == 0 else 3
 	var width: float = 1.15 if count == 3 else 1.5
 	var gap: float = ((a1 - a0) - width * float(count)) / float(count + 1)
+	var base: float = y0 + 0.4
 	for i: int in count:
 		var s_mid: float = a0 + gap * float(i + 1) + width * (float(i) + 0.5)
 		var holds_octodog: bool = octodog and i == count / 2
-		p.jar(s, s_mid, y0 + 0.55, width, y1 - y0 - 1.2, d + 0.12, holds_octodog, k + i)
-	p.foot_snow(s, 0.0, a0, skin.snow_amount() * 0.5, k)
-	p.foot_snow(s, a1, SLOT, skin.snow_amount() * 0.5, k + 3)
-	if MeshKit.hash01(k, 8, 113) < skin.lamp_share + 0.3:
-		p.lamp(s, g, SLOT * 0.5, 7.2, k)
+		p.jar(s, s_mid, base, width, y1 - 0.3 - base, d + 0.12, holds_octodog, k + i, y1)
+	p.foot_snow(s, 0.0, SLOT, skin.snow_amount() * 0.5, k)
 
 
 func _blank(s: MeshLayer, _g: MeshLayer, _variant: int, k: int) -> void:
