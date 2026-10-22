@@ -52,6 +52,8 @@ var thefts: int = 0
 var credits_stolen: int = 0
 var credits_recovered: int = 0
 var jackpots: int = 0
+## Credits a teleport skipped (task Q4; skip_credits): what they counted for in the stars' best score.
+var credits_skipped: int = 0
 
 var _wall_start: float = -1.0
 var _rules: GameRules
@@ -120,6 +122,18 @@ func hold(thief: Node3D, value: int) -> void:
 	changed.emit()
 
 
+## A teleport skipped credits worth `star_value` in the stars' best score (task Q4; CreditField.skip, RunWorld): the track
+## between its pad and its output pad, and what it holds, is skipped (GDD §5, proposed), so the best possible score leaves
+## them out, as it leaves out what a thief holds: taking a teleporter never costs a star, nor earns one. DESIGN-TBD
+## (docs/questions/q4.md 5).
+func skip_credits(star_value: int) -> void:
+	if star_value <= 0:
+		return
+	max_credit_score -= star_value
+	credits_skipped += star_value
+	changed.emit()
+
+
 ## Everything `thief` holds now (taken from the player and off the track); 0 for anything else.
 func held_by(thief: Node3D) -> int:
 	var rec: Dictionary = _held.get(thief.get_instance_id(), {})
@@ -179,6 +193,7 @@ func stats() -> Dictionary:
 		"credits_recovered": credits_recovered,
 		"jackpots": jackpots,
 		"stolen_kept": stolen_kept(),
+		"credits_skipped": credits_skipped,
 	}
 
 

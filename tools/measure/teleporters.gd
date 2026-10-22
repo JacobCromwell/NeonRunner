@@ -1,0 +1,105 @@
+extends SceneTree
+## Measures the teleporters (task Q4; scripts/enemies/teleporter_rules.gd) over the campaign's levels that have them: for
+## each build, how many stand of the level's count, where (their pads' fronts as a share of the level), what kind (one
+## output pad, two with a fixed light, two with a blinking one; the introductions), their lanes and how far they lead, how
+## long the build took with them and without them, and what TeleporterRules.problems() finds (nothing, on every build the
+## suites check). From the project folder:
+##   godot --headless -s res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
+## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3). --why prints why an
+## introduction found no spot in its window (TeleporterRules.debug).
+
+const TeleporterRules = preload("res://scripts/enemies/teleporter_rules.gd")
+
+var _levels: PackedStringArray = []
+var _lanes: Array[int] = [3, 5, 6]
+var _seeds: int = 3
+
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+
+func _run() -> void:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--levels="):
+			_levels = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--lanes="):
+			_lanes.clear()
+			for s: String in arg.get_slice("=", 1).split(",", false):
+				_lanes.append(int(s))
+		elif arg.begins_with("--seeds="):
+			_seeds = int(arg.get_slice("=", 1))
+		elif arg == "--why":
+			TeleporterRules.debug = true
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
+	var builds: int = 0
+	var placed: int = 0
+	var wanted: int = 0
+	var blinking: int = 0
+	var blink_wanted: int = 0
+	var problems: int = 0
+	var slowest: float = 0.0
+	var rules_most: float = 0.0
+	var rules_total: float = 0.0
+	for s: CampaignStep in campaign.steps():
+		if not s.is_level() or s.is_minigame() or not s.level.has_feature(TeleporterRules.FEATURE):
+			continue
+		if not _levels.is_empty() and not _levels.has(s.id):
+			continue
+		for lanes: int in _lanes:
+			for k: int in _seeds + 1:
+				var config: LevelConfig = campaign.configure(s, lanes)
+				if k > 0:
+					config.level_seed = 9000 + k
+				var patterns: Array = LevelGenerator.load_for(config)
+				TeleporterRules.spent_usec = 0
+				var t0: int = Time.get_ticks_usec()
+				var gen := LevelGenerator.new()
+				var layout: LevelLayout = gen.generate(config, tuning, patterns)
+				var ms: float = (Time.get_ticks_usec() - t0) / 1000.0
+				var rules_ms: float = TeleporterRules.spent_usec / 1000.0
+				rules_most = maxf(rules_most, rules_ms / maxf(gen.attempts, 1))
+				rules_total += rules_ms
+				# The same level without its teleporters, for the builds and the time they cost.
+				var bare: LevelConfig = config.duplicate() as LevelConfig
+				bare.features = config.features.duplicate()
+				for f: String in [TeleporterRules.FEATURE, TeleporterRules.BLINKING]:
+					if bare.features.has(f):
+						bare.features.remove_at(bare.features.find(f))
+				bare.feature_starts = config.feature_starts.duplicate()
+				bare.feature_starts.erase(TeleporterRules.FEATURE)
+				bare.feature_starts.erase(TeleporterRules.BLINKING)
+				var t1: int = Time.get_ticks_usec()
+				var bare_gen := LevelGenerator.new()
+				bare_gen.generate(bare, tuning, patterns)
+				var bare_ms: float = (Time.get_ticks_usec() - t1) / 1000.0
+				slowest = maxf(slowest, ms)
+				builds += 1
+				wanted += config.teleporters
+				var blink_count: int = config.blinking_teleporters if config.has_feature(TeleporterRules.BLINKING) else 0
+				blink_wanted += blink_count
+				var found: PackedStringArray = TeleporterRules.problems(gen)
+				problems += found.size()
+				var parts: PackedStringArray = []
+				for tp: Dictionary in layout.teleporters:
+					placed += 1
+					var outs: PackedStringArray = []
+					for o: Dictionary in tp["outputs"]:
+						outs.append(str(int(o["lane"])))
+					var kind: String = "one"
+					if float(tp["blink"]) > 0.0:
+						kind = "blink"
+						blinking += 1
+					elif (tp["outputs"] as Array).size() > 1:
+						kind = "fixed %s" % ("L" if int(tp["light"]) < 0 else "R")
+					parts.append("%.2f L%d>%s %s +%.0fm%s" % [float(tp["at"]) / layout.length, int(tp["lane"]), "/".join(outs),
+						kind, float((tp["outputs"] as Array)[0]["at"]) - float(tp["at"]), " intro" if tp.has("intro") else ""])
+				print("%s lanes=%d seed=%d: %d of %d [%s] %.0f ms (%.0f in the rules, %.0f without), %d builds (%d without)%s%s"
+					% [s.id, lanes, config.level_seed, layout.teleporters.size(), config.teleporters, ", ".join(parts), ms,
+					rules_ms, bare_ms, gen.attempts, bare_gen.attempts,
+					"" if gen.warnings.is_empty() else " WARNINGS %s" % [gen.warnings],
+					"" if found.is_empty() else " PROBLEMS %s" % [found]])
+	print("builds %d: %d of %d teleporters stand, %d of %d blinking; %d problems; slowest build %.0f ms; the rules %.0f ms a build on average, %.0f at most"
+		% [builds, placed, wanted, blinking, blink_wanted, problems, slowest, rules_total / maxf(builds, 1), rules_most])
+	quit()

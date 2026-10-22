@@ -101,6 +101,12 @@ func hit_radius() -> float:
 	return 0.5
 
 
+## Task Q4: the runner was teleported and it's still in play ahead of them: a burst under way is called off
+## (CyborgGun.call_off), so its next one charges up, sound and glow first, where they are now.
+func runner_teleported(_from: float, _to: float) -> void:
+	gun.call_off(&"teleport")
+
+
 func _on_defeated(cause: StringName) -> void:
 	gun.stop()
 	_husk = true

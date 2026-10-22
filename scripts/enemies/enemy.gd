@@ -82,6 +82,9 @@ var jackpot_credits: int = 0
 var exclusive_major_attack: bool = false
 ## The types an exclusive major attack keeps apart from (empty: every type); its own type always.
 var exclusive_of: Array[StringName] = []
+## It keeps its place relative to the runner, wherever they are (the heli drone, GDD §9.6: "it keeps pace with the
+## player"): a teleport (task Q4) brings it along rather than leaving it behind (EnemyDirector.runner_teleported).
+var follows_runner: bool = false
 
 # --- State ---------------------------------------------------------------------------------
 var alive: bool = true
@@ -318,6 +321,14 @@ func defeat(cause: StringName) -> void:
 ## An EMP went off (a fence generator was destroyed, GDD §9.1). Override to react: the Cyborg's Bad
 ## Dream dissolves (GDD §9.7). `center` and `radius` are in world space.
 func on_emp(_center: Vector3, _radius: float) -> void:
+	pass
+
+
+## The runner was teleported from track distance `from` to `to` (task Q4; EnemyDirector.runner_teleported) and this enemy
+## stays in play (it's ahead of them there, or follows_runner). Override to call off an attack whose warning began while
+## they were elsewhere, so the next one warns from the start where they are (a cyborg's charge-up, a heli drone's
+## wind-up and barrage). The default does nothing.
+func runner_teleported(_from: float, _to: float) -> void:
 	pass
 
 

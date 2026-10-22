@@ -20,7 +20,8 @@ signal died(cause: String)
 ## whether the dash smashed it, the runner crashed through it or passed it on a side wall),
 ## robbed (a thief's touch took credits, GDD §9.12),
 ## wall_missing (a wall entry refused where a wall gap leaves no wall: no bump, there's nothing to
-## bump against), wall_gap_drop (a wall runner reached a wall gap and dropped off into the outer lane).
+## bump against), wall_gap_drop (a wall runner reached a wall gap and dropped off into the outer lane), teleport (a
+## teleporter's pad sent the runner to its output pad, task Q4: `teleported` came first).
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
 ## ceiling over fewer lanes) come with a bump: out toward the blocked side and back. A wall runner knocked
 ## off their wall (repel_from_wall) hears wall_blocked too, and drops off instead.
@@ -43,6 +44,12 @@ signal enemy_contact(enemy: Enemy, cause: StringName)
 ## its look (DashBreakable.smash), and the `<kind>_smash` movement event follows. RunEffects flings its pieces.
 signal smashed(breakable: DashBreakable)
 signal revived
+## A teleporter's pad sent the runner on (task Q4; GDD §5, Zone 9: "touching it teleports the runner to an output pad
+## further down the track"; _teleport): from track distance `from_distance` to `to_distance`, from teleporter `entry`'s pad
+## (LevelLayout.teleporters) onto its output pad `output` ({lane, at, end}). The runner is already there, in the output
+## pad's lane; the `teleport` movement event follows. RunWorld skips the track in between and what it holds, the camera
+## cuts, the flash shows.
+signal teleported(from_distance: float, to_distance: float, entry: Dictionary, output: Dictionary)
 
 enum Surface { FLOOR, CEILING, WALL }
 
@@ -256,6 +263,8 @@ var _off_wall_left: float = 0.0
 var _off_wall_claims: Dictionary = {}
 ## How many times a return pad (task I4) dropped the player off a ceiling this run (tests and tools).
 var return_drops: int = 0
+## How many times a teleporter sent the runner on this run (task Q4; tests and tools).
+var teleports: int = 0
 ## How many dash walls the runner crashed through without the dash (one hit each, GDD §9.14), and passed on a
 ## side wall, this run (task H7a; tests and tools).
 var crashes: int = 0
@@ -375,6 +384,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_off_wall_left = 0.0
 	_off_wall_claims.clear()
 	return_drops = 0
+	teleports = 0
 	crashes = 0
 	wall_passes = 0
 	_smash_claims.clear()
@@ -1715,8 +1725,9 @@ func _break(b: DashBreakable, how: StringName) -> void:
 
 # --- Triggers & hazards ----------------------------------------------------
 
-## Pads and ramps under the feet, swept back over this frame's motion. On a ceiling, its return pads (task I4;
-## GDD §3, "Ceiling scenarios"): the sensor reaches from the feet down from the underside instead.
+## Pads and ramps under the feet, swept back over this frame's motion, and a teleporter's pad (task Q4: _teleport). On a
+## ceiling, its return pads (task I4; GDD §3, "Ceiling scenarios"): the sensor reaches from the feet down from the
+## underside instead.
 func _check_triggers(motion: float) -> void:
 	if surface == Surface.WALL or not grounded:
 		return
@@ -1747,6 +1758,56 @@ func _check_triggers(motion: float) -> void:
 					_last_speed_pad = area.get_instance_id()
 					_boost += tuning.speed_pad_boost  # Fades like a ramp's (boost_left).
 					_event(&"speed_pad")
+			&"teleporter":
+				if _teleport(area.get_meta(Teleporter.META, {})):
+					return
+
+
+## A teleporter's pad (task Q4; GDD §5, Zone 9, the owner, October 21, 2026: "touching it teleports the runner to an output
+## pad further down the track"; "the side lit when the runner touches the pad decides where they land"): the feet on the
+## floor touching it (_check_triggers: what touches is the feet's sensor, swept back over the frame's run, on the floor
+## and grounded, so a jump over it never takes it and a landing on it does) put the runner on the output pad
+## Teleporter.output_at gives for this moment of the level clock (its only one, or the one on its antenna's lit side), as
+## far past its front as they were past the pad's (their run is the same), in its lane, at once. They keep their speed (a
+## boost or the dash goes on as it was), a slide and the dash, their protection and the invulnerability window as they were
+## (GDD §5, proposed: "no protection after landing"), and arrive running: a lane switch, a bump or a doodad's push under
+## way stops in the output pad's lane, a jump pressed before the touch is let go, what the dash claimed and what the body
+## was going through (the track behind) are forgotten. `teleported` and the `teleport` event follow (RunWorld skips the
+## track in between and what it holds; the camera cuts and the flash shows: RunCamera, TeleportFlash). False if `entry`
+## leads nowhere. DESIGN-TBD (docs/questions/q4.md 4): the jump itself.
+func _teleport(entry: Dictionary) -> bool:
+	var output: Dictionary = Teleporter.output_at(entry, elapsed)
+	if output.is_empty() or not alive:
+		return false
+	var from: float = distance
+	distance += float(output["at"]) - float(entry["at"])
+	lane = clampi(int(output["lane"]), 0, geo.lane_count - 1)
+	_x = geo.lane_x(lane)
+	_switch_from = _x
+	_switch_to = _x
+	_switch_t = 1.0
+	_bumping = false
+	_pushing = false
+	_slide_hold = false
+	_push_doodad = 0
+	_push_ignore_left = 0.0
+	_push_lane = -1
+	stopped = false
+	_jump_buffer = 0.0
+	_coyote = 0.0
+	_queued.clear()
+	_smash_claims.clear()
+	_smash_grace_left = 0.0
+	_off_wall = 0
+	_off_wall_left = 0.0
+	_off_wall_claims.clear()
+	_passing.clear()
+	_blocked_ramp = 0
+	teleports += 1
+	_apply_transform(0.0)
+	teleported.emit(from, distance, entry, output)
+	_event(&"teleport")
+	return true
 
 
 ## A return pad (task I4; GDD §3, "Ceiling scenarios": "sends the player back to the floor as usual") drops the

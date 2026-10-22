@@ -78,7 +78,21 @@ func follow(p_world: RunWorld) -> void:
 	far = 600.0
 	speed_fx = world.effects.tuning if world.effects.tuning != null else SpeedFxTuning.new()
 	world.effects.shake_requested.connect(_on_shake)
+	world.teleported.connect(_on_teleported)
 	snap()
+
+
+## A teleport (task Q4; RunWorld.teleported): a clean cut, with the flash over it (TeleportFlash). The camera always keeps
+## level with the runner along the track, so it's there already; across, it jumps to where it follows the runner in their
+## new lane instead of easing over (no sweep across the lanes in the cut), and the lean into a lane switch is let go. Its
+## height, look and field of view carry on as they were (the runner keeps their speed and arrives running on the floor).
+## DESIGN-TBD (docs/questions/q4.md 4): a cut rather than a quick move.
+func _on_teleported(_from: float, _to: float, _entry: Dictionary, _output: Dictionary) -> void:
+	if world == null or world.player == null:
+		return
+	_focus.x = world.player.position.x * world.tuning.camera_follow_x
+	_lean_deg = 0.0
+	_update(0.0, false)
 
 
 ## Jumps straight to the resting position (level start, restart).

@@ -118,6 +118,8 @@ func _build() -> void:
 	_scaling = world.config.enemy_scaling if world.config != null else 0.0
 	_bob_t = rng.randf() * TAU
 	_build_model()
+	# It keeps pace with the player (rel_*): a teleport (task Q4) brings it along (EnemyDirector.runner_teleported).
+	follows_runner = true
 	# Not in play until it swoops in.
 	visible = false
 	immune_to_weapons = true
@@ -164,6 +166,23 @@ func _tick(delta: float) -> void:
 ## GDD §9.6: stays until destroyed or the level ends.
 func should_retire() -> bool:
 	return false
+
+
+## Task Q4: the runner was teleported to `to`. Still waiting to swoop in where they've skipped past its spot, it never
+## comes (as one still to spawn there doesn't: EnemyDirector.runner_teleported). In play, it comes along (it keeps its
+## place ahead of them), and a wind-up or a barrage under way is called off (its bullets in the air were cleared with
+## every shot): it follows again, and its next barrage winds up, sound and aim line first, where they are now. Its hold
+## by a teleporter's landing (doodad_between, _doodad_in_reach) keeps that one off the runner as they arrive.
+func runner_teleported(_from: float, to: float) -> void:
+	match state:
+		State.WAITING:
+			if _at < to:
+				retire()
+		State.WINDUP, State.FIRE:
+			_shots_left = 0
+			_pending_shots = 0
+			_barrels.material_override = null
+			_enter_follow(tune.follow_time_at(_scaling))
 
 
 func targetable() -> bool:
@@ -313,7 +332,9 @@ func _can_attack(p: Player) -> bool:
 ## barrage and cooldown are over, so it never fires on the climb. Broken walls count too, as doodads do, so
 ## it holds the same on every attempt.
 func _doodad_in_reach(p: Player) -> bool:
-	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty():
+	# A teleporter's calm stretches count as doodads do (task Q4; LevelLayout.doodad_between), whether or not the level has
+	# any doodad.
+	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty() and world.layout.teleporters.is_empty():
 		return false
 	var seconds: float = _barrage_seconds()
 	var run: float = maxf(p.speed, 1.0)

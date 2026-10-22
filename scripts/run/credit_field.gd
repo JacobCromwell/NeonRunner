@@ -116,7 +116,8 @@ func setup(p_world: RunWorld) -> void:
 		var value: int = denomination(int(c["value"]))
 		var e := {"value": value, "surface": String(c["surface"]), "lane": int(c.get("lane", 0)),
 			"side": int(c.get("side", 0)), "at": float(c["at"]), "state": State.IDLE,
-			"pos": _world_pos(c), "magnet": not c.has(WallHopPlacement.GEM)}
+			"pos": _world_pos(c), "magnet": not c.has(WallHopPlacement.GEM),
+			"star": int(c["value"]) if not c.has("stash") and not c.has(WallHopPlacement.GEM) else 0}
 		_entries.append(e)
 		if not by_value.has(value):
 			by_value[value] = []
@@ -138,6 +139,27 @@ func setup(p_world: RunWorld) -> void:
 		inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(inst)
 		_multimeshes[value] = inst
+
+
+## A teleport (task Q4; RunWorld._on_teleported) took the runner from track distance `from` to `to`: every credit the
+## magnet is pulling is collected (it had them), and every credit still lying in between (`from` < at < `to`, on any
+## surface) is passed for good, hidden, never collected. Returns what those passed ones count for in the stars' best score
+## (LevelLayout.star_credit_value: not a treasure stash's, nor a wall-hop line's high-value ones), which the ScoreKeeper
+## leaves out of it (ScoreKeeper.skip_credits).
+func skip(from: float, to: float) -> int:
+	for e: Dictionary in _pulled:
+		if e["state"] == State.PULLED:
+			_collect(e)
+	_pulled.clear()
+	var value: int = 0
+	for e: Dictionary in _entries:
+		var at: float = float(e["at"])
+		if e["state"] != State.IDLE or at <= from or at >= to:
+			continue
+		e["state"] = State.GONE
+		(e["mm"] as MultiMesh).set_instance_transform(e["idx"], Transform3D(Basis().scaled(Vector3.ZERO), e["pos"]))
+		value += int(e.get("star", 0))
+	return value
 
 
 ## Credits not collected yet.

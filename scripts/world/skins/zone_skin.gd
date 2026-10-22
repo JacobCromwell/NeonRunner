@@ -192,6 +192,13 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 ## does), or draw its own look by overriding the three.
 @export var gantryway_palette: PackedColorArray = PackedColorArray()
 
+@export_group("Teleporters")
+## The colours of the default teleporter look (teleporter_pad(), teleporter_antenna(), task Q4; TeleporterKit), sRGB: its
+## plate's steel, its rim's lighter steel, the green, a lit lamp and a lamp out. Empty: the kit's own (TeleporterKit.PLATE
+## ...); a zone may set its own, return its own from teleporter_colors() (the Ice Lab gives its plate the hall's steel), or
+## draw its own look by overriding the two hooks. Its green stays the teleporter's (GDD §5: the owner's choice).
+@export var teleporter_palette: PackedColorArray = PackedColorArray()
+
 @export_group("Wall-run gaps")
 ## Whether this zone lights a wall-run gap's way across with the green chevrons (wall_run_guide, task L5; the owner,
 ## October 17, 2026: the lit wall is fine where the mechanic is introduced, the Marketplace, but too easy after it, so
@@ -1251,6 +1258,36 @@ func gantryway_debris_colors(body: Node3D, _look_seed: int) -> PackedColorArray:
 ## glowing. The default: snow, frost and ice in gantryway_colors() (GantrywayKit.snow_colors).
 func gantryway_snow_colors() -> PackedColorArray:
 	return GantrywayKit.snow_colors(gantryway_colors())
+
+
+## A teleporter's pad (task Q4; GDD §5, Zone 9, the owner, October 21, 2026: "a square pad with a look all its own";
+## Teleporter): `body` is centred on the pad's box `size` (a lane's square across and along, Teleporter.TRIGGER_HEIGHT up:
+## the floor at -size.y / 2, its near edge, toward the oncoming runner, at +size.z / 2), the input pad's trigger or an
+## output pad's node (GDD §5, proposed: the output pads "in the teleporter's look without the antenna"). The look keeps
+## to these (test_teleporters): flat on the floor (no higher than a few centimetres but its halo, inside its square but
+## for its halo), glowing only in the teleporter's green and green-white, never a hazard's colour nor the anti-grav pads'
+## cyan, and it reads from the start of its approach (its glow mustn't fog out within 200 m). The default is
+## TeleporterKit.pad_mesh in teleporter_colors().
+func teleporter_pad(body: Node3D, size: Vector3, look_seed: int) -> void:
+	TeleporterKit.dress_pad(body, size, look_seed, teleporter_colors())
+
+
+## A teleporter's antenna (task Q4; GDD §5: "a green, slightly space-age antenna on it"; "a light on the antenna, on its
+## left or its right side, shows which one the runner lands on"), on the input pad's `body` in the same box as
+## teleporter_pad(): standing on the pad's far half (the runner is teleported as their feet touch its near edge, so they
+## never reach it), no wider than the lane. Returns the lit looks of its lamps as nodes the teleporter shows and scales
+## (Teleporter.tick): {-1: the left lamp, 1: the right lamp, 0: the beacon a one-output teleporter keeps lit}, each a
+## Node3D under `body` centred on its lamp, hidden until lit; a lamp out stays visible as part of the antenna. The default
+## is TeleporterKit's mast, ring, crossbar and lamps.
+func teleporter_antenna(body: Node3D, size: Vector3, look_seed: int) -> Dictionary:
+	return TeleporterKit.dress_antenna(body, size, look_seed, teleporter_colors())
+
+
+## The colours the default teleporter look is built in (TeleporterKit: plate, rim, green, a lit lamp, a lamp out; sRGB):
+## teleporter_palette, or the kit's own where it's empty. A zone may return its own (the Ice Lab's: its steel for the
+## plate and rim, the green kept).
+func teleporter_colors() -> PackedColorArray:
+	return teleporter_palette
 
 
 ## The main lit colours tagged on the meshes under `body` (tag_debris_colors), or `fallback` where none is.
