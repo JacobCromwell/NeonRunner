@@ -9,7 +9,7 @@ extends Resource
 
 ## Runner poses a key may name (CineActorKey.pose), and a cyborg's.
 const RUNNER_POSES: Array[StringName] = [&"run", &"slide", &"dash", &"stomp", &"dead", &"lie", &"get_up", &"climb",
-	&"walk", &"get_in", &"wipe", &"scramble", &"squeeze"]
+	&"walk", &"get_in", &"wipe", &"scramble", &"squeeze", &"brace", &"hands_up"]
 const CYBORG_POSES: Array[StringName] = [&"idle", &"walk", &"aim", &"run_away", &"cower", &"die", &"stomped", &"lie", &"crouch"]
 const EXPRESSIONS: Array[StringName] = [&"neutral", &"aiming", &"shocked", &"dead", &"corrupt_grin", &"corrupt_broken"]
 

@@ -94,8 +94,8 @@ func _test_data() -> void:
 		and not zone.in_demo and not zone.placeholder, "the Terminal's id, name, tagline and music track, outside the web demo")
 	check(zone.boss == null and zone.boss_intro == null, "no boss (owner, October 20, 2026): it leads straight into the Golden Zone")
 	check(zone.intro != null and zone.outro != null and String(zone.intro.id) == "terminal_intro"
-		and String(zone.outro.id) == "terminal_outro" and not zone.outro.is_built() and not zone.intro.is_skipped()
-		and not zone.outro.is_skipped(), "an intro slot (the placeholder flyover) and an outro slot (a placeholder card)")
+		and String(zone.outro.id) == "terminal_outro" and zone.outro.is_built() and not zone.intro.is_skipped()
+		and not zone.outro.is_skipped(), "an intro slot (the placeholder flyover) and an outro slot (built since task F2l: test_terminal_outro)")
 	check(zone.skin != null, "a skin (the Dead Zone's stands in until task O4's)")
 	var ids: PackedStringArray = []
 	for s: CampaignStep in campaign.steps():
