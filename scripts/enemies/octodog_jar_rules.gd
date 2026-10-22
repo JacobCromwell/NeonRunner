@@ -108,37 +108,6 @@ static var taken_out: int = 0
 ## Review aid (tools/measure/octodog_jars.gd --why): with `debug` on, how many jar fronts tried each reason turned down.
 static var debug: bool = false
 static var why: Dictionary = {}
-# TEMPORARY (task Q5 investigation): remove before the task's last commit.
-static var tmp_dump: bool = false
-
-
-# TEMPORARY (task Q5 investigation): remove before the task's last commit.
-static func _tmp_dump(plan: Plan) -> void:
-	var gen: LevelGenerator = plan.gen
-	var lay: LevelLayout = gen.layout
-	var items: Array = []
-	for h: Dictionary in lay.hulls:
-		items.append([float(h["start"]), "HULL %.0f-%.0f landing to %.0f" % [float(h["start"]), float(h["end"]),
-			gen.zones.landing_zone(h).y]])
-	for p: Dictionary in lay.pads:
-		var z: Vector2 = gen.zones.pad_zone(float(p["at"]))
-		items.append([float(p["at"]), "PAD %.0f zone %.0f-%.0f" % [float(p["at"]), z.x, z.y]])
-	for e: Dictionary in lay.enemies:
-		var k: Vector2 = gen.enemy_keep_out(e, {})
-		var f: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
-		items.append([float(e["at"]), "ENEMY %s %.0f L%d keep %.0f-%.0f floor %.0f-%.0f %s" % [e["type"], float(e["at"]),
-			int(e.get("lane", -1)), k.x, k.y, f.x, f.y, str(e.get("params", {})).left(160)]])
-	for k: Dictionary in gen.rules_doodad_keep_outs():
-		items.append([float(k["from"]), "KEEP %.0f-%.0f %s" % [float(k["from"]), float(k["to"]), k]])
-	for c: Vector2 in plan.chases:
-		items.append([c.x, "CHASE %.0f-%.0f" % [c.x, c.y]])
-	for d: Dictionary in lay.doodads:
-		items.append([float(d["start"]), "DOODAD %.0f L%d %s" % [float(d["start"]), int(d["lane"]),
-			"HOLDS" if LevelLayout.holds_enemy(d) else ""]])
-	items.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
-	print("TIMELINE lo=%.0f hi=%.0f fences=%d gaps=%d" % [plan.lo, plan.hi, lay.fences.size(), lay.gaps.size()])
-	for it: Array in items:
-		print("  %7.0f  %s" % [float(it[0]), it[1]])
 
 
 ## Counts reason `what` in `why` (with `debug` on) and returns {} (a spot turned down).
@@ -384,8 +353,6 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 	var t: OctodogTuning = tuning()
 	var rng: RandomNumberGenerator = gen.rng_for(FEATURE)
 	var plan: Plan = plan_for(gen, t, powerups())
-	if tmp_dump:
-		_tmp_dump(plan)
 	var placed: int = 0
 	if plan.hi >= plan.lo:
 		# A part of the level each, aiming for a seeded spot in it; then, where a part had no room, the rest of the level.
