@@ -145,7 +145,8 @@ lane counts, seeds, difficulties and both run speeds), `test_campaign`, `test_hi
 `test_ice_lab_skin` leaves a teleporter's parts out of its whole-level scenery checks. DESIGN-TBD: `docs/questions/q4.md`.
 
 **Measured** (`tools/measure/teleporters.gd`, task Q4): Relay Station and Specimen Vault at 3, 5 and 6 lanes on their own
-seeds and six others (42 builds) stand 147 of 147, 42 of 42 blinking, with no problems; on their own seeds the introductions
-land 0.15 to 0.21 of the level in (on other seeds a 3-lane Specimen Vault's blinking one may find no quiet spot in its
-window and come later, 0.35 to 0.61: endless and weekly levels give no feature a start). The rules take about 37 ms of a
-build on average and 47 ms at most, and about 0.1 s of an endless-mode Ice Lab build.
+seeds and six others (42 builds) stand 147 of 147, 42 of 42 blinking, with no problems (the falling gantryways' re-check
+too); on their own seeds the introductions land 0.15 to 0.21 of the level in (on other seeds a 3-lane Specimen Vault's
+blinking one may find no quiet spot in its window and come later, 0.35 to 0.61: endless and weekly levels give no feature
+a start). The rules take about 39 ms of a build on average and 60 ms at most, and about 0.2 s of an endless-mode Ice Lab
+build (which takes about 90 s here, with them or without them).
