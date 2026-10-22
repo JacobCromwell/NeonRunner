@@ -7,7 +7,7 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                    (sfx_bank_enemies.gd, octodog_windup: low, wet and organic), short and rising. Not a warning: the
 ##                    freed dog's attack warns as any dog's does, with its wind-up's growl and telegraph.
 ## The jar's break itself is the dash's doodad crunch (Player.smashed: doodad_smash), which plays with it.
-## DESIGN-TBD (docs/questions/q5.md): the sound.
+## DESIGN-TBD (docs/questions/q5.md 10): the sound.
 
 
 func sounds() -> Dictionary:

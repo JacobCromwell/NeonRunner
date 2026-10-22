@@ -21,7 +21,9 @@ extends TestSuite
 ## where LayoutChecks.check_gantryways finds it fair; test_gantryways has the rest), Q4's teleporters (introduced in Relay
 ## Station, with blinking antennas from Specimen Vault: every build stands the level's count of them, and its count of
 ## blinking ones, each where LayoutChecks.check_teleporters finds it fair; test_teleporters has the rest), Q5's Octodog
-## jars, and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in for them.
+## jars that break open (all three levels, from Frost Foundry, with no start of their own: every build stands the level's
+## count of jars holding an Octodog, each where LayoutChecks.check_octodog_jars finds it fair; test_octodog_jars has the
+## rest), and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in for them.
 
 const ZONE_PATH: String = "res://data/zones/ice_lab.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
@@ -179,6 +181,11 @@ func _test_level_data() -> void:
 		check(level.has_feature("teleporter_blinking") == (n == 2) and (n < 2 or level.blinking_teleporters > 0)
 			and level.feature_starts.has("teleporter_blinking") == (n == 2),
 			"%s %s" % [tag, "brings in blinking antennas (%d)" % level.blinking_teleporters if n == 2 else "has no blinking antenna"])
+		# Task Q5 (GDD §5, Zone 9: Frost Foundry's row of the level schedule names them): every level stands Octodog jars that
+		# break open, none with a start of its own (a freed dog's attack fits before the heli drone's first pad only:
+		# octodog_jar_rules.gd; DESIGN-TBD, docs/questions/q5.md 1).
+		check(level.has_feature("octodog_jar") and level.octodog_jars > 0 and not level.feature_starts.has("octodog_jar"),
+			"%s stands Octodog jars that break open (%d)" % [tag, level.octodog_jars])
 
 
 ## Every build at 3, 5 and 6 lanes on the levels' own seeds and others, as the campaign configures it.
@@ -187,6 +194,7 @@ func _test_levels() -> void:
 	var levels: int = 0
 	var gantryways: int = 0
 	var teleporters: int = 0
+	var jars: int = 0
 	var enemies: Dictionary = {}
 	for n: int in [1, 2, 3]:
 		var step: CampaignStep = campaign.step("ice_lab/%d" % n)
@@ -235,6 +243,13 @@ func _test_levels() -> void:
 					"%d of the level's %d teleporters, %d of %d blinking %s" % [layout.teleporters.size(), wanted, blinking,
 						blinks, tag])
 				teleporters += layout.teleporters.size()
+				# Task Q5: as many jars holding an Octodog as the level asks for (LayoutChecks.check_octodog_jars: each fair).
+				var held: int = 0
+				for d: Dictionary in layout.doodads:
+					held += 1 if LevelLayout.holds_enemy(d) else 0
+				check(held == config.octodog_jars, "%d of the level's %d Octodog jars that break open %s" % [held,
+					config.octodog_jars, tag])
+				jars += held
 				check(not layout.gaps.is_empty() and not layout.fences.is_empty() and not layout.signs.is_empty()
 					and not layout.hulls.is_empty() and not layout.pads.is_empty() and not layout.doodads.is_empty(),
 					"the usual obstacles: %d holes, %d fences, %d signs, %d ceilings and %d pads, %d doodads %s" % [layout.gaps.size(),
@@ -246,5 +261,5 @@ func _test_levels() -> void:
 						continue
 					check(not LayoutChecks.feature_positions(layout, f).is_empty() or LayoutChecks.occasional(f),
 						"has `%s` (GDD §5: earlier features keep appearing) %s" % [f, tag])
-	print("  the Ice Lab's builds: %.2f generator builds a level over %d levels; enemies %s; %d falling gantryways, %d teleporters"
-		% [float(builds) / maxf(levels, 1.0), levels, enemies, gantryways, teleporters])
+	print("  the Ice Lab's builds: %.2f generator builds a level over %d levels; enemies %s; %d falling gantryways, %d teleporters, %d Octodog jars"
+		% [float(builds) / maxf(levels, 1.0), levels, enemies, gantryways, teleporters, jars])

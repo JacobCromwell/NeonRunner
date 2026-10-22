@@ -6,7 +6,8 @@ extends SceneTree
 ## variety, IceLabDoodads), how long the build and the rules took and what OctodogJarRules.problems() finds (nothing, on
 ## every build the suites check). From the project folder:
 ##   godot --headless -s res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
-## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3). --why counts, build by build,
+## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3; --seed-base=8800 for 8801, 8802,
+## ...: test_ice_lab_levels' OTHER_SEEDS). --why counts, build by build,
 ## what turned down the jar fronts tried (OctodogJarRules.debug). --without builds each level without its jars too, for
 ## the builds and the time they cost.
 
@@ -16,6 +17,7 @@ var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
 var _seeds: int = 3
 var _without: bool = false
+var _seed_base: int = 9000
 
 
 func _initialize() -> void:
@@ -34,6 +36,8 @@ func _run() -> void:
 			_seeds = int(arg.get_slice("=", 1))
 		elif arg == "--why":
 			OctodogJarRules.debug = true
+		elif arg.begins_with("--seed-base="):
+			_seed_base = int(arg.get_slice("=", 1))
 		elif arg == "--without":
 			_without = true
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
@@ -56,7 +60,7 @@ func _run() -> void:
 			for k: int in _seeds + 1:
 				var config: LevelConfig = campaign.configure(s, lanes)
 				if k > 0:
-					config.level_seed = 9000 + k
+					config.level_seed = _seed_base + k
 				var patterns: Array = LevelGenerator.load_for(config)
 				if _without:
 					# The same level without its jars: the builds and the time they cost.

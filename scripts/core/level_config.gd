@@ -116,12 +116,13 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   the touch deciding (no rules of its own but teleporter_blinking_rules.gd's positions(): teleporter_rules.gd places
 ##   them)
 ## - octodog_jar: the Ice Lab's Octodog jars that break open (task Q5; GDD §5, Zone 9, owner, October 21, 2026: "sometimes
-##   smashing an Octodog jar doodad releases its Octodog into the world"), from Frost Foundry: a small zone doodad in an
-##   inner lane holding an Octodog (LevelLayout.HOLDS), dressed as the zone's jar with one curled up inside; the dash that
-##   smashes it lets the dog out, and it runs ahead and attacks like any Octodog, its charges planned from there (no
-##   patterns: its rules, octodog_jar_rules.gd, stand up to `octodog_jars` of them where the release and every charge
-##   are fair; the dog's numbers in data/enemies/octodog.tres, Jars). The zone's other Octodog jars are its skin's look
-##   only and hold nothing (IceLabDoodads).
+##   smashing an Octodog jar doodad releases its Octodog into the world"), from Frost Foundry: a small zone doodad holding
+##   an Octodog (LevelLayout.HOLDS), dressed as the zone's jar with one curled up inside; breaking it (the dash, or a wall
+##   runner by its side wall) lets the dog out, and it runs ahead and attacks like any Octodog, its charges planned from
+##   there (no patterns: its rules, octodog_jar_rules.gd, stand up to `octodog_jars` of them where the release and every
+##   charge are fair, taking plain content out of the way where that's the only room; the dog's numbers in
+##   data/enemies/octodog.tres, Jars). The zone's other Octodog jars are its skin's look only and hold nothing
+##   (IceLabDoodads).
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -308,14 +309,14 @@ var _skin: ZoneSkin
 @export_range(0, 8) var blinking_teleporters: int = 1
 ## Octodog jars that break open (task Q5; GDD §5, Zone 9, the owner, October 21, 2026: "some jars hold a curled-up
 ## Octodog ... sometimes smashing an Octodog jar doodad releases its Octodog into the world, and the runner has to fight
-## it"): with the `octodog_jar` feature, the generator stands up to this many jars holding an Octodog in the level's
-## inner lanes (octodog_jar_rules.gd), each where its push is a doodad's and the dog it lets out has room for its usual
-## attack (its run and every charge clear); fewer where the level leaves no room, never none. The rest of a zone's
-## Octodog jars are its skin's look and hold nothing (GDD §5, proposed: "a jar that will release its Octodog looks the
-## same as one that won't"). 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1):
-## 1 in Frost Foundry, 2 in Relay Station, 3 in Specimen Vault (the jars grow commoner toward the laboratory); quick
-## play's prototype level takes this default, endless mode its level's (Specimen Vault's 3 over its 20 minutes from the
-## Ice Lab) and a weekly challenge's week Sentinel Row's.
+## it"): with the `octodog_jar` feature, the generator stands up to this many jars holding an Octodog
+## (octodog_jar_rules.gd), each where its push is a doodad's and the dog it lets out has room for its usual attack (its
+## run and every charge clear, plain content taken out of its way where that's the only room); fewer where the level
+## leaves no room, never none. The rest of a zone's Octodog jars are its skin's look and hold nothing (GDD §5, proposed:
+## "a jar that will release its Octodog looks the same as one that won't"). 0 turns them off. Without the feature it does
+## nothing. DESIGN-TBD (docs/questions/q5.md 1): 1 in each of the Ice Lab's levels (a heli drone's pad schedule leaves a
+## freed dog's attack room before its first pad only); quick play's prototype level takes this default, endless mode its
+## level's and a weekly challenge's week Sentinel Row's.
 @export_range(0, 8) var octodog_jars: int = 1
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings

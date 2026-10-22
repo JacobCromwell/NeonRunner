@@ -21,17 +21,18 @@ extends RefCounted
 ##   around it, what every lane keeps never reaching it, no other doodad too near), in an inner lane or, where the level
 ##   stands doodads by a side wall, in an outermost one by an open stretch of that wall, pushing inward (task L3: a wall
 ##   runner low on that wall breaks it as they reach it, and it lets its dog out then too). DESIGN-TBD
-##   (docs/questions/q5.md).
+##   (docs/questions/q5.md 2 and 3).
 ## - Its dog's first wind-up is planned release_distance past the jar's front (OctodogTuning: the tumble, the sprint to its
 ##   usual distance ahead and jar_settle_seconds, and how far the dash that smashed the jar can carry the runner on
 ##   meanwhile), each later one as a standing dog's (a cycle on, or up to charge_slack later where its stretch is clear),
-##   MIN_CHARGES at least (GDD §9.4: "2-3 early"; octodog_rules.gd's least) and up to the count it rolls (charges_range
-##   at the level's enemy scaling); one only where no spot in the level has room for more even with room made (below),
-##   so the level still has its jar. DESIGN-TBD (docs/questions/q5.md). Each charge's stretch is clear as a standing
-##   dog's must be (Octodog.charge_clear: no fence, doodad, anti-grav pad, ceiling landing or other enemy near, holes in
-##   one lane at most), with no pad or ceiling landing near its first wind-up or between two of them
-##   (Octodog.pad_or_landing_between). Another enemy at work while it gets out and into position is kept apart from its
-##   charges as from a standing dog's (charge_clear's margins, and the director's turns at its first wind-up, GDD §9).
+##   MIN_CHARGES at least (GDD §9.4: "2–3 charges early, up to 4 at the maximum"; octodog_rules.gd's least) and up to
+##   the count it rolls (charges_range at the level's enemy scaling); one only where no spot in the level has room for
+##   more even with room made (below), so the level still has its jar. DESIGN-TBD (docs/questions/q5.md 6). Each
+##   charge's stretch is clear as a standing dog's must be (Octodog.charge_clear: no fence, doodad, anti-grav pad,
+##   ceiling landing or other enemy near, holes in one lane at most), with no pad or ceiling landing near its first
+##   wind-up or between two of them (Octodog.pad_or_landing_between). Another enemy at work while it gets out and into
+##   position is kept apart from its charges as from a standing dog's (charge_clear's margins, and the director's turns
+##   at its first wind-up, GDD §9). DESIGN-TBD (docs/questions/q5.md 13).
 ## - From the jar's push lead to past its last charge (its run: the dog is loose from the jar on), no anti-grav pad's
 ##   zone or ceiling landing zone (CeilingZones), no Bad Dream's chase or kept extended wall run, nothing the rules keep
 ##   (in every lane or in a lane, all counted in every lane, as the dog crosses lanes: a falling gantryway from its
@@ -56,14 +57,14 @@ extends RefCounted
 ## Turret hangs from), and plain holes and fences (never a wall-run gap's hole, a pulsing fence or one a fence generator
 ## powers). Never the last of a feature, nor the first of one the level gives a start: every feature and introduction
 ## stays. The spot that takes the fewest out is taken, then the one nearest a seeded aim. DESIGN-TBD
-## (docs/questions/q5.md).
+## (docs/questions/q5.md 7).
 ##
 ## How many: up to LevelConfig.octodog_jars, a part of the level each, the best spot there (above), then the best of the
 ## rest. Its own random stream (LevelGenerator.rng_for), after every other feature's rules (RUN_AFTER: the gantryways and
 ## the teleporters keep exactly the spots they had), so a level without the feature draws nothing and is built byte for
 ## byte as before. Which of a zone's Octodog jars release: only these. Its others are its skin's look (IceLabDoodads'
 ## variety, commoner toward the laboratory) and hold nothing, so "sometimes" is these among them. DESIGN-TBD
-## (docs/questions/q5.md).
+## (docs/questions/q5.md 1).
 
 const FEATURE: String = "octodog_jar"
 const TYPE: String = "octodog"
@@ -81,8 +82,8 @@ const GantrywayRules = preload("res://scripts/enemies/gantryway_rules.gd")
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 ## The jar's size class (LevelLayout.DOODAD_SIZES): the small one, whose looks the Ice Lab's Octodog jar is among.
 const JAR_SIZE: StringName = &"small"
-## A freed dog makes at least this many charges, or its jar holds none there (GDD §9.4: "2-3 early"; octodog_rules.gd's
-## MIN_CHARGES).
+## A freed dog makes at least this many charges where any spot in the level has room for them (GDD §9.4: "2–3 charges
+## early"; octodog_rules.gd's MIN_CHARGES), else one (_apply).
 const MIN_CHARGES: int = 2
 ## Metres between the jar fronts tried (at the reference speed).
 const SEARCH_STEP: float = 2.0

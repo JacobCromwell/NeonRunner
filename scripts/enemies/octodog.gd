@@ -377,7 +377,7 @@ func _can_wind_up(v: float) -> bool:
 ## dog's charge sequence is on it's held as for another type's turn, so its planned charges move on
 ## (_moves_on). The generator plans the dogs one at a time already (octodog_rules.gd,
 ## octodog_jar_rules.gd); this keeps them so when a wait for its turn moved one's charges on into the
-## next one's, or a dog let out of its jar came out late (task Q5).
+## next one's, or a dog let out of its jar came out late (task Q5; DESIGN-TBD, docs/questions/q5.md 8).
 func _ask_turn() -> TurnAnswer:
 	if _turn_answer == TurnAnswer.NOT_ASKED:
 		if _another_dog_charging():
