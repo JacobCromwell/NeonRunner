@@ -547,7 +547,9 @@ static func _server_rack(s: DoodadArtSet) -> void:
 static func _lab_bench(s: DoodadArtSet) -> void:
 	var b: Vector3 = s.box("medium")
 	var front: DoodadPaint = s.front_canvas("medium")
-	# The bench's end: a cabinet under a worktop, a monitor on an arm and a tall lamp arm up to the top.
+	# The bench's end: a cabinet under a worktop, and over it a fume hood the full height of the box (a back panel, a glass sash, a canopy and
+	# posts, with a monitor on an arm inside), so the bench reads as tall as its box: too tall to jump, as the box is.
+	_hood(front, 0.0, b.x, 1.05, b.y)
 	DoodadKit.shape(front, DoodadKit.rect_pts(0.08, 0.0, b.x - 0.08, 0.95), ENAMEL)
 	front.rect(0.16, 0.1, b.x - 0.16, 0.82, ENAMEL.darkened(0.2))
 	front.rect(b.x * 0.5 - 0.02, 0.1, b.x * 0.5 + 0.02, 0.82, STEEL_D)
@@ -565,7 +567,8 @@ static func _lab_bench(s: DoodadArtSet) -> void:
 		side.rect(x0 + 0.04, 0.1, x0 + (b.z - 0.24) / 6.0 - 0.04, 0.82, ENAMEL.darkened(0.2 if i % 2 == 0 else 0.1))
 		side.rect(x0 + 0.1, 0.5, x0 + 0.16, 0.56, STEEL_L)
 	DoodadKit.shape(side, DoodadKit.rect_pts(0.0, 0.95, b.z, 1.05), STEEL_L.darkened(0.15))
-	# Equipment along the worktop: two monitors, a centrifuge drum, a rack of vials, flasks.
+	_hood(side, 0.0, b.z, 1.05, b.y)
+	# Equipment along the worktop, inside the hood: two monitors, a centrifuge drum, a rack of vials, flasks.
 	_screen(side, 0.3, 1.3, 1.2, 2.0, 105)
 	_screen(side, 1.35, 1.3, 2.1, 1.9, 106)
 	side.line(Vector2(0.75, 1.05), Vector2(0.75, 1.3), 0.06, STEEL_D)
@@ -597,6 +600,27 @@ static func _lab_bench(s: DoodadArtSet) -> void:
 	cards.append_array(DoodadArtSet.sides(sname))
 	cards.append(DoodadArtSet.top(tname, [0.0, 0.0, 1.0, 1.0], 0.4))
 	s.add_design("medium", "lab_bench", [ENAMEL, STEEL_L, LED], cards)
+
+
+## A fume hood over a bench from x0 to x1, standing from y0 up to the top of the box y1: a dark back panel, a glass sash in three panes, steel
+## posts at both ends and a canopy with vents along the top (the picture fills the box up to its top, so it reads as tall as it is).
+static func _hood(p: DoodadPaint, x0: float, x1: float, y0: float, y1: float) -> void:
+	DoodadKit.shape(p, DoodadKit.rect_pts(x0 + 0.04, y0, x1 - 0.04, y1 - 0.04), STEEL_D.darkened(0.1))
+	var panes: int = maxi(roundi((x1 - x0) / 1.2), 1)
+	var pw: float = (x1 - x0 - 0.3) / float(panes)
+	for i: int in panes:
+		var px: float = x0 + 0.15 + float(i) * pw
+		p.rect(px + 0.03, y0 + 0.12, px + pw - 0.03, y1 - 0.55, Color(0.55, 0.74, 0.82, 0.16))
+		p.rect(px + 0.1, y0 + 0.18, px + 0.16, y1 - 0.7, Color(0.8, 0.92, 0.97, 0.18))
+		p.polyline(DoodadKit.rect_pts(px + 0.03, y0 + 0.12, px + pw - 0.03, y1 - 0.55), DoodadKit.INK_W, _ink(STEEL_D), true)
+	DoodadKit.shape(p, DoodadKit.rect_pts(x0, y0, x0 + 0.12, y1), STEEL)
+	DoodadKit.shape(p, DoodadKit.rect_pts(x1 - 0.12, y0, x1, y1), STEEL)
+	DoodadKit.shape(p, DoodadKit.rect_pts(x0, y1 - 0.5, x1, y1), STEEL_L.darkened(0.12))
+	for i: int in maxi(roundi((x1 - x0) / 0.3), 2):
+		var vx: float = x0 + 0.2 + float(i) * 0.3
+		if vx + 0.18 < x1 - 0.15:
+			p.rect(vx, y1 - 0.32, vx + 0.18, y1 - 0.26, STEEL_D)
+	_snow_cap(p, x0 + 0.04, x1 - 0.04, y1 - 0.04, 0.06, 109)
 
 
 static func _supply_pallet(s: DoodadArtSet) -> void:

@@ -3,7 +3,7 @@ extends RefCounted
 ## The Ice Lab's zone doodads (IceLabSkin.doodad; GDD §3 and §5, Zone 9, owner, October 21, 2026: "brain jars and other lab equipment", and
 ## "some jars hold a curled-up Octodog"; proposed: ice crystal clusters and crates of lab supplies among them), drawn as picture cards on
 ## their boxes (DoodadCards; owner's request October 9, 2026): each is a simple box with a picture of the object drawn on it, the open air
-## see-through. Small: a specimen jar with a brain in it (two looks), the OCTODOG JAR (a jar with the Octodog curled up inside), a stack of
+## see-through. Small: a specimen jar with a brain in it, the OCTODOG JAR (a jar with the Octodog curled up inside), a stack of
 ## lab supply crates, a small ice crystal cluster. Medium: a pair of specimen jars on one base, a server rack, a lab bench with its
 ## equipment, a big crystal cluster, a pallet of supplies. Large: a row of specimen jars, a console bank, a mound of ice crystals, stacks of
 ## supply crates, a machine frozen in ice. On the zone's cold palette nothing here competes with the fence's pink or a sign's yellow and
@@ -33,6 +33,9 @@ const LOOKS: Dictionary = {
 ## The weight of a look at the ends of the lean, and how sharply it falls off from its affinity.
 const WEIGHT_FLOOR: float = 0.15
 const WEIGHT_SPAN: float = 0.85
+## A look's own rarity, a factor on its weight (a look not listed here is 1): the Octodog jar is one doodad in a few at the lab end of the lean
+## and rare elsewhere (DESIGN-TBD, docs/questions/q2.md item 6), since a jar that never opens is the norm and only some release their Octodog.
+const RARITY: Dictionary = {"octodog_jar": 0.25}
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: IceLabSkin:
@@ -45,11 +48,11 @@ func _init(p_skin: IceLabSkin) -> void:
 	_skin = weakref(p_skin)
 
 
-## The weight of the look `look_name` at lean `lab_share`: 1 at its own affinity, falling to WEIGHT_FLOOR a whole lean away.
+## The weight of the look `look_name` at lean `lab_share`: 1 at its own affinity, falling to WEIGHT_FLOOR a whole lean away, times its rarity.
 static func look_weight(look_name: String, lab_share: float) -> float:
 	var affinity: float = float(LOOKS.get(look_name, 0.5))
 	var near: float = 1.0 - absf(lab_share - affinity)
-	return WEIGHT_FLOOR + WEIGHT_SPAN * near * near
+	return (WEIGHT_FLOOR + WEIGHT_SPAN * near * near) * float(RARITY.get(look_name, 1.0))
 
 
 ## The look (a design of the zone's manifest) a doodad of `size_class` with `look_seed` gets at this skin's lean, or {} when the zone has
@@ -96,7 +99,8 @@ func is_octodog_jar(size_class: StringName, look_seed: int) -> bool:
 
 
 ## A look seed (searching upward from `from`) that gives the look named `wanted` in `size_class` at this lean, or -1 when the zone has no such
-## look: how a generator that decides a doodad is an Octodog jar (task Q5) asks for its look.
+## look. For the skin's own use and for task Q5's hook: the generator and gameplay code never call this (they never learn a zone's theme; Q5 adds
+## an abstract flag to the layout's doodads and a ZoneSkin hook that turns it into a look here).
 func look_seed_for(size_class: StringName, wanted: StringName, from: int = 0) -> int:
 	for s: int in range(from, from + 4096):
 		if look_name(size_class, s) == String(wanted):
