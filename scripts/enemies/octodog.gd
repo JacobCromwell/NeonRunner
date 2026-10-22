@@ -49,8 +49,9 @@ extends Enemy
 ## smashing an Octodog jar doodad releases its Octodog into the world, and the runner has to fight it"): a dog whose entry
 ## is marked LevelLayout.HELD stands in its jar (the zone doodad holding it, LevelLayout.holder_of: the skin draws it
 ## curled up in there) and stays out of play there (HELD: no look of its own, no hitbox, no target, immune to weapons,
-## no attack) until the jar is smashed (its entry marked "smashed": the dash, DashBreakable.smash). Then it bursts out
-## (_release: the glass and its green spray, the octodog_release sound) and tumbles on ahead of the runner (TUMBLE:
+## no attack) until the jar breaks (its entry marked "smashed", DashBreakable.smash: the dash, or a wall runner passing
+## one by a side wall, task L3). Then it bursts out (_release: the glass and its green spray, the octodog_release sound)
+## and tumbles on ahead of the runner (TUMBLE:
 ## jar_tumble_time, flung jar_tumble_speed faster than them, rolling over once, harmless), lands running and plays out as
 ## any dog after a lunge: it sprints ahead to its usual distance, paces there and makes its planned charges, each from
 ## its wind-up with its cue (GDD §5, proposed: "starts its usual attack from the first wind-up, with its cue, never a
@@ -102,6 +103,8 @@ var in_doghouse: bool = false
 var in_jar: bool = false
 ## The player's distance when it came out of its jar (-INF: it hasn't).
 var released_at: float = -INF
+## Its own sounds as it plays them, in order (tests: its release, each wind-up's growl before its lunge).
+var sounds_played: Array[StringName] = []
 
 var _t: OctodogTuning
 var _scaling: float = 0.0
@@ -310,9 +313,15 @@ func _release() -> void:
 	_set_phase(Phase.TUMBLE)
 	_place()
 	var at: Vector3 = global_position + Vector3(0.0, 1.0, 0.0)
-	world.play_sfx_at(&"octodog_release", at)
+	_play(&"octodog_release", at)
 	world.effects.burst(at, JAR_GLASS, 24, 0.9)
 	world.effects.burst(at, OctodogModel.TENTACLE_GREEN_TIP, 16, 0.6)
+
+
+## Plays its sound `sound` at `pos` (RunWorld.play_sfx_at), noting it in sounds_played.
+func _play(sound: StringName, pos: Vector3) -> void:
+	sounds_played.append(sound)
+	world.play_sfx_at(sound, pos)
 
 
 func _set_phase(next: Phase) -> void:
@@ -471,7 +480,7 @@ func _start_windup() -> void:
 		target_lane = clampi(_through_lane + (_through_lane - mine), 0, world.geo.lane_count - 1)
 	_set_phase(Phase.WINDUP)
 	_set_hitboxes(true)
-	world.play_sfx_at(&"octodog_windup", global_position + Vector3(0.0, 0.8, 0.0))
+	_play(&"octodog_windup", global_position + Vector3(0.0, 0.8, 0.0))
 	_show_telegraph()
 
 
@@ -494,7 +503,7 @@ func _start_lunge() -> void:
 	_begin_charge_contacts()
 	_set_phase(Phase.LUNGE)
 	_telegraph.visible = false
-	world.play_sfx_at(&"octodog_lunge", global_position + Vector3(0.0, 0.8, 0.0))
+	_play(&"octodog_lunge", global_position + Vector3(0.0, 0.8, 0.0))
 
 
 func _lunge(delta: float, pd: float) -> void:
