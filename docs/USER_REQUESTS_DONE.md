@@ -390,6 +390,10 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 
 ## October 21, 2026
 
+- [x] **The Terminal's intro cinematic** (GDD §6, Cinematics, "Terminal intro"; task F2k): the runner surveys a Dead Zone wasteland and the decayed Grand Terminal Station ("GRAND" fallen off, "TERMINAL" drooping and sparking, light spilling out), wipes a sign showing the Palace in gold, climbs the rubble at the entrance, squeezes in through the crack of light, and drops inside to the first level's tracks.
+  DONE (F2k): `TerminalIntro` (32 s) in the Terminal's intro slot in place of the arrival flyover, seven new sounds,
+  `test_terminal_intro`. Staging choices in items 1102-1115 in `docs/OPEN_QUESTIONS_DEFERRED.md`.
+
 - [x] The Terminal's outro cinematic (task F2l): the runner discovers an abandoned metro train and looks at it; the camera pans over the length of the train, which looks like it is still in working order. The train is a more modern-looking train, just dirty and run down, not a steam train. The runner tries to get in through the front door: shakes it once, it stays firm; shakes it again violently, and despite a lot of noise still can't get in. Bangs on it, then throws their hands up in frustration. On the other side of the door the friendly screech companion pops up in the window, gives a friendly squeak and opens the door. The runner goes in, and the camera pulls back to watch the train speed down the tracks and out of sight. DONE: task F2l, `TerminalOutro` (GDD §6, "Terminal outro"; `scripts/cinematics/terminal_outro/`, in the Terminal's outro slot,
   28 s): the runner jogs in and stops short of a dark, modern metro train (`TerminalTrainModel`: four articulated cars, faded
   cream with a blue stripe under grime, rust and a few vines, a cab with a front door; not a steam train), looks up at it, the

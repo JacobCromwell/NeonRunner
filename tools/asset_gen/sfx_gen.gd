@@ -55,6 +55,8 @@ extends SceneTree
 ##   sfx_bank_casino_boss_intro.gd  Casino boss intro's: the roulette wheel's ball, a crowd cheering, the floor's
 ##                        bustle, the golden door, the wall's tremor and collapse, a cyborg guard's shout
 ##   sfx_bank_casino_intro.gd  Casino intro's: the violet sports car cruising down the casino street and pulling up
+##   sfx_bank_terminal_intro.gd  Terminal intro's: the wasteland's wind, the dying sign's buzz and sparks, a hand wiping the route
+##                        board, climbing the rubble, dropping into the station, its hum
 ##   sfx_bank_terminal_outro.gd  Terminal outro's: the metro train's front door (a firm rattle, a violent clatter, fist
 ##                        bangs, the pneumatic door opening and closing), the train waking, pulling away and rushing off,
 ##                        and the screech's friendly squeak
@@ -97,6 +99,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_gangland_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_casino_boss_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_casino_intro.gd"),
+	preload("res://tools/asset_gen/sfx_bank_terminal_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_centipede.gd"),
 	preload("res://tools/asset_gen/sfx_bank_terminal_outro.gd"),
 ]

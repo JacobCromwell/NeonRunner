@@ -29,7 +29,7 @@ never ends, and a level never starts, unattended.
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
-| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`), bracing against something in front of it (`brace`) and throwing its hands up in frustration (`hands_up`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`), wiping a board with its right arm in strokes (`wipe`), and squeezing head first into a low gap (`squeeze`), bracing against something in front of it (`brace`) and throwing its hands up in frustration (`hands_up`), and one that follows the leg phase as it moves, up loose rubble on hands and feet (`scramble`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
 | `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level, but without the alley a level's wall gaps get: the stage's track is built with a copy of the skin whose `wall_gap_recess_on` is off, task L4, since the set builds what the opening shows); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
@@ -44,6 +44,7 @@ never ends, and a level never starts, unattended.
 | `beach_outro/` (`BeachOutro`, `BeachOutroTuning`, `BeachOutroBar`, `BeachOutroScreech`, `BeachOutroPalace`, `BeachOutroRaid`), `scenes/cinematics/beach_outro.tscn`, `data/cinematics/beach_outro_tuning.tres`, `tools/asset_gen/sfx_bank_beach_outro.gd` | the Beach's outro, the owner's beats (below), its props and its two sounds |
 | `casino_boss_intro/` (`CasinoBossIntro`, `CasinoBossIntroTuning`, `CasinoHall`, `CasinoRoulette`, `CasinoHolo`, `CasinoGoldenDoor`, `CasinoWallBreak`, `CasinoCrowd`, `CasinoPeople`, `CasinoPerson`, `casino_carpet.gdshader`, `casino_holo.gdshader`, `casino_dust.gdshader`), `scenes/cinematics/casino_boss_intro.tscn`, `data/cinematics/casino_boss_intro_tuning.tres`, `tools/asset_gen/sfx_bank_casino_boss_intro.gd`, `tools/showcase/casino_people_showcase.tscn` | the Casino's boss intro, the owner's beats (below): the casino hall, its patrons and crowd, the Chairman, the golden door and The House bursting through the wall |
 | `casino_intro/` (`CasinoIntro`, `CasinoIntroTuning`, `CasinoIntroLotus`), `scenes/cinematics/casino_intro.tscn`, `data/cinematics/casino_intro_tuning.tres`, `tools/asset_gen/sfx_bank_casino_intro.gd` | the Casino's intro, the owner's beats (below): the Brass Lotus's front and grand staircase, the violet car pulling up, the Chairman greeting people at the top |
+| `terminal_intro/` (`TerminalIntro`, `TerminalIntroTuning`, `TerminalIntroStation`, `TerminalIntroHeap`, `TerminalIntroLetters`, `TerminalIntroText`, `TerminalIntroSign`, `TerminalIntroWaste`, `TerminalIntroEntry`, `terminal_intro_grime.gdshader`, `terminal_intro_spark.gdshader`), `scenes/cinematics/terminal_intro.tscn`, `data/cinematics/terminal_intro_tuning.tres`, `tools/asset_gen/sfx_bank_terminal_intro.gd` | the Terminal's intro, the owner's beats (below): the abandoned Grand Terminal Station in the Dead Zone's wasteland, its dying sign, the route board the runner wipes, the rubble climbed and squeezed through, and the way in |
 | `terminal_outro/` (`TerminalOutro`, `TerminalOutroTuning`, `TerminalTrainModel`, `terminal_train.gdshader`, `terminal_train_glass.gdshader`), `scenes/cinematics/terminal_outro.tscn`, `data/cinematics/terminal_outro_tuning.tres`, `tools/asset_gen/sfx_bank_terminal_outro.gd` | the Terminal's outro, the owner's beats (below): the abandoned metro train, the runner at its front door, the screech that opens it, the train leaving |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
@@ -80,7 +81,7 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
 keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
-(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`, `brace`, `hands_up`) take the keys' `progress` (0-1, sampled like the position; a key below 0
+(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`, `wipe`, `squeeze`, `brace`, `hands_up`, and `scramble`, which follows its leg phase) take the keys' `progress` (0-1, sampled like the position; a key below 0
 keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
 hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises; not while it
 gets in, whose legs are its key poses); and while it
@@ -163,7 +164,7 @@ id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to st
 each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
-numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the City's, Gangland's, the Marketplace's, the Casino's and the Dead Zone's,
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the City's, Gangland's, the Marketplace's, the Casino's, the Dead Zone's and the Terminal's,
 which have the owner's beats) and the City's boss intro play it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
 and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
 the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
@@ -547,6 +548,78 @@ them, and black. Its sounds: `car_cruise` and `car_arrive` (`tools/asset_gen/sfx
 engine) and the game's `car_door`, `screech_chirp` and `casino_bustle`. Everything is worked out from the time, so stepping or
 skipping shows the same. Cost (headless, `test_casino_intro`): about 45 ms to set up (about 350 ms the first time, with cold
 mesh caches), about 0.6 ms a step and at most about 3 ms; its props add about 97 draw calls (the people on the rig most of it).
+
+**The Terminal's intro** (`TerminalIntro`, task F2k; the owner's beats, October 21, 2026, GDD §6 Cinematics, "Terminal intro"; the
+Terminal's look from `docs/art/reference/terminal_zone.jpg`; what they leave open is DESIGN-TBD, `docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115`; numbers in
+`data/cinematics/terminal_intro_tuning.tres`): 32.0 s before Terminal 1 on two stages. **Outside** is the Dead Zone's look, not the
+zone's own: the stage def carries the Dead Zone's skin (`CineStageDef.skin`, so its sky, haze and greys, and a skin set on the def
+takes no sky of the slot's), in the level's lanes, with the street's left wall open for 110 m (`wall_gaps`) on the station. **Inside**
+is the zone's own Terminal stage, after a 0.4 s dip to black: the cue `enter` calls `switch_stage` with no skin, so the slot's own
+is built from the zone's data. **The set** (all built in a frame of its own, x along the front to the viewer's right, y up, z out
+from it: the node is turned 90° so a letter or a window is built in the plane x-y facing +z, as TextMesh and the kit's quads
+expect; `TerminalIntroStation.track()` turns a point into track space): `TerminalIntroStation`, the Grand Terminal Station's front
+14 m back from the wall's line on the Dead Zone's pavement (kit pattern `PAT_DZ_STREET`, laid out from the world, so it joins the
+street; a kerb over the wall gap's orange lip, rubble piers over its cut ends): a head house with a great arched window over the
+entrance, pilasters, courses and a cornice, a broad band for the sign, wings of two rows of tall arched windows (a few lit, the
+right one broken down), soot streaks, fallen masonry, and the hall behind it as a dark box whose far wall glows in bands (dark at
+the floor, brightest a few metres up) with columns and girders standing in front of it, so the crack and the windows show light in
+slits, never one flat orange. The entrance is blocked by `TerminalIntroHeap`, a heightfield of rubble (quads in the Dead Zone's
+concrete pattern with their corners jittered so the facets are broken and uneven, over 200 chunks and big tilted slabs, rebar, and
+small stones strewn over the smoothed way up that `height()` and `way_x()` give the runner's feet, which the drawn surface keeps to) filling
+the doorway to 0.85 m under a lintel of stone teeth, spilling 6.5 m out onto the forecourt. The light out of the station: shafts
+and a pool as additive cards of the skin's glow material (a copy of it, breathed by `set_light()`: slowly, steady with Reduced
+flashing), halos, and three real lights for the runner; the shaft cards fade out within 9 m of the camera (the glow shader's negative
+`UV2.y`, `SHAFT_NEAR`), since close to one they would wash the whole view orange.
+`TerminalIntroLetters`: "GRAND TERMINAL" in extruded Exo 2 letters (`TerminalIntroText`, TextMesh at a coarse curve step turned
+into kit meshes, one surface each; the kit solid material copied per letter so each one's `state_glow` is its own): GRAND's
+letters are gone (a faint stain of each on the band, a shade over it and well under TERMINAL's unlit letters, bare bolts, the five
+letters sooty in the rubble below, one leaning on the front, one half buried); TERMINAL's hang tipped on their mounts (`droop_angle`, `droop_slip`, `droop_out`), four still lit in the
+Terminal's work-lamp amber, flickering (dimmed for whole 0.3 s cells, never faster) and sparking now and then (a MultiMesh of
+camera-facing dots, `terminal_intro_spark.gdshader`, twelve to a burst, each flung out of the sign and down under gravity, worked out
+from the time). With Reduced flashing nothing flickers (the lit letters breathe), a third of the bursts come (`TerminalIntroLetters.burst_shows`,
+the same rule for their `sign_zap` sounds), with half the sparks, slower and dimmer, and the station's light holds steady (`test_terminal_intro` measures the brightness steps and the spark counts).
+`TerminalIntroSign`: the route board (an enamel board in a rusted frame, the stops' names as flat kit text, `ROUTES` and a line
+with a dot at each stop, THE PALACE last, larger, in gold with a glow, a halo and a gold ring) under a film of grime
+(`terminal_intro_grime.gdshader`: opaque until wiped, its dirt in the colour, so that nothing of the board, the Palace's glow included,
+shows through it; drawn over the glow and under the dust by `render_priority`) that the wipe clears along **the hand's own trail**: the runner's wipe pose was measured on the
+real rig at build time (`_measure_wipe`: a scratch `PlayerAvatar` posed through the progress, its palm read off the hand joint),
+the board hung at the height the hand reaches and the runner placed at each key to put the palm on its face (`wipe_position`, the
+hand sweeping `wipe_reach` either side, in three level strokes, each a step lower: `CinePoses.wipe_level`), and the points the palm
+passes become the shader's trail (48 points, the first `trail_count` used so far, so the clearing follows the clock; the shader's
+y is up, a quad's UV.y runs down). The list's rows are within the band the hand reaches (`FIRST_ROW`, `ROW_PITCH`, `PALACE_ROW`), so
+the first stop clears first and THE PALACE last; `TerminalIntroSign.clearance()` is the shader's rule in GDScript, which the tests run
+(the Palace and its ring at least 95% clear by the cut to the close-up); dust puffs rise where it passes (the Casino boss intro's dust
+shader). `TerminalIntroWaste`: the Dead Zone's own props drawn by its skin as in a level (`ZoneSkin.doodad`: a broken column, a rubble
+heap, the burned-out bus, eight of them) and three columns of its smoke (`dead_smoke.gdshader`). `TerminalIntroEntry` (on the
+Terminal stage): a section of the station's wall at the left platform's back, in the skin's tile and ashlar, with the doorway, the
+back of the same heap (a short steep slope) and the ragged crack, through which the dusk's cold grey comes in as a beam across the
+platform. **The beats.** 0-2.8 s the runner's face (a close shot from in front and a little to their left, their gold eyepiece),
+their head turning right, then left toward the station and up at it; 2.8-6.2 s the camera sweeps round them by their right, over the
+wasteland, to behind them and the station; cut at 6.2 s to the station's front from across the street, low on the letters of GRAND
+in the rubble (held a second), then pulling back and tilting up to the wide view and craning up to the sign (TERMINAL sparking and
+drooping, light in shafts from the window and the crack); 10.6 s following them across the forecourt (they walk at 1.55 m/s; this
+shot is the last 4.6 m of the walk, square on to the board: a CUT key moves them there a moment before the shot, while the camera is
+on the station and they are out of its frame; a camera riding with an actor reads its path across a cut, so the cut is not at the
+camera's own); 13.6 s at the board as they wipe it (`wipe`, 2.4 s, three strokes
+down it); at the cut to the close-up (16.2 s) they step back out of shot and the camera, square in front of the board, shows all of
+it and pushes in toward THE PALACE; 18.7 s close on them (a nod, a turn to the entrance); 21 s low at the heap's foot, the crack of
+light above (they look up at it); 22.5 s the climb (`scramble`, their feet on the heap's surface) and, at the crest, the squeeze in
+through the crack head first (`squeeze`, lying down as they go), the camera close on the crack (poses do not blend, so the walk to the scramble, the scramble to the
+squeeze and the crawl to the jump are each on a camera cut); 27.4 s inside (a second actor,
+`runner_in`): they crawl out through the crack over the crest, jump (a free fall, 0.84 s), land on the track bed (the thud) and turn to
+face along the line, the camera round behind them looking down it, the tracks running off into the distance, the platforms, arches
+and lamps, the zone's title card over it, and black. **Toolkit.** `CinePoses` gained three runner poses: `wipe` (the right arm to a
+board and wiping it in strokes over a progress, the body leaning and turning with them), `scramble` (up loose rubble on hands and
+feet, the arms reaching in turn with the leg phase) and `squeeze` (head first into a low gap, a crouch to lying prone, crawling with
+the phase); `CinePoses.runner()` takes the leg phase (the cyclic poses use it; the others ignore it). Its sounds
+(`tools/asset_gen/sfx_bank_terminal_intro.gd`, none a warning): `waste_wind`, `sign_buzz`, `sign_zap`, `grime_wipe`,
+`rubble_scramble`, `landing_thud` and `station_hum`, with the game's `rubble_shift`; the zone's music fades in from the start.
+Everything is worked out from the time, so stepping or skipping shows the same. Cost (headless, `test_terminal_intro`): about 45 ms
+to set up (350 to 540 ms the first time, with cold mesh caches), about 0.6 ms a step and at most about 22-35 ms (the step that builds
+the Terminal stage); its props add about 61 draw calls outside, the runner's rig and the actors on top. The cinematic's own
+materials (the letters', the shafts', the halos') are made with `TerminalIntroStation.own()`, which copies a skin's material by
+parameter: `Resource.duplicate()` on a ShaderMaterial drops a Vector3 held by a colour uniform (the skins' sRGB rule) from the source
+and the copy alike, which turned the Dead Zone's shared material's sheen the shader's purple for the rest of the session.
 
 **The Terminal's outro** (`TerminalOutro`, task F2l; the owner's beats and follow-up, October 21, 2026, GDD §6 Cinematics, "Terminal
 outro"; what they leave open is DESIGN-TBD, `docs/questions/f2l.md`; numbers in `data/cinematics/terminal_outro_tuning.tres`): 28.0 s

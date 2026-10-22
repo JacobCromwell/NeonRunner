@@ -20,9 +20,15 @@ extends RefCounted
 ## ease, breathing, its weight shifting (walk at amount 0, the same stance `get_in` starts from, so one leads
 ## into the other). CineActorNode poses the runner's rig with them
 ## (HumanoidRig.apply_pose, put on the ground) in place of PlayerAvatar's own animation.
-## DESIGN-TBD (docs/questions/f2c.md, f2d.md): the key poses are hand-set placeholders.
+## And three for the Terminal's intro (task F2k): `wipe` (standing at a board, the right arm raised to it and wiping it in
+## strokes, over a progress: a reach, three strokes working down it, the arm lowered), `scramble` (up a slope of loose rubble on
+## hands and feet, leaning into it, the arms reaching in turn with the leg phase) and `squeeze` (into a low gap head first: from
+## a crouch to lying prone, the arms reaching ahead, crawling in turn with the leg phase, over a progress).
+## DESIGN-TBD (docs/questions/f2c.md, f2d.md; the three of the Terminal's intro: docs/OPEN_QUESTIONS_DEFERRED.md item 1112): the key poses are
+## hand-set placeholders.
 
-const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"brace", &"hands_up"]
+const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"wipe", &"scramble", &"squeeze", &"brace",
+	&"hands_up"]
 ## The walk: metres covered by one gait cycle in its full stride (two steps), the share of the cycle a foot is
 ## down (from its heel strike), the shortest stride (a share of the full one, walking slowly), and (degrees) the
 ## knee's bend as it takes the weight and through the swing, the arms' swing, the hips' turn and drop and the
@@ -254,6 +260,42 @@ const SEATED := {
 	THIGH_L: Vector3(84, 0, 5), SHIN_L: Vector3(-28, 0, 0), FOOT_L: Vector3(12, 0, 0),
 }
 
+## The wipe: how many strokes it makes (level, side to side, each a step lower down the board), how far through its progress the
+## arm is up (the reach ends at WIPE_RAISE.x, the arm starts to come down at WIPE_RAISE.y), the arm's pitch at the top of the
+## board and at the bottom (degrees), the sweep (degrees either side of the stroke's middle) and where the strokes' middle is
+## (degrees).
+const WIPE_STROKES: int = 3
+const WIPE_RAISE := Vector2(0.16, 0.88)
+const WIPE_PITCH := Vector2(124.0, 42.0)
+const WIPE_SWEEP: float = 24.0
+const WIPE_MIDDLE: float = 8.0
+
+## Climbing rubble on hands and feet: the lean (degrees), the arms' reach and swing, the head up.
+const SCRAMBLE_LEAN: float = -26.0
+const SCRAMBLE_REACH: float = 62.0
+const SCRAMBLE_SWING: float = 30.0
+
+## Squeezing in: the crouch it starts from (progress 0) and lying prone (progress 1).
+const SQUEEZE_CROUCH := {
+	"root_rot": Vector3(-52, 0, 0),
+	CHEST: Vector3(-18, 0, 0), NECK: Vector3(20, 0, 0), HEAD: Vector3(30, 0, 0),
+	UPPER_ARM_R: Vector3(128, 0, 12), FOREARM_R: Vector3(20, 0, 0),
+	UPPER_ARM_L: Vector3(128, 0, 12), FOREARM_L: Vector3(20, 0, 0),
+	THIGH_R: Vector3(70, 0, 8), SHIN_R: Vector3(-110, 0, 0), FOOT_R: Vector3(20, 0, 0),
+	THIGH_L: Vector3(70, 0, 8), SHIN_L: Vector3(-110, 0, 0), FOOT_L: Vector3(20, 0, 0),
+}
+const SQUEEZE_PRONE := {
+	"root_rot": Vector3(-86, 0, 0),
+	CHEST: Vector3(-8, 0, 0), NECK: Vector3(34, 0, 0), HEAD: Vector3(40, 0, 0),
+	UPPER_ARM_R: Vector3(168, 0, 10), FOREARM_R: Vector3(8, 0, 0),
+	UPPER_ARM_L: Vector3(168, 0, 10), FOREARM_L: Vector3(8, 0, 0),
+	THIGH_R: Vector3(6, 0, 5), SHIN_R: Vector3(-14, 0, 0), FOOT_R: Vector3(30, 0, 0),
+	THIGH_L: Vector3(6, 0, 5), SHIN_L: Vector3(-14, 0, 0), FOOT_L: Vector3(30, 0, 0),
+}
+## How far the crawl moves the limbs (degrees).
+const CRAWL_ARM: float = 14.0
+const CRAWL_LEG: float = 16.0
+
 ## Braced against something in front of it: feet apart, knees bent, leaning in, its arms forward (where the hands go
 ## is the cinematic's to say), its head up to look at it.
 const BRACED := {
@@ -326,9 +368,9 @@ static func is_cine_pose(pose_name: StringName) -> bool:
 
 
 ## How much a pose's legs step while it's moved along (add_steps): not while walking (the walk is its own
-## steps), getting in, bracing or throwing its hands up (their legs are key poses).
+## steps), getting in, wiping, squeezing, bracing or throwing its hands up (their legs are their own).
 static func steps_while_moving(pose_name: StringName) -> float:
-	return 0.0 if pose_name == &"walk" or pose_name == &"get_in" or pose_name == &"brace" or pose_name == &"hands_up" else 1.0
+	return 0.0 if pose_name in [&"walk", &"get_in", &"wipe", &"squeeze", &"brace", &"hands_up"] else 1.0
 
 
 ## The walk's phase advanced by `moved` metres, its stride `stride` of its full one (walk_stride).
@@ -426,7 +468,8 @@ static func _bump(phase: float, center: float, width: float) -> float:
 ## Fills `p` with the runner's `pose_name` at `progress` (0-1); `time` is the cinematic's, for its breath.
 ## The body tips about its hips (`pelvis_height`, the rig's HumanoidParts.pelvis_height()), so they stay
 ## over the key's position as it lies down or sits up; the rig then puts it on the ground.
-static func runner(p: HumanoidPose, pose_name: StringName, progress: float, time: float, pelvis_height: float) -> void:
+static func runner(p: HumanoidPose, pose_name: StringName, progress: float, time: float, pelvis_height: float,
+		phase: float = 0.0) -> void:
 	p.reset()
 	var keys: Array = LIE_KEYS
 	match pose_name:
@@ -443,12 +486,100 @@ static func runner(p: HumanoidPose, pose_name: StringName, progress: float, time
 		&"walk":
 			walk(p, 0.0, 0.0, time)
 			return
+		&"wipe":
+			wipe(p, progress, time)
+			return
+		&"scramble":
+			scramble(p, phase)
+			return
+		&"squeeze":
+			squeeze(p, progress, phase, pelvis_height)
+			return
 	_blend(p, keys, clampf(progress, 0.0, 1.0))
 	# Winded: lying, it pants (fading as it gets up).
 	var lying: float = 1.0 if pose_name == &"lie" else (1.0 - smoothstep(0.1, 0.4, progress) if pose_name == &"get_up" else 0.0)
 	if lying > 0.0:
 		p.add_deg(CHEST, Vector3(PANT * lying * sin(TAU * PANT_RATE * time), 0.0, 0.0))
 	p.root_offset.z -= pelvis_height * sin(p.root_rot.x)
+
+
+## The runner wiping a board in front of it, `progress` 0-1 through the wipe: the right arm comes up to the board (to
+## WIPE_RAISE.x), wipes it in WIPE_STROKES level strokes, side to side, working down it (the arm's pitch from WIPE_PITCH.x to
+## WIPE_PITCH.y by wipe_level), and comes down again (from WIPE_RAISE.y). The body leans in and turns with the stroke, the head on the board.
+## `wipe_hand_path` gives the strokes' shape alone. The left arm hangs, the feet stay put.
+static func wipe(p: HumanoidPose, progress: float, time: float) -> void:
+	p.reset()
+	p.add_table(AT_EASE, 1.0)
+	var raise: float = smoothstep(0.0, WIPE_RAISE.x, progress) * (1.0 - smoothstep(WIPE_RAISE.y, 1.0, progress))
+	var u: float = clampf((progress - WIPE_RAISE.x) / (WIPE_RAISE.y - WIPE_RAISE.x), 0.0, 1.0)
+	var sweep: float = wipe_stroke(u) * raise
+	var level: float = wipe_level(u)
+	var pitch: float = lerpf(WIPE_PITCH.x, WIPE_PITCH.y, level)
+	p.add_table({"root_rot": Vector3(-6.0 * raise, 0.0, 0.0)}, 1.0)
+	p.add_deg(CHEST, Vector3(-8.0 * raise, 10.0 * sweep, 0.0))
+	p.add_deg(NECK, Vector3(6.0 * raise, -6.0 * sweep, 0.0))
+	p.add_deg(HEAD, Vector3(4.0 * raise, -4.0 * sweep, 0.0))
+	p.set_limb(UPPER_ARM_R, 1, Vector3(lerpf(4.0, pitch, raise), 0.0, lerpf(7.0, WIPE_MIDDLE + WIPE_SWEEP * sweep, raise)))
+	p.set_limb(FOREARM_R, 1, Vector3(lerpf(14.0, lerpf(30.0, 52.0, level), raise), 0.0, 0.0))
+	p.set_limb(HAND_R, 1, Vector3(lerpf(-4.0, -14.0, raise), 0.0, 0.0))
+	p.add_limb(UPPER_ARM_L, -1, Vector3(8.0 * raise, 0.0, 0.0))
+	p.ground = 1.0
+
+
+## How far down the board the strokes are at `u` (0-1 through them): 0 at the top and 1 at the bottom, each stroke level (the
+## hand moving across at one height) and the hand dropping to the next as it turns at the end of a stroke.
+static func wipe_level(u: float) -> float:
+	var v: float = clampf(u, 0.0, 1.0) * float(WIPE_STROKES)
+	var idx: int = mini(int(floor(v)), WIPE_STROKES - 1)
+	var drop: float = smoothstep(0.78, 1.0, v - float(idx)) if idx < WIPE_STROKES - 1 else 0.0
+	return (float(idx) + drop) / float(maxi(WIPE_STROKES - 1, 1))
+
+
+## A stroke's position, -1 to 1, `u` 0-1 through the strokes: WIPE_STROKES of them, each from one side to the other and back
+## the other way in turn (the first from -1 to 1), eased at its turns.
+static func wipe_stroke(u: float) -> float:
+	var v: float = clampf(u, 0.0, 1.0) * float(WIPE_STROKES)
+	var idx: int = mini(int(floor(v)), WIPE_STROKES - 1)
+	var f: float = smoothstep(0.0, 1.0, v - float(idx))
+	return (-1.0 + 2.0 * f) if idx % 2 == 0 else (1.0 - 2.0 * f)
+
+
+## The runner climbing a slope of rubble on hands and feet at leg phase `phase` (0-1): leaning forward into it, head up, the arms
+## reaching in turn (one forward and low as the other draws back), the legs by add_steps over it.
+static func scramble(p: HumanoidPose, phase: float) -> void:
+	p.reset()
+	var c: float = cos(TAU * phase)
+	p.add_table({"root_rot": Vector3(SCRAMBLE_LEAN, 0.0, 0.0)}, 1.0)
+	p.add_deg(CHEST, Vector3(-10.0, 4.0 * c, 0.0))
+	p.add_deg(NECK, Vector3(14.0, 0.0, 0.0))
+	p.add_deg(HEAD, Vector3(20.0, 0.0, 0.0))
+	p.set_limb(UPPER_ARM_R, 1, Vector3(SCRAMBLE_REACH + SCRAMBLE_SWING * c, 0.0, 12.0))
+	p.set_limb(FOREARM_R, 1, Vector3(34.0 - 22.0 * c, 0.0, 0.0))
+	p.set_limb(UPPER_ARM_L, -1, Vector3(SCRAMBLE_REACH - SCRAMBLE_SWING * c, 0.0, 12.0))
+	p.set_limb(FOREARM_L, -1, Vector3(34.0 + 22.0 * c, 0.0, 0.0))
+	p.set_limb(HAND_R, 1, Vector3(-20.0, 0.0, 0.0))
+	p.set_limb(HAND_L, -1, Vector3(-20.0, 0.0, 0.0))
+	p.ground = 1.0
+
+
+## The runner squeezing in head first, `progress` 0-1 (from a crouch at the gap to lying prone in it), crawling at leg phase
+## `phase` (the arms and legs reaching in turn, more as it lies down). Tipped about its hips like the poses that play out
+## over time (`pelvis_height` the rig's).
+static func squeeze(p: HumanoidPose, progress: float, phase: float, pelvis_height: float) -> void:
+	p.reset()
+	var k: float = smoothstep(0.0, 0.7, clampf(progress, 0.0, 1.0))
+	p.add_table(SQUEEZE_CROUCH, 1.0 - k)
+	p.add_table(SQUEEZE_PRONE, k)
+	var c: float = cos(TAU * phase)
+	var crawl: float = smoothstep(0.2, 0.7, progress)
+	p.add_limb(UPPER_ARM_R, 1, Vector3(CRAWL_ARM * c * crawl, 0.0, 0.0))
+	p.add_limb(UPPER_ARM_L, -1, Vector3(-CRAWL_ARM * c * crawl, 0.0, 0.0))
+	p.add_limb(THIGH_R, 1, Vector3(-CRAWL_LEG * c * crawl, 0.0, 0.0))
+	p.add_limb(THIGH_L, -1, Vector3(CRAWL_LEG * c * crawl, 0.0, 0.0))
+	p.add_limb(SHIN_R, 1, Vector3(-CRAWL_LEG * maxf(-c, 0.0) * crawl, 0.0, 0.0))
+	p.add_limb(SHIN_L, -1, Vector3(-CRAWL_LEG * maxf(c, 0.0) * crawl, 0.0, 0.0))
+	p.root_offset.z -= pelvis_height * sin(p.root_rot.x)
+	p.ground = 1.0
 
 
 ## How firmly the hands hold on to the key's position (1: the body hangs from them; 0: it stands on its
