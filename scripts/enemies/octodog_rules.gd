@@ -78,11 +78,13 @@ static func tuning() -> OctodogTuning:
 	return res as OctodogTuning if res is OctodogTuning else OctodogTuning.new()
 
 
-## Every Octodog in the layout, along the track.
+## Every Octodog standing in the layout, along the track: never one held in a jar (task Q5, LevelLayout.is_held), which
+## comes out only if its jar is smashed (octodog_jar_rules.gd plans it; it never stands where a dog is met, so a cyborg
+## planted in its first lunge's path, ChargePathPlacement, or the level's guaranteed dog never counts on it).
 static func dogs_in(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
-		if String(e.get("type", "")) == TYPE:
+		if String(e.get("type", "")) == TYPE and not LevelLayout.is_held(e):
 			out.append(e)
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 	return out

@@ -11,6 +11,17 @@ const GANTRY_PILLAR: String = "gantryway"
 ## The key that marks a hole of a wall-run gap (gaps; wall_run_gaps): it isn't one to jump, so the checks on
 ## jumpable holes and rows of holes leave it out (is_wall_run_hole).
 const WALL_RUN_HOLE: String = "wall_run"
+## The key of a zone doodad that holds an enemy until it's smashed (task Q5; GDD §5, Zone 9, the owner, October 21,
+## 2026: "some jars hold a curled-up Octodog", and "sometimes smashing an Octodog jar doodad releases its Octodog into
+## the world"): the enemy's type. Its entry in `enemies` stands at the doodad's front in its lane, its params marked
+## HELD (held_by, holder_of). Abstract, as every piece here: the skin dresses such a doodad as the zone's container
+## with that enemy inside (ZoneSkin.held_doodad_look: the Ice Lab's Octodog jar), and smashing it (DashBreakable.smash,
+## its entry marked "smashed") lets the enemy out (it watches its doodad: Octodog). Placed by its feature's rules
+## (scripts/enemies/octodog_jar_rules.gd), never by the zone doodads' pass. A doodad of the zone's that only looks like
+## such a container (the skin's own variety) holds nothing.
+const HOLDS: String = "holds"
+## The params key of an enemy entry held in a doodad (HOLDS) until that doodad is smashed: true.
+const HELD: String = "held"
 
 var lane_count: int = 3
 var length: float = 0.0
@@ -49,6 +60,8 @@ var enemies: Array[Dictionary] = []
 ## [start, end], the whole row's stretch, from its first one's front to its last one's end, and `look`, the
 ## seed its look is picked by (its first one's `seed`): the row's doodads share its lane, size class, side and
 ## look, each its own entry with a seed of its own (doodad_extent).
+## A doodad that holds an enemy until it's smashed (task Q5: an Octodog's jar) also holds HOLDS, the enemy's type
+## (holds_enemy, held_by).
 var doodads: Array[Dictionary] = []
 ## {lane, start, end, warn, charge, keep, speed}: a floor cut planned in advance (task B4; GDD §9.9,
 ## the Buzz Overdrive's): the floor of `lane` from `start` to `end` turns into a gap during play, run
@@ -491,6 +504,52 @@ func gantryway_between(from: float, to: float, lane: int = -1) -> bool:
 ## by its rules with the gantryway (gantryway_rules.gd), not the zone doodads' pass, and built with it.
 static func is_gantry_pillar(d: Dictionary) -> bool:
 	return d.has(GANTRY_PILLAR)
+
+
+## True if doodad entry `d` (one of `doodads`) holds an enemy until it's smashed (task Q5: marked HOLDS, an Octodog's
+## jar): placed by its feature's rules (octodog_jar_rules.gd), not the zone doodads' pass.
+static func holds_enemy(d: Dictionary) -> bool:
+	return String(d.get(HOLDS, "")) != ""
+
+
+## The type of the enemy doodad entry `d` holds (HOLDS), or "" if it holds none.
+static func held_type(d: Dictionary) -> String:
+	return String(d.get(HOLDS, ""))
+
+
+## True if enemy entry `e` (one of `enemies`) is held in a doodad until that doodad is smashed (task Q5: its params
+## marked HELD).
+static func is_held(e: Dictionary) -> bool:
+	return bool((e.get("params", {}) as Dictionary).get(HELD, false))
+
+
+## The doodad (its entry of `doodads`) that holds enemy entry `e` (is_held): in its lane, holding its type, its front at
+## the enemy's `at`; {} if there's none.
+func holder_of(e: Dictionary) -> Dictionary:
+	if not is_held(e):
+		return {}
+	var lane: int = int(e.get("lane", -1))
+	var at: float = float(e.get("at", 0.0))
+	var type: String = String(e.get("type", ""))
+	for d: Dictionary in doodads:
+		if int(d["lane"]) == lane and held_type(d) == type and absf(float(d["start"]) - at) < 0.01:
+			return d
+	return {}
+
+
+## The enemy entry (one of `enemies`) doodad entry `d` holds (holds_enemy): of its type, held, in its lane, standing at
+## its front; {} if there's none.
+func held_by(d: Dictionary) -> Dictionary:
+	if not holds_enemy(d):
+		return {}
+	var lane: int = int(d["lane"])
+	var start: float = float(d["start"])
+	var type: String = held_type(d)
+	for e: Dictionary in enemies:
+		if is_held(e) and String(e.get("type", "")) == type and int(e.get("lane", -1)) == lane \
+				and absf(float(e.get("at", 0.0)) - start) < 0.01:
+			return e
+	return {}
 
 
 ## The falling gantryway (gantryways) whose `id` is `id`, or {} if there's none.

@@ -1212,7 +1212,8 @@ func missing_features(needed: PackedStringArray) -> PackedStringArray:
 ## cyborg encounter; nor a Buzz Overdrive's company, task L2, an extra too; nor one planted under a falling
 ## gantryway, task Q3, GANTRYWAY_PARAM, the extra its walkway crushes), screeches from wall vents
 ## (screech_vents), and otherwise the enemies of that type, which
-## covers every enemy type. A feature whose rules script declares
+## covers every enemy type, but one held in a doodad until it's smashed (task Q5, LevelLayout.is_held: an Octodog in its
+## jar, which may never come out; its jar is its own feature's). A feature whose rules script declares
 ## `static func positions(layout: LevelLayout) -> Array[float]` answers for itself (a new kind of
 ## piece).
 static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[float]:
@@ -1261,7 +1262,7 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 					"screech_vents":
 						hit = type == "screech" and String(params.get("source", "")) == "vent"
 					_:
-						hit = type == feature
+						hit = type == feature and not LevelLayout.is_held(e)
 				if hit:
 					out.append(float(e["at"]))
 	out.sort()
@@ -2150,6 +2151,42 @@ func _doodad_push_fits(room: DoodadRoom, lane: int, side: int, start: float, end
 	if _hits_any(room.lanes[into], start - lead - doodad_lane_room(), landed):
 		return false
 	return not _lane_kept(room.keeps, into, Vector2(start - lead, landed))
+
+
+## The room the zone doodads' pass measures (DoodadRoom, _place_doodads), as the layout stands now: for a rule that
+## stands a zone doodad of its own before that pass (task Q5: a jar holding an Octodog, octodog_jar_rules.gd), which asks
+## doodad_fits() of it. What it adds changes the room: it asks for a new one after each.
+func doodad_room() -> DoodadRoom:
+	var room := DoodadRoom.new()
+	room.regions = free_stretches(doodad_keep_outs([], room.keeps, room.calm), 0.0, layout.length)
+	room.lanes = doodad_lane_busy()
+	var none: Array[Vector2] = []
+	room.walls = [none, none]
+	return room
+
+
+## True if one zone doodad of size class `size` with its front at `start`, in inner lane `lane` and pushing into the lane
+## on `side`, keeps every rule the zone doodads' pass keeps (_place_doodads) in `room` (doodad_room()): between where the
+## doodads start (and the run-up) and the end-clear stretch; nothing kept in every lane reaching it from its push's lead
+## before its front to doodad_reach() past it, and no calm stretch; its own lane, the lanes beside it and the lane it
+## pushes into as _doodad_lane_fits and _doodad_push_fits keep them (task L6), no other doodad too near (no slalom).
+func doodad_fits(room: DoodadRoom, size: StringName, lane: int, side: int, start: float) -> bool:
+	if lane < 1 or lane > layout.lane_count - 2 or absi(side) != 1:
+		return false
+	var length: float = tuning.doodad_size(size).z
+	var end: float = start + length
+	var lead: float = doodad_lead_for(tuning)
+	if start < maxf(config.start_clear_distance, config.doodad_start * layout.length) \
+			or end > layout.length - config.end_clear_distance:
+		return false
+	var inside: bool = false
+	for region: Vector2 in room.regions:
+		if region.x + lead + DOODAD_SPAN_SLACK <= start and start + doodad_reach(length) + DOODAD_SPAN_SLACK <= region.y:
+			inside = true
+			break
+	if not inside or _hits_any(room.calm, start - lead, end):
+		return false
+	return _doodad_lane_fits(room, lane, start, end, start) and _doodad_push_fits(room, lane, side, start, end, start)
 
 
 ## True if one of `lane_keeps` ({lane, from, to}) keeps `lane` anywhere in `span`.
