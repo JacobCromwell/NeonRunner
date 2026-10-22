@@ -25,7 +25,7 @@ start of its own); a level's count is `LevelConfig.octodog_jars` (1 each), DESIG
   Octodog jar's look (`IceLabDoodads.OCTODOG_JAR`, task Q2's card); `TrackBuilder._build_doodad` asks it for a jar.
 - The hint `octodog_jar` (`data/hints/hints.json`; `HintDirector._first_at`: the first jar holding an Octodog), the sound
   `octodog_release` (`tools/asset_gen/sfx_bank_octodog_jar.gd`).
-- `tools/measure/octodog_jars.gd`.
+- `tools/showcase/octodog_jar_review.tscn` (Review tools) and `tools/measure/octodog_jars.gd`.
 
 **The data.** A jar is an ordinary zone doodad (`LevelLayout.doodads`) of the small class marked `holds: "octodog"`
 (`LevelLayout.HOLDS`); the dog is an ordinary `octodog` entry of `LevelLayout.enemies` at the jar's front in its lane, its

@@ -46,7 +46,14 @@ land on the output pad its light shows), `around` (switch out as its approach be
 light still blinking), `--outputs=1|2`, `--light=-1|1`, `--blink`, `--phase=P`, `--hazard` (a fence right past the
 landings), `--lanes=N`, `--lane=L`, `--side=-1|1`, `--close`, `--reduced-flashing`; `tools/measure/teleporters.gd` lists
 where each campaign build stands them, their kinds and hops, what they cost a build and what the re-check finds, with
-`--why` for an introduction that found no spot in its window), side wall gaps (`wall_gap_review`, task L4:
+`--why` for an introduction that found no spot in its window), Octodog jars (`octodog_jar_review`, task Q5: a jar holding an
+Octodog as the rules make one, its dog's charges planned from the release, in any zone's look (the Ice Lab's by default)
+at its speed, through the game's camera, `--take=release` (dash it: the dog breaks out, tumbles ahead and attacks, the
+runner sidestepping each wind-up), `stay` (dash it and stay in line: the armor takes the lunge, `--bare` none), `pass` (no
+dash: pushed aside, nothing comes out) or `look` (a still beside it), `--lanes=N`, `--lane=L`, `--side=-1|1`,
+`--charges=N`, `--close`, `--beside`, `--hitboxes`, `--god`; the dog's phases print with their times;
+`tools/measure/octodog_jars.gd` lists where each campaign build stands them, what they took out and what they cost a
+build), side wall gaps (`wall_gap_review`, task L4:
 an open street in any zone's look with side wall gaps as the generator places them (a left, a right and a both-walls
 one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
 the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across

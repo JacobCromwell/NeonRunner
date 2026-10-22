@@ -641,7 +641,9 @@ look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), a falling gantry
 from under it, staying under it with the armor, its pillar pushing the runner aside, and a still of it standing
 (`gantryway_review`, `--take=drop|stay|push|look`, `--beside` for a camera beside the track), a teleporter taken, gone
 around, or still with its light blinking (`teleporter_review`, `--take=take|around|look --outputs=1|2 --light=-1|1 --blink
---hazard`), side wall gaps and what they show behind
+--hazard`), an Octodog jar dashed and its dog breaking out and attacking, staying in line with the armor, the jar pushing
+the runner aside, and a still of it (`octodog_jar_review`, `--take=release|stay|pass|look`, `--close`, `--beside`), side wall
+gaps and what they show behind
 them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), the Terminal's arches (`arch_wall_review`) and
 debris maze seen from the game camera on the way in, stopped at a wall and inside it (`debris_maze_review`,
 `--level=terminal/1 --block=N --out=build/maze`), the Cybernetic Centipede's model in each pose and an encounter with

@@ -273,6 +273,7 @@
     {"match": "tools/measure/gantryways.gd", "suites": ["gantryways"]},
     {"match": "tools/showcase/teleporter_review*", "suites": ["teleporters"]},
     {"match": "tools/measure/teleporters.gd", "suites": ["teleporters"]},
+    {"match": "tools/showcase/octodog_jar_review*", "suites": ["octodog_jars"]},
     {"match": "tools/measure/octodog_jars.gd", "suites": ["octodog_jars"]},
     {"match": "tools/*", "suites": []},
     {"match": "project.godot", "tier": "full"},
