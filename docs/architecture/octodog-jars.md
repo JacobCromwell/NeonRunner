@@ -49,7 +49,14 @@ jar keeps clear.
 - its whole run, from the jar's push lead to past its last charge, keeps off every pad's zone and ceiling landing, every
   chase and kept extended wall run, everything the rules keep (a gantryway's calm stretch and lane, a teleporter's way
   around and landings, a wall-run gap's clear stretch, a treasure stash's floor), and every other Octodog's run with its
-  stop distance and DOG_GAP between.
+  stop distance and DOG_GAP between;
+- what the fill pass keeps for the dog (`LevelGenerator.enemy_keep_out`: from 2 s before its jar to its run's end) keeps
+  off every wall-run gap's stretch (`WallRunGapPlacement.keep_out`), as a wall-run gap keeps every enemy's.
+
+A jar moves what later passes place around its dog's keep-out (a wider gap, say). One such move set a wider gap's landing
+margin right against a teleporter's calm stretch, which `WideGapPlacement` kept off the zone but not off a doodad's push
+lead past it, as `LayoutChecks.check_wide_gaps` asks; `WideGapPlacement.blocker` now keeps `LevelLayout.doodad_between`
+off the zone and that lead (no build the suites checked before had one there).
 
 A heli drone's pad schedule (a pad every 8 to 10 s from its first one) leaves no stretch long enough for two charges, so
 in the Ice Lab a freed dog's attack fits before the drone's first pad only, where the level is already full. So the rules
