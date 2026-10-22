@@ -6,7 +6,7 @@ extends Resource
 ## tries its front door, shaking it once (it stays firm), then violently and noisily (it still won't open), bangs on it
 ## and throws their hands up; the friendly screech pops up in the door's window on the other side, squeaks and opens the
 ## door; the runner goes in and the camera pulls back to watch the train speed away down the tracks and out of sight.
-## The rest (timings, places, the train's look, the camera, the sounds) is DESIGN-TBD (docs/questions/f2k.md). Times are
+## The rest (timings, places, the train's look, the camera, the sounds) is DESIGN-TBD (docs/questions/f2l.md). Times are
 ## seconds from the start; places are track space (CineStage: x metres right of the start lane's centre, y up, z along
 ## the track), the train's measured from its nose (z) and its lane's middle (x).
 

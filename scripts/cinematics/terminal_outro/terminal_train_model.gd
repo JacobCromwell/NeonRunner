@@ -15,7 +15,7 @@ extends Node3D
 ## Faces -z (like the game's other models), its wheels on y = 0, its nose's front face on z = 0 and the cars
 ## running back along +z, centred across on x = 0.
 ## Draw calls: the body, the door leaf, its glass and the glow cards (4).
-## DESIGN-TBD (docs/questions/f2k.md): its look, colours and size.
+## DESIGN-TBD (docs/questions/f2l.md): its look, colours and size.
 
 ## The finishes (terminal_train.gdshader, UV2.x) and the light groups (UV2.y).
 const PAINT: int = 0

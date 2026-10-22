@@ -548,8 +548,8 @@ engine) and the game's `car_door`, `screech_chirp` and `casino_bustle`. Everythi
 skipping shows the same. Cost (headless, `test_casino_intro`): about 45 ms to set up (about 350 ms the first time, with cold
 mesh caches), about 0.6 ms a step and at most about 3 ms; its props add about 97 draw calls (the people on the rig most of it).
 
-**The Terminal's outro** (`TerminalOutro`, task F2k; the owner's beats and follow-up, October 21, 2026, GDD §6 Cinematics, "Terminal
-outro"; what they leave open is DESIGN-TBD, `docs/questions/f2k.md`; numbers in `data/cinematics/terminal_outro_tuning.tres`): 28.0 s
+**The Terminal's outro** (`TerminalOutro`, task F2l; the owner's beats and follow-up, October 21, 2026, GDD §6 Cinematics, "Terminal
+outro"; what they leave open is DESIGN-TBD, `docs/questions/f2l.md`; numbers in `data/cinematics/terminal_outro_tuning.tres`): 28.0 s
 after Terminal 2 (the Terminal has no boss), before the Golden Zone's intro, on one stretch of the Terminal's own street in the level's
 lanes, the zone's music (none until its own track exists) fading in. **The set.** `TerminalTrainModel` is the abandoned metro train: a
 modern one (the owner: "more modern looking, but just dirty and run down, not a steam train"), built by code from the cross-section

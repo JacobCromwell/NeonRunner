@@ -18,7 +18,7 @@ extends CinematicSequencer
 ## TerminalOutroTuning). It plays on one stretch of the Terminal's own street (the zone's skin, from its data) in the level's
 ## lanes, the train standing in the lane beside the start lane (the start lane on a street too narrow for two); everything
 ## is worked out from the time (_on_advance), so stepping or skipping shows the same.
-## DESIGN-TBD (docs/questions/f2k.md): the staging the beats leave open, the train's look, the sounds.
+## DESIGN-TBD (docs/questions/f2l.md): the staging the beats leave open, the train's look, the sounds.
 
 const NUMBERS_PATH: String = "res://data/cinematics/terminal_outro_tuning.tres"
 ## The runner's turn rate (as GanglandOutro's, unhurried).

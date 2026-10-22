@@ -362,7 +362,7 @@ func _test_slots(campaign: Campaign) -> void:
 				"the Casino's intro plays its own scene, the owner's beats (task F2j)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "terminal/outro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/terminal_outro.tscn" and s.cinematic.is_built(),
-				"the Terminal's outro plays its own scene, the owner's beats (task F2k)")
+				"the Terminal's outro plays its own scene, the owner's beats (task F2l)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "marketplace/intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/marketplace_intro.tscn" and s.cinematic.is_built(),
 				"the Marketplace's intro plays its own scene, the owner's beats (task F2f)")

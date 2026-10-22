@@ -1,4 +1,4 @@
-# Questions from task F2k (the Terminal's outro; the owner's beats, October 21, 2026)
+# Questions from task F2l (the Terminal's outro; the owner's beats, October 21, 2026)
 
 The owner's beats (GDD §6, Cinematics, "Terminal outro") and their follow-up ("The train should be a more modern looking
 train, but just dirty and run down. Not a steam train!") left these details open. Each has a placeholder, marked
