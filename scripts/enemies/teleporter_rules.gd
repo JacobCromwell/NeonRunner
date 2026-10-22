@@ -39,9 +39,9 @@ extends RefCounted
 ##   re-check counts every rule's keep-outs in every lane), falling gantryway (its pillar's lead to past its walkway and its
 ##   calm stretch), fenced ceiling's pick (the I4 "pick the right pad", which plays out alone), Octodog's planned charge,
 ##   nor what the rules keep in every lane (a Bad Dream's chase, a treasure stash's floor, an Enforcer Truck's showing
-##   window, a Gilded Sentinel's turn), nor what the zone doodads keep off around a Resonator (its visit and its waits: it
-##   holds a pulse by a doodad in any lane, so by a calm stretch; task Q6): nothing that holds the track around the
-##   runner is under way as they touch the pad or arrive. Every enemy that holds an attack by a doodad holds it by a
+##   window, a Gilded Sentinel's turn), nor a Resonator's planned pulse (from a metre before its warning to where its
+##   wave meets the runner: it holds a pulse by a doodad in any lane, so by a calm stretch; task Q6): nothing that holds
+##   the track around the runner is under way as they touch the pad or arrive. Every enemy that holds an attack by a
 ##   teleporter's calm stretches too (LevelLayout.doodad_between, teleporter_between: its approach in P, each landing in
 ##   its output pad's lane): no bolt, lunge, barrage, pulse or volley is timed onto a runner lining the pad up or just
 ##   arrived, on every attempt. (What else is in play as they jump is the run world's to settle:
@@ -89,6 +89,7 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"floor_cutter", "treasure_stash", "fenced_ceiling", "dash_wall", "wall_run_gaps", "debris_maze", "centipede",
 	"gantryway"]
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
+const ResonatorRules = preload("res://scripts/enemies/resonator_rules.gd")
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 const OCTODOG: String = "octodog"
 ## Metres before an output pad's front its landing keeps: the runner arrives as far past it as they were past the input
@@ -99,8 +100,8 @@ const LANDING_BACK: float = 1.0
 const TOUCH: float = 0.05
 ## Fitting spots kept, best first, among which a later one looks for a hazard ahead (prefer_hazard_seconds).
 const BEST_KEPT: int = 24
-## Metres before what the zone doodads keep off around an enemy (every_keeps: a Resonator's visit) that every lane keeps
-## too: a pulse is held by a doodad from a metre before its warning (Resonator.pulse_clear), so by a calm stretch there.
+## Metres before a Resonator's planned pulse's warning that every lane keeps too (resonator_pulses): a pulse is held by a
+## doodad from a metre before its warning (Resonator.pulse_clear), so by a calm stretch there.
 const PULSE_BACK: float = 1.0
 ## Kinds of teleporter (_kinds, _place).
 const SINGLE: StringName = &"single"
@@ -789,11 +790,8 @@ static func lane_pieces(gen: LevelGenerator, plain_ok: bool, powered: Array[Dict
 ## its calm stretch), every fenced ceiling's pick (task I4, its hull's "pick": from its first pad's run-up to its last safe
 ## pad, where the player reads which pad is the trap; it plays out alone, CeilingScenarios.event_spans), every Octodog's
 ## planned charge (its window from a metre before its anchor), what the rules keep in every lane (`keeps`,
-## LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own), and what the zone doodads
-## keep off around an enemy whose rules ask them to (a rules script's doodad_keep_out, LevelGenerator
-## .doodad_enemy_keep_out: a Resonator's visit and the waits its rules leave it after; task Q6, the Golden Zone) from
-## PULSE_BACK before it: such an enemy holds its attack by a doodad in any lane (Resonator.pulse_clear) and so by a
-## teleporter's calm stretch, and its rules' re-check (resonator_rules.gd's problems) asks every planned pulse again.
+## LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own), and every Resonator's
+## planned pulse (resonator_pulses; task Q6, the Golden Zone).
 static func every_keeps(gen: LevelGenerator, keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var lay: LevelLayout = gen.layout
 	var out: Array[Vector2] = []
@@ -824,26 +822,33 @@ static func every_keeps(gen: LevelGenerator, keeps: Array[Dictionary] = []) -> A
 				continue
 			for a: Variant in (e.get("params", {}) as Dictionary).get("charge_at", []):
 				out.append(Vector2(float(a) - 1.0, float(a) + window))
-	var hooks: Dictionary = {}
-	var asks: Dictionary = {}
-	for e: Dictionary in lay.enemies:
-		if not _keeps_doodads_off(String(e.get("type", "")), asks):
-			continue
-		var k: Vector2 = gen.doodad_enemy_keep_out(e, hooks)
-		if k.y >= k.x:
-			out.append(Vector2(k.x - PULSE_BACK, k.y))
+	out.append_array(resonator_pulses(gen))
 	return out
 
 
-## True if enemy type `type`'s rules script asks the zone doodads to keep off a stretch of its own around its entries
-## (`static func doodad_keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2`: the Resonator's), as every_keeps counts
-## it. `asks` caches the answer by type.
-static func _keeps_doodads_off(type: String, asks: Dictionary) -> bool:
-	if not asks.has(type):
-		var path: String = LevelGenerator.RULES_DIR.path_join("%s_rules.gd" % type)
-		var script: GDScript = load(path) as GDScript if type != "" and ResourceLoader.exists(path) else null
-		asks[type] = script != null and script.has_method("doodad_keep_out")
-	return bool(asks[type])
+## Every planned pulse of `gen`'s Resonators (task Q6, the Golden Zone; params "pulse_at" and "double",
+## resonator_rules.gd), each from PULSE_BACK before its warning to ResonatorRules.PLAN_MARGIN past where its wave meets
+## the runner (ResonatorTuning.meeting_stretch, at the level's run speed, as its rules plan it): a pulse is held while a
+## doodad, and so a teleporter's calm stretch, lies in any lane from a metre before its warning to there
+## (Resonator.pulse_clear), and the Resonators' re-check (ResonatorRules.problems) asks every planned pulse again, so
+## no teleporter's window reaches one. Between its pulses, and before and after its visit, a Resonator holds a pulse
+## that waits moved on until the calm stretch is behind the runner, as it does by a doodad.
+static func resonator_pulses(gen: LevelGenerator) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var resonators: Array[Dictionary] = ResonatorRules.resonators_in(gen.layout)
+	if resonators.is_empty():
+		return out
+	var t: ResonatorTuning = ResonatorRules.tuning()
+	for e: Dictionary in resonators:
+		var params: Dictionary = e.get("params", {})
+		var anchors: Array = params.get("pulse_at", [])
+		var doubles: Array = params.get("double", [])
+		for i: int in anchors.size():
+			var a: float = float(anchors[i])
+			var double: bool = i < doubles.size() and bool(doubles[i])
+			var meet: Vector2 = t.meeting_stretch(a, double, gen.speed, gen.config.enemy_scaling, gen.pace)
+			out.append(Vector2(a - PULSE_BACK, meet.y + ResonatorRules.PLAN_MARGIN))
+	return out
 
 
 ## The fences a fence generator powers (FenceGenerator.fences_in_reach): with the pulsing ones, the fences a teleporter
