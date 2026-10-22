@@ -2,17 +2,19 @@ extends SceneTree
 ## Measures the Octodog jars that break open (task Q5; scripts/enemies/octodog_jar_rules.gd) over the campaign's levels
 ## that have them: for each build, how many jars holding an Octodog stand of the level's count, where (their fronts as a
 ## share of the level, their lanes, the charges planned for the dog each holds), how many pieces and enemies the rules
-## took out to make room, how many of the level's other doodads wear the Octodog jar's look and hold nothing (its skin's
-## variety, IceLabDoodads), how long the build and the rules took and what OctodogJarRules.problems() finds (nothing, on
-## every build the suites check). From the project folder:
+## took out to make room, how many decoys stand (LevelLayout.DECOY: jars whose dog never comes out), how many of the
+## level's other doodads wear the Octodog jar's look and hold nothing (its skin's variety, IceLabDoodads), how long the
+## build and the rules took and what OctodogJarRules.problems() finds (nothing, on every build the suites check). From the
+## project folder:
 ##   godot --headless -s res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
-##   [--seed-base=8800] [--why] [--without] [--start=S]
+##   [--seed-base=8800] [--why] [--without] [--start=S] [--max-taken=N] [--max-ceilings=N]
 ## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3; --seed-base=8800 for 8801, 8802,
 ## ...: test_ice_lab_levels' OTHER_SEEDS). --why counts, build by build,
 ## what turned down the jar fronts tried (OctodogJarRules.debug). --without builds each level without its jars too, for
 ## the builds and the time they cost. --start=S starts the feature at share S of the level that introduces it (Frost
 ## Foundry) instead of its own start, and every build of that level says whether its first jar came right after the start
-## (test_campaign's INTRODUCTION_REACH) or late.
+## (test_campaign's INTRODUCTION_REACH) or late. --max-taken=N and --max-ceilings=N try other caps on what one jar takes
+## out of its way (OctodogJarRules.max_taken, max_ceilings: MAX_TAKEN_OUT and MAX_CEILINGS_TAKEN_OUT by default).
 
 const OctodogJarRules = preload("res://scripts/enemies/octodog_jar_rules.gd")
 ## How far past its start an introduction may come and still count as right after it (test_campaign's
