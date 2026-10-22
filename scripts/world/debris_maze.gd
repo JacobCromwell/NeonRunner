@@ -35,7 +35,16 @@ extends RefCounted
 ## (drop_room: a mid-air switch never lands one on a doodad's top). The patterns' ceilings in a block's way go (a level
 ## that lists `ceilings` keeps one: its first block with room takes a ceiling then).
 ##
-## What it adds to the layout: each block's record (LevelLayout.maze: {entry, start, end, exit, walls, rooms, breaks}),
+## Escape blocks (task O5; the owner, October 22, 2026: "a section of maze that will make it so the player needs to
+## escape using the anti-grav pad"): DebrisMazeTuning.escape_blocks of the slots (_escape_slots) take a block planned
+## shorter (_plan_escape_block), its last maze wall opening onto an open room (no dividers) with an anti-grav pad in it,
+## then a barrier: a last wall several large pieces deep in every lane, no opening, more than one dash deep
+## (escape_pieces), under a one-lane ceiling from the pad to just past its back (_add_escape_ceiling). A runner who
+## misses the pad stops at the barrier and needs a second dash, and the wait for it: never stuck. maze_part() is such a
+## block without its pad room and barrier: its breaks are the maze's own. DESIGN-TBD (docs/questions/o5.md).
+##
+## What it adds to the layout: each block's record (LevelLayout.maze: {entry, start, end, exit, walls, rooms, breaks, and an
+## escape block's `escape` {lane, at}; a barrier wall's `pieces`}),
 ## its debris (LevelLayout.doodads entries marked "maze", "part" and "index", which TrackBuilder builds as any doodad, at
 ## the level's doodad height: LevelConfig.doodad_height), and its ceilings (hulls marked "maze"). Every pass after the
 ## rules keeps off a block from its run-in to exit_clear_seconds past a dash's carry out of its last wall (keep_outs: the
@@ -72,6 +81,16 @@ const DROP_MARGIN: float = 2.0
 ## Seconds of run a ceiling's lift keeps its pad's lane clear past the pad, beyond the time the lift takes to carry its
 ## rider over the debris's top (pad_rise: the rider is on the ceiling's surface then, which no doodad stops).
 const RISE_MARGIN: float = 0.15
+## Metres added to the dash's whole run for what it may smash (CentipedeEscape.SMASH_MARGIN): an escape block's barrier
+## is deeper than one dash smashes with this on top (escape_pieces).
+const SMASH_REACH_MARGIN: float = 1.0
+## Metres of an escape block's pad room beyond what its pad needs (escape_room_length).
+const ESCAPE_SLACK: float = 1.0
+## Metres an escape block's pad lies before where its rise would just clear the barrier (pad_rise), so its lane's floor
+## is clear of debris from the pad to past its rise, not only up to it.
+const ESCAPE_PAD_EARLY: float = 0.1
+## Metres an escape block's ceiling reaches past its barrier's back, beyond the body's depth.
+const ESCAPE_HULL_PAST: float = 1.0
 ## Seconds of run on top of a wider gap's zone kept free between two blocks (place, gap_room).
 const GAP_ROOM_MARGIN: float = 0.25
 ## How far before a wall's front and past its back links() looks for what a smashed piece of it opens onto (metres):
@@ -162,6 +181,8 @@ static func place(gen: LevelGenerator) -> Dictionary:
 	var slot: float = seconds / count
 	report["slots"] = count
 	var keep_more: float = dash_carry(gen) + t.exit_clear_seconds * v
+	var escapes: Array[int] = _escape_slots(gen, t, from, slot, count)
+	report["escapes"] = 0
 	for k: int in count:
 		var slot_end: float = from + (k + 1) * slot * v
 		# Between this block's keep-out and the next slot's run-in, room for one of the level's wider gaps with its clear
@@ -172,9 +193,16 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		var block_seconds: float = minf(t.block_seconds, slot - t.run_in_seconds - room)
 		var start: float = slot_end - (t.breather_seconds + block_seconds) * v
 		var entry: float = start - t.run_in_seconds * v
-		var block: Dictionary = _plan_block(gen, t, rng, start, slot_end - t.breather_seconds * v)
+		var end_by: float = slot_end - t.breather_seconds * v
+		var escape: bool = escapes.has(k)
+		var block: Dictionary = _plan_escape_block(gen, t, rng, start, end_by) if escape else {}
+		if escape and block.is_empty():
+			(report["constraints"] as Array).append("slot %d: no room for an escape block" % k)
+		if block.is_empty():
+			block = _plan_block(gen, t, rng, start, end_by)
 		if block.is_empty():
 			(report["constraints"] as Array).append("slot %d: no room for %d rooms" % [k, t.min_rooms])
+			_owe_escape(escapes, k, count, escape)
 			continue
 		block["entry"] = entry
 		# Its breather is what every later pass keeps clear past it (keep_out), within its slot.
@@ -182,13 +210,63 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		var in_way: String = _in_way(gen, entry, float(block["end"]) + keep_more)
 		if in_way != "":
 			(report["constraints"] as Array).append("slot %d: %s in the way" % [k, in_way])
+			_owe_escape(escapes, k, count, escape)
 			continue
 		report["ceilings_out"] = int(report["ceilings_out"]) + _clear_ceilings(gen, entry, float(block["end"]) + keep_more)
-		report["debris"] = int(report["debris"]) + _add_block(gen, block)
+		var debris_before: int = lay.doodads.size()
+		var pieces: int = _add_block(gen, block)
+		if block.has("escape"):
+			var why: String = _add_escape_ceiling(gen, lay.maze.size() - 1, slot_end)
+			if why == "":
+				report["escapes"] = int(report["escapes"]) + 1
+			else:
+				# No pad fits: the block goes, and a plain one takes its slot; the escape is owed to the next slot.
+				(report["constraints"] as Array).append("slot %d: no escape (%s)" % [k, why])
+				lay.doodads.resize(debris_before)
+				lay.maze.pop_back()
+				_owe_escape(escapes, k, count, true)
+				block = _plan_block(gen, t, rng, start, end_by)
+				if block.is_empty():
+					continue
+				block["entry"] = entry
+				block["exit"] = minf(slot_end, float(block["end"]) + keep_more)
+				pieces = _add_block(gen, block)
+		report["debris"] = int(report["debris"]) + pieces
 		(report["breaks"] as Array).append(int(block["breaks"]))
 	report["blocks"] = lay.maze.size()
 	report["ceilings"] = _place_ceilings(gen, t, report)
 	return report
+
+
+## The slots (indices from 0 to `count` - 1, each `slot` seconds from track distance `from`) whose blocks end in an
+## escape (DebrisMazeTuning.escape_blocks): the first whose block starts at escape_from of the level or later (else the
+## last slot), the others spread evenly over the slots after it to the last.
+static func _escape_slots(gen: LevelGenerator, t: DebrisMazeTuning, from: float, slot: float, count: int) -> Array[int]:
+	var out: Array[int] = []
+	if t.escape_blocks <= 0 or count <= 0:
+		return out
+	var first: int = count - 1
+	for k: int in count:
+		var slot_end: float = from + (k + 1) * slot * gen.speed
+		if slot_end - (t.breather_seconds + t.block_seconds) * gen.speed >= t.escape_from * gen.layout.length:
+			first = k
+			break
+	var n: int = mini(t.escape_blocks, count - first)
+	for j: int in n:
+		var k: int = first if n == 1 else first + roundi(float(j) * (count - 1 - first) / float(n - 1))
+		if not out.has(k):
+			out.append(k)
+	return out
+
+
+## Slot `k` was to end in an escape (`escape`) and won't: the next slot that has none takes it, if there is one.
+static func _owe_escape(escapes: Array[int], k: int, count: int, escape: bool) -> void:
+	if not escape:
+		return
+	for next: int in range(k + 1, count):
+		if not escapes.has(next):
+			escapes.append(next)
+			return
 
 
 # --- A block's plan ------------------------------------------------------------------------------
@@ -244,6 +322,51 @@ static func _plan_block(gen: LevelGenerator, t: DebrisMazeTuning, rng: RandomNum
 	for i: int in rooms.size():
 		rooms[i]["dividers"] = (best["dividers"] as Array)[i]
 	return {"start": start, "end": float(walls[-1]["end"]), "walls": walls, "rooms": rooms, "breaks": best["breaks"]}
+
+
+## An escape block (DebrisMazeTuning.escape_blocks; see the header) from its first wall's front at `start`, its barrier
+## ending by `end_by`: a block planned as any other (_plan_block) short enough to leave room after it for its pad's room
+## (escape_room_length: open in every lane, no dividers) and its barrier (a last wall of escape_pieces large pieces in
+## every lane, no opening). Its breaks are the maze's own up to the pad's room, which every way reaches as it would the
+## breather. Marked `escape` (its pad's lane and spot come with its ceiling: _add_escape_ceiling). {} where it doesn't
+## fit.
+static func _plan_escape_block(gen: LevelGenerator, t: DebrisMazeTuning, rng: RandomNumberGenerator, start: float,
+		end_by: float) -> Dictionary:
+	var pieces: int = escape_pieces(gen, t)
+	var depth: float = barrier_depth(gen.tuning, pieces)
+	var pad_room: float = escape_room_length(gen)
+	var block: Dictionary = _plan_block(gen, t, rng, start, end_by - pad_room - depth)
+	if block.is_empty():
+		return {}
+	var at: float = float(block["end"])
+	(block["rooms"] as Array).append({"start": at, "end": at + pad_room, "dividers": [], "fill": []})
+	(block["walls"] as Array).append({"start": at + pad_room, "end": at + pad_room + depth, "size": WALL_SIZES[1],
+		"open": [], "pieces": pieces})
+	block["end"] = at + pad_room + depth
+	block["escape"] = {}
+	return block
+
+
+## How many large pieces deep an escape block's barrier is at `gen`'s run speed: the tuning's escape_pieces, and never so
+## few that one dash from its face smashes them all (the dash smashes every piece whose front its whole run reaches,
+## SMASH_REACH_MARGIN on top): a runner who misses the pad needs a second dash, and the wait for it.
+static func escape_pieces(gen: LevelGenerator, t: DebrisMazeTuning) -> int:
+	var step: float = gen.tuning.doodad_size(WALL_SIZES[1]).z + TOUCH
+	var one_dash: int = floori((dash_carry(gen) + SMASH_REACH_MARGIN) / step) + 1
+	return maxi(t.escape_pieces, one_dash + 1)
+
+
+## How long a barrier of `pieces` large pieces a sliver apart is along the track (metres).
+static func barrier_depth(tun: MovementTuning, pieces: int) -> float:
+	return pieces * tun.doodad_size(WALL_SIZES[1]).z + maxi(pieces - 1, 0) * TOUCH
+
+
+## How long an escape block's pad room is (metres at `gen`'s run speed): room before its pad for a lane switch and
+## PAD_LEAD and to see the pad after a dash through the wall before it (hidden_reach), whichever is more, then the pad's
+## rise (pad_rise) up to the barrier, and ESCAPE_SLACK.
+static func escape_room_length(gen: LevelGenerator) -> float:
+	var lead: float = maxf(gen.tuning.lane_switch_time * gen.speed + PAD_LEAD, hidden_reach(gen))
+	return lead + pad_rise(gen) + ESCAPE_SLACK
 
 
 ## The pieces a divider `target` metres long (about) is made of, longest first as far as they go (large, medium,
@@ -518,10 +641,13 @@ static func _add_block(gen: LevelGenerator, block: Dictionary) -> int:
 	var rooms: Array = block["rooms"]
 	for w: int in walls.size():
 		var wall: Dictionary = walls[w]
+		var step: float = gen.tuning.doodad_size(StringName(wall["size"])).z + TOUCH
 		for lane: int in lanes:
 			if not (wall["open"] as Array).has(lane):
-				_add_piece(gen, index, "wall", w, lane, float(wall["start"]), StringName(wall["size"]))
-				pieces += 1
+				# One piece a lane, or an escape block's barrier's several, a sliver apart.
+				for j: int in int(wall.get("pieces", 1)):
+					_add_piece(gen, index, "wall", w, lane, float(wall["start"]) + j * step, StringName(wall["size"]))
+					pieces += 1
 	for r: int in rooms.size():
 		var room: Dictionary = rooms[r]
 		for lane: int in room["dividers"]:
@@ -546,10 +672,16 @@ static func _add_block(gen: LevelGenerator, block: Dictionary) -> int:
 	for wall: Dictionary in walls:
 		var open: Array = (wall["open"] as Array).duplicate()
 		open.sort()
-		record_walls.append({"start": float(wall["start"]), "end": float(wall["end"]), "size": String(wall["size"]),
-			"open": open})
-	lay.maze.append({"entry": float(block["entry"]), "start": float(block["start"]), "end": float(block["end"]),
-		"exit": float(block["exit"]), "walls": record_walls, "rooms": record_rooms, "breaks": int(block["breaks"])})
+		var record_wall: Dictionary = {"start": float(wall["start"]), "end": float(wall["end"]), "size": String(wall["size"]),
+			"open": open}
+		if wall.has("pieces"):
+			record_wall["pieces"] = int(wall["pieces"])
+		record_walls.append(record_wall)
+	var record: Dictionary = {"entry": float(block["entry"]), "start": float(block["start"]), "end": float(block["end"]),
+		"exit": float(block["exit"]), "walls": record_walls, "rooms": record_rooms, "breaks": int(block["breaks"])}
+	if block.has("escape"):
+		record["escape"] = {}
+	lay.maze.append(record)
 	return pieces
 
 
@@ -603,7 +735,8 @@ static func _place_ceilings(gen: LevelGenerator, t: DebrisMazeTuning, report: Di
 	for b: Dictionary in lay.maze:
 		chosen.append(rng.randf() < t.ceiling_share)
 	for i: int in lay.maze.size():
-		if chosen[i]:
+		# An escape block has its ceiling already (_add_escape_ceiling).
+		if chosen[i] and not is_escape(lay.maze[i]):
 			var why: String = _add_ceiling(gen, rng, i)
 			if why == "":
 				added += 1
@@ -611,7 +744,7 @@ static func _place_ceilings(gen: LevelGenerator, t: DebrisMazeTuning, report: Di
 				(report["constraints"] as Array).append("block %d: no ceiling (%s)" % [i, why])
 	if lay.hulls.is_empty():
 		for i: int in lay.maze.size():
-			if not chosen[i] and _add_ceiling(gen, rng, i) == "":
+			if not chosen[i] and not is_escape(lay.maze[i]) and _add_ceiling(gen, rng, i) == "":
 				added += 1
 				break
 	return added
@@ -672,20 +805,73 @@ static func _add_ceiling(gen: LevelGenerator, rng: RandomNumberGenerator, index:
 	return "no lane where a pad and a landing fit"
 
 
+## Block `index`'s escape (an escape block's: _plan_escape_block), or why it has none: an anti-grav pad in its pad room
+## in a lane drawn from its own stream, as late as lets its lift carry the rider over the debris's top before the barrier
+## (pad_rise), under a one-lane ceiling from it to ESCAPE_HULL_PAST and the body's depth past the barrier's back, its
+## rider's drop clear of debris by `limit` (the slot's end: the next block's run-in comes after it), and everything
+## add_hull_with_pad asks. Its ceiling is longer than LevelConfig.one_lane_ceiling_seconds where the barrier needs it
+## (DESIGN-TBD, docs/questions/o5.md). Records {lane, at} in the block's `escape` and marks the hull `maze` and
+## `escape`. "" once it's added.
+static func _add_escape_ceiling(gen: LevelGenerator, index: int, limit: float) -> String:
+	var lay: LevelLayout = gen.layout
+	var b: Dictionary = lay.maze[index]
+	var room: Dictionary = (b["rooms"] as Array)[-1]
+	var barrier: Dictionary = (b["walls"] as Array)[-1]
+	var at: float = float(barrier["start"]) - pad_rise(gen) - ESCAPE_PAD_EARLY
+	var lead: float = maxf(gen.tuning.lane_switch_time * gen.speed + PAD_LEAD, hidden_reach(gen))
+	if at < float(room["start"]) + lead - 0.001:
+		return "the pad's room is too short"
+	var end: float = float(barrier["end"]) + gen.tuning.visual_size.z + ESCAPE_HULL_PAST
+	if end + drop_room(gen) > limit:
+		return "no room for its rider's drop before the next block"
+	var rng: RandomNumberGenerator = gen.rng_for("%s_escape_%d" % [FEATURE, index])
+	var order: Array[int] = []
+	for lane: int in lay.lane_count:
+		order.insert(rng.randi_range(0, order.size()), lane)
+	for lane: int in order:
+		if gen.add_hull_with_pad(lane, at, (end - at) / gen.speed, Vector2i(lane, lane)):
+			lay.hulls[-1]["maze"] = index
+			lay.hulls[-1]["escape"] = true
+			b["escape"] = {"lane": lane, "at": at}
+			return ""
+	return "no lane where a pad and a landing fit"
+
+
+## True if block record `b` is an escape block: its last room holds an anti-grav pad and its last wall is a barrier more
+## than one dash deep (_plan_escape_block).
+static func is_escape(b: Dictionary) -> bool:
+	return b.has("escape")
+
+
+## Block record `b`'s maze proper: for an escape block, the block without its pad room and its barrier (which every way
+## reaches through its last maze wall as it would the breather); otherwise `b` itself. Its walls, rooms and breaks.
+static func maze_part(b: Dictionary) -> Dictionary:
+	if not is_escape(b):
+		return b
+	var out: Dictionary = b.duplicate()
+	out["walls"] = (b["walls"] as Array).slice(0, (b["walls"] as Array).size() - 1)
+	out["rooms"] = (b["rooms"] as Array).slice(0, (b["rooms"] as Array).size() - 1)
+	out["end"] = float((out["walls"] as Array)[-1]["end"])
+	out.erase("escape")
+	return out
+
+
 # --- Questions about the maze (for what lives in it: task O3) -------------------------------------
 
-## Block record `b`'s rooms' dividers and walls' openings, the way search() takes them: {dividers, open}.
+## Block record `b`'s rooms' dividers and walls' openings, the way search() takes them: {dividers, open}. An escape
+## block's are its maze part's (maze_part): its pad room is its breather for the search.
 static func shape_of(b: Dictionary) -> Dictionary:
+	var m: Dictionary = maze_part(b)
 	var dividers: Array = []
-	for room: Dictionary in b["rooms"]:
+	for room: Dictionary in m["rooms"]:
 		dividers.append(room["dividers"])
 	var open: Array = []
-	for wall: Dictionary in b["walls"]:
+	for wall: Dictionary in m["walls"]:
 		open.append(wall["open"])
 	return {"dividers": dividers, "open": open}
 
 
-## The least dashes block record `b` takes from its run-in to its breather (search()).
+## The least dashes block record `b` takes from its run-in to its breather (search()); an escape block's, to its pad room.
 static func min_breaks(b: Dictionary, lanes: int) -> int:
 	var shape: Dictionary = shape_of(b)
 	return int(search(shape["dividers"], shape["open"], lanes)["breaks"])
@@ -777,12 +963,19 @@ static func links(layout: LevelLayout, secs: Array[Dictionary], broken: bool = f
 		if not stretches:
 			all = secs.duplicate()
 			all.append_array(broken_stretches(layout))
+		# A lane of a wall is smashed through once every piece of it there is (an escape block's barrier has several).
+		var standing: Dictionary = {}  # Vector3i(block, wall, lane) -> true where a piece still stands
 		for d: Dictionary in layout.doodads:
-			if LevelLayout.is_maze_debris(d) and String(d["part"]) == "wall" and bool(d.get("smashed", false)):
+			if LevelLayout.is_maze_debris(d) and String(d["part"]) == "wall" and not bool(d.get("smashed", false)):
+				standing[Vector3i(int(d["maze"]), int(d["index"]), int(d["lane"]))] = true
+		for d: Dictionary in layout.doodads:
+			if LevelLayout.is_maze_debris(d) and String(d["part"]) == "wall" and bool(d.get("smashed", false)) \
+					and not standing.has(Vector3i(int(d["maze"]), int(d["index"]), int(d["lane"]))):
 				var key := Vector2i(int(d["maze"]), int(d["index"]))
 				if not smashed_walls.has(key):
 					smashed_walls[key] = []
-				(smashed_walls[key] as Array).append(int(d["lane"]))
+				if not (smashed_walls[key] as Array).has(int(d["lane"])):
+					(smashed_walls[key] as Array).append(int(d["lane"]))
 	for i: int in layout.maze.size():
 		var walls: Array = layout.maze[i]["walls"]
 		for w: int in walls.size():

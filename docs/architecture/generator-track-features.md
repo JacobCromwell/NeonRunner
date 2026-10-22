@@ -642,6 +642,25 @@ Damage and interactions, "Where doodads stop the runner".
   beside it), `hidden_reach` past the wall before it where that wall is closed in its lane (a dash through it shows the
   pad in time, as for any doodad), `pad_rise` clear past it, its rider's drop past the last wall clear of debris in
   every lane (`drop_room`) through the breather.
+- **Escape blocks** (task O5; the owner, October 22, 2026: "a section of maze that will make it so the player needs to
+  escape using the anti-grav pad", sketch in `docs/questions/o5.md`). `escape_blocks` of a level's slots (one in each
+  Terminal level, the first whose block starts at `escape_from` of the level or later; a slot that can't take one owes
+  it to the next) plan their block shorter (`_plan_escape_block`) and add after its last maze wall an open room (no
+  dividers: `escape_room_length`, a switch and `PAD_LEAD` or `hidden_reach` before the pad, then its `pad_rise`) and a
+  barrier: a last wall of `escape_pieces` large pieces a sliver apart in every lane, no opening (its record wall's
+  `pieces`; `escape_pieces(gen, t)` never fewer than one dash, `SMASH_REACH_MARGIN` on top, smashes plus one). Its pad
+  (`_add_escape_ceiling`, right after the block goes in; a block whose pad finds no lane goes, and a plain one takes the
+  slot) lies `pad_rise` and `ESCAPE_PAD_EARLY` before the barrier in a lane from the block's own stream, under a
+  one-lane ceiling to `ESCAPE_HULL_PAST` past the barrier's back plus the body (marked `maze` and `escape`: longer than
+  `one_lane_ceiling_seconds` where the barrier needs it), its drop clear by the slot's end. The record's `escape` holds
+  {lane, at}; `is_escape(b)`; `maze_part(b)` is the block without the pad room and barrier, so `shape_of`, `min_breaks`
+  and the breaks range are the maze's own (the pad room is its breather). A runner who misses the pad is stopped at the
+  barrier and needs a second dash, and the wait for it: never stuck. `links()` counts a barrier lane smashed through
+  only once every piece in it is. `_place_ceilings` leaves escape blocks out. Checks (`check_debris_maze`,
+  `_check_escape`): the pad room open, the barrier its pieces deep, MazeRoute's least dashes through it two or more, the
+  maze's own way up to the pad room its record's breaks, the whole block finishable without the pad (waits and all), its
+  pad and ceiling where the record says (the maze ceiling's rules besides), and each level with `escape_blocks` has one
+  or more. DESIGN-TBD (`docs/questions/o5.md`).
 - **For what lives in it (task O3's centipedes, `enemy-centipede.md`).** `LevelLayout.maze` holds each block's record ({entry, start, end,
   exit, walls [{start, end, size, open}], rooms [{start, end, dividers}], breaks}); its debris are `LevelLayout.doodads`
   entries marked `maze` (the block), `part` ("wall" or "divider") and `index` (`LevelLayout.is_maze_debris`), its

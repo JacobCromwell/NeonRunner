@@ -21,6 +21,10 @@ extends RefCounted
 ## the other places. If no block took one, the first block where any spot fits gets one (every Terminal level has its
 ## centipedes). The layout entry: {type "centipede", at (its head's spot), lane, side 0, params {block (its maze block's
 ## index), situation, floor_span}}. DESIGN-TBD (docs/questions/o3.md): how many and where.
+## Each level's maze scales how many (task O5; the owner, October 22, 2026: Rubble Line about 20 to 30% more, Last Stop
+## about double): DebrisMazeTuning.centipede_scale multiplies each block's drawn count (its fraction drawn) and the most a
+## block holds (count_scale, max_per_block). An escape block's pad room (DebrisMaze.is_escape) holds none: its pad is the
+## way out.
 
 const FEATURE: String = "centipede"
 ## The maze is built first: its cells are where a centipede waits.
@@ -50,6 +54,8 @@ static func apply(gen: LevelGenerator) -> void:
 	var t: CentipedeTuning = tuning()
 	var rng: RandomNumberGenerator = gen.rng_for(FEATURE)
 	var start: float = gen.feature_start(FEATURE)
+	var scale: float = count_scale(gen.config)
+	var most: int = max_per_block(gen.config)
 	var placed: int = 0
 	for i: int in lay.maze.size():
 		var b: Dictionary = lay.maze[i]
@@ -62,7 +68,8 @@ static func apply(gen: LevelGenerator) -> void:
 			want = 1
 			if not intro and rng.randf() < t.second_share(d):
 				want = 2
-		want = mini(want, t.max_per_block)
+		want = _scaled(want, scale, rng)
+		want = mini(want, most)
 		if want > 0:
 			placed += _place_block(gen, t, rng, i, start, want, intro)
 	if placed > 0:
@@ -71,6 +78,30 @@ static func apply(gen: LevelGenerator) -> void:
 	for i: int in lay.maze.size():
 		if float((lay.maze[i] as Dictionary)["end"]) > start and _place_block(gen, t, rng, i, start, 1, false, true) > 0:
 			return
+
+
+## The level's centipede count scale (DebrisMazeTuning.centipede_scale, its maze's own: task O5).
+static func count_scale(config: LevelConfig) -> float:
+	return DebrisMaze.tuning_for(config).centipede_scale if config != null else 1.0
+
+
+## The most centipedes a block of `config`'s level holds: the tuning's max_per_block, scaled by the level's
+## centipede_scale (rounded up; never fewer than the tuning's).
+static func max_per_block(config: LevelConfig) -> int:
+	var t: CentipedeTuning = tuning()
+	return maxi(t.max_per_block, ceili(t.max_per_block * count_scale(config) - 0.001))
+
+
+## A block's drawn count `want` scaled by `scale` (count_scale): want times scale, its fraction a draw from `rng` (none
+## at a scale of 1, so a level at 1 places as it always has). A block that drew none stays empty.
+static func _scaled(want: int, scale: float, rng: RandomNumberGenerator) -> int:
+	if want <= 0 or is_equal_approx(scale, 1.0):
+		return want
+	var exact: float = want * scale
+	var out: int = floori(exact)
+	if rng.randf() < exact - out:
+		out += 1
+	return maxi(out, 1)
 
 
 ## Places up to `want` centipedes in block `index` (see the header): the first in an ordinary cell if it's the level's
@@ -162,6 +193,9 @@ static func candidates_for(gen: LevelGenerator, ctx: CentipedeEscape.Context, st
 	var way: Array = quickest.get("path", []) if bool(quickest.get("ok", false)) else []
 	var out: Array[Dictionary] = []
 	for r: int in rooms.size():
+		# An escape block's pad room is the way out, not a place to wait (DebrisMaze.is_escape).
+		if DebrisMaze.is_escape(b) and r == rooms.size() - 1:
+			continue
 		var room: Dictionary = rooms[r]
 		var lo: float = maxf(float(room["start"]) + HEAD_MARGIN, start)
 		var hi: float = float(room["end"]) - Centipede.BODY_LENGTH - TAIL_MARGIN

@@ -17,3 +17,7 @@ opening_share = 0.3
 breaks_min = 1
 breaks_max = 1
 ceiling_share = 0.5
+escape_blocks = 1
+escape_from = 0.5
+escape_pieces = 4
+centipede_scale = 2.3

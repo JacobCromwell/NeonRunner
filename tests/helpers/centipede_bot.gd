@@ -24,7 +24,7 @@ extends RefCounted
 ## starts there, so none may), margin (the least, metres, by which the runner was out of an awake centipede's bound:
 ## negative if ever within it), early (moved before its wake and wake_time), fast (the most a step went over its chase
 ## speed, metres), in_debris (frames its head touched debris), outside (frames its head was out of its block's
-## stretch)}.
+## stretch), ceiling (true if the runner rode a ceiling on the way: an escape block's pad, task O5)}.
 
 ## Metres a step of the independent field's grid, across the track and along it.
 const CELL: float = 0.3
@@ -58,7 +58,7 @@ func _init(p_sim: RunSim, p_tuning: MovementTuning) -> void:
 func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 	var result := {"alive": false, "cause": "", "reached": false, "seconds": 0.0, "dashes": 0, "moves_left": 0,
 		"blocked": 0, "bites": 0, "woke": 0, "before_run_in": 0, "margin": INF, "early": 0, "fast": 0.0, "in_debris": 0,
-		"outside": 0, "trace": [], "events": []}
+		"outside": 0, "ceiling": false, "trace": [], "events": []}
 	var copy: LevelLayout = layout.copy()
 	var b: Dictionary = copy.maze[index]
 	var entry: float = float(b["entry"])
@@ -121,6 +121,8 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 					pressed = m
 		await sim.tree.physics_frame
 		cooldown -= dt
+		if p.surface == Player.Surface.CEILING:
+			result["ceiling"] = true
 		var now: float = world.level_time() - start_t
 		# What the runner's dashes smashed is open to the centipedes too (they read it the same way).
 		maze.refresh()

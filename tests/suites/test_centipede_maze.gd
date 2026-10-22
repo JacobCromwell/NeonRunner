@@ -24,7 +24,9 @@ extends TestSuite
 ##   the live centipedes keep what the proof rests on (none wakes before the runner is in the block, none moves before
 ##   its wake and wake_time, nor faster than its chase speed, nor into debris, nor out of its block), and the runner stays
 ##   out of every awake one's bound by a field of the bot's own. (The levels' ways mostly slip past their centipedes
-##   asleep; test_centipede_fuzz runs the other seeds' blocks, and ways that wake them.)
+##   asleep; test_centipede_fuzz runs the other seeds' blocks, and ways that wake them.) Each level's escape block (task
+##   O5), with its centipedes or none, is run too: its way out takes no dash at its barrier and rides its pad's ceiling
+##   over it on physics.
 ## - The first-encounter hint (data/hints/hints.json, trigger enemy:centipede): it says it chases and bites, that the dash
 ##   goes through it and two kill it, and is picked for Rubble Line, not for a level without one.
 
@@ -294,8 +296,14 @@ func _test_bot() -> void:
 			var runs: int = 0
 			var least: float = INF
 			var woke: int = 0
+			var escapes: int = 0
+			# Every escape block too, with its centipedes or none: its way out is its pad (task O5).
+			for i: int in layout.maze.size():
+				if DebrisMaze.is_escape(layout.maze[i]) and not by_block.has(i):
+					by_block[i] = []
 			for i: int in by_block:
 				var tag: String = "(%s lanes=%d block %d, %d centipedes)" % [id, lanes, i, (by_block[i] as Array).size()]
+				var escape: bool = DebrisMaze.is_escape(layout.maze[i])
 				var way: Dictionary = CentipedeEscape.find(layout, mt, i, by_block[i])
 				check(bool(way["ok"]), "the proof finds a way out (%s) %s" % [way["reason"], tag])
 				if not bool(way["ok"]):
@@ -314,7 +322,17 @@ func _test_bot() -> void:
 					% [r["before_run_in"], r["early"], r["fast"], r["in_debris"], r["outside"], tag])
 				check(float(r["margin"]) > 0.0, "the runner stays out of every awake one's bound (%.2f m to spare) %s"
 					% [r["margin"], tag])
-			lines.append("%s at %d lanes: %d blocks run, %d woke, %.1f m to spare at the least" % [id, lanes, runs, woke, least])
+				if escape:
+					escapes += 1
+					var barrier: int = (layout.maze[i]["walls"] as Array).size() - 1
+					var through: bool = false
+					for move: Dictionary in way["moves"]:
+						through = through or (String(move["kind"]) == "dash" and float(move["at"]) >= float(layout.maze[i]["walls"][barrier]["start"]) - 1.0)
+					check(not through and bool(r["ceiling"]),
+						"an escape block's way out is its pad: no dash at its barrier, the runner rides the ceiling over it on physics (dash there %s, rode %s) %s"
+						% [through, r["ceiling"], tag])
+			check(escapes >= 1, "every Terminal level has an escape block (%s lanes=%d)" % [id, lanes])
+			lines.append("%s at %d lanes: %d blocks run (%d escapes), %d woke, %.1f m to spare at the least" % [id, lanes, runs, escapes, woke, least])
 	print("  the bot past live centipedes: %s" % "; ".join(lines))
 
 

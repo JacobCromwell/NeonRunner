@@ -20,7 +20,11 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   "trapped" (joined to neither the run-in nor the breather: "a dash that opens their debris can release one"). It is
   kept only if `CentipedeEscape` still finds a way out with it and the block's others, and its floor keeps off every
   pad and landing zone (`CeilingZones.enemy_clear`). Its entry: {type, at (the head), lane, side 0, params {block,
-  situation, floor_span}}.
+  situation, floor_span}}. How many is each level's (task O5; the owner, October 22, 2026: Rubble Line about 20 to 30%
+  more, Last Stop about double): its maze tuning's `centipede_scale` (1.35, 2.3) multiplies each block's drawn count, the
+  fraction drawn (`_scaled`; none at 1), and the most a block holds (`max_per_block(config)`: 3, 5). At 5 lanes over 12
+  seeds about 6.75 to 8.4 a level in Rubble Line and 4.4 to 8.8 in Last Stop. An escape block's pad room
+  (`DebrisMaze.is_escape`) takes none.
 - **The proof** (`CentipedeEscape.find`; `LayoutChecks.check_centipedes` runs it again on every built level). Escapable:
   from the block's run-in (any lane) to `leave_margin` past its last wall, a way on the Player's moves (MazeRoute's
   model: lining up while running, stops at debris, the dash from a stop when it's ready, waiting for it otherwise; the
@@ -38,7 +42,11 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   cell, dash ready, each centipede's wake, the joins its smashes made}, dropping those another beats, and checks the
   quickest safe way again with its smashes open from the start (a hole the runner makes is open to the centipede too; a
   dash's smashes are taken as far as its whole run and `SMASH_MARGIN`, the runner carried only its run less
-  `DASH_SLACK`). The way keeps off the block's anti-grav pads, as MazeRoute's do. Over test_centipede_maze's sweep, two
+  `DASH_SLACK`). The way keeps off the block's anti-grav pads, as MazeRoute's do, but for an escape block's (task O5):
+  there the barrier is no way through and the way out is the pad (`_escape`: lined up in its lane before it, then
+  running on, checked against every awake centipede up to the barrier's front, by when the lift has the runner well
+  above any bite; on the ceiling it gives up). test_centipede_maze runs each level's escape block on physics with
+  `CentipedeBot` (its `ceiling`: the runner rode it). Over test_centipede_maze's sweep, two
   blocks in three get a centipede; at 5 and 6 lanes about a fifth wait near the way, a quarter in it and over half
   walled in; at 3 lanes most are walled in (there's little room to pass one in the open). It adds about 0.08 s to a
   Terminal level's generation (about 0.24 s here, from 0.16 s), and nothing measurable to endless mode's 20-minute copy

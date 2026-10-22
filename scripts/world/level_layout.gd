@@ -137,7 +137,9 @@ var doodads_stop: bool = false
 ## back and the next one's front, every lane but its `dividers` (debris along it the room's whole length) open, so
 ## the open lanes between dividers are its cells. `breaks`: the least dashes its way through takes (DebrisMaze
 ## .min_breaks). Its debris are ordinary `doodads` entries marked "maze" (the block's index), "part" ("wall" or
-## "divider") and "index" (the wall's or the room's). Left out of to_dict() while empty.
+## "divider") and "index" (the wall's or the room's). An escape block (task O5, DebrisMaze.is_escape) also has
+## `escape` {lane, at} (its anti-grav pad), its last room open in every lane, and its last wall a barrier of `pieces`
+## pieces in every lane. Left out of to_dict() while empty.
 var maze: Array[Dictionary] = []
 ## {side, entry, start, end, gems_from, gems_to}: a line of wall-hop credits (task N1; GDD §7, "Wall-hop credits",
 ## owner, October 9, 2026: "some long walls carry high-value credits further along than one wall run reaches, so only

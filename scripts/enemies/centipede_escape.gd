@@ -12,7 +12,10 @@ extends RefCounted
 ## A runner choosing that way escapes without needing armor.
 ## The way keeps off the block's anti-grav pads (a maze ceiling's: DebrisMaze), as MazeRoute's do: a ride on its ceiling
 ## would get the runner away too (the centipede can't follow), but the way is the floor's, so a runner following it is
-## never lifted off it by surprise.
+## never lifted off it by surprise. An escape block (task O5, DebrisMaze.is_escape) is the exception: its barrier is no
+## way through (more than one dash deep), and its way out is its pad, in the open room before the barrier: the runner
+## lines up in the pad's lane and runs onto it, safe from the moment they reach the barrier's front, lifted well above any
+## bite by then and on a ceiling, where a centipede gives up.
 ## "Whatever it does" rests on what every centipede keeps to (Centipede, which test_centipede checks on physics):
 ## - it waits, still, until the runner is on the floor in its own section of the maze or one joined to it (DebrisMaze
 ##   links, with the runner's own smashes) within its wake distance along the track (CentipedeTuning.wake_distance_at),
@@ -150,6 +153,9 @@ class Context:
 	var divider_pieces: Dictionary = {}
 	## Per lane, the stretches its anti-grav pads keep the runner's body off (Vector2(start, end) each).
 	var pad_spans: Array = []
+	## An escape block's pad (DebrisMaze.is_escape): its lane (-1 for any other block) and track distance.
+	var escape_lane: int = -1
+	var escape_at: float = 0.0
 	## Each spot's field (CentipedeMaze.field), by "lane|at".
 	var _fields: Dictionary = {}
 
@@ -203,6 +209,10 @@ class Context:
 		for key: String in divider_pieces:
 			(divider_pieces[key] as Array).sort_custom(func(a: Dictionary, c: Dictionary) -> bool:
 				return float(a["start"]) < float(c["start"]))
+		var escape: Dictionary = b.get("escape", {})
+		if escape.has("lane"):
+			escape_lane = int(escape["lane"])
+			escape_at = float(escape["at"])
 		for lane: int in lanes:
 			pad_spans.append([])
 		for p: Dictionary in p_layout.pads:
@@ -341,10 +351,12 @@ class Search:
 				(out[key] as Array).append_array(y[key])
 		return out
 
-	## The quickest safe label past the last wall, or {}.
+	## The quickest safe label past the last wall (an escape block's: onto its pad), or {}.
 	func _search() -> Dictionary:
 		var current: Array = [_start()]
-		for s: int in c.stages - 1:
+		# An escape block's barrier is no way through: its pad, in the room before it, is (_escape).
+		var through: int = c.stages - 2 if c.escape_lane >= 0 else c.stages - 1
+		for s: int in through:
 			var next: Array = []
 			for l: Dictionary in current:
 				_expand(l, s, next)
@@ -352,6 +364,8 @@ class Search:
 			if current.is_empty():
 				reason = "no safe way past wall %d of %d" % [s, c.walls.size()]
 				return {}
+		if c.escape_lane >= 0:
+			return _escape(current)
 		var best: Dictionary = {}
 		for l: Dictionary in current:
 			if not c.pad_clear(int(l["lane"]), float(l["z"]), maxf(c.leave_end, float(l["z"]))):
@@ -367,6 +381,43 @@ class Search:
 				best = n
 		if best.is_empty():
 			reason = "no safe way out into the breather"
+		return best
+
+	## The quickest safe way from the labels `current` (in an escape block's pad room) onto its pad: lined up in the pad's
+	## lane (a lane switch's run after SWITCH_START, before the pad's stretch), then running on to the pad, never within a
+	## centipede's reach until the runner is at the barrier's front (by then the lift has carried them well above its bite:
+	## DebrisMaze.pad_rise; on the ceiling it gives up). {} if none.
+	func _escape(current: Array) -> Dictionary:
+		var best: Dictionary = {}
+		var stage: int = c.stages - 2
+		var here: Array[int] = [c.stage_section(stage, 0)]
+		var lane: int = c.escape_lane
+		var pad: float = c.escape_at
+		var up: float = float((c.walls[-1] as Dictionary)["start"]) - c.half - CentipedeEscape.BODY_MARGIN
+		var lined_by: float = pad - CentipedeEscape.PAD_MARGIN - c.half - CentipedeEscape.BODY_MARGIN
+		for l: Dictionary in current:
+			var z: float = float(l["z"])
+			var t: float = float(l["t"])
+			var from_lane: int = int(l["lane"])
+			var switches: int = absi(lane - from_lane)
+			var run: float = switches * (c.switch_time + CentipedeEscape.SWITCH_SLACK) * c.v
+			if switches > 0 and z + CentipedeEscape.SWITCH_START + run > lined_by:
+				continue
+			var n: Dictionary = _copy(l)
+			if switches > 0:
+				(n["moves"] as Array).append({"kind": "switch", "at": z + CentipedeEscape.SWITCH_START, "lane": from_lane,
+					"to": lane})
+			var t_up: float = t + (up - z) / c.v
+			if not _check(n, t, t_up, z, up, lane, true, here):
+				continue
+			n["t"] = t_up
+			n["z"] = up
+			n["lane"] = lane
+			if best.is_empty() or float(n["t"]) < float(best["t"]) - CentipedeEscape.EPS \
+					or (absf(float(n["t"]) - float(best["t"])) <= CentipedeEscape.EPS and int(n["dashes"]) < int(best["dashes"])):
+				best = n
+		if best.is_empty():
+			reason = "no safe way onto the escape's pad"
 		return best
 
 	## Every way from label `l` (in stage `s`) through the wall after it into stage s + 1, appended to `out`.
