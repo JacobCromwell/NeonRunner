@@ -11,9 +11,10 @@ extends Node3D
 
 const POWERUPS_SCRIPT: String = "res://scripts/powerups/powerup_controller.gd"
 ## Player movement events that play a differently named sound. Every blocked move (a solid side, a
-## ceiling's edge) plays the blocked wall entry's clank, and a doodad's stop (task O2) a push's thud.
+## ceiling's edge) plays the blocked wall entry's clank, a doodad's stop (task O2) a push's thud, and the dash
+## smashing a falling gantryway's pillar (task Q3) a doodad's crunch (its walkway's creak follows: Gantryway).
 const EVENT_SOUNDS: Dictionary = {&"lane_blocked": &"wall_blocked", &"ceiling_blocked": &"wall_blocked",
-	&"speed_pad": &"ramp", &"doodad_stop": &"doodad_push"}
+	&"speed_pad": &"ramp", &"doodad_stop": &"doodad_push", &"gantry_pillar_smash": &"doodad_smash"}
 
 var config: LevelConfig
 var layout: LevelLayout
@@ -100,6 +101,9 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	if p_sfx != null:
 		sounds.setup(p_sfx)
 	player.movement_event.connect(_on_player_event)
+	# Task Q3: a falling gantryway crushes what's in its path as it comes down, and shakes the camera as it lands.
+	track.gantryway_swept.connect(_on_gantryway_swept)
+	track.gantryway_landed.connect(_on_gantryway_landed)
 
 	director.setup(self)
 	projectiles.setup(self)
@@ -188,6 +192,22 @@ func _physics_process(_delta: float) -> void:
 
 func _on_player_event(kind: StringName) -> void:
 	play_sfx(EVENT_SOUNDS.get(kind, kind))
+
+
+## A falling gantryway came down another tick (task Q3; Gantryway.swept): every enemy in its path is destroyed (GDD §5:
+## "when it lands, it destroys any enemy in its path"; Gantryway.crushes), whatever it is but a boss's part: a kill the
+## runner's score counts (Enemy.defeat with Gantryway.CRUSH_CAUSE; ScoreKeeper), as a gap an Octodog was baited into
+## is. DESIGN-TBD (docs/questions/q3.md): crushing scores as any kill, with no bonus of its own.
+func _on_gantryway_swept(g: Gantryway) -> void:
+	for e: Enemy in director.active.duplicate():
+		if is_instance_valid(e) and e.alive and not e.is_boss and g.crushes(e):
+			e.defeat(Gantryway.CRUSH_CAUSE)
+
+
+## A falling gantryway landed (task Q3): the camera shakes (GantrywayTuning.land_shake_strength and land_shake_seconds;
+## the Screen shake setting scales it). Its crash, pieces and wreck are its own (Gantryway).
+func _on_gantryway_landed(g: Gantryway) -> void:
+	effects.shake(g.tuning.land_shake_strength, g.tuning.land_shake_seconds)
 
 
 func _add(node: Node, node_name: String) -> Node:

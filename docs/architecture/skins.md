@@ -355,6 +355,13 @@ treasure stash's return pad: the track turns the trigger upside down, so the def
 back down at the floor (GDD §3: it looks safe, with no hazard colour). `test_ceiling_scenarios` dresses both with
 every skin in `data/skins/` and the grey box.
 
+**Falling gantryways' looks** (task Q3; the hooks `gantryway`, `gantry_pillar` and `gantryway_wreck`, their colours
+`gantryway_colors()` and material `gantryway_material()`): GantrywayKit's frosted steel catwalk by default, drawn in a
+material that dissolves near the camera (the chase camera passes through a pillar's column and under a falling walkway's
+edge), lit and never glowing, inside its box; the Ice Lab gives it its own steel, frost, snow and ice and its sheen. The
+whole of it is in Falling gantryways (`docs/architecture/gantryways.md`); `test_gantryways` dresses all three with every
+skin in `data/skins/` and the grey box.
+
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
 (`first_lane`, `last_lane`, `full()`), its collision box (`center`, `size`), the lane seams inside it

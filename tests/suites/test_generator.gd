@@ -66,6 +66,7 @@ func run() -> void:
 	_test_wall_run_gaps(base)
 	_test_arched_walls(base)
 	_test_debris_maze(base)
+	_test_gantryways(base)
 	await _test_floor_routes_on_physics(base)
 
 
@@ -113,6 +114,46 @@ func _test_debris_maze(base: LevelConfig) -> void:
 				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
 				blocks.append(a.maze.size())
 	print("  debris maze blocks in quick play's level made like a Terminal one: %s" % [blocks])
+
+
+## Falling gantryways (task Q3; docs/ARCHITECTURE.md, Falling gantryways): quick play's level with the
+## Ice Lab's enemies (cyborgs, window cyborgs, Octodogs, heli drones, fence generators), its speed pads and ramps, and the
+## feature, at 3, 5 and 6 lanes over seeds and difficulties, at the reference run speed and the Ice Lab's, half of them
+## introducing the feature from a start of its own: no warnings, the same seed the same level, every fairness check
+## (check_layout: its check_gantryways proves the lane a runner who dashed a pillar steps into clear through the fall and
+## the step out, and the generator's own re-check, GantrywayRules.problems) and the rules (check_rules), and every one of
+## the level's count in every build.
+func _test_gantryways(base: LevelConfig) -> void:
+	var counts: Array[int] = []
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.3, 1.0]:
+			for level_seed: int in range(1, 4):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = level_seed
+				config.run_speed = 24.8 if (level_seed + lanes) % 2 == 0 else 0.0
+				var features := PackedStringArray(config.features)
+				features.append_array(PackedStringArray(["cyborg", "window_cyborg", "speed_pads", "octodog", "generator", "drone",
+					"gantryway"]))
+				config.features = features
+				if level_seed % 2 == 1:
+					var starts: Dictionary[String, float] = {"gantryway": 0.2}
+					config.feature_starts = starts
+				var tag: String = "(gantryways) lanes=%d diff=%.1f seed=%d speed=%.1f" % [lanes, difficulty, level_seed,
+					config.run_speed]
+				var patterns: Array = LevelGenerator.load_for(config)
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				check(a.gantryways.size() == config.gantryways, "%d of the level's %d gantryways %s" % [a.gantryways.size(),
+					config.gantryways, tag])
+				LayoutChecks.check_layout(self, a, config, tag)
+				LayoutChecks.check_rules(self, a, config, tag)
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				counts.append(a.gantryways.size())
+	print("  gantryways in quick play's level with the feature: %s" % [counts])
 
 
 ## Walls without wall running, standing in narrow arches (task O1; GDD §5 Zone 8, the Terminal: LevelConfig.wall_running

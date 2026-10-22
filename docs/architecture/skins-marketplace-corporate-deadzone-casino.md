@@ -572,6 +572,9 @@ chains overhead, no sky.
   (`DoodadArtSet.zone_tuning`: the zone's levels' own `doodad_height`, which the Ice Lab's levels do not set): rerun `tools/godot.sh doodads --only=ice_lab` if
   that changes. The zone is in `DoodadCards.ZONES` and the web demo's export filter leaves out `assets/sprites/doodads/ice_lab.*` (`export_presets.cfg`,
   `tools/web/update_filter.gd`; `test_web_demo`).
+- *Falling gantryways* (task Q3; Falling gantryways): GantrywayKit's frosted steel catwalk, pillar and wreck (the default look) in the zone's own colours
+  (`gantryway_colors()`: its steel, frame, frost, snow and ice, as its ceilings use them) and its sheen (`gantryway_material()`), so a gantryway reads as
+  one of the WALKWAY ceilings; nothing on the walls. Reviewed with `gantryway_review` (its default zone is the Ice Lab) on both renderers.
 - *No dash walls* (GDD §5, §9.14): the base's default look, which no level of the zone asks for; `test_dash_walls` lists the three skin files among the
   default-look skins. Its cyborgs wear the Dead Zone's burned base (`enemy_variant`, placeholder: GDD §5, "an existing zone's look").
 - *Cost* (`test_ice_lab_skin`, 66 chunks of Ice Lab 1): build mean 2.0-2.4 ms a chunk at 3-6 lanes, 20-33 surfaces and 15-16k vertices a chunk (5 lanes: 26.9

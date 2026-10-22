@@ -351,6 +351,21 @@ func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look
 	doodads().build(body, size, size_class, side, look_seed)
 
 
+# --- Falling gantryways (task Q3) --------------------------------------------------------------------
+
+## A falling gantryway's colours (ZoneSkin.gantryway, gantry_pillar, gantryway_wreck; GDD §5, Zone 9: "an upper walkway over one
+## lane only, looking like a ceiling section"): the default frosted steel catwalk (GantrywayKit) in this hall's own steel, frame,
+## frost, snow and ice, so it reads as one of its overhead walkways (IceLabCeilings). No lamp and nothing that glows: its warning is
+## the gantryway's own, the same in every zone. DESIGN-TBD (docs/questions/q3.md): a look of its own, from the ceilings' kit.
+func gantryway_colors() -> PackedColorArray:
+	return PackedColorArray([steel_color, frame_color, frost_color, snow_color, ice_color])
+
+
+## The kit's gantryway material (it dissolves near the camera, as every gantryway look must) with this hall's sky sheen.
+func gantryway_material() -> Material:
+	return GantrywayKit.material({"sheen_color": srgb(sheen_color), "sheen_strength": sheen_strength})
+
+
 # --- Shared materials (built once per skin, shared by every mesh) ------------------------------------
 
 func solid_material() -> ShaderMaterial:

@@ -4,6 +4,13 @@ extends Node3D
 ## This creates every gameplay node (floor and hull collision, hazards, triggers) from abstract
 ## pieces only. How they look is up to the ZoneSkin, which never affects collision.
 
+## A falling gantryway's pillar broke and it begins to fall (task Q3; Gantryway.fell).
+signal gantryway_fell(gantryway: Gantryway)
+## A falling gantryway came down another tick (Gantryway.swept): what's in its path is crushed (RunWorld).
+signal gantryway_swept(gantryway: Gantryway)
+## A falling gantryway landed (Gantryway.landed).
+signal gantryway_landed(gantryway: Gantryway)
+
 const CHUNK_LENGTH: float = 40.0
 const BUILD_AHEAD: float = 180.0
 const KEEP_BEHIND: float = 30.0
@@ -82,6 +89,8 @@ var _wall_fence_nodes: Dictionary = {}
 var _ceiling_fence_nodes: Dictionary = {}
 ## Built dash walls (task H7a), in the order they were built (dash_wall_for, dash_wall_nodes).
 var _dash_wall_nodes: Array[DashBreakable] = []
+## Built falling gantryways (task Q3), in the order they were built (gantryway_for, gantryway_nodes).
+var _gantryway_nodes: Array[Gantryway] = []
 ## The skin's calls still to make (dress_budget_usec), in order: [chunk start, chunk root, Callable].
 var _dressing: Array[Array] = []
 ## The chunk being built (_build_chunk): its start and root, for the calls it queues.
@@ -103,6 +112,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_wall_fence_nodes.clear()
 	_ceiling_fence_nodes.clear()
 	_dash_wall_nodes.clear()
+	_gantryway_nodes.clear()
 	_cut_nodes.clear()
 	_dressing.clear()
 	_next_chunk = 0
@@ -285,6 +295,24 @@ func dash_wall_nodes() -> Array[DashBreakable]:
 	return out
 
 
+## The built falling gantryway for layout entry `g` (LevelLayout.gantryways; task Q3), or null until the chunk where its
+## walkway starts is built (and once it's freed behind the player).
+func gantryway_for(g: Dictionary) -> Gantryway:
+	for node: Gantryway in gantryway_nodes():
+		if is_same(node.entry, g):
+			return node
+	return null
+
+
+## Every falling gantryway built and still on the track (tests, review tools, RunWorld), in track order.
+func gantryway_nodes() -> Array[Gantryway]:
+	var out: Array[Gantryway] = []
+	for node: Gantryway in _gantryway_nodes:
+		if is_instance_valid(node) and not node.is_queued_for_deletion():
+			out.append(node)
+	return out
+
+
 ## A dash wall's look's box (task H7a; GDD §9.14), `depth` long along the track: as wide as the floor less
 ## MovementTuning.dash_wall_wall_room beside each side wall (the strip a wall runner passes it in), and
 ## dash_wall_height tall. Vector3(width, height, depth), centred across the track.
@@ -333,6 +361,7 @@ func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int, f
 	_bucket("speed_pads", pieces.speed_pads, "at", tuning.speed_pad_length)
 	_bucket("doodads", pieces.doodads, "start", 0.0, "end")
 	_bucket("dash_walls", pieces.dash_walls, "start", 0.0, "end")
+	_bucket("gantryways", pieces.gantryways, "start", 0.0, "end")
 	for i: int in pieces.ceiling_fences.size():
 		pieces.ceiling_fences[i]["index"] = first_ceiling_fence + i
 	_bucket("ceiling_fences", pieces.ceiling_fences, "at", tuning.fence_depth)
@@ -436,6 +465,8 @@ func _build_chunk(index: int) -> void:
 		_build_doodad(root, d)
 	for w: Dictionary in bucket.get("dash_walls", []):
 		_build_dash_wall(root, w)
+	for g: Dictionary in bucket.get("gantryways", []):
+		_build_gantryway(root, g)
 	for f: Dictionary in bucket.get("ceiling_fences", []):
 		_build_ceiling_fence(root, f)
 	for p: Dictionary in bucket.get("return_pads", []):
@@ -718,18 +749,34 @@ func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
 ## skin dresses it (ZoneSkin.doodad) and names the colours its pieces fly off in when the dash smashes it
 ## (ZoneSkin.doodad_debris_colors, task H5). The node is a DashBreakable (GDD §3, owner, October 8, 2026:
 ## the dash smashes a doodad): one smashed on this attempt (its entry marked "smashed") is never built
-## again.
+## again. A falling gantryway's pillar (task Q3; LevelLayout.is_gantry_pillar) is built with its gantryway
+## (_build_gantryway), not here.
 func _build_doodad(root: Node3D, d: Dictionary) -> void:
-	if bool(d.get("smashed", false)):
+	if bool(d.get("smashed", false)) or LevelLayout.is_gantry_pillar(d):
 		return
+	var size_class := StringName(d["size"])
+	var area: DashBreakable = _doodad_body(root, d, &"doodad", "Doodad")
+	var size: Vector3 = area.size
+	var side: int = int(d["side"])
+	# A row's doodads share one look (task L3: LevelLayout.doodads `look`, its first one's seed): one kind along it.
+	# DESIGN-TBD (item 945 in docs/OPEN_QUESTIONS*.md): whether neighbours of one kind should vary.
+	var look_seed: int = int(d.get("look", d.get("seed", 0)))
+	_dress(func() -> void:
+		skin.doodad(area, size, size_class, side, look_seed)
+		area.debris_colors = skin.doodad_debris_colors(area, size_class, side, look_seed))
+
+
+## A zone doodad's body (_build_doodad) or one that pushes like it (a gantryway's pillar, _build_gantryway): a
+## DashBreakable of `kind` named `node_name` over doodad entry `d`'s box, on the doodad and lane-blocker layers, with
+## its standable top on the floor layer and its box in the hitbox view, carrying its entry (meta "doodad").
+func _doodad_body(root: Node3D, d: Dictionary, kind: StringName, node_name: String) -> DashBreakable:
 	var start: float = float(d["start"])
 	var end: float = float(d["end"])
-	var size_class := StringName(d["size"])
-	var box: Vector3 = tuning.doodad_size(size_class)
+	var box: Vector3 = tuning.doodad_size(StringName(d["size"]))
 	var size := Vector3(box.x, box.y, end - start)
 	var area := DashBreakable.new()
-	area.name = "Doodad"
-	area.kind = &"doodad"
+	area.name = node_name
+	area.kind = kind
 	area.entry = d
 	area.size = size
 	area.collision_layer = LAYER_DOODAD | LAYER_LANE_BLOCKER
@@ -748,13 +795,49 @@ func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	var debug := GreyboxMaterials.add_box(area, Vector3.ZERO, size * 1.01, GreyboxMaterials.overlay(DOODAD_DEBUG, true))
 	debug.add_to_group(&"debug_hitbox")
 	debug.visible = show_hitboxes
-	var side: int = int(d["side"])
-	# A row's doodads share one look (task L3: LevelLayout.doodads `look`, its first one's seed): one kind along it.
-	# DESIGN-TBD (item 945 in docs/OPEN_QUESTIONS*.md): whether neighbours of one kind should vary.
-	var look_seed: int = int(d.get("look", d.get("seed", 0)))
+	return area
+
+
+## A falling gantryway (task Q3; GDD §5, Zone 9, owner, October 21, 2026; LevelLayout.gantryways): a Gantryway over its
+## layout entry, its walkway hanging over its lane at the ceilings' height, and its pillar (LevelLayout.pillar_of), a
+## DashBreakable of kind &"gantry_pillar" with a zone doodad's body (_doodad_body: it pushes, blocks a lane switch at
+## its side and is smashed by the dash exactly as a doodad is, Player._check_doodads; the dash's smash plays
+## `gantry_pillar_smash`). Its pillar breaking makes it fall (Gantryway.fall), and its signals are this builder's
+## (gantryway_fell, gantryway_swept, gantryway_landed). Its sounds come from the run's library (sfx: the creak, the crash).
+## The skin dresses its walkway, its pillar (whose look rises from its doodad box to the walkway's underside: the box
+## stays a doodad's, so the chase camera rides over it as over any doodad, RunCamera.doodad_floor) and its wreck
+## (ZoneSkin.gantryway, gantry_pillar, gantryway_wreck), and names the colours their pieces fly in. DESIGN-TBD
+## (docs/questions/q3.md 3): the pillar, a doodad's body under the walkway's near end, its smash the doodads' crunch.
+func _build_gantryway(root: Node3D, g: Dictionary) -> void:
+	var node := Gantryway.new()
+	node.setup(g, GantrywayTuning.load_default(), geo, tuning, show_hitboxes)
+	root.add_child(node)
+	_gantryway_nodes.append(node)
+	node.fell.connect(func(n: Gantryway) -> void: gantryway_fell.emit(n))
+	node.swept.connect(func(n: Gantryway) -> void: gantryway_swept.emit(n))
+	node.landed.connect(func(n: Gantryway) -> void: gantryway_landed.emit(n))
+	if sfx != null:
+		node.set_sounds(sfx.stream(Gantryway.CREAK_SOUND), sfx.volume(Gantryway.CREAK_SOUND), sfx.stream(Gantryway.LAND_SOUND),
+			sfx.volume(Gantryway.LAND_SOUND), sfx.warning_full_volume_distance, sfx.warning_max_distance)
+	var d: Dictionary = layout.pillar_of(g)
+	var pillar: DashBreakable = null
+	var side: int = int(g.get("side", 1))
+	var look_seed: int = int(g.get("seed", 0))
+	if not d.is_empty() and not bool(d.get("smashed", false)):
+		pillar = _doodad_body(root, d, &"gantry_pillar", "GantryPillar")
+		node.pillar = pillar
+		pillar.smashed.connect(node.fall)
+	var size: Vector3 = node.size
+	var pillar_box: Vector3 = pillar.size if pillar != null else Vector3.ZERO
+	var look_size := Vector3(pillar_box.x, tuning.ceiling_height, pillar_box.z)
 	_dress(func() -> void:
-		skin.doodad(area, size, size_class, side, look_seed)
-		area.debris_colors = skin.doodad_debris_colors(area, size_class, side, look_seed))
+		skin.gantryway(node.look_node(), size, look_seed)
+		skin.gantryway_wreck(node.wreck_node(), node.wreck_size(), look_seed)
+		node.debris_colors = skin.gantryway_debris_colors(node.look_node(), look_seed)
+		node.snow_colors = skin.gantryway_snow_colors()
+		if pillar != null and is_instance_valid(pillar):
+			skin.gantry_pillar(pillar, look_size, -pillar_box.y * 0.5, side, look_seed)
+			pillar.debris_colors = skin.gantry_pillar_debris_colors(pillar, side, look_seed))
 
 
 ## A dash wall (task H7a; GDD §9.14, owner, October 8, 2026: a building across the street "facing towards the

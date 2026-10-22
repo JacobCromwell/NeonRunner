@@ -12,8 +12,9 @@ extends RefCounted
 ##   its (check_wall_run_gaps, task J2), every line of wall-hop credits keeps its (check_wall_hops, task N1), a
 ##   level without wall running has nothing on its walls, every broken stump standing opposite an arch
 ##   (check_boundary_walls, task O1), every block of a debris maze keeps its rules and is finishable with the dash
-##   at its slowest recharge (check_debris_maze, task O2), and every Cybernetic Centipede waits where its rules allow, its
-##   block escapable past it (check_centipedes, task O3).
+##   at its slowest recharge (check_debris_maze, task O2), every Cybernetic Centipede waits where its rules allow, its
+##   block escapable past it (check_centipedes, task O3), and every falling gantryway hangs where a runner who knocks it
+##   down always has a lane to step into (check_gantryways, task Q3).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -38,6 +39,7 @@ const TreasureStashRules = preload("res://scripts/enemies/treasure_stash_rules.g
 const FencedCeilingRules = preload("res://scripts/enemies/fenced_ceiling_rules.gd")
 const DangerDensityScript = preload("res://scripts/world/danger_density.gd")
 const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
+const GantrywayRulesScript = preload("res://scripts/enemies/gantryway_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
@@ -92,6 +94,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_boundary_walls(suite, layout, config, tag)
 	check_debris_maze(suite, layout, config, tag)
 	check_centipedes(suite, layout, config, tag)
+	check_gantryways(suite, layout, config, tag)
 
 
 ## A level whose walls are a boundary (task O1; LevelConfig.wall_running off, which its layout carries: the Terminal,
@@ -335,6 +338,111 @@ static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: Leve
 		var found: Dictionary = CentipedeEscape.find(layout, tuning, i, spots)
 		suite.check(bool(found["ok"]), "its block stays escapable past its centipedes, the dash at %.0f s (%s) %s"
 			% [float(found["recharge"]), found["reason"], x])
+
+
+## Falling gantryways (task Q3; GDD §5, Zone 9, the owner, October 21, 2026; scripts/enemies/gantryway_rules.gd),
+## wherever the generator hangs one, at any lane count, at the level's own run speed:
+## - only in a level with the feature, never before the feature's start, over an inner lane, its walkway length_seconds
+##   of run long from just before its pillar, a small doodad of its own in its lane (pushing to its `side`), a calm
+##   stretch from the pillar's front to its fall and the step out at the fastest a runner comes through the pillar;
+## - a runner who dashes the pillar always has a lane to step into, checked here on its own: the lane on the pillar's
+##   side holds no hole, fence, anti-grav pad's zone, speed pad, ramp, floor cut's lane window, doodad or floor enemy
+##   from the pillar's push lead to the end of the calm stretch, nor does the other lane beside it where the
+##   introduction keeps both (`both`); and its own lane is whole floor under the walkway (it lands flat on it);
+## - no ceiling (to the end of its landing zone) over its lane or the lanes beside it while it hangs there;
+## - no zone doodad in its pillar's lane or a lane beside it within the level's spacing of the pillar
+##   (LevelGenerator.doodad_after: as zone doodads keep from one another);
+## - and the generator's own re-check finds nothing (GantrywayRules.problems: every window lane by lane and in every
+##   lane, the planted cyborg where the walkway lands on it, standing and holding its fire, the spacing).
+static func check_gantryways(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	if layout.gantryways.is_empty():
+		return
+	suite.check(config.has_feature(GantrywayRulesScript.FEATURE), "gantryways only in a level with the feature " + tag)
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var zones := CeilingZones.make(config, tuning)
+	var t: GantrywayTuning = GantrywayTuning.load_default()
+	var walkway: float = GantrywayRulesScript.walkway_length(gen, t)
+	var calm: float = GantrywayRulesScript.calm_length(gen, t)
+	var before: float = LevelGenerator.doodad_lead_for(tuning) + gen.doodad_lane_room()
+	var start: float = gen.feature_start(GantrywayRulesScript.FEATURE)
+	var half: float = tuning.fence_depth * 0.5
+	var n: int = layout.lane_count
+	for g: Dictionary in layout.gantryways:
+		var lane: int = int(g["lane"])
+		var side: int = int(g["side"])
+		var front: float = float(g["pillar"])
+		var at: String = "the gantryway at %.1f m over lane %d %s" % [front, lane, tag]
+		suite.check(lane >= 1 and lane <= n - 2 and absi(side) == 1, "%s hangs over an inner lane, its pillar pushing to a side" % at)
+		suite.check(front >= start - 0.01, "%s comes after its feature's start (%.0f m)" % [at, start])
+		suite.check(absf(float(g["end"]) - float(g["start"]) - walkway) < 0.05,
+			"%s is %.1f m long (%.1f s of run)" % [at, walkway, t.length_seconds])
+		var c: Array = g["calm"]
+		suite.check(absf(float(c[0]) - front) < 0.01 and absf(float(c[1]) - front - calm) < 0.05,
+			"%s keeps its calm stretch to %.1f m past its pillar" % [at, calm])
+		var pillar: Dictionary = layout.pillar_of(g)
+		suite.check(not pillar.is_empty() and int(pillar["lane"]) == lane and absf(float(pillar["start"]) - front) < 0.01
+			and StringName(pillar["size"]) == Gantryway.PILLAR_SIZE and float(g["start"]) <= front,
+			"%s has its pillar in its lane under its near end" % at)
+		# The lanes a runner who dashed the pillar may step into: the one on its side, and the other with `both`.
+		var outs: Array[int] = [lane + side]
+		if bool(g.get("both", false)):
+			outs.append(lane - side)
+		var window := Vector2(front - before, front + calm)
+		for out: int in outs:
+			if out < 0 or out >= n:
+				continue
+			for gap: Dictionary in layout.gaps:
+				suite.check(int(gap["lane"]) != out or float(gap["start"]) > window.y or float(gap["end"]) < window.x,
+					"%s: the lane it's left by (%d) has no hole at %.1f m" % [at, out, float(gap["start"])])
+			for f: Dictionary in layout.fences:
+				suite.check(int(f["lane"]) != out or float(f["at"]) - half > window.y or float(f["at"]) + half < window.x,
+					"%s: the lane it's left by (%d) has no fence at %.1f m" % [at, out, float(f["at"])])
+			for p: Dictionary in layout.pads:
+				var zone: Vector2 = zones.pad_zone(float(p["at"]))
+				suite.check(int(p["lane"]) != out or zone.x > window.y or zone.y < window.x,
+					"%s: the lane it's left by (%d) has no anti-grav pad at %.1f m" % [at, out, float(p["at"])])
+			for p: Dictionary in layout.speed_pads:
+				suite.check(int(p["lane"]) != out or float(p["at"]) > window.y or float(p["at"]) + tuning.speed_pad_length < window.x,
+					"%s: the lane it's left by (%d) has no speed pad at %.1f m" % [at, out, float(p["at"])])
+			for r: Dictionary in layout.ramps:
+				var run_end: float = maxf(RampLaunch.of(r, tuning, tuning.run_speed).end(), float(r["at"]) + tuning.ramp_length)
+				suite.check(layout.outer_lane(int(r["side"])) != out or float(r["at"]) > window.y or run_end < window.x,
+					"%s: the lane it's left by (%d) has no ramp at %.1f m" % [at, out, float(r["at"])])
+			for cut: Dictionary in layout.cuts:
+				var win: Vector2 = FloorCutPlan.lane_window(cut)
+				suite.check(int(cut["lane"]) != out or win.x > window.y or win.y < window.x,
+					"%s: the lane it's left by (%d) has no floor cut" % [at, out])
+			for d: Dictionary in layout.doodads:
+				var span: Vector2 = LevelLayout.doodad_extent(d)
+				suite.check(int(d["lane"]) != out or span.x > window.y or span.y < window.x,
+					"%s: the lane it's left by (%d) has no doodad at %.1f m" % [at, out, span.x])
+			for e: Dictionary in layout.enemies:
+				if not LevelGenerator.enemy_uses_floor(e):
+					continue
+				var e_lane: int = int(e.get("lane", -1))
+				if (e_lane < 0 or e_lane >= n) and int(e.get("side", 0)) != 0:
+					e_lane = layout.outer_lane(int(e["side"]))
+				var span: Vector2 = LevelGenerator.enemy_floor_span(e, tuning.pace())
+				suite.check(e_lane != out or span.x > window.y or span.y < window.x,
+					"%s: the lane it's left by (%d) has no floor enemy (%s at %.1f m)" % [at, out, e["type"], float(e["at"])])
+		for gap: Dictionary in layout.gaps:
+			suite.check(int(gap["lane"]) != lane or float(gap["start"]) > float(g["end"]) or float(gap["end"]) < float(g["start"]),
+				"%s lands on whole floor (a hole at %.1f m)" % [at, float(gap["start"])])
+		for h: Dictionary in layout.hulls:
+			var lanes: Vector2i = layout.hull_lanes(h)
+			suite.check(lanes.x > lane + 1 or lanes.y < lane - 1 or float(h["start"]) > float(g["end"]) + GantrywayRulesScript.OVER_MARGIN
+				or zones.landing_zone(h).y < front - before,
+				"%s has no ceiling over its lane or beside it (from %.1f m)" % [at, float(h["start"])])
+		for d: Dictionary in layout.doodads:
+			if is_same(d, pillar) or absi(int(d["lane"]) - lane) > 1 or d.has("stash"):
+				continue
+			var span: Vector2 = LevelLayout.doodad_extent(d)
+			var p_end: float = front + tuning.doodad_size(Gantryway.PILLAR_SIZE).z
+			suite.check(span.x - p_end >= gen.doodad_after(p_end) - 0.01 or front - span.y >= gen.doodad_after(span.y) - 0.01,
+				"%s: no doodad near its pillar in its lane or beside it (%.1f m, lane %d)" % [at, span.x, int(d["lane"])])
+	var problems: PackedStringArray = GantrywayRulesScript.problems(gen)
+	suite.check(problems.is_empty(), "the gantryways keep every placement rule %s %s" % [tag, problems])
 
 
 ## Block `b`'s (the `index`th) debris, `pieces` every maze piece of the layout (check_debris_maze): exactly its walls'
@@ -1329,12 +1437,14 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 ##   front either DOODAD_ROW_TOUCH or a doodad's length past the one before's end as its size class says
 ##   (LevelConfig.doodad_row_spaced), the same all along the row, and its `row` from its first one's front to its
 ##   last one's end; every rule above holds for the row as one.
-## A treasure stash's doodads (task I4) aren't zone doodads standing on their own: check_scenarios checks them.
+## A treasure stash's doodads (task I4) aren't zone doodads standing on their own: check_scenarios checks them; nor is a
+## falling gantryway's pillar (task Q3): check_gantryways checks it.
 static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	var sorted: Array[Dictionary] = []
 	for d: Dictionary in layout.doodads:
-		# A treasure stash's and the debris maze's (task O2: check_debris_maze) keep rules of their own.
-		if not d.has("stash") and not LevelLayout.is_maze_debris(d):
+		# A treasure stash's, the debris maze's (task O2: check_debris_maze) and a gantryway's pillar (task Q3:
+		# check_gantryways) keep rules of their own.
+		if not d.has("stash") and not LevelLayout.is_maze_debris(d) and not LevelLayout.is_gantry_pillar(d):
 			sorted.append(d)
 	if sorted.is_empty():
 		return
@@ -1423,7 +1533,7 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 	var bare: LevelLayout = layout.copy()
 	var stash_only: Array[Dictionary] = []
 	for d: Dictionary in bare.doodads:
-		if d.has("stash") or LevelLayout.is_maze_debris(d):
+		if d.has("stash") or LevelLayout.is_maze_debris(d) or LevelLayout.is_gantry_pillar(d):
 			stash_only.append(d)
 	bare.doodads = stash_only
 	var grid_with: FloorRoute = null

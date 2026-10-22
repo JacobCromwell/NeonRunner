@@ -101,6 +101,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## - centipede: the Cybernetic Centipede (task O3; GDD §9.15), the Terminal's only enemy, from Terminal 1: it waits in
 ##   the debris maze's open cells and chases the runner along its open paths (no patterns: its rules,
 ##   centipede_rules.gd, place it where the maze stays escapable, CentipedeEscape; it needs the debris_maze feature)
+## - gantryway: the Ice Lab's falling gantryways (task Q3; GDD §5, Zone 9, owner, October 21, 2026), from Frost Foundry:
+##   one-lane walkways hanging over an inner lane, each held by a pillar in that lane that pushes like a doodad, which
+##   the dash knocks down: the walkway falls on the lane over about a second, crushing the enemies under it and hitting
+##   a runner still under it (no patterns: its rules, gantryway_rules.gd, place up to `gantryways` of them where a
+##   runner who dashes the pillar always has a lane to step into; numbers in data/tuning/gantryways.tres)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -264,6 +269,13 @@ var _skin: ZoneSkin
 ## task C6c, and Dead Zone 1 two since its ceiling scenarios came, task I4: at 3 lanes its fenced ceiling's build
 ## leaves room for no third); quick play's prototype level takes this default.
 @export_range(0, 8) var dash_walls: int = 3
+## Falling gantryways (task Q3; GDD §5, Zone 9, the owner, October 21, 2026): with the `gantryway` feature, the
+## generator hangs up to this many one-lane walkways over the level's inner lanes, each held by a pillar the dash knocks
+## down (gantryway_rules.gd), spread through the level where they're fair (data/tuning/gantryways.tres); fewer where the
+## level leaves no room, never none. 0 turns them off. Without the feature it does nothing. DESIGN-TBD
+## (docs/questions/q3.md 1 and 14): 3 in each of the Ice Lab's levels; quick play's prototype level takes this default,
+## endless mode its level's (3 over its 20 minutes from the Ice Lab) and a weekly challenge's week Sentinel Row's.
+@export_range(0, 8) var gantryways: int = 3
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings
 ## into a treasure stash's (treasure_stash_rules.gd), where one fits (an inner lane with inner lanes beside it:

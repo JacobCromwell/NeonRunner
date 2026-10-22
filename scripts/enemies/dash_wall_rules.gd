@@ -489,7 +489,7 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 		for q: Vector2 in gen.quiet_stretches():
 			p.mark_span(p.blocked, q)
 	for d: Dictionary in lay.doodads:
-		if scenery or d.has("stash"):
+		if scenery or _fixed_doodad(d):
 			p.mark_span(p.blocked, doodad_span(gen, d) if not checking else Vector2(float(d["start"]), float(d["end"])))
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
@@ -537,7 +537,7 @@ static func _clear_doodads(gen: LevelGenerator, t: DashWallTuning, faces: Array[
 	in_way.resize(plan.size())
 	in_way.fill(0)
 	for d: Dictionary in lay.doodads:
-		if not d.has("stash"):
+		if not _fixed_doodad(d):
 			plan.mark_span(in_way, doodad_span(gen, d))
 	var pick: int = -1
 	for i: int in plan.size():
@@ -551,11 +551,18 @@ static func _clear_doodads(gen: LevelGenerator, t: DashWallTuning, faces: Array[
 	var rows: Array[String] = []
 	for d: Dictionary in lay.doodads:
 		var span: Vector2 = doodad_span(gen, d)
-		if not d.has("stash") and span.x <= fp.y and span.y >= fp.x:
+		if not _fixed_doodad(d) and span.x <= fp.y and span.y >= fp.x:
 			rows.append("%d %s" % [int(d["lane"]), var_to_str(d.get("row", d["start"]))])
 	_keep(lay.doodads, func(d: Dictionary) -> bool:
-		return d.has("stash") or not rows.has("%d %s" % [int(d["lane"]), var_to_str(d.get("row", d["start"]))]))
+		return _fixed_doodad(d) or not rows.has("%d %s" % [int(d["lane"]), var_to_str(d.get("row", d["start"]))]))
 	return plan.face_at(pick)
+
+
+## True if doodad entry `d` is part of a feature rather than scenery, so a wall never takes it out to make room for
+## itself: a treasure stash's (task I4: its walls) or a falling gantryway's pillar (task Q3: it holds its walkway up,
+## LevelLayout.is_gantry_pillar).
+static func _fixed_doodad(d: Dictionary) -> bool:
+	return d.has("stash") or LevelLayout.is_gantry_pillar(d)
 
 
 ## Makes room for the introduction in faces [a, b] (apply()), where no wall fits: the face there that the
@@ -605,8 +612,9 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float, dood
 	for h: Dictionary in lay.hulls:
 		mark_fixed.call(Vector2(float(h["start"]), gen.zones.landing_zone(h).y), false)
 	for d: Dictionary in lay.doodads:
-		# A treasure stash's doodads (task I4) are its walls, never scenery that may go.
-		if doodads_go and not d.has("stash"):
+		# A treasure stash's doodads (task I4) are its walls, and a falling gantryway's pillar (task Q3) holds it up:
+		# never scenery that may go (_fixed_doodad).
+		if doodads_go and not _fixed_doodad(d):
 			mark_enemy.call(d, doodad_span(gen, d), false)
 		else:
 			mark_fixed.call(doodad_span(gen, d), false)

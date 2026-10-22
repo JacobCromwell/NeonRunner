@@ -85,6 +85,8 @@ const FIRST_LEVEL: Dictionary = {
 	"gilded_sentinel": "golden/2",
 	# Task I4 (GDD §3, "Ceiling scenarios": never in zones 1-2; DESIGN-TBD, items 836–845 (docs/OPEN_QUESTIONS*.md)): from the Casino.
 	"treasure_stash": "casino/1", "fenced_ceiling": "casino/2",
+	# Task Q3 (GDD §5, Zone 9, owner, October 21, 2026: "introduced in level 1"): the falling gantryways, from Frost Foundry.
+	"gantryway": "ice_lab/1",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
@@ -111,6 +113,10 @@ const LEFT_OUT: Dictionary = {
 	# The owner, October 20, 2026 (task O1): The Hush leaves out the heli drone, whose anti-grav pad every 8 to 10 s left
 	# its extended wall runs no room (LevelConfig.features_left_out; endless mode puts it back).
 	"drone": ["dead_zone/2"],
+	# Task Q3: the falling gantryways stay in the Ice Lab, the zone's own mechanic as the Terminal's maze is the Terminal's
+	# (GDD §5, Zone 9 names them for its three levels; DESIGN-TBD, docs/questions/q3.md: GDD §5 says anything introduced
+	# keeps appearing, so whether the Golden Zone hangs them too is the owner's call).
+	"gantryway": ["golden/1", "golden/2", "golden/3"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
@@ -123,10 +129,10 @@ const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "
 ## Palace, Terminal 2 a normal run with stretches of the debris maze Terminal 1 brings (GDD §5, Zone 8). (The Beach's
 ## volleyball match, beach/2, places no features at all: the schedule leaves it out. The Casino's two, "the
 ## Marketplace's enemies and mechanics in a new setting" (owner, October 8, 2026), bring the ceiling scenarios since
-## task I4.) The Ice Lab's three for now (task Q1): what they bring, the falling gantryways (all three, from level 1) and
-## the teleporters (levels 2 and 3), are tasks Q3's and Q4's, which take their levels out of this list as they list them,
+## task I4.) Ice Lab 2 and 3 for now: Frost Foundry introduces the falling gantryways (task Q3, all three levels hang
+## them), and the teleporters (levels 2 and 3) are task Q4's, which takes its levels out of this list as it lists them,
 ## and in NEW_MECHANICS.
-const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "terminal/2", "ice_lab/1", "ice_lab/2", "ice_lab/3", "golden/3"]
+const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "terminal/2", "ice_lab/2", "ice_lab/3", "golden/3"]
 ## Zones that introduce no new enemy, the exceptions to GDD §5's rule, and why: the Casino ("every zone introduces
 ## at least one new enemy, except the Casino, which reuses the Marketplace's", owner, October 8, 2026) and the Beach,
 ## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"), and the Ice Lab until its two new
@@ -139,9 +145,10 @@ const NO_NEW_ENEMY: Dictionary = {
 }
 ## The mechanics a zone of NO_NEW_ENEMY introduces all the same: the Casino's ceiling scenarios (task I4; GDD §3,
 ## "Ceiling scenarios": never in zones 1-2, sprinkled into later zones; DESIGN-TBD where they start,
-## items 836–845 (docs/OPEN_QUESTIONS*.md)).
+## items 836–845 (docs/OPEN_QUESTIONS*.md)), and the Ice Lab's falling gantryways (task Q3; GDD §5, Zone 9).
 const NEW_MECHANICS: Dictionary = {
 	"casino": ["treasure_stash", "fenced_ceiling"],
+	"ice_lab": ["gantryway"],
 }
 ## The seed sweep: the levels with the most features (the Beach's remix has as many as Corporate 2), The
 ## Hush (paced in bursts) and the Terminal's (task O1: its own patterns, arches and walls without wall running), on

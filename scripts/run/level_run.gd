@@ -484,6 +484,12 @@ func _build_debug_tools() -> void:
 		var dash_walls: DashWallTuning = DashWallTuning.load_default()
 		if dash_walls.resource_path != "":
 			sections.append({"title": "Dash walls", "resource": dash_walls, "path": dash_walls.resource_path})
+	# Task Q3: the falling gantryways' numbers, in a level that has them (how many is the level's LevelConfig.gantryways,
+	# in "Level pacing"): a fall reads them as it happens; Restart level rebuilds where they stand.
+	if context.config.has_feature("gantryway"):
+		var gantryways: GantrywayTuning = GantrywayTuning.load_default()
+		if gantryways.resource_path != "":
+			sections.append({"title": "Gantryways", "resource": gantryways, "path": gantryways.resource_path})
 	# Task I4: the ceiling scenarios' numbers, in a level that has them (how many is the level's own, in "Level
 	# pacing"; the fences' depth is in "Movement"); Restart rebuilds.
 	if context.config.has_feature(CeilingScenarios.STASH) or context.config.has_feature(CeilingScenarios.FENCED):

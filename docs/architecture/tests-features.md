@@ -188,7 +188,9 @@ City's look (its body, lane blocker and top gone, the crunch, its pieces in
 its look's colours, never glowing, a light shake Screen shake scales away, no damage, no score, other solid
 sides still blocking a dash); a LevelRun of City 2 (it stays smashed through a death and a revive, and a
 retry builds the same level with it whole, pushing a runner who doesn't dash); every skin's pieces'
-colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes; and the
+colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes (a falling gantryway's
+pillar is test_gantryways', which runs into and dashes through every one of the campaign's; the cuts of a level these
+runs play on carry its gantryways, so a pillar in one stands as it does in the level); and the
 fairness measure for a runner who dashes through (The generator, Zone doodads). `RunSim` takes a `&"dash"`
 action. Task L3 added rows and the lane by a side wall: rows placed over quick play's level at 3, 5 and 6 lanes
 with every doodad the first of a row (two, three and four long since task L6; small ones touching and medium and large ones
@@ -407,7 +409,29 @@ nothing of a later zone's; and every build at 3, 5 and 6 lanes on the levels' ow
 configures them: no warnings, the campaign's fairness checks (LayoutChecks), the same level on a second build, no enemy
 but its own (no host among the cyborgs), no dash walls, floor cuts, maze or arch stumps, the usual obstacles (holes,
 fences, signs, ceilings and pads, doodads) and every listed feature but the sprinkled-in ceiling scenarios. About 30 s.
-Tasks Q3 to Q5 add their mechanics' checks here.
+Tasks Q3 to Q5 add their mechanics' checks here: the falling gantryways (Q3) in every level's data (Frost Foundry the
+only one with a `feature_starts` for them), and every build hanging its level's count, each re-checked by
+`LayoutChecks.check_gantryways`.
+`test_gantryways` checks the falling gantryways (task Q3; Falling gantryways): the layout data (no key without them,
+`copy` and `append_pieces` keeping each pillar its own, the calm stretch counted as a doodad in its lane); the generator
+over the Ice Lab's levels at 3, 5 and 6 lanes (Frost Foundry's introduction within `intro_window_seconds` of the start,
+both lanes beside it clear and a cyborg under it; every planted cyborg plain, standing, holding its fire through the calm
+stretch, where its walkway lands on it; none without the feature or with a count of 0); the track (each walkway at the
+ceilings' height, no collision, its hitbox off; its pillar a `gantry_pillar` DashBreakable with a small doodad's body);
+the damage rules (solid, the armor then the shield absorbing it, the dash passing through, god mode); on real physics at 3,
+5 and 6 lanes in every inner lane both ways: the pillar pushing a runner without the dash aside with the walkway staying
+up, a runner who dashes it and steps out either side living while it crushes the cyborg (a kill the score counts), one
+who stays (or jumps or slides) hit only once it drops, the armor, the shield and god mode, the wreck harmless; the warning
+(the creak, the shadow darkening, the red line pulsing and the walkway shuddering, or with Reduced flashing the line
+steady and the walkway only lurching, the hitbox off through the hold, the crash); the crush (every enemy in its path, a heli drone low over the lane too, none beside, above or past its ends);
+every skin's looks inside their boxes, lit, never glowing, in the dissolving material, and drawn by the warm-up with
+nothing physical; every number on the F6 panel; a wall-run gap's stretch kept outside everything a gantryway keeps,
+whatever lane it names (the plan and the re-check, at 3, 5 and 6 lanes: the wall-run gaps' own re-check counts every
+rule's keep-outs in every lane); and every gantryway of the Ice Lab's levels at 3, 5 and 6 lanes on real physics on a
+cut of its level at the level's speed: its pillar pushing a runner without the dash onto clear floor beside it, and a
+runner who dashes it stepping out a reaction later (both ways for the introduction), alive, as it lands on its cyborg;
+and endless mode in the Ice Lab on one seed (no warnings, its count along the whole level, each fair; such a build takes
+about a minute, with or without the gantryways). About 75 s.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls
