@@ -1110,8 +1110,9 @@ func _test_flash() -> void:
 
 # --- The campaign's own, on real physics --------------------------------------------------------
 
-## Every teleporter of Relay Station and Specimen Vault at 3, 5 and 6 lanes, at the level's speed, on real physics, on a cut
-## of the level around it (_cut: every piece reaching from its approach to its landings' end; nothing else): run onto,
+## Every teleporter of Relay Station and Specimen Vault, and of the Golden Zone's three levels (task Q6), at 3, 5 and 6 lanes,
+## at the level's speed, on real physics, on a cut of the level around it (_cut: every piece reaching from its approach to
+## its landings' end; nothing else): run onto,
 ## with its light set to each side in turn (either output pad may be taken: a blinking one's both, a fixed one's both
 ## kept fair), the runner lands on that output pad and runs through the landing alive with no input; in the lane beside it
 ## (its way around), and switching out of its lane as its approach begins, the runner passes it alive.
@@ -1120,12 +1121,14 @@ func _test_campaign() -> void:
 	var sim := RunSim.new(tree, tuning)
 	var landings: int = 0
 	var arounds: int = 0
-	for n: int in [2, 3]:
-		var step: CampaignStep = campaign.step("ice_lab/%d" % n)
+	var golden: int = 0
+	for id: String in ["ice_lab/2", "ice_lab/3", "golden/1", "golden/2", "golden/3"]:
+		var step: CampaignStep = campaign.step(id)
 		for lanes: int in LANE_COUNTS:
 			var config: LevelConfig = campaign.configure(step, lanes)
 			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
 			for tp: Dictionary in gen.layout.teleporters:
+				golden += 1 if step.zone.id == &"golden" else 0
 				var lane: int = int(tp["lane"])
 				var side: int = int(tp["side"])
 				var tag: String = "(%s lanes=%d, the teleporter at %.0f m in lane %d)" % [step.id, lanes, float(tp["at"]), lane]
@@ -1144,8 +1147,11 @@ func _test_campaign() -> void:
 				check(bool(r["alive"]) and int(r["teleports"]) == 0 and bool(r["past"]) and int(r["lane"]) == lane + side,
 					"switching out as its approach begins, the runner passes it %s %s" % [_brief(r), tag])
 				arounds += 2
-	check(landings >= 25 and arounds >= 40, "the campaign's teleporters were taken (%d landings) and passed (%d)" % [landings, arounds])
-	print("  the Ice Lab's teleporters on real physics: %d landings, %d passes" % [landings, arounds])
+	check(landings >= 50 and arounds >= 90 and golden >= 25,
+		"the campaign's teleporters were taken (%d landings) and passed (%d), the Golden Zone's %d among them" % [landings,
+			arounds, golden])
+	print("  the campaign's teleporters on real physics: %d landings, %d passes (%d of the teleporters the Golden Zone's)"
+		% [landings, arounds, golden])
 
 
 ## One take of _test_campaign on a cut of `gen`'s level around teleporter `tp` (_cut), at the level's run speed, the runner
