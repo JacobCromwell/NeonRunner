@@ -624,7 +624,7 @@ and the copy alike, which turned the Dead Zone's shared material's sheen the sha
 **The Terminal's outro** (`TerminalOutro`, task F2l; the owner's beats and follow-up, October 21, 2026, GDD §6 Cinematics, "Terminal
 outro"; what they leave open is DESIGN-TBD, `docs/questions/f2l.md`; numbers in `data/cinematics/terminal_outro_tuning.tres`): 28.0 s
 after Terminal 2 (the Terminal has no boss), before the Golden Zone's intro, on one stretch of the Terminal's own street in the level's
-lanes, the zone's music (none until its own track exists) fading in. **The set.** `TerminalTrainModel` is the abandoned metro train: a
+lanes, the zone's music fading in (the Dead Zone's song: `music_library.tres` maps the Terminal to it until it has a track of its own). **The set.** `TerminalTrainModel` is the abandoned metro train: a
 modern one (the owner: "more modern looking, but just dirty and run down, not a steam train"), built by code from the cross-section
 lofted along four articulated cars (two cabs, about 60 m): smooth boxy-streamlined bodies, flat sides with tall windows and double-leaf
 doors as decals, a stripe, a rain gutter, rubber bellows between cars, bogies and a skirt, roof units and a folded pantograph, vine strands
@@ -635,26 +635,35 @@ pole) lit by a warm omni. The tail's cab is the head's mirrored, with red lamps 
 its window's glass and the glow cards (the headlights' pools on the track, halos, the tail lights'). `terminal_train.gdshader` is
 unshaded and faceted like the kit (the sports car's way), painting its dirt from the position on the train (it travels with it: faded
 paint, rain streaks from the roof line, grime thickening toward the foot, rust blooms, flaked paint, soot on the roof; rubber, steel,
-foliage, glass and the cab's inside as finishes) and lit like the hall (`tm_burn`, `tm_pool` and `tm_lit` copied from
-`kit_terminal.gdshaderinc`: the work lamps' pools slide over it as it drives, and the lamps' colours come from the skin's solid
-material); `terminal_train_glass.gdshader` is the door window's clear, dirty glass (alpha-blended, never flickering) so the cab and the
+foliage, glass and the cab's inside as finishes) and lit like the hall (`tm_burn`, `tm_pool` and `tm_lit` copied line for line from
+`kit_terminal.gdshaderinc`, and `test_terminal_outro` fails if either copy drifts: the work lamps' pools slide over it as it drives,
+and the lamps' colours come from the skin's solid material); `terminal_train_glass.gdshader` is the door window's clear, dirty glass (alpha-blended, never flickering) so the cab and the
 screech show through. Its lights are instance uniforms: `lights` (head and tail lamps), `interior` (the saloon's windows and the
-windscreens glowing, the cab's light) and `emergency` (the cab's dim light until the lights come on). It stands in the left track-bed
-lane (the start lane on a street under five lanes wide), nose toward the Golden Zone. **The beats.** Low behind the runner as they jog
-in (7 m/s, easing to a stop 11 m short of its tail); cut: from beside them, looking up at its tail on the picture's right; cut: the
-pan, a smooth flight along its side from tail to nose, its target leading (the camera 5.2 m out, or at the kerb's edge on a narrow
-street); cut: the front door from the runner's left as they walk up onto the step plate and grip the handle (`brace`, both hands on the
+windscreens glowing, the cab's light) and `emergency` (the cab's dim light until the lights come on: the vestibule's strip light glows at 35% under it, full when the lights are
+on). The glow cards' material fades by the skin's fog end (`fog_begin` + 20 to `fog_end`, 170 m), so no glow outlives the haze. It
+stands in the lane just left of the start lane, looking down the street (the start lane on a street under four lanes wide, where the
+pan's camera would have no room), nose toward the Golden Zone. A low riser behind the tread-plate step rises to the sill. **The beats.** Low behind the runner as they jog
+in (7 m/s, easing to a stop 11 m short of its tail); cut: from beside them (their right), looking up at its tail on the picture's right; cut: the
+pan, a smooth flight along its side from tail to nose, its target leading (the camera 5.2 m out, or as far as the street's far wall
+less `CAMERA_CLEAR` allows); cut: the front door from the runner's right (the -x side: they face the door, the nose, down the track)
+as they walk up onto the step plate and grip the handle (`brace`, both hands on the
 bar by two-bone IK, `TerminalOutro.reach_arm`: the rig's own arm lengths, the elbow toward a pole): one small firm shake (the leaf
 rattling a centimetre, a rattle), a pause, then the violent one (five heaves a second, the body heaving about its hands and the chest
 twisting, the leaf rattling six centimetres, the camera shaking by Screen shake, the clatter), a profile shot as they bang on it three
 times (the right fist cocked and thrown at the leaf, the left hand flat on it) and throw their hands up (`hands_up`); cut: close on the
-window from their right (the line to it clear of their head) as the screech (`BeachOutroScreech`, the Gangland and Beach outros'
+window from their left (the +x side: the window is on their left, the handle they hold on their right, so the line to it is clear of
+their head) as the screech (`BeachOutroScreech`, the Gangland and Beach outros'
 screech friend) hops up in it, turning to face the camera, and squeaks; it drops out of sight, the door slides open with a hiss and the
 runner steps from the plate into the vestibule behind the screech (trotting ahead of them into the dark saloon), the door shutting
 behind them with them still seen through its window; cut: behind the tail, low, the camera pulling back 22 m and rising 5 m as the
 lights come on (a failing strip's stutter, one slow glow with Reduced flashing) and the train starts 1.2 s later and pulls away at up to
-14 m/s², past the haze (`fog_end`) by the end: out of sight; black. Everything is worked out from the time (`_on_advance`), so stepping
-or skipping shows the same; the runner's arms, chest and body offset are layered on their pose each step. Its sounds are nine new ones
+14 m/s², the tail 152 m from the camera 5 s after it starts and past the haze's end (`fog_end`, 170 m) at about 27.2 s, as the
+fade to black begins (27.3 s): out of sight; black. Everything is worked out from the time (`_on_advance`), so stepping
+or skipping shows the same (`_in_street` and `_shot` keep every camera position inside the street's walls by `CAMERA_CLEAR`, 0.3 m, clear of the
+Terminal's piers just outside the wall line, at any lane count: `test_terminal_outro` checks every step of the cinematic at 3, 4, 5 and
+6 lanes against the piers' real extent, that the runner's feet never sink into the plate, riser or sill, and that the bang's fist lands on the leaf); the runner's arms, chest and body offset are layered on their pose each step. Its sounds are nine new ones
 (`tools/asset_gen/sfx_bank_terminal_outro.gd`: `door_rattle`, `door_rattle_hard`, `door_bang`, `screech_squeak`, `train_door_open`,
 `train_door_close`, `train_start`, `train_depart`, `train_rush`). Cost (headless, `test_terminal_outro`): about 20 ms to set up (about
-140 ms the first time, with cold mesh caches), about 0.25 ms a step, and five draw calls for its props.
+140 ms the first time, with cold mesh caches), about 0.25 ms a step, and five draw calls for its props. Rendered frames were checked on
+the Compatibility renderer only (software rendering, no Vulkan in the build environment): the Forward+ renderer was not rendered. The
+shaders are plain unshaded spatial shaders with an alpha-blended glass, nothing renderer-specific, but it is unchecked there.

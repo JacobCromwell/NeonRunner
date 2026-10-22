@@ -4,9 +4,7 @@ extends RefCounted
 ## back (`lie`), getting up from there to standing with its arms reaching up (`get_up`), climbing out
 ## over an edge (`climb`, its hands holding on to the key's position until it gets a foot under it), and
 ## getting into a low car from beside its open door (`get_in`: the near leg over the sill, ducking in,
-## sitting, the other leg in), bracing against something in front of it (`brace`: feet apart, knees bent, leaning in with
-## its arms forward, to heave at it or pound on it; the cinematic's script works the arms' reach and the heaving) and throwing its hands up
-## in frustration (`hands_up`: flung up, held, then slumping back to standing at ease). They play out over a progress (CineActorKey.progress, 0-1) instead of
+## sitting, the other leg in). They play out over a progress (CineActorKey.progress, 0-1) instead of
 ## following movement: each is a few key poses (tables in HumanoidPose's conventions, degrees; "root_rot"
 ## tips the whole body) blended smoothly by it, so stepping the clock any way gives the same pose; moved
 ## along meanwhile, its legs step (add_steps; not while getting in, whose legs are its key poses).
@@ -24,8 +22,13 @@ extends RefCounted
 ## strokes, over a progress: a reach, three strokes working down it, the arm lowered), `scramble` (up a slope of loose rubble on
 ## hands and feet, leaning into it, the arms reaching in turn with the leg phase) and `squeeze` (into a low gap head first: from
 ## a crouch to lying prone, the arms reaching ahead, crawling in turn with the leg phase, over a progress).
-## DESIGN-TBD (docs/questions/f2c.md, f2d.md; the three of the Terminal's intro: docs/OPEN_QUESTIONS_DEFERRED.md item 1112): the key poses are
-## hand-set placeholders.
+## And two for the Terminal's outro (task F2l), also over a progress: `brace` (bracing against something in front of it: feet
+## apart, knees bent, leaning in with its arms forward, to heave at it or pound on it; the cinematic's script works the arms'
+## reach and the heaving) and `hands_up` (throwing its hands up in frustration: flung up, held, then slumping back to standing
+## at ease).
+## DESIGN-TBD (docs/questions/f2c.md, f2d.md; `wipe`, `scramble` and `squeeze` of the Terminal's intro:
+## docs/OPEN_QUESTIONS_DEFERRED.md item 1112; `brace` and `hands_up` of the Terminal's outro: docs/questions/f2l.md): the key
+## poses are hand-set placeholders.
 
 const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"wipe", &"scramble", &"squeeze", &"brace",
 	&"hands_up"]

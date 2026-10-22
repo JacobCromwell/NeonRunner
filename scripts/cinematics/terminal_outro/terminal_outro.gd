@@ -16,7 +16,7 @@ extends CinematicSequencer
 ##    glowing) and it pulls away, accelerating down the tracks and out of sight into the haze.
 ## A script on the toolkit, its numbers data (`numbers`, by default data/cinematics/terminal_outro_tuning.tres,
 ## TerminalOutroTuning). It plays on one stretch of the Terminal's own street (the zone's skin, from its data) in the level's
-## lanes, the train standing in the lane beside the start lane (the start lane on a street too narrow for two); everything
+## lanes, the train standing in the lane beside the start lane (the start lane on a street of fewer than four lanes); everything
 ## is worked out from the time (_on_advance), so stepping or skipping shows the same.
 ## DESIGN-TBD (docs/questions/f2l.md): the staging the beats leave open, the train's look, the sounds.
 
@@ -37,6 +37,9 @@ const POP_DEPTH: float = 0.3
 const SCREECH_TROT: float = 1.7
 ## How far in past the door's sill the runner steps, and how far into the vestibule they walk (metres).
 const INSIDE: float = 0.38
+## The camera stays this far inside the street's wall line: the Terminal's steel piers stand on and beyond it (a pier
+## reaches `pier_depth` out from the wall line, its angle irons 4.5 cm in).
+const CAMERA_CLEAR: float = 0.3
 const VESTIBULE_STOP: float = 1.4
 
 ## Its numbers (null: NUMBERS_PATH's).
@@ -99,7 +102,7 @@ func _make_timeline() -> CineTimeline:
 func _plan() -> void:
 	train_length = TerminalTrainModel.length_of(n.cars)
 	var lane: int = stage.start_lane + n.lane_offset
-	if stage.geo.lane_count < 5 or lane < 0:
+	if stage.geo.lane_count < 4 or lane < 0:
 		lane = stage.start_lane
 	train_x = stage.lane_x(lane)
 	tail_z = n.tail_at
@@ -108,7 +111,7 @@ func _plan() -> void:
 	stop_z = tail_z - n.stop_short
 	# At the door, on its step plate, the handle (on the left stile) straight in front of them, between their shoulders.
 	stand = Vector3(train_x + TerminalTrainModel.handle_point().x, TerminalTrainModel.STEP_TOP, nose_z + n.stand_off)
-	cam_x = minf(train_x + TerminalTrainModel.WALL + n.pan_distance, stage.wall_x(1) + 0.8)
+	cam_x = minf(train_x + TerminalTrainModel.WALL + n.pan_distance, stage.wall_x(1) - CAMERA_CLEAR)
 	var walk: float = n.walk_in_speed
 	t_gone = n.leave_shot_at
 	var in_by: float = n.walk_in_at + (n.stand_off + INSIDE + VESTIBULE_STOP + 0.2) / walk
@@ -219,10 +222,22 @@ func _drive_train() -> void:
 
 # --- The screech --------------------------------------------------------------------------------------------
 
-## Where the camera sits for the close shot of the window (track space): to the right of the runner (who stands to the
-## left of the window), so the line to the window passes clear of their head, looking across at it.
+## Where the camera sits for the close shot of the window (track space): on the runner's left (the +x side, as they face the
+## door; the handle they hold is on their right, so the line from here to the window, which is on their left, passes clear of
+## their head), looking across at it. The door shots before it are from their right (the -x side).
 func window_camera() -> Vector3:
-	return Vector3(train_x + 2.1, 1.5, nose_z + 2.1)
+	return _in_street(Vector3(train_x + 2.1, 1.5, nose_z + 2.1))
+
+
+## A camera position kept inside the street (CAMERA_CLEAR in from its wall lines, clear of the Terminal's piers beyond them).
+func _in_street(p: Vector3) -> Vector3:
+	return Vector3(clampf(p.x, stage.wall_x(-1) + CAMERA_CLEAR, stage.wall_x(1) - CAMERA_CLEAR), p.y, p.z)
+
+
+## A camera key at a track-space position kept inside the street.
+func _shot(t: CineTimeline, at: float, position: Vector3, target: Vector3, move: CinePath.Move = CinePath.Move.SMOOTH,
+		fov: float = 70.0) -> CineCameraKey:
+	return t.shot(at, _in_street(position), target, move, fov)
 
 
 ## The screech's hop up at the window: 0 hidden (below the door's lower panel), 1 in the window; it springs up, hovers a
@@ -317,6 +332,9 @@ func _runner(t: CineTimeline) -> void:
 	r.at(n.door_shot_at, walk_from, &"walk", CinePath.Move.CUT)
 	var near: Vector3 = ground + dir * 0.55
 	GanglandOutro._turned(r.at(n.arrive_at - 0.5, near), 180.0, 0.0)
+	# The step up onto the plate's front edge (their feet clear it as it comes under them).
+	var onto := Vector3(ground.x + dir.x * 0.27, TerminalTrainModel.STEP_TOP, ground.z + dir.z * 0.27)
+	GanglandOutro._turned(r.at(n.arrive_at - 0.245, onto), 180.0, 0.0)
 	GanglandOutro._turned(GanglandOutro._eased(r.at(n.arrive_at, stand, &"walk"), Tween.TRANS_QUAD, Tween.EASE_OUT), 180.0, 0.0).look_up = 6.0
 	# Bracing against the door: gripping the handle, the small shake, the pause, the violent one, the bangs.
 	var brace: Array = [
@@ -336,20 +354,24 @@ func _runner(t: CineTimeline) -> void:
 		key.progress = float(up[i][1])
 		var raise: float = smoothstep(n.pop_at - 0.2, n.pop_at + 0.3, at)
 		key.look_up = lerpf(4.0, 22.0, raise)
-	# The door opens: they step up from the plate into the cab and toward the doorway behind the screech.
+	# The door opens: they step up from the plate onto the riser and over the sill into the cab (each step up a key: the
+	# feet clear the riser and the sill), and walk toward the doorway behind the screech.
 	var s: float = n.walk_in_speed
-	var step_p := Vector3(train_x - 0.1, TerminalTrainModel.STEP_TOP, nose_z + 0.05)
+	var riser_p := Vector3(train_x - 0.1, TerminalTrainModel.RISER_TOP, nose_z + 0.24)
+	var sill_p := Vector3(train_x - 0.03, TerminalTrainModel.FLOOR, nose_z + 0.04)
 	var in_p := Vector3(train_x, TerminalTrainModel.FLOOR, nose_z - INSIDE)
 	var vest_p := Vector3(train_x, TerminalTrainModel.FLOOR, nose_z - INSIDE - VESTIBULE_STOP)
 	var t0: float = n.walk_in_at
 	var wait: CineActorKey = GanglandOutro._turned(r.at(t0, stand, &"walk"), 180.0, 0.0)
 	wait.look_up = 8.0
-	var t1: float = t0 + stand.distance_to(step_p) / s
-	r.at(t1, step_p)
-	var t2: float = t1 + step_p.distance_to(in_p) / s
-	r.at(t2, in_p)
-	var t3: float = t2 + Vector2(vest_p.x - in_p.x, vest_p.z - in_p.z).length() / s
-	r.at(t3, vest_p)
+	var t1: float = t0 + stand.distance_to(riser_p) / s
+	r.at(t1, riser_p)
+	var t2: float = t1 + riser_p.distance_to(sill_p) / s
+	r.at(t2, sill_p)
+	var t3: float = t2 + sill_p.distance_to(in_p) / s
+	r.at(t3, in_p)
+	var t4: float = t3 + Vector2(vest_p.x - in_p.x, vest_p.z - in_p.z).length() / s
+	r.at(t4, vest_p)
 	r.at(t_gone, vest_p)
 	r.leave = t_gone
 
@@ -359,18 +381,20 @@ func _runner(t: CineTimeline) -> void:
 func _camera(t: CineTimeline) -> void:
 	# Behind the runner as they jog in, low, the train looming ahead of them in the haze, closing in as they slow.
 	var toward := Vector3(train_x - run_x + 0.4, 1.7, 14.0)
-	var c0: CineCameraKey = t.shot(0.0, Vector3(1.5, 1.35, -5.4), toward, CinePath.Move.SMOOTH, 66.0)
+	# (The camera rides to the runner's side by 1.5 m, less on a street too narrow to leave it that.)
+	var off: float = minf(1.5, stage.wall_x(1) - CAMERA_CLEAR - run_x)
+	var c0: CineCameraKey = t.shot(0.0, Vector3(off, 1.35, -5.4), toward, CinePath.Move.SMOOTH, 66.0)
 	c0.follow = &"runner"
 	c0.watch = &"runner"
-	var c1: CineCameraKey = t.shot(n.look_shot_at - 0.004, Vector3(1.1, 1.25, -4.0), toward + Vector3(0.0, 0.2, 0.0),
+	var c1: CineCameraKey = t.shot(n.look_shot_at - 0.004, Vector3(minf(off, 1.1), 1.25, -4.0), toward + Vector3(0.0, 0.2, 0.0),
 		CinePath.Move.SMOOTH, 62.0)
 	c1.follow = &"runner"
 	c1.watch = &"runner"
 	# Cut: from the runner's right, low and back, the runner on the left of the picture looking up at the train's tail
 	# on its right.
-	var side_x: float = minf(run_x + 4.4, stage.wall_x(1) + 0.8)
-	t.shot(n.look_shot_at, Vector3(side_x, 1.3, stop_z - 6.4), Vector3(run_x - 2.0, 1.8, stop_z + 5.0), CinePath.Move.CUT, 56.0)
-	t.shot(n.pan_shot_at - 0.004, Vector3(side_x - 0.3, 1.35, stop_z - 5.6), Vector3(run_x - 2.2, 1.9, stop_z + 5.6),
+	var side_x: float = minf(run_x + 4.4, stage.wall_x(1) - CAMERA_CLEAR)
+	_shot(t, n.look_shot_at, Vector3(side_x, 1.3, stop_z - 6.4), Vector3(run_x - 2.0, 1.8, stop_z + 5.0), CinePath.Move.CUT, 56.0)
+	_shot(t, n.pan_shot_at - 0.004, Vector3(side_x - 0.3, 1.35, stop_z - 5.6), Vector3(run_x - 2.2, 1.9, stop_z + 5.6),
 		CinePath.Move.SMOOTH, 52.0)
 	# Cut: the pan, in a long move along the train's side from its tail to its nose, its target leading the camera.
 	var gap: float = cam_x - (train_x + TerminalTrainModel.WALL)
@@ -385,37 +409,37 @@ func _camera(t: CineTimeline) -> void:
 		var z: float = float(keys[i][1])
 		var lead: float = float(keys[i][2])
 		var rise: float = float(keys[i][3])
-		t.shot(at, Vector3(cam_x, y * rise, z), Vector3(train_x + 0.2, 1.7 + 0.3 * rise, z + lead),
+		_shot(t, at, Vector3(cam_x, y * rise, z), Vector3(train_x + 0.2, 1.7 + 0.3 * rise, z + lead),
 			CinePath.Move.CUT if i == 0 else CinePath.Move.SMOOTH, fov + 4.0 * (1.0 - float(i) / float(keys.size())))
 	# Cut: the front door, from behind and to the right of the runner as they walk up and grip it; closer for the violent
 	# shaking; a close three-quarter view from their right as they bang on it (the fist, the door's face) and throw up their
 	# hands.
 	var door_c := Vector3(train_x - 0.1, 1.3, nose_z)
-	t.shot(n.door_shot_at, Vector3(train_x - 2.8, 1.15, nose_z + 3.7), door_c, CinePath.Move.CUT, 50.0)
-	t.shot(n.shake_b_at - 0.4, Vector3(train_x - 2.4, 1.2, nose_z + 2.6), door_c, CinePath.Move.SMOOTH, 46.0)
+	_shot(t, n.door_shot_at, Vector3(train_x - 2.8, 1.15, nose_z + 3.7), door_c, CinePath.Move.CUT, 50.0)
+	_shot(t, n.shake_b_at - 0.4, Vector3(train_x - 2.4, 1.2, nose_z + 2.6), door_c, CinePath.Move.SMOOTH, 46.0)
 	var medium := Vector3(train_x - 0.35, 1.3, nose_z + 0.2)
-	t.shot(n.shake_b_at - 0.396, Vector3(train_x - 2.4, 1.4, nose_z + 1.3), medium, CinePath.Move.CUT, 46.0)
-	t.shot(n.bang_at - 0.5, Vector3(train_x - 2.25, 1.35, nose_z + 1.1), medium, CinePath.Move.SMOOTH, 44.0)
+	_shot(t, n.shake_b_at - 0.396, Vector3(train_x - 2.4, 1.4, nose_z + 1.3), medium, CinePath.Move.CUT, 46.0)
+	_shot(t, n.bang_at - 0.5, Vector3(train_x - 2.25, 1.35, nose_z + 1.1), medium, CinePath.Move.SMOOTH, 44.0)
 	var fist := Vector3(train_x - 0.45, 1.2, nose_z + 0.15)
-	t.shot(n.bang_at - 0.496, Vector3(train_x - 2.1, 1.3, nose_z + 0.9), fist, CinePath.Move.CUT, 42.0)
-	t.shot(n.window_shot_at - 0.004, Vector3(train_x - 2.0, 1.3, nose_z + 0.8), fist + Vector3(0.0, 0.1, 0.0), CinePath.Move.SMOOTH, 42.0)
+	_shot(t, n.bang_at - 0.496, Vector3(train_x - 2.1, 1.3, nose_z + 0.9), fist, CinePath.Move.CUT, 42.0)
+	_shot(t, n.window_shot_at - 0.004, Vector3(train_x - 2.0, 1.3, nose_z + 0.8), fist + Vector3(0.0, 0.1, 0.0), CinePath.Move.SMOOTH, 42.0)
 	# Cut: close on the window as the screech pops up in it, over the runner's raised hands; then wider as the door slides
 	# open and the runner, following the screech, goes in.
 	var window := Vector3(train_x + 0.02, 1.45, nose_z)
-	t.shot(n.window_shot_at, window_camera(), window, CinePath.Move.CUT, 33.0)
-	t.shot(n.open_at - 0.2, window_camera() + Vector3(0.1, -0.05, 0.1), window, CinePath.Move.SMOOTH, 35.0)
-	t.shot(n.walk_in_at + 0.4, Vector3(train_x + 1.9, 1.35, nose_z + 3.0), Vector3(train_x - 0.1, 1.15, nose_z - 0.3),
+	_shot(t, n.window_shot_at, window_camera(), window, CinePath.Move.CUT, 33.0)
+	_shot(t, n.open_at - 0.2, window_camera() + Vector3(0.1, -0.05, 0.1), window, CinePath.Move.SMOOTH, 35.0)
+	_shot(t, n.walk_in_at + 0.4, Vector3(train_x + 1.9, 1.35, nose_z + 3.0), Vector3(train_x - 0.1, 1.15, nose_z - 0.3),
 		CinePath.Move.SMOOTH, 48.0)
-	t.shot(n.leave_shot_at - 0.004, Vector3(train_x + 2.4, 1.5, nose_z + 3.4), Vector3(train_x - 0.1, 1.1, nose_z - 0.6),
+	_shot(t, n.leave_shot_at - 0.004, Vector3(train_x + 2.4, 1.5, nose_z + 3.4), Vector3(train_x - 0.1, 1.1, nose_z - 0.6),
 		CinePath.Move.SMOOTH, 52.0)
 	# Cut: behind the train's tail, low; it pulls back and rises as the train pulls away down the street and out of sight.
 	var tx: float = train_x + 0.9
 	var look_far := Vector3(train_x, 1.9, tail_z + 30.0)
-	t.shot(n.leave_shot_at, Vector3(tx, 1.15, tail_z - 5.5), look_far, CinePath.Move.CUT, 60.0)
+	_shot(t, n.leave_shot_at, Vector3(tx, 1.15, tail_z - 5.5), look_far, CinePath.Move.CUT, 60.0)
 	var mid: float = (n.leave_shot_at + n.duration) * 0.5
-	t.shot(mid, Vector3(tx + 0.6, 1.4 + n.pull_up * 0.35, tail_z - 5.5 - n.pull_back * 0.45), Vector3(train_x, 2.1, tail_z + 60.0),
+	_shot(t, mid, Vector3(tx + 0.6, 1.4 + n.pull_up * 0.35, tail_z - 5.5 - n.pull_back * 0.45), Vector3(train_x, 2.1, tail_z + 60.0),
 		CinePath.Move.SMOOTH, 56.0)
-	t.shot(n.duration, Vector3(tx + 1.2, 1.4 + n.pull_up, tail_z - 5.5 - n.pull_back), Vector3(train_x, 2.4, tail_z + 150.0),
+	_shot(t, n.duration, Vector3(tx + 1.2, 1.4 + n.pull_up, tail_z - 5.5 - n.pull_back), Vector3(train_x, 2.4, tail_z + 150.0),
 		CinePath.Move.SMOOTH, 52.0)
 
 
@@ -503,11 +527,11 @@ func _pose_runner(runner: CineActorNode) -> void:
 	if bang > 0.0:
 		# The left hand flat on the door, the right fist drawn back and thrown at it, again and again.
 		var handle_x: float = TerminalTrainModel.handle_point().x
-		var panel: Vector3 = TerminalTrainModel.panel_point(0.95, handle_x + 0.15)
+		var panel: Vector3 = TerminalTrainModel.panel_point(0.95, handle_x + 0.38)
 		reach_arm(rig, &"l", door * (panel + Vector3(0.0, 0.1, -0.025)), bang, left_pole)
 		var u: float = fposmod((time - n.bang_at) / n.bang_gap, 1.0)
 		var cock: float = smoothstep(0.0, 0.62, u) * (1.0 - smoothstep(0.62, 0.72, u))
-		var fist: Vector3 = TerminalTrainModel.panel_point(0.9 + 0.18 * cock, handle_x - 0.12) + Vector3(0.0, 0.0, -0.03 - 0.26 * cock)
+		var fist: Vector3 = TerminalTrainModel.panel_point(0.9 + 0.18 * cock, handle_x + 0.08) + Vector3(0.0, 0.0, -0.03 - 0.26 * cock)
 		reach_arm(rig, &"r", door * fist, bang, right_pole)
 		runner.avatar.position += Vector3(0.0, 0.0, 0.02 * cock * bang)
 		if chest != null:

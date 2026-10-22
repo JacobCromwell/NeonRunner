@@ -10,7 +10,10 @@ extends TestSuite
 ## forward, and far enough off by the end to be out of sight in the haze; what it costs. Then skipping, and the App's flow
 ## (skipping it starts the Golden Zone's intro).
 
-const LANES: Array[int] = [3, 5, 6]
+const LANES: Array[int] = [3, 4, 5, 6]
+## The train's shader copies three functions of the hall's (the work lamps' light), which must stay line for line the same.
+const TRAIN_SHADER: String = "res://scripts/cinematics/terminal_outro/terminal_train.gdshader"
+const HALL_SHADER: String = "res://scripts/world/meshes/shaders/kit_terminal.gdshaderinc"
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 const SCENE: String = "res://scenes/cinematics/terminal_outro.tscn"
 const STEP: float = 1.0 / 30.0
@@ -23,10 +26,15 @@ const STAND_SLACK: float = 0.08
 const FACE_SLACK: float = 12.0
 ## A hand is this close to what it holds or strikes (metres): the fist is a block, the bar thin.
 const HAND_REACH: float = 0.13
-## The camera stays under this over open street and beyond a kerb by at most this (nothing hangs lower; the second track's
-## parked cars start further out).
+## The camera stays under this over open street (nothing hangs lower), and this far inside the street's wall line (past
+## the pier's angle irons, 4.5 cm in, and the near plane).
 const CAMERA_TOP: float = 9.5
-const CAMERA_KERB: float = 1.0
+const CAMERA_CLEAR: float = TerminalArches.PROUD + 0.1
+## A runner's footprint on the steps, for checking they never stand in them: half across, half along (metres), and how far
+## their feet may sink into what they stand on.
+const FOOT_ACROSS: float = 0.15
+const FOOT_ALONG: float = 0.08
+const FOOT_SINK: float = 0.05
 ## The body of the train, for keeping the camera out of it (half width, height).
 const BODY_HALF: float = 1.7
 const BODY_HEIGHT: float = 3.8
@@ -47,6 +55,7 @@ func run() -> void:
 	_test_slot()
 	_test_sounds()
 	_test_poses()
+	_test_shader_copy()
 	var lanes_pc: int = App.rules.lanes_pc
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
@@ -138,6 +147,33 @@ func _test_poses() -> void:
 		"braced, the runner leans in with their arms forward")
 
 
+## The train's copies of the hall's lamp functions (tm_burn, tm_pool, tm_lit) are the same as kit_terminal.gdshaderinc's, so the
+## lamps' light on the train and on the hall can't drift apart silently.
+func _test_shader_copy() -> void:
+	for fn: String in ["tm_burn", "tm_pool", "tm_lit"]:
+		var hall: PackedStringArray = _function_lines(HALL_SHADER, fn)
+		var train: PackedStringArray = _function_lines(TRAIN_SHADER, fn)
+		check(not hall.is_empty() and hall == train, "the train's %s is the hall's, line for line (%d and %d lines)" % [fn, hall.size(), train.size()])
+
+
+## A top-level function of a shader file as its lines (from its signature to its closing brace at the margin, trailing blanks
+## cut); empty if the file or the function isn't there.
+static func _function_lines(path: String, fn: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return out
+	var on: bool = false
+	for line: String in f.get_as_text().split("\n"):
+		if line.begins_with("float %s(" % fn) or line.begins_with("vec3 %s(" % fn):
+			on = true
+		if on:
+			out.append(line.strip_edges(false, true))
+			if line.strip_edges(false, true) == "}":
+				break
+	return out
+
+
 # --- The beats -----------------------------------------------------------------------------------
 
 func _check_outro(lanes: int) -> void:
@@ -168,6 +204,7 @@ func _check_outro(lanes: int) -> void:
 	check(absf(door_world.x - seq.train_x) < 0.001 and absf(door_world.z - seq.nose_z) < 0.001 and train.door_open < 0.01,
 		"%s: it stands with its nose at the numbers' place, its door shut" % tag)
 
+	var piers: Array[Vector2] = _pier_places(stage)
 	var runner := seq.actors[&"runner"] as CineActorNode
 	var hand_l: Node3D = runner.avatar.rig.joint(&"hand_l")
 	var hand_r: Node3D = runner.avatar.rig.joint(&"hand_r")
@@ -177,6 +214,7 @@ func _check_outro(lanes: int) -> void:
 	var steps: int = 0
 	var camera_out: String = ""
 	var runner_in: String = ""
+	var runner_sunk: String = ""
 	var draw_calls: int = 0
 	var checked: Dictionary = {}
 	var last_moved: float = 0.0
@@ -188,8 +226,10 @@ func _check_outro(lanes: int) -> void:
 	var grip_worst: float = 0.0
 	var grip_n: int = 0
 	var bang_best: Array[float] = []
+	var bang_at: Array[Vector3] = []
 	for k: int in n.bangs:
 		bang_best.append(INF)
+		bang_at.append(Vector3.ZERO)
 	var hands_best: float = -INF
 	var in_window: float = INF
 	var screech_early: bool = false
@@ -208,14 +248,25 @@ func _check_outro(lanes: int) -> void:
 			break
 		var t: float = seq.time
 		draw_calls = maxi(draw_calls, seq.props_draw_calls())
-		# The camera: in the street (or just over its kerb), under what hangs over it, above the floor, never in the train.
+		# The camera: inside the street, clear of the Terminal's piers (their real footprint: from the angle irons on the wall
+		# line out to the pier's depth and the plinth's flare, at the piers' places along the street), under what hangs over the
+		# street, above the floor, never in the train.
 		var cam: Vector3 = stage.to_track(seq.camera.global_position)
 		var nose: float = seq.nose_z + seq.moved
 		var inside_train: bool = absf(cam.x - seq.train_x) < BODY_HALF and cam.y < BODY_HEIGHT and cam.z < nose + 0.05 \
 			and cam.z > nose - length - 0.05
-		if camera_out == "" and (cam.x < stage.wall_x(-1) - 0.2 or cam.x > stage.wall_x(1) + CAMERA_KERB or cam.y > CAMERA_TOP
-				or cam.y < 0.45 or inside_train):
-			camera_out = "%.2f s at %s (train nose %.1f)" % [t, cam, nose]
+		if camera_out == "":
+			var why: String = ""
+			if cam.x < stage.wall_x(-1) + CAMERA_CLEAR or cam.x > stage.wall_x(1) - CAMERA_CLEAR:
+				why = "outside the street"
+			elif _in_pier(cam, stage, piers):
+				why = "in a pier"
+			elif cam.y > CAMERA_TOP or cam.y < 0.45:
+				why = "too high or low"
+			elif inside_train:
+				why = "in the train"
+			if why != "":
+				camera_out = "%.2f s %s at %s (train nose %.1f)" % [t, why, cam, nose]
 		# The runner: not through the train's body except in at its door.
 		if runner.visible and runner_in == "":
 			var p: Vector3 = runner.track_position
@@ -223,6 +274,16 @@ func _check_outro(lanes: int) -> void:
 			var through_door: bool = absf(p.x - seq.train_x) + 0.3 <= TerminalTrainModel.DOOR_HALF + 0.02 and p.z > nose - 2.0
 			if in_body and not through_door:
 				runner_in = "%.2f s at %s" % [t, p]
+		# Their feet clear the steps: never standing lower than the ground under their footprint (plate, riser, sill, floor).
+		if runner.visible and runner_sunk == "":
+			var mp: Vector3 = train.global_transform.affine_inverse() * runner.global_position
+			if absf(mp.z) < 1.0 and absf(mp.x) < 1.2:
+				var under: float = 0.0
+				for dx: float in [-FOOT_ACROSS, FOOT_ACROSS]:
+					for dz: float in [-FOOT_ALONG, FOOT_ALONG]:
+						under = maxf(under, TerminalTrainModel.ground_at(mp.x + dx, mp.z + dz))
+				if mp.y < under - FOOT_SINK:
+					runner_sunk = "%.2f s at %s (the ground there is %.2f m up)" % [t, mp, under]
 		# The train stands until it starts, and goes only forward.
 		if t < n.start_at - 0.01 and seq.moved > 0.0:
 			early_move = true
@@ -256,7 +317,9 @@ func _check_outro(lanes: int) -> void:
 				# On the door: the fist at the leaf's face (a plane at its depth, the leaf's rattle with it), at its closest
 				# in the moment of the strike.
 				var leaf: Vector3 = train.global_transform * Vector3(0.0, 0.0, TerminalTrainModel.LEAF_BACK + train.door_node.position.z)
-				bang_best[k] = minf(bang_best[k], absf(fist_r.z - leaf.z))
+				if absf(fist_r.z - leaf.z) < bang_best[k]:
+					bang_best[k] = absf(fist_r.z - leaf.z)
+					bang_at[k] = train.global_transform.affine_inverse() * fist_r
 		if t > n.hands_up_at + 0.55 and t < n.hands_up_at + 0.9:
 			hands_best = maxf(hands_best, minf(fist_l.y, fist_r.y) - head.global_position.y)
 		# The screech: hidden until it pops up, then its head seen through the door's window from the camera.
@@ -326,6 +389,13 @@ func _check_outro(lanes: int) -> void:
 	var bang_worst: float = bang_best.max()
 	check(bang_worst < HAND_REACH, "%s: the fist is on the door at each of the %d bangs (at its closest, %.3f m off its face at worst)" % [
 		tag, n.bangs, bang_worst])
+	var off_leaf: String = ""
+	for k: int in n.bangs:
+		var f: Vector3 = bang_at[k]
+		if absf(f.x) > TerminalTrainModel.LEAF_HALF - 0.04 or f.y < 0.5 or f.y > TerminalTrainModel.WINDOW_LOW - 0.04:
+			off_leaf = "bang %d at %s" % [k, f]
+	check(off_leaf == "", "%s: every bang lands on the door's leaf below its window, not on the cab's front beside it (%s)" % [tag, off_leaf])
+	check(runner_sunk == "", "%s: the runner's feet clear the step plate, the riser and the sill (%s)" % [tag, runner_sunk])
 	check(hands_best > 0.1, "%s: both hands are thrown up above their head (%.2f m over it)" % [tag, hands_best])
 	check(not screech_early and screech_seen and in_window > 0.0,
 		"%s: the screech is hidden until it pops up, then seen through the door's window (%.2f m inside its frame)" % [tag, in_window])
@@ -344,6 +414,37 @@ func _check_outro(lanes: int) -> void:
 	check(setup_msec < SETUP_BUDGET_MSEC and worst_step < STEP_BUDGET_MSEC and draw_calls <= PROP_DRAW_CALLS,
 		"%s: it costs little (set up %.0f ms, a step at worst %.1f ms, %d draw calls)" % [tag, setup_msec, worst_step, draw_calls])
 	await _free(seq)
+
+
+## The places of the Terminal's piers along the street as Vector2(centre, width) in track distance: what the track builder gives the
+## skin chunk by chunk (a wall section a chunk long, the piers pier_pitch apart in it).
+static func _pier_places(stage: CineStage) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var skin := stage.skin as TerminalSkin
+	if skin == null:
+		return out
+	var c0: float = 0.0
+	while c0 < stage.def.length:
+		out.append_array(skin.arches().piers(c0, minf(c0 + TrackBuilder.CHUNK_LENGTH, stage.def.length)))
+		c0 += TrackBuilder.CHUNK_LENGTH
+	return out
+
+
+## True if a camera at track-space `p` is inside a pier: out beyond the wall line's angle irons and in along the street where a pier
+## stands (its width and the plinth's flare), on either side. The pier's depth beyond the wall line and the flare are the skin's.
+static func _in_pier(p: Vector3, stage: CineStage, piers: Array[Vector2]) -> bool:
+	var skin := stage.skin as TerminalSkin
+	if skin == null:
+		return false
+	var reach: float = skin.pier_depth + TerminalArches.FLARE
+	var beyond: bool = p.x > stage.wall_x(1) - TerminalArches.PROUD and p.x < stage.wall_x(1) + reach \
+		or p.x < stage.wall_x(-1) + TerminalArches.PROUD and p.x > stage.wall_x(-1) - reach
+	if not beyond:
+		return false
+	for pier: Vector2 in piers:
+		if absf(p.z - pier.x) < pier.y * 0.5 + TerminalArches.FLARE:
+			return true
+	return false
 
 
 ## The distance from `p` to the segment a-b.

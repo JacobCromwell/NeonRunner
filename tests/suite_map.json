@@ -226,7 +226,7 @@
     {"match": "scripts/bosses/hostile_takeover/chairman_face.gdshaderinc", "suites": ["hostile_takeover", "zone_shaders", "marketplace_intro"]},
     {"match": "data/skins/terminal_skin*", "suites": ["terminal_skin", "skin_budget", "terminal_intro"]},
     {"match": "data/skins/dead_zone_skin*", "suites": ["dead_zone_skin", "skin_budget", "terminal_intro"]},
-    {"match": "scripts/world/meshes/shaders/kit_terminal*", "tier": "merge", "suites": ["terminal_skin", "zone_shaders"]},
+    {"match": "scripts/world/meshes/shaders/kit_terminal*", "tier": "merge", "suites": ["terminal_skin", "zone_shaders", "terminal_outro"]},
     {"match": "tools/asset_gen/doodad_art/terminal*", "suites": ["doodads", "terminal_skin"]},
     {"match": "tools/asset_gen/doodad_art_*.gd", "suites": ["doodads", "terminal_skin"]},
     {"match": "assets/sprites/doodads/terminal*", "suites": ["doodads", "terminal_skin"]},

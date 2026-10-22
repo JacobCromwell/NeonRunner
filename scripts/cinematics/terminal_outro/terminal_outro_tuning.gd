@@ -16,10 +16,11 @@ extends Resource
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_in: float = 0.8
 @export_range(10.0, 60.0, 0.05, "suffix:s") var fade_at: float = 27.3
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_out: float = 0.7
-## The zone's music comes in over this long (the Terminal's own track is a later task: none plays until it exists).
+## The zone's music comes in over this long (it is the Dead Zone's song, which data/audio/music_library.tres maps the
+## Terminal to until the Terminal has a track of its own).
 @export_range(0.0, 8.0, 0.1, "suffix:s") var music_fade: float = 2.0
-## The shots' cuts: the runner looking at the train (from in front of them), the pan along the train, the runner at the
-## front door, close on the window (the screech), the train leaving.
+## The shots' cuts: the runner looking at the train (from beside and behind them), the pan along the train, the runner at
+## the front door (from their right), close on the window (the screech; from their left), the train leaving.
 @export_range(0.0, 60.0, 0.05, "suffix:s") var look_shot_at: float = 3.6
 @export_range(0.0, 60.0, 0.05, "suffix:s") var pan_shot_at: float = 5.2
 @export_range(0.0, 60.0, 0.05, "suffix:s") var door_shot_at: float = 9.9
@@ -30,8 +31,8 @@ extends Resource
 
 @export_group("The train")
 ## How many cars it has (the two ends are cabs), where its tail stands along the street (its nose is its length on),
-## and which lane it stands in, counted from the start lane (a street too narrow for a lane beside the start lane uses
-## the start lane itself).
+## and which lane it stands in, counted from the start lane (a street of fewer than four lanes uses the start lane itself:
+## the pan's camera needs the room the lane beside it would take, and every camera stays inside the street's walls).
 @export_range(2, 6) var cars: int = 4
 @export_range(40.0, 200.0, 1.0, "suffix:m") var tail_at: float = 60.0
 @export_range(-3, 0) var lane_offset: int = -1
@@ -52,8 +53,8 @@ extends Resource
 @export_range(1.0, 10.0, 0.05, "suffix:s") var stop_at: float = 3.0
 ## Their lane: they run beside the train (metres right of its middle line).
 @export_range(0.0, 6.0, 0.1, "suffix:m") var run_side: float = 2.4
-## The pan along the train: from near its tail at the cut, to near its nose, this far from its side (the street, or
-## the kerb's edge, where it is too narrow for that).
+## The pan along the train: from near its tail at the cut, to near its nose, this far from its side (or as far as the
+## street's right wall, less the camera's clearance of 0.3 m, allows).
 @export_range(2.0, 12.0, 0.1, "suffix:m") var pan_distance: float = 5.2
 @export_range(0.5, 3.0, 0.05, "suffix:m") var pan_height: float = 1.5
 

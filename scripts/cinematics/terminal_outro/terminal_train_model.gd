@@ -6,7 +6,8 @@ extends Node3D
 ## with smooth boxy-streamlined bodies, big flat windows, double-leaf sliding doors, a rain gutter and a stripe, rubber
 ## gangway bellows between the cars, a skirt over the bogies, air-conditioning units and a folded pantograph on the
 ## roof; the cab's front is a raked, tapered nose with two windscreens either side of a central front door (a leaf
-## with a window in it, a handle bar on its left stile, a step plate under it), headlights and a destination board (dark, wordless).
+## with a window in it, a handle bar on its left stile, a step plate under it with a low riser up to the sill), headlights and a
+## destination board (dark, wordless).
 ## It is dirty and run down (terminal_train.gdshader: faded paint, rain streaks, rust, flaked paint, grimed glass,
 ## a few vines hanging off the roof) but intact. Its front door slides open (set_door) onto a cab vestibule (dim with
 ## the emergency light, then lit), and the door's window is clear glass (terminal_train_glass.gdshader) so what is
@@ -69,6 +70,10 @@ const WINDOW_HIGH: float = 1.92
 const STEP_TOP: float = 0.2
 const STEP_DEPTH: float = 0.5
 const STEP_WIDTH: float = 2.2
+## The riser on it, against the sill: a second, half-height step (its top, depth and width), so the runner steps 0.2, 0.31, 0.42.
+const RISER_TOP: float = 0.31
+const RISER_DEPTH: float = 0.16
+const RISER_WIDTH: float = 1.3
 ## How far the leaf slides open (metres, toward the train's left).
 const SLIDE: float = 0.95
 ## The cab vestibule behind the door: its half-width, its depth to the back wall, and the floor it stands on.
@@ -131,7 +136,9 @@ func build(p_cars: int, p_paint: Color, p_stripe: Color, p_grime: float, p_rust:
 	door_glass = MeshBatch.add_instance(door_node, meshes["glass"], "Glass")
 	door_glass.material_override = glass_material(grime, skin)
 	door_glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var glow := MeshKit.glow({"glow_scale": 2.0, "fade_begin": 50.0, "fade_end": 190.0})
+	# The glow cards fade out where the hall's haze ends (as the skin's own do: fog_begin + 20 to fog_end).
+	var fog_end: float = _skin_number(skin, &"fog_end", 170.0)
+	var glow := MeshKit.glow({"glow_scale": 2.0, "fade_begin": _skin_number(skin, &"fog_begin", 14.0) + 20.0, "fade_end": fog_end})
 	_glow_material = glow.duplicate() as ShaderMaterial
 	glow_cards = MeshBatch.add_instance(self, meshes["glow"], "Glow")
 	glow_cards.material_override = _glow_material
@@ -263,9 +270,22 @@ static func vestibule_point(depth: float = 0.55) -> Vector3:
 	return Vector3(0.0, FLOOR + 0.005, LEAF_BACK + LEAF_THICK + depth)
 
 
-## The step plate's top in front of the door (the runner steps up onto it, then in).
+## The step plate's top in front of the door (the runner stands on it, then steps up the riser and in).
 static func step_point() -> Vector3:
 	return Vector3(0.0, STEP_TOP, -STEP_DEPTH * 0.5)
+
+
+## How high what a runner stands on is at (x, z) in model space (z negative in front of the nose): the ground, the step plate, the
+## riser against the sill, and the floor inside the door (the vestibule's width). The bumper pieces stand beside the steps
+## (|x| from 0.67), not in their way.
+static func ground_at(x: float, z: float) -> float:
+	if z >= 0.0:
+		return FLOOR if absf(x) < VESTIBULE_HALF and z < VESTIBULE_DEPTH else 0.0
+	if absf(x) < RISER_WIDTH * 0.5 and z > -RISER_DEPTH:
+		return RISER_TOP
+	if absf(x) < STEP_WIDTH * 0.5 and z > -STEP_DEPTH:
+		return STEP_TOP
+	return 0.0
 
 
 ## The back wall's doorway into the saloon (middle, floor).
@@ -303,6 +323,12 @@ static func glass_material(p_grime: float, skin: ZoneSkin = null) -> ShaderMater
 		_copy_hall(m, skin, [&"tm_haze"])
 		_cache[key] = m
 	return _cache[key]
+
+
+## A number the skin has by `property` (the haze's reach), or `fallback`.
+static func _skin_number(skin: ZoneSkin, property: StringName, fallback: float) -> float:
+	var v: Variant = skin.get(property) if skin != null else null
+	return float(v) if v is float or v is int else fallback
 
 
 static func _skin_key(skin: ZoneSkin) -> String:
@@ -490,9 +516,12 @@ static func _nose(m: MeshLayer, rear: bool, p_paint: Color, p_stripe: Color, dar
 	for side: float in [-1.0, 1.0]:
 		m.box(Vector3(side * (STEP_WIDTH * 0.5 - 0.08), 0.11, -0.04), Vector3(0.05, 0.12, 0.08), dark, 0.0, TRIM)
 		m.box(Vector3(side * (STEP_WIDTH * 0.5 - 0.08), 0.1, -STEP_DEPTH + 0.05), Vector3(0.05, 0.1, 0.08), dark, 0.0, TRIM)
-	# A bumper under the face, with a coupler cover.
-	m.box(Vector3(0.0, 0.22, -0.08), Vector3(2.5, 0.16, 0.16), dark, 0.0, TRIM)
-	m.box(Vector3(0.0, 0.32, -0.14), Vector3(0.34, 0.22, 0.1), Color(0.3, 0.27, 0.24), 0.0, STEEL)
+	# A riser against the sill (a second step) between the plate and the door, and bumper pieces either side of the steps (none
+	# in front of the door: the runner steps over where a coupler cover would be).
+	m.box(Vector3(0.0, (STEP_TOP + RISER_TOP) * 0.5, -RISER_DEPTH * 0.5), Vector3(RISER_WIDTH, RISER_TOP - STEP_TOP, RISER_DEPTH),
+		Color(0.34, 0.33, 0.31), 0.0, STEEL)
+	for side: float in [-1.0, 1.0]:
+		m.box(Vector3(side * 0.97, 0.22, -0.08), Vector3(0.6, 0.16, 0.16), dark, 0.0, TRIM)
 	if rear:
 		# Shut: the leaf fills the doorway, its window dark.
 		var leaf := MeshLayer.new()

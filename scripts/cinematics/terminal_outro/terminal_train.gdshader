@@ -2,12 +2,13 @@
 // rubber and trim, bare steel, vine, dark window glass and the train's lights, faceted like the mesh kit (each
 // face's normal from screen-space derivatives) and unshaded, so it costs the same on the Compatibility renderer
 // (web, low-end Android) as on Forward+. It is lit the way the Terminal's hall is: the work lamps' pools are painted
-// from where the fixtures hang (the same functions as kit_terminal.gdshaderinc's tm_burn, tm_pool and tm_lit: change
-// them together), so the lamps' light slides over it as it drives.
+// from where the fixtures hang (copies of kit_terminal.gdshaderinc's tm_burn, tm_pool and tm_lit, line for line: change
+// them together; test_terminal_outro fails if they drift apart), so the lamps' light slides over it as it drives.
 //   COLOR.rgb  albedo (sRGB)            COLOR.a  glow: 0 = a lit surface, above 0 = emissive (x glow_scale)
 //   UV2.x      finish: 0 paint, 1 glass, 2 matte trim, 3 steel, 4 vine, 5 lamp (emissive), 6 inside the cab
 //   UV2.y      light group: 0 always as it is, 1 its exterior lights (x `lights`), 2 its saloon's lights (x
-//              `interior`), 3 the cab's emergency light (x the larger of `emergency` and `interior`)
+//              `interior`), 3 the cab's strip light (x the larger of a third of `emergency` and `interior`: dim with the
+//              emergency light, bright with the saloon's)
 // Its dirt is painted from the position on the train (model space), so it travels with it.
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
@@ -136,7 +137,7 @@ void fragment() {
 	float t = TIME;
 	vec2 uv = surface_coords(v_model, n);
 	float lit = tm_pool(v_world, n, t);
-	float level = group == 1 ? lights : (group == 2 ? interior : (group == 3 ? max(emergency, interior) : 1.0));
+	float level = group == 1 ? lights : (group == 2 ? interior : (group == 3 ? max(emergency * 0.35, interior) : 1.0));
 	vec3 col;
 	if (finish == 5 || glow > 0.002) {
 		// A lamp or a lit panel: emissive by its group; off, a dull lens that catches the hall's lamps.
