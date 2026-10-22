@@ -96,9 +96,6 @@ extends EnemyTuning
 ## to line up, settling at its distance) on top of the tumble and the sprint (release_distance): its first wind-up is
 ## planned that far on, and a dog in position sooner paces there until the runner reaches it.
 @export_range(0.0, 3.0, 0.05, "suffix:s") var jar_settle_seconds: float = 0.5
-## A level that gives the `octodog_jar` feature a start (Frost Foundry) has its first jar within this many seconds of run
-## of it, where one fits (octodog_jar_rules.gd), else the first place past that where one does.
-@export_range(0.0, 60.0, 0.5, "suffix:s") var jar_intro_window_seconds: float = 10.0
 
 
 func windup_time(t: float) -> float:

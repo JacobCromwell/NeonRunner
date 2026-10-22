@@ -1,13 +1,14 @@
 extends SceneTree
 ## Measures the Octodog jars that break open (task Q5; scripts/enemies/octodog_jar_rules.gd) over the campaign's levels
 ## that have them: for each build, how many jars holding an Octodog stand of the level's count, where (their fronts as a
-## share of the level, their lanes, the charges planned for the dog each holds), how far past the feature's start the
-## introduction stands, how many of the level's other doodads wear the Octodog jar's look and hold nothing (its skin's
-## variety, IceLabDoodads), how long the build took and what OctodogJarRules.problems() finds (nothing, on every build the
-## suites check). From the project folder:
+## share of the level, their lanes, the charges planned for the dog each holds), how many pieces and enemies the rules
+## took out to make room, how many of the level's other doodads wear the Octodog jar's look and hold nothing (its skin's
+## variety, IceLabDoodads), how long the build and the rules took and what OctodogJarRules.problems() finds (nothing, on
+## every build the suites check). From the project folder:
 ##   godot --headless -s res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
 ## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3). --why counts, build by build,
-## what turned down the jar fronts tried (OctodogJarRules.debug).
+## what turned down the jar fronts tried (OctodogJarRules.debug). --without builds each level without its jars too, for
+## the builds and the time they cost.
 
 const OctodogJarRules = preload("res://scripts/enemies/octodog_jar_rules.gd")
 
@@ -43,6 +44,7 @@ func _run() -> void:
 	var looks: int = 0
 	var problems: int = 0
 	var warned: int = 0
+	var taken: int = 0
 	var slowest: float = 0.0
 	var spent: float = 0.0
 	for s: CampaignStep in campaign.steps():
@@ -69,6 +71,7 @@ func _run() -> void:
 					print("  without the jars: %d builds, %.0f ms, %d Octodogs standing" % [bare_gen.attempts,
 						(Time.get_ticks_usec() - t1) / 1000.0, LevelGenerator.feature_positions(bare_layout, "octodog").size()])
 				OctodogJarRules.spent_usec = 0
+				OctodogJarRules.taken_out = 0
 				OctodogJarRules.why.clear()
 				var t0: int = Time.get_ticks_usec()
 				var gen := LevelGenerator.new()
@@ -79,19 +82,18 @@ func _run() -> void:
 				spent += rules_ms
 				builds += 1
 				wanted += config.octodog_jars
+				taken += OctodogJarRules.taken_out
 				var found: PackedStringArray = OctodogJarRules.problems(gen)
 				problems += found.size()
 				warned += 0 if gen.warnings.is_empty() else 1
 				var parts: PackedStringArray = []
-				var start: float = gen.feature_start(OctodogJarRules.FEATURE)
 				for d: Dictionary in layout.doodads:
 					if not LevelLayout.holds_enemy(d):
 						continue
 					placed += 1
 					var dog: Dictionary = layout.held_by(d)
 					var charges: int = int((dog.get("params", {}) as Dictionary).get("charges", 0))
-					parts.append("%.2f L%d x%d%s" % [float(d["start"]) / layout.length, int(d["lane"]), charges,
-						(" intro +%.0f m" % (float(d["start"]) - start)) if d.has("intro") else ""])
+					parts.append("%.2f L%d x%d" % [float(d["start"]) / layout.length, int(d["lane"]), charges])
 				# The skin's own Octodog jars: small doodads whose look is the jar, holding nothing.
 				var skin_jars: int = 0
 				var skin := config.skin as IceLabSkin
@@ -103,12 +105,13 @@ func _run() -> void:
 							skin_jars += 1
 				looks += skin_jars
 				var standing: int = LevelGenerator.feature_positions(layout, "octodog").size()
-				print("%s lanes=%d seed=%d: %d of %d [%s], %d more Octodog jars holding nothing, %d Octodogs standing, %.0f ms (%.1f in the rules), %d builds%s%s"
-					% [s.id, lanes, config.level_seed, parts.size(), config.octodog_jars, ", ".join(parts), skin_jars,
-						standing, ms, rules_ms, gen.attempts, (" WARN %s" % [gen.warnings]) if not gen.warnings.is_empty() else "",
+				print("%s lanes=%d seed=%d: %d of %d [%s], %d taken out, %d more Octodog jars holding nothing, %d Octodogs standing, %.0f ms (%.1f in the rules), %d builds%s%s"
+					% [s.id, lanes, config.level_seed, parts.size(), config.octodog_jars, ", ".join(parts),
+						OctodogJarRules.taken_out, skin_jars, standing, ms, rules_ms, gen.attempts,
+						(" WARN %s" % [gen.warnings]) if not gen.warnings.is_empty() else "",
 						(" PROBLEMS %s" % [found]) if not found.is_empty() else ""])
 				if OctodogJarRules.debug:
 					print("  turned down: %s" % [OctodogJarRules.why])
-	print("%d builds: %d of %d jars, %d of the skin's empty Octodog jars, %d problems, %d builds with warnings; the rules took %.1f ms on average and %.1f at most"
-		% [builds, placed, wanted, looks, problems, warned, spent / maxf(builds, 1.0), slowest])
+	print("%d builds: %d of %d jars, %d taken out, %d of the skin's empty Octodog jars, %d problems, %d builds with warnings; the rules took %.1f ms on average and %.1f at most"
+		% [builds, placed, wanted, taken, looks, problems, warned, spent / maxf(builds, 1.0), slowest])
 	quit()
