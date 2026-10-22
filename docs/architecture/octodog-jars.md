@@ -67,8 +67,10 @@ pulsing or powered fence), every front that fits is found; each is ranked by wha
 put back (`_in_way`, from the lane that takes the fewest out), the fewest first, then the nearest a seeded aim; the best
 `ROOM_TRIES` are tried for real, their pieces taken out (never the last of a feature or the first of one the level
 introduces: `_features_kept`) and put back if the spot doesn't fit after all. Measured over 63 builds of the Ice Lab's
-levels (their own seeds and six others, 3, 5 and 6 lanes): a jar in every one, its dog making 2 or 3 charges in three
-builds of four, 4 to 6 pieces taken out on average; about 0.1 s of a level's build (`tools/measure/octodog_jars.gd`).
+levels (their own seeds and six others, 3, 5 and 6 lanes): a jar in all but one (Relay Station at 3 lanes on seed 9001,
+whose build warns: no spot left room for even one charge), its dog making 2 or 3 charges in three builds of four, 5.4
+pieces taken out on average; about 0.1 s of a level's build, and no more builds of it than without the jars (36 of
+them built both ways; `tools/measure/octodog_jars.gd`, `--without`).
 
 **On the track.** `TrackBuilder` builds a jar as any doodad (a `DashBreakable` over its entry), its look the skin's
 `held_doodad_look`. The director spawns the dog as any enemy; `Octodog._build` finds its jar (`LevelLayout.holder_of`) and
