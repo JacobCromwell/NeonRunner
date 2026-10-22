@@ -2,7 +2,7 @@
 
 Part of the architecture notes; the index is [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).
 
-## Teleporters (the Ice Lab)
+## Teleporters (the Ice Lab and the Golden Zone)
 
 Task Q4; GDD §5, Zone 9 (the owner, October 21, 2026): "a teleporter is a square pad with a look all its own, with a
 green, slightly space-age antenna on it. Touching it teleports the runner to an output pad further down the track"; "the
@@ -15,7 +15,11 @@ the pad's look without the antenna, the runner keeps their speed and arrives run
 the track in between and what it holds, no protection after landing but never a landing straight into a hazard, a blink
 about once a second). The level features are `teleporter` (Relay Station introduces it from 0.15 of the level, Specimen
 Vault keeps it) and `teleporter_blinking` (Specimen Vault, from 0.15); a level's counts are `LevelConfig.teleporters` (3 and 4)
-and `blinking_teleporters` (2 of Specimen Vault's), DESIGN-TBD. Every number is `TeleporterTuning`'s
+and `blinking_teleporters` (2 of Specimen Vault's), DESIGN-TBD. **The Golden Zone** (task Q6; GDD §5, Zone 9, "Also in the
+Golden Zone", the owner, October 22, 2026: "we should add the teleporters to the golden zone"): Golden 1-3 list both
+features with no start of their own (the Ice Lab taught them), 3 teleporters each, 1 of them blinking (DESIGN-TBD,
+`docs/questions/q6.md`), in the teleporter's own look (neither Golden skin overrides it); the falling gantryways and the
+Octodog jars stay in the Ice Lab. Every number is `TeleporterTuning`'s
 (`data/tuning/teleporters.tres`, F6 "Teleporters" in a level that has them; times are seconds of run at the level's speed,
 or at the fastest a runner comes onto a pad: the run speed, the dash's bonus and the most a speed pad's or a ramp's boost
 adds, `TeleporterRules.fastest`, so a faster zone keeps every window).
@@ -60,8 +64,11 @@ by lane and by hop, counted once per plan):
   gap's stretch with its margins (`WallRunGapPlacement.keep_out`: the wall-run gaps are placed first and their own re-check
   counts every rule's keep-outs in every lane), falling gantryway (its pillar's lead to past its walkway and calm stretch),
   fenced ceiling's pick (task I4: its hull's `pick`, from its first pad's run-up to its last safe pad, which plays out
-  alone; task Q4's review found teleporters in picks before every_keeps listed them), Octodog's planned charge, nor what
-  the other rules keep in every lane: nothing that holds the track around the runner is under way as they touch the pad
+  alone; task Q4's review found teleporters in picks before every_keeps listed them), Octodog's planned charge, Resonator's
+  planned pulse (task Q6, `resonator_pulses`: from PULSE_BACK before its warning to ResonatorRules.PLAN_MARGIN past where
+  its wave meets the runner; a pulse waits for clear floor by a calm stretch as by a doodad, and the Resonators' re-check
+  asks every planned one again), nor what the other rules keep in every lane (a Gilded Sentinel's turn, a Bad Dream's
+  chase, an Enforcer Truck's showing window among them): nothing that holds the track around the runner is under way as they touch the pad
   or arrive.
 - **the introduction** (where the level gives the feature a start: Relay Station; GDD §5: "the first teleporter is safe"):
   one output pad straight ahead in P, its landing intro_landing_seconds long at the run speed, no enemy using the floor in
@@ -76,8 +83,25 @@ the level past the introductions, a part each at a seeded spot (the best fair sp
 an early stop), then the best of the rest; of the fixed ones past an introduction, one is given two output pads (so a level
 that brings in fixed antennas shows one's light; it stands with one where two find no room), each other one two_output_share.
 Its light: a seeded side; a blinking one
-`blink_seconds` a side from a seeded `phase`. The rules run after every other feature's (RUN_AFTER, the gantryways' among
-them), on their own random stream: a level without the feature builds byte for byte as before. About 40 ms of a build.
+`blink_seconds` a side from a seeded `phase`. A blinking one the level asks for that finds no room of its own (task Q6: a
+level with no introduction, the Golden Zone's crowded ones, where the fixed ones took the spots that fit two output pads)
+has a fixed one with two output pads blink instead (`_blink_fixed`), or, where every one standing has one output pad, one
+of them gives way to it and stands again where it can (`_blink_in_place_of`). The rules run after every other feature's
+(RUN_AFTER, the gantryways' among them), on their own random stream: a level without the feature builds byte for byte as
+before. About 40 ms of a build.
+
+**Giving way** (task Q6, the Golden Zone's crowded levels; DESIGN-TBD, `docs/questions/q6.md` 2). Placed with the rules, the
+teleporters take room the passes after them would have had; where that leaves a level short of what it asks for, they give
+way to it, as its wall-run gaps do: `set_aside` takes every one but an introduction out of the layout (with
+`keep_blinking`, but its first blinking one), the pass tries again, and `put_back` stands each one again where it stood if
+it keeps every rule there (`problems`) and its windows reach none of the zones the pass hands over (what it is about to
+add that isn't in the layout yet), else, with `move`, at its best fair spot of its kind nearest where it stood (`plan_for`
+with those zones kept in every lane, `extra`), else not at all (fewer, as a level that leaves no room has; a blinking one is
+kept where one can be, and a level left with none warns). `WideGapPlacement.place` does so where the level is short of its
+wider gaps once its wall-run gaps gave way (the zones: each wider gap's, from its take-off margin to its landing margin and a
+doodad's push's lead past that, which a calm stretch keeps off as a doodad does, `blocker`), before the fill pass, so a
+teleporter may move; `DashWallRules.after_doodads` where it is short of its dash walls, after the fill pass and the zone
+doodads, so one only comes back where it stood (they kept off it only there). A level that needs neither builds as before.
 
 **What keeps off it after the rules.** `doodad_keep_outs` (the danger density pass, the wider gaps, the cyborgs planted in
 charge paths, the zone doodads) and `fill_keep_outs` (the fill pass): its windows, every lane and lane by lane, each widened
@@ -88,7 +112,14 @@ rule's keep-outs in its own windows (a falling gantryway's, `GantrywayRules.prob
 (task Q4's gate found the keep-outs a fifth of a metre into gantryways' windows before the plan kept the margin).
 `LevelLayout.doodad_between` counts its **calm stretches** (`calm`: the approach in P, each landing in its output pad's lane,
 an introduction's landing in every lane): every enemy that holds an attack by a doodad holds it there too (a cyborg's bolts,
-an Octodog's lunge, a heli drone's barrage, the hover truck's cannon), on every attempt, and no credit lies there.
+an Octodog's lunge, a heli drone's barrage, the hover truck's cannon; and the Golden Zone's, task Q6: a Resonator's pulse,
+`Resonator.pulse_clear`, in any lane), on every attempt, and no credit lies there. The Enforcer Truck, which chases from
+behind and so can't be kept off them by the generator, holds a volley while a calm stretch lies in the runner's lane before
+its last bolt (`EnforcerTruck._teleporter_in_reach`: lining up a pad, just landed) and never shows itself in a pad's lane
+nor its way around over the pad stretch (`EnforcerTruckRoom`: what the runner may need, `soft`); a teleport leaves it behind
+(`EnemyDirector.runner_teleported`), as it leaves a pacing Resonator, a Tithe Collector or a Buzz Overdrive rolling behind
+the landing. The Gilded Sentinels' turns, the Bad Dreams' chases, the hover trucks' lanes and stays, the floor cuts, the
+treasure stashes and the fenced ceilings keep the teleporters off through the rules' keep-outs (above).
 
 **On the track.** TrackBuilder builds a Teleporter in the chunk where its pad stands (`_build_teleporter`; it keeps that
 chunk until its output pads are behind the runner): its pad's trigger (an Area3D on LAYER_TRIGGER over the square, kind
@@ -139,21 +170,35 @@ anti-grav pads') nor anything across a lane (a fence's). ShaderWarmup draws ever
 HintDirector's `_first_at`: the first pad, the first blinking one's); `LayoutChecks.check_teleporters` (in `check_layout`)
 re-checks every finished layout on its own (the way around and every landing clear, the calm stretches, the landing built
 while the runner is on the pad, then `TeleporterRules.problems()`); the weekly challenge (`teleporters` and
-`blinking_teleporters` are `WeeklyChallenge.GOLDEN_FIELDS`, so an Ice Lab week stands Sentinel Row's counts, 3 and 1);
-endless mode (the zone's last level's counts over its 20 minutes, no introduction: endless gives no feature a start). The
-campaign's schedule lists both (`test_campaign`: FIRST_LEVEL, the Ice Lab's NEW_MECHANICS, LEFT_OUT for the Golden Zone,
-DESIGN-TBD); quick play takes `--features=teleporter[,teleporter_blinking]`.
+`blinking_teleporters` are `WeeklyChallenge.GOLDEN_FIELDS`, so an Ice Lab week and, since task Q6, the Golden Zone's stand
+Sentinel Row's counts, 3 and 1, and no other zone's week any: their levels don't list the feature); endless mode (the zone's
+last level's counts over its 20 minutes, no introduction: endless gives no feature a start; from the Golden Zone the Golden
+Palace's). The campaign's schedule lists both (`test_campaign`: FIRST_LEVEL, the Ice Lab's NEW_MECHANICS; the Golden Zone
+keeps them since task Q6, so LEFT_OUT no longer lists them); quick play takes `--features=teleporter[,teleporter_blinking]`.
+The campaign's played runs (`tools/measure/attack_watch.gd`'s runner, which the suites playing whole Golden levels use) go
+around every teleporter (`_go_around`): a teleport would skip what they watch.
 
 **Tests.** `test_teleporters` (Tests, features: the layout, the generator over Relay Station and Specimen Vault, wall-run gaps,
 endless mode, the track, the light, real physics from every inner lane at 3, 5 and 6 lanes, what a teleport skips, the flash,
 every campaign teleporter on real physics on a cut of its level, the skins, the numbers), `test_ice_lab_levels` (every Ice
 Lab build stands its counts, each fair), `test_generator`'s `_test_teleporters` (quick play's level with the feature over
 lane counts, seeds, difficulties and both run speeds), `test_campaign`, `test_hints`, `test_audio`, the weekly suites;
-`test_ice_lab_skin` leaves a teleporter's parts out of its whole-level scenery checks. DESIGN-TBD: `docs/questions/q4.md`.
+`test_ice_lab_skin` leaves a teleporter's parts out of its whole-level scenery checks, and so do `test_golden_skin` and
+`test_golden_palace_skin` (task Q6). Task Q6's in `test_teleporters`: the Golden Zone's own builds (`_test_golden`: their
+counts, no introduction, each fair, the Resonators', the Sentinels', the Enforcer Trucks' and the dash walls' re-checks
+beside them, their wider gaps and dash walls), giving way and the blinking fallbacks (`_test_give_way`), endless mode in the
+Golden Zone, the Golden enemies' holds by a calm stretch and AttackWatch's runner going around (`_test_golden_enemies`),
+and every Golden teleporter on real physics (`_test_campaign`). DESIGN-TBD: `docs/questions/q4.md`, `docs/questions/q6.md`.
 
 **Measured** (`tools/measure/teleporters.gd`, task Q4): Relay Station and Specimen Vault at 3, 5 and 6 lanes on their own
 seeds and six others (42 builds) stand 147 of 147, 42 of 42 blinking, with no problems (the falling gantryways' re-check
 too); on their own seeds the introductions land 0.15 to 0.21 of the level in (on other seeds a 3-lane Specimen Vault's
 blinking one may find no quiet spot in its window and come later, 0.35 to 0.61: endless and weekly levels give no feature
 a start). The rules take about 39 ms of a build on average and 60 ms at most, and about 0.2 s of an endless-mode Ice Lab
-build (which takes about 90 s here, with them or without them).
+build (which takes about 90 s here, with them or without them). Task Q6 (`--rules`; the Golden Zone's three levels at 3, 5 and
+6 lanes on their own seeds and on the 25 other seeds the suites build them on, 234 builds): 682 of 702 teleporters stand
+(every one on the levels' own seeds), 233 of 234 builds have a blinking one (Golden 1 at 3 lanes on seed 7102 has room for a
+single one-output teleporter and warns), and no re-check finds anything (the teleporters', the Resonators', the Sentinels',
+the Enforcer Trucks', the dash walls'); no build has fewer wider gaps than without its teleporters, and 4 have one dash wall
+fewer (1 of 2), none none. The rules take about 37 ms of a Golden build on average; an endless Golden level builds in about
+37 s here.

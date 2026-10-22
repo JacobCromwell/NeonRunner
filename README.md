@@ -196,7 +196,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       light blinks left and right about once a second: the side lit the moment you touch the pad decides where you land
       (two of its four, placeholder counts). Then straight on to the Golden Zone (no boss). Like the Terminal's, the
       Ice Lab's levels sit between their neighbours in difficulty, off the campaign's curve.
-  23. Golden 1 *Gilded Canals*: the Resonator.
+  23. Golden 1 *Gilded Canals*: the Resonator; and the Ice Lab's teleporters return (task Q6), fixed and blinking alike
+      in all three of the zone's levels, with no introduction of their own (three a level, one of them blinking:
+      placeholder counts) and in the teleporter's own look. Where a level is crowded they give way to its wider gaps
+      and dash walls (fewer of them, then). The falling gantryways and the Octodog jars stay in the Ice Lab.
   24. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
   25. Golden 3 *The Golden Palace*, then the final boss.
 
@@ -702,11 +705,14 @@ lane, the introduction, both lanes beside it kept clear, the cyborg planted unde
 finds (nothing), and what they cost a build (`godot --headless -s res://tools/measure/gantryways.gd -- [--levels=ice_lab/1]
 [--lanes=3,5,6] [--seeds=N] [--why]`).
 
-`tools/measure/teleporters.gd` builds every campaign level with teleporters (Relay Station and Specimen Vault) on its own
-seed and others at 3, 5 and 6 lanes, with and without them: where each one stands (its pad's front as a share of the
-level, its lane and output lanes, its kind: one output pad, a fixed light's side, blinking; how far it leads; the
-introductions), what the generator's own re-check finds (nothing), and what they cost a build (`godot --headless -s
-res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--why]`).
+`tools/measure/teleporters.gd` builds every campaign level with teleporters (Relay Station, Specimen Vault and the Golden
+Zone's three) on its own seed and others at 3, 5 and 6 lanes, with and without them: where each one stands (its pad's
+front as a share of the level, its lane and output lanes, its kind: one output pad, a fixed light's side, blinking; how
+far it leads; the introductions), what the generator's own re-check finds (nothing), and what they cost a build; with
+`--rules`, what the Golden Zone's own features re-check of the same build (the Resonators', the Gilded Sentinels', the
+Enforcer Trucks', the dash walls': nothing) and its wider gaps and dash walls with and without them (`godot --headless -s
+res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,golden/1] [--lanes=3,5,6] [--seeds=N] [--seed-list=a,b]
+[--why] [--rules]`).
 
 `tools/measure/octodog_jars.gd` builds every campaign level with Octodog jars (the Ice Lab's) on its own seed and others
 at 3, 5 and 6 lanes: where each jar that releases an Octodog stands (its front as a share of the level, its lane, the

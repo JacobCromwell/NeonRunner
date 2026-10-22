@@ -22,7 +22,8 @@ extends TestSuite
 ## the Octodogs and the heli drones, no other earlier enemy and no dash walls (ICE_LAB_LEAVES_OUT), nothing new until its
 ## mechanics' tasks (Q3, Q4) and its two new enemies come, and every other level and boss configured exactly as in the
 ## campaign before it; a save from before it keeps the Golden Zone it had open (Profile version 6). test_ice_lab_levels
-## checks its levels' own rules.
+## checks its levels' own rules. The Golden Zone keeps the Ice Lab's teleporters, fixed and blinking (task Q6; the owner,
+## October 22, 2026), but not its falling gantryways nor its Octodog jars (LEFT_OUT); test_teleporters checks its builds.
 
 ## The zones in order and their level counts (GDD §5; the Casino added as Zone 4 by the owner, October 8,
 ## 2026, the Beach as Zone 6, between Corporate and the Dead Zone, October 9, the Terminal as Zone 8, between the
