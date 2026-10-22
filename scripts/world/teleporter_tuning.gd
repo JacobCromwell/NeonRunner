@@ -52,7 +52,8 @@ const PATH: String = "res://data/tuning/teleporters.tres"
 ## Seconds of run, at the fastest a runner comes onto a pad, before its front that its lane and the lane beside it on
 ## its `side` (the way around it) hold nothing: a runner who finds themselves in its lane (a doodad's push, a ceiling's
 ## end) has time to see it and switch out, and no attack is timed onto them as they line it up (LevelLayout
-## .teleporter_between). A jump over it lands on whole floor: its lane holds nothing for a jump past its far end.
+## .teleporter_between). Both lanes hold nothing for a lane switch's room past its far end too
+## (LevelGenerator.doodad_lane_room), so a runner who switches out at the last moment lands on whole floor.
 @export_range(0.3, 2.0, 0.05, "suffix:s") var approach_seconds: float = 0.8
 ## Seconds of run, at the fastest a runner arrives, past each output pad's front that its lane holds nothing (no hole,
 ## fence, pad, doodad or floor enemy) and no attack lands in any lane: never a landing straight into a hazard, a gap or

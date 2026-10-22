@@ -179,13 +179,7 @@ func update(player_distance: float, level_time: float) -> void:
 			(chunk["node"] as Node3D).queue_free()
 			_chunks.erase(index)
 	_dress_some(player_distance)
-	# Teleporters (task Q4): their antennas' light on the level clock (Teleporter.tick).
-	for i: int in range(_teleporter_nodes.size() - 1, -1, -1):
-		var tp: Teleporter = _teleporter_nodes[i]
-		if not is_instance_valid(tp) or tp.is_queued_for_deletion():
-			_teleporter_nodes.remove_at(i)
-		else:
-			tp.tick(level_time)
+	light_teleporters(level_time)
 	# Floor cuts: a hold after a block that's over lets go (FloorCut.tick), before the player moves.
 	for key: String in _cut_nodes.keys():
 		var cut: Variant = _cut_nodes[key]
@@ -332,6 +326,18 @@ func teleporter_for(tp: Dictionary) -> Teleporter:
 		if is_same(node.entry, tp):
 			return node
 	return null
+
+
+## Draws every built teleporter's antenna light for level time `level_time` (task Q4; Teleporter.tick): from update(),
+## and from RunWorld once the runner's step has moved the level clock on (RunWorld._process), so a frame shows the light
+## a touch at that moment decides by.
+func light_teleporters(level_time: float) -> void:
+	for i: int in range(_teleporter_nodes.size() - 1, -1, -1):
+		var tp: Teleporter = _teleporter_nodes[i]
+		if not is_instance_valid(tp) or tp.is_queued_for_deletion():
+			_teleporter_nodes.remove_at(i)
+		else:
+			tp.tick(level_time)
 
 
 ## Every teleporter built and still on the track (tests, review tools), in track order.

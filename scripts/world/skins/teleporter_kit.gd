@@ -34,8 +34,8 @@ const MAST_HEIGHT: float = 2.25
 const BAR_HEIGHT: float = 2.0
 const BAR_HALF: float = 0.62
 const RING_HEIGHT: float = 1.45
-## How far in from the pad's far edge the antenna stands (metres).
-const ANTENNA_INSET: float = 0.18
+## How far in from the pad's far edge the antenna's mast stands (metres): its halo ring stays over the pad.
+const ANTENNA_INSET: float = 0.32
 ## Its glow material's fade (metres from the camera): whole to fade_begin, gone by fade_end.
 const GLOW_FADE := Vector2(40.0, 220.0)
 
@@ -192,7 +192,7 @@ static func lamp_mesh(colors: PackedColorArray = PackedColorArray(), beacon: boo
 	var g: MeshLayer = batch.layer(glow_material())
 	var r: float = 0.07 if beacon else 0.095
 	s.box(Vector3.ZERO, Vector3(r * 2.0, r * 2.0, r * 2.0), lamp, 1.8)
-	var halo: float = 0.42 if beacon else 0.62
+	var halo: float = 0.42 if beacon else 0.52
 	g.rect(Vector3(-halo, -halo, r + 0.01), Vector3(halo * 2.0, 0.0, 0.0), Vector3(0.0, halo * 2.0, 0.0), lamp, 0.9,
 		MeshKit.SHAPE_RADIAL)
 	var mesh: ArrayMesh = batch.to_mesh()

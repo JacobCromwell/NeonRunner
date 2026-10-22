@@ -199,6 +199,13 @@ func _physics_process(_delta: float) -> void:
 	director.update(player.distance)
 
 
+## Task Q4: the teleporters' antenna lights drawn for the level time the runner's step reached (the track's update above
+## comes before it), so each frame shows the side a touch at that moment decides by (Player._teleport).
+func _process(_delta: float) -> void:
+	if player != null and not layout.teleporters.is_empty():
+		track.light_teleporters(player.elapsed)
+
+
 func _on_player_event(kind: StringName) -> void:
 	play_sfx(EVENT_SOUNDS.get(kind, kind))
 

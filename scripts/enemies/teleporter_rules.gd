@@ -862,7 +862,7 @@ static func windows_of(gen: LevelGenerator, tp: Dictionary, t: TeleporterTuning 
 ## What the passes after the rules keep off (LevelGenerator.rules_doodad_keep_outs: the danger density pass, the wider
 ## gaps, the cyborgs planted in charge paths, the zone doodads): every teleporter's pad stretch and each of its landings in
 ## every lane, and its lanes there ({lane, from, to}: its pad's, the side lane, each output pad's, and the lanes beside that
-## a lane switch's room past its front).
+## a lane switch's room past its front), each widened by `edge` at both ends.
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if gen.layout.teleporters.is_empty():
@@ -870,34 +870,43 @@ static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var t: TeleporterTuning = tuning()
 	var pt: PowerupTuning = powerups()
 	var room: float = gen.doodad_lane_room()
+	var e: float = edge(gen)
 	for tp: Dictionary in gen.layout.teleporters:
 		var windows: Dictionary = windows_of(gen, tp, t, pt)
 		for l: Variant in windows:
 			for span: Vector2 in windows[l]:
 				if int(l) < 0:
-					out.append({"from": span.x, "to": span.y, "type": FEATURE})
+					out.append({"from": span.x - e, "to": span.y + e, "type": FEATURE})
 				elif int(l) < gen.layout.lane_count:
-					out.append({"lane": int(l), "from": span.x, "to": span.y, "type": FEATURE})
+					out.append({"lane": int(l), "from": span.x - e, "to": span.y + e, "type": FEATURE})
 		for o: Dictionary in tp.get("outputs", []):
 			var at: float = float(o["at"])
 			for by: int in [int(o["lane"]) - 1, int(o["lane"]) + 1]:
 				if by >= 0 and by < gen.layout.lane_count:
-					out.append({"lane": by, "from": at - LANDING_BACK, "to": at + room, "type": FEATURE})
+					out.append({"lane": by, "from": at - LANDING_BACK - e, "to": at + room + e, "type": FEATURE})
 	return out
 
 
 ## What the fill pass keeps off (LevelGenerator.rules_fill_keep_outs, every lane): every teleporter's pad stretch and each
-## of its landings.
+## of its landings, each widened by `edge` at both ends.
 static func fill_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	if gen.layout.teleporters.is_empty():
 		return out
 	var t: TeleporterTuning = tuning()
 	var pt: PowerupTuning = powerups()
+	var e: float = edge(gen)
 	for tp: Dictionary in gen.layout.teleporters:
 		for span: Vector2 in windows_of(gen, tp, t, pt).get(-1, []):
-			out.append(span)
+			out.append(Vector2(span.x - e, span.y + e))
 	return out
+
+
+## How much wider than a window the keep-outs handed to the passes after the rules are at each end (metres): half a
+## fence's depth and TOUCH. A pass that keeps a fence's `at` (a point) out of a keep-out may stand it right at the
+## keep-out's end (the fill pass starts a filler there), and its body reaches half its depth back in.
+static func edge(gen: LevelGenerator) -> float:
+	return gen.tuning.fence_depth * 0.5 + TOUCH
 
 
 ## Every placement rule a finished level's teleporters break (see the header), for the tests: [] if none. Run on the
