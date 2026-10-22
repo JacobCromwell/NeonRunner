@@ -7,7 +7,8 @@ extends Node3D
 ## (LevelLayout.teleporters), its input pad's trigger (`pad`: an Area3D on TrackBuilder.LAYER_TRIGGER over the square, of
 ## kind &"teleporter", carrying its entry as META; a runner on the floor whose feet touch it is teleported: Player._teleport),
 ## the looks the skin dresses (its pad and antenna on `pad`, ZoneSkin.teleporter_pad and teleporter_antenna; each output
-## pad, `outputs`, in the pad's look without the antenna), and its antenna's lamps, which tick() lights on the level clock:
+## pad, `outputs`, in the pad's look without the antenna and with a marker over it, ZoneSkin.teleporter_output), and its
+## antenna's lamps, which tick() lights on the level clock:
 ## the side lit_side() says, fading over to the other side over TeleporterTuning.blink_fade_seconds centred on each change
 ## (the slower reduced_blink_fade_seconds with Reduced flashing), so the brighter lamp is always the side a touch would
 ## take. Nothing about it is a hazard: no hitbox, no collision but its trigger. TrackBuilder builds it in the chunk where
@@ -142,7 +143,8 @@ static func output_at(tp: Dictionary, level_time: float) -> Dictionary:
 
 ## A sample of every part of a teleporter's look as `skin` dresses them, under `parent` (ShaderWarmup: drawn once while
 ## the level loads, so the renderer compiles them before the first one comes): an input pad with its antenna and both
-## lamps and the beacon lit, and an output pad. Nothing physical: no trigger. Returns its root (freed with `parent`).
+## lamps and the beacon lit, and an output pad with its marker. Nothing physical: no trigger. Returns its root (freed with
+## `parent`).
 static func warm_look(parent: Node3D, skin: ZoneSkin, geo: TrackGeometry, t: MovementTuning) -> Node3D:
 	var root := Node3D.new()
 	root.name = "TeleporterSample"
@@ -160,5 +162,5 @@ static func warm_look(parent: Node3D, skin: ZoneSkin, geo: TrackGeometry, t: Mov
 	var output := Node3D.new()
 	output.position = Vector3(geo.lane_width, 0.0, 0.0)
 	root.add_child(output)
-	skin.teleporter_pad(output, box, 1)
+	skin.teleporter_output(output, box, 1)
 	return root

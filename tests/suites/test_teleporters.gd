@@ -861,13 +861,33 @@ func _test_skins() -> void:
 					% [mi.name, aabb, tag])
 				_check_glow(mi, "its antenna's %s %s" % [mi.name, tag])
 			pad.free()
+			# An output pad: the pad's look, and over it what makes it read from afar, above a runner's head, within its
+			# square across and along (no column of light from the floor, nothing across the lane).
+			var output := Node3D.new()
+			skin.teleporter_output(output, size, look_seed)
+			var flat: int = 0
+			var over: int = 0
+			for n: Node in output.find_children("*", "MeshInstance3D", true, false):
+				var mi := n as MeshInstance3D
+				var aabb: AABB = mi.transform * mi.mesh.get_aabb()
+				_check_glow(mi, "its output pad's %s %s" % [mi.name, tag])
+				if aabb.end.y <= floor_y + 0.15:
+					flat += 1
+					continue
+				over += 1
+				check(aabb.position.y >= floor_y + 1.4 and AABB(Vector3(-side * 0.5, floor_y, -side * 0.5), Vector3(side, 3.2, side))
+					.grow(0.01).encloses(aabb), "its output pad's %s floats over its square, above a runner's head (%s) %s"
+					% [mi.name, aabb, tag])
+			check(flat >= 1 and over >= 1, "its output pad lies flat with a marker over it (%d, %d) %s" % [flat, over, tag])
+			output.free()
 		check(TeleporterKit.GLOW_FADE.y >= 200.0, "its glow reads from 200 m off, as an output pad from its teleporter's approach")
 	# The warm-up's sample: every part, nothing physical.
 	var stage := Node3D.new()
 	var sample: Node3D = Teleporter.warm_look(stage, GreyboxSkin.new(), TrackGeometry.new(5, tuning), tuning)
 	var meshes: int = sample.find_children("*", "MeshInstance3D", true, false).size()
-	check(meshes >= 6 and sample.find_children("*", "CollisionObject3D", true, false).is_empty(),
-		"the warm-up draws its pad, antenna, three lamps and an output pad (%d meshes), with nothing that collides" % meshes)
+	check(meshes >= 7 and sample.find_children("*", "CollisionObject3D", true, false).is_empty(),
+		"the warm-up draws its pad, antenna, three lamps and an output pad with its marker (%d meshes), with nothing that collides"
+		% meshes)
 	stage.free()
 
 

@@ -9,9 +9,11 @@ extends RefCounted
 ##
 ## - The pad: a square steel plate, flush with the floor, a raised rim, a glowing green square frame inset in it, a grid of
 ##   thin green lines over its middle (four by four cells) around a glowing hexagonal emitter, a light at each corner, and
-##   a soft green halo on the floor around it that the distance never fogs out before 220 m (kit_glow fades by itself), so
-##   an output pad reads from the start of its teleporter's approach. Square, green and gridded, nothing like the
-##   anti-grav pad (cyan rings and a light column) or a speed pad (arrows).
+##   a soft green halo on the floor around it that the distance never fogs out before 220 m (kit_glow fades by itself).
+##   Square, green and gridded, nothing like the anti-grav pad (cyan rings and a light column) or a speed pad (arrows).
+## - An output pad: the same pad, without the antenna, and a marker floating over it at the antenna's lamps' height (the
+##   pad's hexagonal emitter again, standing up as a glowing ring facing the runner, and its halo), so it reads from the
+##   start of its teleporter's approach, where a flat pad down the track is a sliver.
 ## - The antenna, at the input pad's far edge, the side away from the runner (who's teleported as their feet touch the
 ##   pad's near edge, so they never reach it): a slim dark mast on a round foot, ringed with green bands, a green halo ring
 ##   two thirds up (the "space-age" look), a crossbar near the top with a lamp housing at each end (dark glass when out),
@@ -36,6 +38,10 @@ const BAR_HALF: float = 0.62
 const RING_HEIGHT: float = 1.45
 ## How far in from the pad's far edge the antenna's mast stands (metres): its halo ring stays over the pad.
 const ANTENNA_INSET: float = 0.32
+## The marker over an output pad (marker_mesh): its middle's height over the floor (over a runner's head, level with the
+## antenna's lamps) and its ring's radius (metres).
+const MARKER_HEIGHT: float = 2.15
+const MARKER_RADIUS: float = 0.3
 ## Its glow material's fade (metres from the camera): whole to fade_begin, gone by fade_end.
 const GLOW_FADE := Vector2(40.0, 220.0)
 
@@ -174,7 +180,42 @@ static func antenna_mesh(size: Vector3, look_seed: int, colors: PackedColorArray
 		s.box(Vector3(side * BAR_HALF, bar_y, z), Vector3(0.17, 0.17, 0.17), off)
 	s.prism(Vector3(0.0, y0 + MAST_HEIGHT, z), 0.06, 0.08, 6, green, 1.0)
 	# A faint glow down its mast's bands, toward the runner.
-	g.rect(Vector3(-0.3, y0 + 0.35, z + 0.08), Vector3(0.6, 0.0, 0.0), Vector3(0.0, 1.4, 0.0), green, 0.18, MeshKit.SHAPE_FLAT)
+	g.rect(Vector3(-0.17, y0 + 0.35, z + 0.08), Vector3(0.34, 0.0, 0.0), Vector3(0.0, 1.4, 0.0), green, 0.1, MeshKit.SHAPE_FLAT)
+	var mesh: ArrayMesh = batch.to_mesh()
+	_antennas[key] = mesh
+	return mesh
+
+
+## `body` (an output pad's node, in a pad's box of `size`) dressed with the marker floating over it (marker_mesh), so the
+## output pad reads from its teleporter's approach: a flat pad far down the track is a sliver.
+static func dress_marker(body: Node3D, size: Vector3, look_seed: int, colors: PackedColorArray = PackedColorArray()) -> MeshInstance3D:
+	return MeshBatch.add_instance(body, marker_mesh(size, look_seed, colors), "Marker")
+
+
+## The marker floating over an output pad (MARKER_HEIGHT over the floor, over its middle), in `colors` (as pad_mesh's): the
+## pad's hexagonal emitter again, standing up as a glowing ring facing the runner, a smaller hexagon lit in it, and its
+## halo; never a column of light (the anti-grav pads') nor anything across the lane (a fence's). Cached.
+static func marker_mesh(size: Vector3, look_seed: int, colors: PackedColorArray = PackedColorArray()) -> ArrayMesh:
+	var key: String = var_to_str(["marker", size, posmod(look_seed, 2), colors])
+	if _antennas.has(key):
+		return _antennas[key]
+	var green: Color = _color(colors, 2, GREEN)
+	var lamp: Color = _color(colors, 3, LAMP)
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(solid_material())
+	var g: MeshLayer = batch.layer(glow_material())
+	var c := Vector3(0.0, -size.y * 0.5 + MARKER_HEIGHT, 0.0)
+	var r: float = MARKER_RADIUS
+	for k: int in 6:
+		var a0: float = TAU * (float(k) + 0.5) / 6.0
+		var a1: float = TAU * (float(k) + 1.5) / 6.0
+		s.box_xform(_bar(c + Vector3(cos(a0), sin(a0), 0.0) * r, c + Vector3(cos(a1), sin(a1), 0.0) * r, 0.05), green, 1.1)
+	# The small hexagon lit in it, standing up: the unit prism's axis along the track, its faces toward the runner.
+	var hr: float = r * 0.42
+	s.prism_xform(Transform3D(Basis(Vector3(hr, 0.0, 0.0), Vector3(0.0, 0.0, 0.04), Vector3(0.0, -hr, 0.0)),
+		c + Vector3(0.0, 0.0, -0.02)), 6, green.lerp(lamp, 0.4), 1.3)
+	g.rect(c + Vector3(-r * 2.0, -r * 2.0, 0.05), Vector3(r * 4.0, 0.0, 0.0), Vector3(0.0, r * 4.0, 0.0), green, 0.55,
+		MeshKit.SHAPE_RADIAL)
 	var mesh: ArrayMesh = batch.to_mesh()
 	_antennas[key] = mesh
 	return mesh

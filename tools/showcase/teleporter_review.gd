@@ -130,7 +130,11 @@ func _ready() -> void:
 	var landing: float = TeleporterRules.landing_length(gen, tt, pt)
 	var hops: PackedFloat32Array = tt.hops()
 	var land: float = _first + hops[hops.size() / 2] * t.run_speed
-	var lanes_out: Array[int] = [lane] if outputs == 1 else [0, lanes - 1]
+	var lanes_out: Array[int] = []
+	if outputs == 1:
+		lanes_out.append(lane)
+	else:
+		lanes_out.append_array([0, lanes - 1])
 	var outs: Array[Dictionary] = []
 	var calm: Array = [[lane, _first - approach, _first + pad]]
 	for o: int in lanes_out:
@@ -190,6 +194,8 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	if world == null or world.player == null:
+		return
 	var player: Player = world.player
 	while not _pending.is_empty() and player.distance >= float(_pending[0][0]):
 		var action: StringName = _pending.pop_front()[1]
@@ -202,7 +208,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	if close or take == "look":
+	if world != null and (close or take == "look"):
 		_update_fixed_camera()
 
 

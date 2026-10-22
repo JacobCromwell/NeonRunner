@@ -1272,6 +1272,16 @@ func teleporter_pad(body: Node3D, size: Vector3, look_seed: int) -> void:
 	TeleporterKit.dress_pad(body, size, look_seed, teleporter_colors())
 
 
+## An output pad (task Q4; Teleporter.outputs), in the same box as teleporter_pad(): the pad's look (teleporter_pad) and
+## what makes it read from its teleporter's approach, 50 to 80 m off, where a flat pad is a sliver (GDD §5, proposed:
+## "the output pads stand within sight ahead ... so the player can see where each one leads"): kept over the pad's square
+## and no wider than the lane, over a runner's head, glowing only green or green-white, never a column of light (the
+## anti-grav pads') nor anything across the lane (a fence's). The default adds TeleporterKit's marker floating over it.
+func teleporter_output(body: Node3D, size: Vector3, look_seed: int) -> void:
+	teleporter_pad(body, size, look_seed)
+	TeleporterKit.dress_marker(body, size, look_seed, teleporter_colors())
+
+
 ## A teleporter's antenna (task Q4; GDD §5: "a green, slightly space-age antenna on it"; "a light on the antenna, on its
 ## left or its right side, shows which one the runner lands on"), on the input pad's `body` in the same box as
 ## teleporter_pad(): standing on the pad's far half (the runner is teleported as their feet touch its near edge, so they

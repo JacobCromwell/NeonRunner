@@ -898,8 +898,8 @@ func _build_gantryway(root: Node3D, g: Dictionary) -> void:
 ## its entry as Teleporter.META: the Player teleports a runner whose feet touch it, Player._teleport) and its output pads'
 ## nodes further down the track, all in the chunk where its pad stands (which stays built until its output pads are behind
 ## the player: _add_pieces). The skin dresses its pad and its antenna on the trigger, and each output pad
-## (ZoneSkin.teleporter_pad, teleporter_antenna: the lamps' lit looks it returns are the teleporter's to light, on the level
-## clock, update()). No hitbox and no collision but its trigger: nothing about it hurts.
+## (ZoneSkin.teleporter_pad, teleporter_antenna, teleporter_output: the lamps' lit looks it returns are the teleporter's to
+## light, on the level clock, light_teleporters()). No hitbox and no collision but its trigger: nothing about it hurts.
 func _build_teleporter(root: Node3D, tp: Dictionary) -> void:
 	var node := Teleporter.new()
 	node.setup(tp, geo, tuning, TeleporterTuning.load_default())
@@ -912,7 +912,7 @@ func _build_teleporter(root: Node3D, tp: Dictionary) -> void:
 		skin.teleporter_pad(node.pad, size, look_seed)
 		node.set_lamps(skin.teleporter_antenna(node.pad, size, look_seed))
 		for out: Node3D in node.outputs:
-			skin.teleporter_pad(out, size, look_seed))
+			skin.teleporter_output(out, size, look_seed))
 	teleporter_built.emit(node)
 
 
