@@ -64,8 +64,9 @@ level's guaranteed dog doesn't count on it, and an Enforcer Truck never baits it
   and DOG_GAP between; between the jar and that floor the dog is harmless (it tumbles, runs ahead and paces) and nothing
   is kept for it;
 - what the passes after the rules keep off: the floor its charges use (its keep-out, `OctodogRules.keep_out`) and the
-  jar's own room (`jar_region`, in every lane: `doodad_keep_outs`, `fill_keep_outs`), which keeps off every wall-run
-  gap's stretch and every chase too;
+  jar's own room (`jar_region`, in every lane, a fence's depth wider either side: `doodad_keep_outs`,
+  `fill_keep_outs`), which keeps off every wall-run gap's stretch, every chase and what the rules keep in every lane too
+  (a gantryway's calm stretch and a teleporter's pad stretch and landings keep every lane's keep-outs off them);
 - in the level that introduces the jars (`_intro`: Frost Foundry gives the feature a start), the first stands within
   `jar_intro_window_seconds` of the start (test_campaign's introduction reach) where its dog's usual attack has room
   there, else the nearest past it.
@@ -91,13 +92,15 @@ doesn't fit after all. Credits stay but for those on a ceiling taken out. Measur
 (their own seeds and six others, 3, 5 and 6 lanes): a jar in 42 (every level at 5 lanes on its own seed), its dog making
 2 charges in 38 of them, 2.2 pieces taken out a jar (1.5 a build), the star credit value within 3% in 51 of the 63 (the
 rest from a ceiling taken out, or from the passes after the rules, whose random streams any change ahead of them
-reshuffles); the rules take 0.14 s of a level's build on average (0.44 s at most), and it needs no more builds than
+reshuffles); the rules take 0.13 s of a level's build on average (0.41 s at most), and it needs no more builds than
 without the jars (`tools/measure/octodog_jars.gd`; the numbers base to branch in `docs/questions/q5.md` 6 and 7).
 
 **The decoys** (`after_doodads`, called after the zone doodads, `LevelGenerator._after_doodad_rules`): from a random
 stream of their own, `octodog_jar_decoys` of the level's small zone doodads standing alone are marked `holds` and
 `decoy`, which changes nothing but their look; where the level has too few, new small doodads stand where a zone doodad
-may (`doodad_fits` over the layout as it stands), each a seeded pick among every spot that fits (`_decoy_spots`).
+may (`_decoy_fits`: `doodad_fits` over the layout as it stands, the doodads' spacing whatever the lane, and the danger
+density pass's open lane, its plan kept through `_after_doodad_rules` for them), each a seeded pick among every spot that
+fits (`_decoy_spots`). Nothing is kept for a decoy: nothing comes out of it.
 
 **On the track.** `TrackBuilder` builds a jar or a decoy as any doodad (a `DashBreakable` over its entry), its look the
 skin's `held_doodad_look`. The director spawns a held dog as any enemy; `Octodog._build` finds its jar

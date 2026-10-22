@@ -323,7 +323,8 @@ var _skin: ZoneSkin
 ## LevelLayout.DECOY; octodog_jar_rules.gd, after_doodads): dressed and broken exactly as the jars that release theirs
 ## (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't"), so "sometimes" holds in
 ## every level, whatever the skin's own variety of jars adds. Where the level has too few, new small doodads where a
-## zone doodad may stand (the doodad pass's own rules); fewer only where none fits (at three lanes, now and then).
+## zone doodad may stand (the doodad pass's own rules); fewer only where none fits (at three lanes now and then, seldom
+## at five or six).
 ## Without the `octodog_jar` feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1): 2 in Frost Foundry, 3 in
 ## Relay Station and Specimen Vault, and this default elsewhere.
 @export_range(0, 8) var octodog_jar_decoys: int = 2

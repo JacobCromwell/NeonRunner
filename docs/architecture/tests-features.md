@@ -463,7 +463,7 @@ finding each other, `copy` and `to_dict` keeping them, a held dog none of the le
 no dog and never one of the feature's jars); the generator over the Ice Lab's levels at 3, 5 and 6 lanes (up to the count
 of jars that release their dog, one in every level at 5 lanes and in two builds of three at the least, each dog's own
 plan from the release, two charges at least, its first wind-up from release_distance past the jar to jar_pace_seconds
-later, the re-check clean, no warning; the decoys, all of them at 5 and 6 lanes; Frost Foundry's jars never before the
+later, the re-check clean, no warning; the decoys, all of them at 5 lanes on the levels' own seeds; Frost Foundry's jars never before the
 feature's start; the same jars and decoys on a fresh build; none without the feature or with no jars and no decoys, which
 builds as without it, and decoys alone changing only the doodads they dress); the skin (the Ice Lab dresses a jar holding
 a dog as its Octodog jar, the look of the empty ones; other skins as any doodad); and on real physics at 3, 5 and 6 lanes,
