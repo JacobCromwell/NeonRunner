@@ -6,13 +6,15 @@ extends SceneTree
 ## variety, IceLabDoodads), how long the build took and what OctodogJarRules.problems() finds (nothing, on every build the
 ## suites check). From the project folder:
 ##   godot --headless -s res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
-## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3).
+## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3). --why counts, build by build,
+## what turned down the jar fronts tried (OctodogJarRules.debug).
 
 const OctodogJarRules = preload("res://scripts/enemies/octodog_jar_rules.gd")
 
 var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
 var _seeds: int = 3
+var _without: bool = false
 
 
 func _initialize() -> void:
@@ -29,6 +31,10 @@ func _run() -> void:
 				_lanes.append(int(s))
 		elif arg.begins_with("--seeds="):
 			_seeds = int(arg.get_slice("=", 1))
+		elif arg == "--why":
+			OctodogJarRules.debug = true
+		elif arg == "--without":
+			_without = true
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var builds: int = 0
@@ -50,7 +56,20 @@ func _run() -> void:
 				if k > 0:
 					config.level_seed = 9000 + k
 				var patterns: Array = LevelGenerator.load_for(config)
+				if _without:
+					# The same level without its jars: the builds and the time they cost.
+					var bare: LevelConfig = config.duplicate() as LevelConfig
+					bare.features = config.features.duplicate()
+					bare.features.remove_at(bare.features.find(OctodogJarRules.FEATURE))
+					bare.feature_starts = config.feature_starts.duplicate()
+					bare.feature_starts.erase(OctodogJarRules.FEATURE)
+					var t1: int = Time.get_ticks_usec()
+					var bare_gen := LevelGenerator.new()
+					var bare_layout: LevelLayout = bare_gen.generate(bare, tuning, LevelGenerator.load_for(bare))
+					print("  without the jars: %d builds, %.0f ms, %d Octodogs standing" % [bare_gen.attempts,
+						(Time.get_ticks_usec() - t1) / 1000.0, LevelGenerator.feature_positions(bare_layout, "octodog").size()])
 				OctodogJarRules.spent_usec = 0
+				OctodogJarRules.why.clear()
 				var t0: int = Time.get_ticks_usec()
 				var gen := LevelGenerator.new()
 				var layout: LevelLayout = gen.generate(config, tuning, patterns)
@@ -83,10 +102,13 @@ func _run() -> void:
 						if skin.doodads().is_octodog_jar(&"small", int(d.get("look", d.get("seed", 0)))):
 							skin_jars += 1
 				looks += skin_jars
-				print("%s lanes=%d seed=%d: %d of %d [%s], %d more Octodog jars holding nothing, %.0f ms (%.1f in the rules), %d builds%s%s"
-					% [s.id, lanes, config.level_seed, parts.size(), config.octodog_jars, ", ".join(parts), skin_jars, ms,
-						rules_ms, gen.attempts, (" WARN %s" % [gen.warnings]) if not gen.warnings.is_empty() else "",
+				var standing: int = LevelGenerator.feature_positions(layout, "octodog").size()
+				print("%s lanes=%d seed=%d: %d of %d [%s], %d more Octodog jars holding nothing, %d Octodogs standing, %.0f ms (%.1f in the rules), %d builds%s%s"
+					% [s.id, lanes, config.level_seed, parts.size(), config.octodog_jars, ", ".join(parts), skin_jars,
+						standing, ms, rules_ms, gen.attempts, (" WARN %s" % [gen.warnings]) if not gen.warnings.is_empty() else "",
 						(" PROBLEMS %s" % [found]) if not found.is_empty() else ""])
+				if OctodogJarRules.debug:
+					print("  turned down: %s" % [OctodogJarRules.why])
 	print("%d builds: %d of %d jars, %d of the skin's empty Octodog jars, %d problems, %d builds with warnings; the rules took %.1f ms on average and %.1f at most"
 		% [builds, placed, wanted, looks, problems, warned, spent / maxf(builds, 1.0), slowest])
 	quit()

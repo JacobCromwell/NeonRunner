@@ -316,7 +316,7 @@ var _skin: ZoneSkin
 ## 1 in Frost Foundry, 2 in Relay Station, 3 in Specimen Vault (the jars grow commoner toward the laboratory); quick
 ## play's prototype level takes this default, endless mode its level's (Specimen Vault's 3 over its 20 minutes from the
 ## Ice Lab) and a weekly challenge's week Sentinel Row's.
-@export_range(0, 8) var octodog_jars: int = 2
+@export_range(0, 8) var octodog_jars: int = 1
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings
 ## into a treasure stash's (treasure_stash_rules.gd), where one fits (an inner lane with inner lanes beside it:

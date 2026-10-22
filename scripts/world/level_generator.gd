@@ -2162,16 +2162,23 @@ func doodad_room() -> DoodadRoom:
 	room.lanes = doodad_lane_busy()
 	var none: Array[Vector2] = []
 	room.walls = [none, none]
+	if config.doodad_wall_lane_share > 0.0:
+		room.walls = [wall_lane_keep_outs(-1), wall_lane_keep_outs(1)]
 	return room
 
 
-## True if one zone doodad of size class `size` with its front at `start`, in inner lane `lane` and pushing into the lane
-## on `side`, keeps every rule the zone doodads' pass keeps (_place_doodads) in `room` (doodad_room()): between where the
+## True if one zone doodad of size class `size` with its front at `start`, in lane `lane` and pushing into the lane on
+## `side`, keeps every rule the zone doodads' pass keeps (_place_doodads) in `room` (doodad_room()): between where the
 ## doodads start (and the run-up) and the end-clear stretch; nothing kept in every lane reaching it from its push's lead
 ## before its front to doodad_reach() past it, and no calm stretch; its own lane, the lanes beside it and the lane it
-## pushes into as _doodad_lane_fits and _doodad_push_fits keep them (task L6), no other doodad too near (no slalom).
+## pushes into as _doodad_lane_fits and _doodad_push_fits keep them (task L6), no other doodad too near (no slalom); in an
+## outermost lane only where the level stands doodads by a side wall (LevelConfig.doodad_wall_lane_share), by an open
+## stretch of that wall (room.walls: wall_lane_keep_outs), pushing inward (task L3).
 func doodad_fits(room: DoodadRoom, size: StringName, lane: int, side: int, start: float) -> bool:
-	if lane < 1 or lane > layout.lane_count - 2 or absi(side) != 1:
+	if lane < 0 or lane >= layout.lane_count or absi(side) != 1:
+		return false
+	var outer: bool = lane == 0 or lane == layout.lane_count - 1
+	if outer and (config.doodad_wall_lane_share <= 0.0 or side != (1 if lane == 0 else -1)):
 		return false
 	var length: float = tuning.doodad_size(size).z
 	var end: float = start + length
@@ -2185,6 +2192,8 @@ func doodad_fits(room: DoodadRoom, size: StringName, lane: int, side: int, start
 			inside = true
 			break
 	if not inside or _hits_any(room.calm, start - lead, end):
+		return false
+	if outer and _hits_any(room.walls[0 if lane == 0 else 1], start, end):
 		return false
 	return _doodad_lane_fits(room, lane, start, end, start) and _doodad_push_fits(room, lane, side, start, end, start)
 

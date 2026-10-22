@@ -13,11 +13,13 @@ extends RefCounted
 ## The lean (the owner, October 21, 2026: level 1 heavily into the snow and industry, the last level heavily into the laboratory): every look
 ## has a laboratory affinity (LOOKS, 0 snow and industry to 1 laboratory) and the skin's lab_share picks among a class's looks by weights that
 ## favour the ones nearest it (look_weight), so level 1 is crystals, crates and frozen machinery and level 3 jars, racks and consoles.
-## **The Octodog jar** (task Q5 makes some of them break open when smashed and release their Octodog, GDD §5 Zone 9) has its own look name,
-## OCTODOG_JAR, in the small class, and a way to find it: look_seed_for() gives a look seed that picks it, is_octodog_jar() says whether a
-## seed does, and every card look's body carries its look's name as the metadata META_LOOK (so a built doodad can be told from the brain
-## jar beside it). A jar that will release its Octodog looks the same as one that won't (GDD §5): the look carries no hint. It pushes
-## like any doodad (it is a card look in its box, nothing more).
+## **The Octodog jar** (GDD §5 Zone 9: some break open when smashed and release their Octodog) has its own look name, OCTODOG_JAR, in the
+## small class, and a way to find it: look_seed_for() gives a look seed that picks it, is_octodog_jar() says whether a seed does, and every
+## card look's body carries its look's name as the metadata META_LOOK (so a built doodad can be told from the brain jar beside it). The
+## ones that release theirs are task Q5's: the generator stands a doodad holding an Octodog (the abstract LevelLayout.HOLDS, with the dog's
+## entry; octodog_jar_rules.gd) and IceLabSkin.held_doodad_look dresses it with the first seed from its own that picks this look; the
+## jars this variety gives the zone's other doodads (RARITY, by the lean) hold nothing. A jar that will release its Octodog looks the same
+## as one that won't (GDD §5): the same card, no hint. It pushes like any doodad (it is a card look in its box, nothing more).
 
 ## The metadata a built doodad's body carries its look's name in.
 const META_LOOK: StringName = &"doodad_look"
@@ -99,8 +101,8 @@ func is_octodog_jar(size_class: StringName, look_seed: int) -> bool:
 
 
 ## A look seed (searching upward from `from`) that gives the look named `wanted` in `size_class` at this lean, or -1 when the zone has no such
-## look. For the skin's own use and for task Q5's hook: the generator and gameplay code never call this (they never learn a zone's theme; Q5 adds
-## an abstract flag to the layout's doodads and a ZoneSkin hook that turns it into a look here).
+## look. For the skin's own use and its ZoneSkin hook (IceLabSkin.held_doodad_look, task Q5): the generator and gameplay code never call this
+## (they never learn a zone's theme: a doodad holding an Octodog is LevelLayout.HOLDS, which the hook turns into this look).
 func look_seed_for(size_class: StringName, wanted: StringName, from: int = 0) -> int:
 	for s: int in range(from, from + 4096):
 		if look_name(size_class, s) == String(wanted):

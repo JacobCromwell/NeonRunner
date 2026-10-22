@@ -213,6 +213,12 @@ func _first_at(trigger: String) -> float:
 			for tp: Dictionary in layout.teleporters:
 				if trigger == "teleporter" or float(tp.get("blink", 0.0)) > 0.0:
 					found.append(float(tp["at"]))
+		"octodog_jar":
+			# Task Q5 (GDD §5, Zone 9): the first jar holding an Octodog (LevelLayout.HOLDS). DESIGN-TBD
+			# (docs/questions/q5.md 9): the hint's wording (data/hints/hints.json, "octodog_jar").
+			for dj: Dictionary in layout.doodads:
+				if LevelLayout.held_type(dj) == "octodog":
+					found.append(float(dj["start"]))
 		"debris_maze":
 			# Task O2 (GDD §5, Zone 8): the debris maze's first wall, where debris first stops the runner.
 			for b: Dictionary in layout.maze:

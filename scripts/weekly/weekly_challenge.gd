@@ -51,12 +51,14 @@ const WEEK_FIELDS: PackedStringArray = [
 ##   zone may lack (a dial for a feature the zone doesn't list does nothing: the generator runs a rules script per feature
 ##   the level lists). The falling gantryways' count is one (task Q3), as the dash walls' is, so an Ice Lab week hangs
 ##   Sentinel Row's (DESIGN-TBD, docs/questions/q3.md 14), and so are the teleporters' counts (task Q4: how many, and how
-##   many of them blink; DESIGN-TBD, docs/questions/q4.md 14).
+##   many of them blink; DESIGN-TBD, docs/questions/q4.md 14) and the Octodog jars' (task Q5: how many jars release
+##   their Octodog; DESIGN-TBD, docs/questions/q5.md 11).
 const GOLDEN_FIELDS: PackedStringArray = [
 	"duration_seconds", "run_speed", "difficulty", "difficulty_bias", "difficulty_ramp", "enemy_scaling",
 	"start_clear_distance", "end_clear_distance", "spacing_seconds_easy", "spacing_seconds_hard", "fill_empty_seconds",
 	"gap_encounter_increase", "gap_lane_increase", "danger_density_increase", "wide_gaps", "charge_path_cyborgs",
-	"buzz_company", "dash_walls", "gantryways", "teleporters", "blinking_teleporters", "treasure_stashes", "fenced_ceilings",
+	"buzz_company", "dash_walls", "gantryways", "teleporters", "blinking_teleporters", "octodog_jars", "treasure_stashes",
+	"fenced_ceilings",
 	"fenced_ceiling_pads", "quiet_seconds", "burst_seconds", "quiet_spacing_seconds", "burst_spacing_seconds",
 	"quiet_features", "max_gap_jump_fraction", "hull_lead_in", "hull_landing_seconds", "cut_holes_beside",
 	"cut_reaction_seconds", "narrow_ceiling_start", "narrow_ceiling_max_lanes", "one_lane_ceiling_seconds",

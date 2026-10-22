@@ -57,7 +57,8 @@ extends RefCounted
 const FEATURE: String = "octodog_jar"
 const TYPE: String = "octodog"
 ## Every feature whose rules place, move or drop enemies, plan charges or cuts, or add ceilings, pads, ramps or set
-## pieces, the falling gantryways' and the teleporters' included: the jars are planned on the level's final rules track.
+## pieces, the falling gantryways and the teleporters included: the jars are planned on the level's final rules track, so
+## every rule before them places exactly what it did without them.
 const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", "cyborg", "window_cyborg", "host",
 	"hover_truck", "octodog", "screech", "screech_vents", "drone", "generator", "wall_fences", "wall_fences_partial",
 	"buzz_overdrive", "barnacle_turret", "tithe_collector", "resonator", "gilded_sentinel", "enforcer_truck",
@@ -81,6 +82,16 @@ const PAD_AFTER: float = 2.0
 
 ## Review aid (tools/measure/octodog_jars.gd): microseconds apply() has taken, summed over every call since it was zeroed.
 static var spent_usec: int = 0
+## Review aid (tools/measure/octodog_jars.gd --why): with `debug` on, how many jar fronts tried each reason turned down.
+static var debug: bool = false
+static var why: Dictionary = {}
+
+
+## Counts reason `what` in `why` (with `debug` on) and returns {} (a spot turned down).
+static func _no(what: String) -> Dictionary:
+	if debug:
+		why[what] = int(why.get(what, 0)) + 1
+	return {}
 
 
 ## One level's numbers for its jars, at its run speed (metres), and what the layout holds that they keep off (plan_for,
@@ -102,9 +113,7 @@ class Plan:
 	var length: float = 1.4
 	## A charge's stretch ends before this (the end-clear stretch).
 	var last_ok: float = 0.0
-	## What a wait for its turn can move a dog's run on (turn_wait_max at run speed), and the room between two runs
-	## beyond the stop distance (DOG_GAP).
-	var wait_room: float = 0.0
+	## The room between two dogs' runs beyond the stop distance (DOG_GAP).
 	var gap: float = 0.0
 	## Where a jar's front may stand: [lo, hi], tried `step` apart.
 	var lo: float = 0.0
@@ -113,11 +122,10 @@ class Plan:
 	## Every Bad Dream's chase and kept extended wall run.
 	var chases: Array[Vector2] = []
 	## What the rules keep (every lane and lane by lane, all counted in every lane), every Octodog's run as far as it
-	## keeps a new one off (to its stop distance and a wait's room past its end), every other enemy's stretch, and the
-	## zone doodads' room (refresh()).
+	## keeps a new one off (busy_of: to its stop distance and a wait's room past its end), and the zone doodads' room
+	## (refresh()).
 	var keeps: Array[Vector2] = []
 	var dogs: Array[Vector2] = []
-	var others: Array[Vector2] = []
 	var room: LevelGenerator.DoodadRoom
 
 
@@ -134,7 +142,6 @@ static func plan_for(gen: LevelGenerator, t: OctodogTuning, pt: PowerupTuning) -
 	p.before = LevelGenerator.doodad_lead_for(gen.tuning) + gen.doodad_lane_room()
 	p.length = gen.tuning.doodad_size(JAR_SIZE).z
 	p.last_ok = gen.layout.length - gen.config.end_clear_distance
-	p.wait_room = t.turn_wait_max * gen.speed
 	p.gap = gen.metres(DOG_GAP)
 	p.step = gen.metres(SEARCH_STEP)
 	p.lo = maxf(maxf(gen.config.start_clear_distance, gen.config.doodad_start * gen.layout.length),
@@ -154,8 +161,8 @@ static func release_distance(gen: LevelGenerator, t: OctodogTuning = null, pt: P
 	return tt.release_distance(gen.speed, gen.config.enemy_scaling, gen.pace, p.dash_speed_bonus * p.dash_duration)
 
 
-## What `plan`'s layout holds now (after a jar and its dog joined it): the zone doodads' room, what the rules keep, every
-## Octodog's run as far as it keeps a new one off, every other enemy's stretch.
+## What `plan`'s layout holds now (after a jar and its dog joined it): the zone doodads' room, what the rules keep, and
+## every Octodog's run as far as it keeps a new one off (busy_of).
 static func refresh(plan: Plan) -> void:
 	var gen: LevelGenerator = plan.gen
 	plan.room = gen.doodad_room()
@@ -163,48 +170,41 @@ static func refresh(plan: Plan) -> void:
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		plan.keeps.append(Vector2(float(k["from"]), float(k["to"])))
 	plan.dogs.clear()
-	plan.others.clear()
-	var hooks: Dictionary = {}
 	for e: Dictionary in gen.layout.enemies:
 		if String(e.get("type", "")) == TYPE:
-			var run: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
-			if run.y >= run.x:
-				plan.dogs.append(Vector2(run.x, run.y + plan.stop + plan.wait_room))
-			continue
-		var k: Vector2 = stretch_of(gen, e, hooks)
-		if k.y >= k.x:
-			plan.others.append(k)
+			var busy: Vector2 = busy_of(gen, e, plan.before, plan.stop)
+			if busy.y >= busy.x:
+				plan.dogs.append(busy)
 
 
-## Enemy entry `e`'s stretch as a jar keeps its release off it (an Octodog's aside): what the fill pass keeps around it
-## (LevelGenerator.enemy_keep_out) and the floor it uses; nothing (x > y) for one that only drives behind the runner
-## (EnemyTuning.behind_runner: the Enforcer Truck), which stands nowhere ahead of them.
-static func stretch_of(gen: LevelGenerator, e: Dictionary, hooks: Dictionary = {}) -> Vector2:
-	var t := EnemyDirector.tuning_for(String(e.get("type", ""))) as EnemyTuning
-	if t != null and t.behind_runner:
-		return Vector2(INF, -INF)
-	var k: Vector2 = gen.enemy_keep_out(e, hooks)
-	var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
-	if span.y >= span.x:
-		k = Vector2(minf(k.x, span.x), maxf(k.y, span.y))
-	return k
+## Where Octodog entry `e` is busy, as another dog keeps its own run off it: the floor its charges use
+## (LevelGenerator.enemy_floor_span), from its jar's push lead (`before` before its spot) for one held in a jar, which is
+## loose from there, to `after` past its end (its stop distance and what a wait for its turn can move it on).
+static func busy_of(gen: LevelGenerator, e: Dictionary, before: float, after: float) -> Vector2:
+	var run: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
+	if run.y < run.x:
+		return run
+	if LevelLayout.is_held(e):
+		run.x = minf(run.x, float(e["at"]) - before)
+	return Vector2(run.x, run.y + after)
 
 
-## The plan of the dog a jar with its front at `j` holds, trying for `wanted` charges, in `plan`'s level:
-## {anchors, span}, or {} where no fair one fits (see the header).
-static func dog_at(plan: Plan, j: float, wanted: int) -> Dictionary:
+## The plan of the dog a jar with its front at `j` holds, trying for `wanted` charges and taking no fewer than `least`, in
+## `plan`'s level: {anchors, span}, or {} where no fair one fits (see the header). Its later charges are the first that
+## fit one after the other; it keeps as many of them as its run takes off everything it keeps clear.
+static func dog_at(plan: Plan, j: float, wanted: int, least: int = MIN_CHARGES) -> Dictionary:
 	var gen: LevelGenerator = plan.gen
 	var lay: LevelLayout = gen.layout
 	var a0: float = j + plan.release
 	var from: float = j - plan.before
 	if a0 + plan.window > plan.last_ok:
-		return {}
-	# The release and the sprint ahead: nothing else's stretch, no pad or ceiling landing.
-	if _hits(plan.others, from, a0) or Octodog.pad_or_landing_between(lay, from - gen.metres(PAD_BEFORE),
-			a0 + plan.stop + gen.metres(PAD_AFTER), gen.pace):
-		return {}
+		return _no("its dog's first charge reaches the end")
+	# Its first wind-up as a standing dog's (octodog_rules.gd, _first_charge_fits): no pad or ceiling landing from a little
+	# before it to where the dog stands then, and a clear stretch.
+	if Octodog.pad_or_landing_between(lay, a0 - gen.metres(PAD_BEFORE), a0 + plan.stop + gen.metres(PAD_AFTER), gen.pace):
+		return _no("a pad or a ceiling landing at its first wind-up")
 	if not Octodog.charge_clear(lay, a0, plan.window, gen.pace):
-		return {}
+		return _no("its dog's first charge not clear")
 	var anchors: Array[float] = [a0]
 	var prev: float = a0
 	var slack: float = gen.metres(plan.t.charge_slack)
@@ -223,16 +223,28 @@ static func dog_at(plan: Plan, j: float, wanted: int) -> Dictionary:
 			break
 		anchors.append(found)
 		prev = found
-	if anchors.size() < mini(MIN_CHARGES, wanted):
-		return {}
-	var span := Vector2(from, anchors[-1] + plan.window - 0.001)
-	if not _off_ceiling_zones(gen, span) or _hits(plan.chases, span.x, anchors[-1] + plan.window + plan.stop) \
-			or _hits(plan.keeps, span.x, span.y):
-		return {}
-	# One dog at a time: its run (and what a wait can move it on) apart from every other's.
-	if _hits(plan.dogs, span.x - plan.gap, span.y + plan.stop + plan.wait_room + plan.gap):
-		return {}
-	return {"anchors": anchors, "span": span}
+	var fewest: int = mini(least, wanted)
+	if anchors.size() < fewest:
+		return _no("too few charges fit")
+	var why_not: String = ""
+	while anchors.size() >= fewest:
+		# The floor its charges use, as a standing dog's (octodog_rules.gd, run_start: from before its first wind-up to
+		# past its last), off every pad's zone and ceiling landing.
+		var span := Vector2(OctodogRules.run_start(gen, a0), anchors[-1] + plan.window - 0.001)
+		# From the jar on, the dog is loose: off every chase and what every rule keeps, and one dog at a time (its run
+		# and its stop distance after it apart from every other's).
+		if not _off_ceiling_zones(gen, span):
+			why_not = "a pad's zone or a ceiling landing in its run"
+		elif _hits(plan.chases, from, anchors[-1] + plan.window + plan.stop):
+			why_not = "a chase in its run"
+		elif _hits(plan.keeps, from, span.y):
+			why_not = "what a rule keeps in its run"
+		elif _hits(plan.dogs, from - plan.gap, span.y + plan.stop + plan.gap):
+			why_not = "another Octodog's run"
+		else:
+			return {"anchors": anchors, "span": span}
+		anchors.pop_back()
+	return _no(why_not)
 
 
 ## True if no anti-grav pad's zone or ceiling landing zone (CeilingZones) reaches into `span`, in any lane.
@@ -259,26 +271,25 @@ static func powerups() -> PowerupTuning:
 ## The level's jars (see the header): the introduction first where the level gives the feature a start, then the rest
 ## spread through the level.
 static func apply(gen: LevelGenerator) -> void:
-	var count: int = gen.config.octodog_jars
-	if count <= 0 or not gen.config.has_feature(FEATURE) or gen.layout.lane_count < 3:
+	if not gen.config.has_feature(FEATURE):
 		return
 	var t0: int = Time.get_ticks_usec()
-	_apply(gen, count)
+	_apply(gen, gen.config.octodog_jars if gen.layout.lane_count >= 3 else 0)
 	spent_usec += Time.get_ticks_usec() - t0
 
 
 static func _apply(gen: LevelGenerator, count: int) -> void:
+	if count <= 0:
+		return
 	var t: OctodogTuning = tuning()
-	var plan: Plan = plan_for(gen, t, powerups())
 	var rng: RandomNumberGenerator = gen.rng_for(FEATURE)
+	var plan: Plan = plan_for(gen, t, powerups())
 	var placed: int = 0
 	var from: float = plan.lo
 	if gen.config.feature_starts.has(FEATURE):
-		var wanted: int = _roll_charges(gen, t, rng)
-		var window: float = minf(plan.lo + t.jar_intro_window_seconds * gen.speed, plan.hi)
-		var spot: Dictionary = _earliest(plan, rng, plan.lo, window, wanted, true)
-		if spot.is_empty():
-			spot = _earliest(plan, rng, plan.lo, plan.hi, wanted, true)
+		# The introduction: the earliest fair spot from the feature's start (within jar_intro_window_seconds where one fits
+		# there, the gentle first one), in the inner lane nearest the middle.
+		var spot: Dictionary = _search(plan, rng, plan.lo, plan.hi, plan.lo, _roll_charges(gen, t, rng), true)
 		if not spot.is_empty():
 			spot["intro"] = true
 			_place(plan, spot, placed)
@@ -287,18 +298,18 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 	var left: int = count - placed
 	if left > 0 and from <= plan.hi:
 		var part: float = (plan.hi - from) / float(left)
-		var wanted_at: Array[float] = []
+		var aims: Array[float] = []
 		for k: int in left:
-			wanted_at.append(from + (k + rng.randf_range(0.25, 0.75)) * part)
+			aims.append(from + (k + rng.randf_range(0.25, 0.75)) * part)
 		for k: int in left:
 			var a: float = from + k * part
-			var spot: Dictionary = _nearest(plan, rng, a, a + part, wanted_at[k], _roll_charges(gen, t, rng))
+			var spot: Dictionary = _search(plan, rng, a, a + part, aims[k], _roll_charges(gen, t, rng), false)
 			if not spot.is_empty():
 				_place(plan, spot, placed)
 				placed += 1
-	# Where a part had no room: the earliest of what's left, along the level past the introduction.
+	# Where a part had no room: the earliest of what's left past the introduction.
 	while placed < count:
-		var spot: Dictionary = _earliest(plan, rng, from, plan.hi, _roll_charges(gen, t, rng), false)
+		var spot: Dictionary = _search(plan, rng, from, plan.hi, from, _roll_charges(gen, t, rng), false)
 		if spot.is_empty():
 			break
 		_place(plan, spot, placed)
@@ -306,6 +317,71 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 	if placed == 0:
 		gen.warnings.append("octodog jars: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
 	gen.layout.doodads.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	if debug:
+		_profile(plan, _roll_charges(gen, t, rng))
+
+
+## The fair spot nearest `aim` with its front in [a, b] (its dog making its usual `wanted` charges where they fit, GDD
+## §9.4: 2 at the fewest; else as many as fit there, one at least), or {}. With `intro`, the earliest from `a`, within
+## jar_intro_window_seconds of it where one fits there, in the inner lane nearest the middle.
+static func _search(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, aim: float, wanted: int,
+		intro: bool) -> Dictionary:
+	var spans: Array[Vector2] = [Vector2(a, b)]
+	if intro:
+		var window: float = minf(a + plan.t.jar_intro_window_seconds * plan.gen.speed, b)
+		spans = [Vector2(a, window), Vector2(a, b)]
+	for span: Vector2 in spans:
+		for least: int in [MIN_CHARGES, 1]:
+			var spot: Dictionary = _earliest(plan, rng, span.x, span.y, wanted, least, -1, true) if intro \
+				else _nearest(plan, rng, span.x, span.y, aim, wanted, least, -1, false)
+			if not spot.is_empty():
+				return spot
+	return {}
+
+
+## Review aid (debug): over every jar front of the level, how many each part of the rules lets through, in `why`.
+static func _profile(plan: Plan, wanted: int) -> void:
+	var gen: LevelGenerator = plan.gen
+	var j: float = plan.lo
+	var counts: Dictionary = {"fronts": 0, "jar fits": 0, "first wind-up off pads": 0, "first charge clear": 0,
+		"both": 0, "dog fits (2 charges)": 0, "dog fits (1)": 0, "jar and dog (2)": 0, "jar and dog (1)": 0}
+	debug = false
+	while j <= plan.hi:
+		counts["fronts"] += 1
+		var jar_ok: bool = false
+		for lane: int in range(1, gen.layout.lane_count - 1):
+			for side: int in [-1, 1]:
+				jar_ok = jar_ok or gen.doodad_fits(plan.room, JAR_SIZE, lane, side, j)
+		var a0: float = j + plan.release
+		var pads_ok: bool = not Octodog.pad_or_landing_between(gen.layout, a0 - gen.metres(PAD_BEFORE),
+			a0 + plan.stop + gen.metres(PAD_AFTER), gen.pace)
+		var clear: bool = Octodog.charge_clear(gen.layout, a0, plan.window, gen.pace)
+		var two: bool = not dog_at(plan, j, wanted, MIN_CHARGES).is_empty()
+		var one: bool = not dog_at(plan, j, wanted, 1).is_empty()
+		counts["jar fits"] += 1 if jar_ok else 0
+		counts["first wind-up off pads"] += 1 if pads_ok else 0
+		counts["first charge clear"] += 1 if clear else 0
+		counts["both"] += 1 if pads_ok and clear else 0
+		counts["dog fits (2 charges)"] += 1 if two else 0
+		counts["dog fits (1)"] += 1 if one else 0
+		counts["jar and dog (2)"] += 1 if two and jar_ok else 0
+		counts["jar and dog (1)"] += 1 if one and jar_ok else 0
+		j += plan.step
+	debug = true
+	why["profile"] = counts
+
+
+## The earliest fair spot with its front in [a, b], or {} (_spot_at: no fewer than `least` charges, in the lane nearest
+## `prefer`, the middle with `middle`).
+static func _earliest(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, wanted: int, least: int, prefer: int,
+		middle: bool) -> Dictionary:
+	var j: float = maxf(a, plan.lo)
+	while j <= minf(b, plan.hi):
+		var spot: Dictionary = _spot_at(plan, rng, j, wanted, least, prefer, middle)
+		if not spot.is_empty():
+			return spot
+		j += plan.step
+	return {}
 
 
 ## How many charges a freed dog tries for (charges_range at the level's enemy scaling).
@@ -314,21 +390,11 @@ static func _roll_charges(gen: LevelGenerator, t: OctodogTuning, rng: RandomNumb
 	return rng.randi_range(r.x, r.y)
 
 
-## The earliest fair spot with its front in [a, b] (see the header), as {front, lane, side, anchors, span}, or {}; with
-## `middle`, in the inner lane nearest the middle that fits, else in a seeded one.
-static func _earliest(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, wanted: int, middle: bool) -> Dictionary:
-	var j: float = maxf(a, plan.lo)
-	while j <= minf(b, plan.hi):
-		var spot: Dictionary = _spot_at(plan, rng, j, wanted, middle)
-		if not spot.is_empty():
-			return spot
-		j += plan.step
-	return {}
-
-
 ## The fair spot with its front in [a, b] nearest `want` (searched outward from it, the earlier side first on a tie), or
-## {}.
-static func _nearest(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, want: float, wanted: int) -> Dictionary:
+## {} (_spot_at: no fewer than `least` charges, in lane `prefer` where the jar fits there, else the inner lane nearest it
+## that does; with `middle`, nearest the middle).
+static func _nearest(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, want: float, wanted: int, least: int,
+		prefer: int, middle: bool) -> Dictionary:
 	var lo: float = maxf(a, plan.lo)
 	var hi: float = minf(b, plan.hi)
 	if hi < lo:
@@ -336,20 +402,23 @@ static func _nearest(plan: Plan, rng: RandomNumberGenerator, a: float, b: float,
 	var center: float = clampf(want, lo, hi)
 	var reach: int = ceili(maxf(center - lo, hi - center) / plan.step)
 	for k: int in reach + 1:
-		var tries: Array[float] = [center] if k == 0 else [center - k * plan.step, center + k * plan.step]
+		var tries: Array[float] = [center]
+		if k > 0:
+			tries = [center - k * plan.step, center + k * plan.step]
 		for j: float in tries:
 			if j < lo or j > hi:
 				continue
-			var spot: Dictionary = _spot_at(plan, rng, j, wanted, false)
+			var spot: Dictionary = _spot_at(plan, rng, j, wanted, least, prefer, middle)
 			if not spot.is_empty():
 				return spot
 	return {}
 
 
-## A jar with its front at `j` and its dog's plan, if both fit: {front, lane, side, anchors, span}, or {}. The lane: with
-## `middle` the inner one nearest the middle that fits, else a seeded one among those that do; its push's side a seeded
-## one where both fit.
-static func _spot_at(plan: Plan, rng: RandomNumberGenerator, j: float, wanted: int, middle: bool) -> Dictionary:
+## A jar with its front at `j` and its dog's plan (dog_at: no fewer than `least` charges), if both fit: {front, lane,
+## side, anchors, span}, or {}. The lane: the inner one that fits nearest `prefer` (the middle with `middle`; the earlier
+## of two as near); its push's side a seeded one where both fit.
+static func _spot_at(plan: Plan, rng: RandomNumberGenerator, j: float, wanted: int, least: int, prefer: int,
+		middle: bool) -> Dictionary:
 	var lanes: int = plan.gen.layout.lane_count
 	var fits: Array[Array] = []
 	for lane: int in range(1, lanes - 1):
@@ -360,21 +429,22 @@ static func _spot_at(plan: Plan, rng: RandomNumberGenerator, j: float, wanted: i
 		if not sides.is_empty():
 			fits.append([lane, sides])
 	if fits.is_empty():
-		return {}
-	var dog: Dictionary = dog_at(plan, j, wanted)
+		return _no("no lane for the jar")
+	var dog: Dictionary = dog_at(plan, j, wanted, least)
 	if dog.is_empty():
 		return {}
-	var pick: Array = fits[rng.randi_range(0, fits.size() - 1)]
-	if middle:
-		var mid: float = (lanes - 1) * 0.5
-		fits.sort_custom(func(x: Array, y: Array) -> bool: return absf(float(x[0]) - mid) < absf(float(y[0]) - mid))
-		pick = fits[0]
+	var aim: float = (lanes - 1) * 0.5 if middle or prefer < 0 else float(prefer)
+	var pick: Array = fits[0]
+	for f: Array in fits:
+		if absf(float(f[0]) - aim) < absf(float(pick[0]) - aim):
+			pick = f
 	var sides: Array = pick[1]
 	return {"front": j, "lane": int(pick[0]), "side": int(sides[rng.randi_range(0, sides.size() - 1)]),
 		"anchors": dog["anchors"], "span": dog["span"]}
 
 
-## Stands jar `spot` (_spot_at) and the dog it holds in the layout, the `index`th of the level's jars.
+## Stands jar `spot` (_spot_at) in the layout, the `index`th of the level's jars, with the dog it holds at its front, its
+## plan in its params.
 static func _place(plan: Plan, spot: Dictionary, index: int) -> void:
 	var gen: LevelGenerator = plan.gen
 	var j: float = float(spot["front"])
@@ -422,17 +492,18 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 	var release: float = release_distance(gen, t)
 	var before: float = LevelGenerator.doodad_lead_for(gen.tuning) + gen.doodad_lane_room()
 	var last_ok: float = lay.length - gen.config.end_clear_distance
-	var room_after: float = t.turn_wait_max * gen.speed + gen.metres(DOG_GAP)
+	var after: float = stop
+	var gap: float = gen.metres(DOG_GAP)
 	var r: Vector2i = t.charges_range(scaling)
 	var keeps: Array[Vector2] = []
 	for k: Dictionary in gen.rules_doodad_keep_outs():
-		keeps.append(Vector2(float(k["from"]), float(k["to"])))
+		if not k.has("lane"):
+			keeps.append(Vector2(float(k["from"]), float(k["to"])))
 	var chases: Array[Vector2] = HostRules.chase_stretches(gen)
 	chases.append_array(gen.extended_wall_run_reserve)
 	for e: Dictionary in lay.enemies:
 		if LevelLayout.is_held(e) and lay.holder_of(e).is_empty():
 			out.append("a held %s at %.1f m has no doodad holding it" % [e.get("type", "?"), float(e["at"])])
-	var hooks: Dictionary = {}
 	for d: Dictionary in lay.doodads:
 		if not LevelLayout.holds_enemy(d):
 			continue
@@ -465,13 +536,14 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 		var run: Vector2 = span
 		var a0: float = float(anchors[0])
 		var last: float = float(anchors[-1])
+		var loose: float = j - before
 		if absf(a0 - (j + release)) > 0.01:
 			out.append("%s: its dog's first wind-up isn't planned where it's in position (%.1f m, not %.1f m)" % [tag, a0,
 				j + release])
-		if anchors.size() < mini(MIN_CHARGES, r.x) or anchors.size() > r.y:
-			out.append("%s: its dog makes %d charges (%d-%d)" % [tag, anchors.size(), r.x, r.y])
-		if absf(run.x - (j - before)) > 0.01 or absf(run.y - (last + window - 0.001)) > 0.01:
-			out.append("%s: its dog's run isn't from the jar's push to past its last charge" % tag)
+		if anchors.size() < 1 or anchors.size() > r.y:
+			out.append("%s: its dog makes %d charges (1-%d)" % [tag, anchors.size(), r.y])
+		if absf(run.x - OctodogRules.run_start(gen, a0)) > 0.01 or absf(run.y - (last + window - 0.001)) > 0.01:
+			out.append("%s: its dog's run isn't from before its first wind-up to past its last charge" % tag)
 		if last + window > last_ok + 0.01:
 			out.append("%s: its dog's last charge reaches the end-clear stretch" % tag)
 		for i: int in anchors.size():
@@ -480,26 +552,26 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 				out.append("%s: its dog's charge %d (at %.1f m) has no clear stretch" % [tag, i + 1, a])
 			if i > 0 and a < float(anchors[i - 1]) + cycle - 0.01:
 				out.append("%s: its dog's charge %d comes sooner than a cycle after the one before" % [tag, i + 1])
-		if Octodog.pad_or_landing_between(lay, run.x - gen.metres(PAD_BEFORE), last + stop + gen.metres(PAD_AFTER), gen.pace) \
+		if Octodog.pad_or_landing_between(lay, a0 - gen.metres(PAD_BEFORE), last + stop + gen.metres(PAD_AFTER), gen.pace) \
 				or not _off_ceiling_zones(gen, run):
 			out.append("%s: its dog's run meets an anti-grav pad or a ceiling's landing" % tag)
 		for s: Vector2 in chases:
-			if s.x <= last + window + stop and s.y >= run.x:
+			if s.x <= last + window + stop and s.y >= loose:
 				out.append("%s: its dog's run meets a Bad Dream's chase or a kept wall run (%.1f-%.1f m)" % [tag, s.x, s.y])
-		for k: Vector2 in keeps:
-			if k.x <= run.y and k.y >= run.x:
-				out.append("%s: what a rule keeps (%.1f-%.1f m) reaches its dog's run" % [tag, k.x, k.y])
+		# Its charges never in what a rule keeps in every lane (a falling gantryway's calm stretch, a teleporter's pad
+		# stretch and landings, a wall-run gap's clear stretch: the rules placed after the jars keep off every dog's
+		# charges, as the jars kept their dogs' runs off what was there before).
+		for a: Variant in anchors:
+			for k: Vector2 in keeps:
+				if k.x <= float(a) + window and k.y >= float(a) - 1.0:
+					out.append("%s: what a rule keeps in every lane (%.1f-%.1f m) reaches its dog's charge at %.1f m" % [tag,
+						k.x, k.y, float(a)])
+		var mine: Vector2 = busy_of(gen, dog, before, after)
 		for e: Dictionary in lay.enemies:
-			if is_same(e, dog):
+			if is_same(e, dog) or String(e.get("type", "")) != TYPE:
 				continue
-			var type: String = String(e.get("type", ""))
-			if type == TYPE:
-				var o: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
-				if o.y >= o.x and o.x <= run.y + stop + room_after and o.y + stop + room_after >= run.x:
-					out.append("%s: its dog's run (%.1f-%.1f m) too near another Octodog's (%.1f-%.1f m)" % [tag, run.x, run.y,
-						o.x, o.y])
-				continue
-			var k2: Vector2 = stretch_of(gen, e, hooks)
-			if k2.x <= a0 and k2.y >= run.x:
-				out.append("%s: a %s's stretch (%.1f-%.1f m) reaches its release or its dog's run ahead" % [tag, type, k2.x, k2.y])
+			var o: Vector2 = busy_of(gen, e, before, after)
+			if o.y >= o.x and o.x <= mine.y + gap and o.y + gap >= mine.x:
+				out.append("%s: its dog's run (%.1f-%.1f m) too near another Octodog's (%.1f-%.1f m)" % [tag, mine.x, mine.y,
+					o.x, o.y])
 	return out

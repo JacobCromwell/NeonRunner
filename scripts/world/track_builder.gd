@@ -802,7 +802,9 @@ func _build_speed_pad(root: Node3D, p: Dictionary) -> void:
 ## (ZoneSkin.doodad_debris_colors, task H5). The node is a DashBreakable (GDD §3, owner, October 8, 2026:
 ## the dash smashes a doodad): one smashed on this attempt (its entry marked "smashed") is never built
 ## again. A falling gantryway's pillar (task Q3; LevelLayout.is_gantry_pillar) is built with its gantryway
-## (_build_gantryway), not here.
+## (_build_gantryway), not here. One that holds an enemy until it's smashed (task Q5; LevelLayout.HOLDS: an Octodog's
+## jar) is built like any, its look the skin's container with that enemy inside (ZoneSkin.held_doodad_look); the enemy
+## watches its entry and comes out when it's marked "smashed" (Octodog).
 func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	if bool(d.get("smashed", false)) or LevelLayout.is_gantry_pillar(d):
 		return
@@ -813,6 +815,8 @@ func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	# A row's doodads share one look (task L3: LevelLayout.doodads `look`, its first one's seed): one kind along it.
 	# DESIGN-TBD (item 945 in docs/OPEN_QUESTIONS*.md): whether neighbours of one kind should vary.
 	var look_seed: int = int(d.get("look", d.get("seed", 0)))
+	if LevelLayout.holds_enemy(d):
+		look_seed = skin.held_doodad_look(size_class, StringName(LevelLayout.held_type(d)), look_seed)
 	_dress(func() -> void:
 		skin.doodad(area, size, size_class, side, look_seed)
 		area.debris_colors = skin.doodad_debris_colors(area, size_class, side, look_seed))
