@@ -6138,3 +6138,377 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 1115. **Its sounds.** Seven new ones (`tools/asset_gen/sfx_bank_terminal_intro.gd`): `waste_wind`, `sign_buzz`, `sign_zap` (a
     letter sparking), `grime_wipe`, `rubble_scramble`, `landing_thud` and `station_hum`; the game's `rubble_shift` for the squeeze
     and the crawl out. None is a warning.
+
+### Folded on October 22, 2026 (tasks Q1-Q4, the Ice Lab; items 1118, 1149 and 1165 are in `docs/OPEN_QUESTIONS.md`)
+
+**The Ice Lab in the campaign** (task Q1 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q1.md`; GDD §5, Zone 9)
+1116. **Where the Ice Lab sits on the difficulty curve.** (GDD §6: each level slightly harder than the last; §5: the Ice
+   Lab comes between the Terminal and the Golden Zone.) Placeholder: all three levels are off the curve, like the
+   Terminal's (`off_curve` in `data/levels/ice_lab_1.tres` to `ice_lab_3.tres`), with their own numbers between Terminal
+   2's and Golden 1's: difficulty 0.808, 0.812 and 0.816 (Terminal 2 0.805, Golden 1 0.820), enemy scaling 0.855, 0.86
+   and 0.865 (0.85 and 0.875), the danger density dial 0.38 in each (Terminal 2's and Golden 1's are both 0.38). Every
+   other level keeps its numbers, so the Golden Zone plays exactly as before and nothing gets easier. The room between
+   the Terminal and the Golden Zone is narrow (0.015 of difficulty for three levels), so the Ice Lab barely rises from
+   its first level to its last; giving it more room means re-spreading the curve over every level, which GDD §6's rule
+   (no level gets easier when levels are added) only allows by making the earlier levels harder (item 1051 asks the same
+   for the Terminal).
+   **The content mix as built** (the Q1 review, measured at 5 lanes over 4 seeds): 23.2, 22.2 and 24.8 enemies a level
+   with 84 to 92 obstacle rows, against Gangland 3's 27.2, Dead Zone 1's 32.8 and Golden 1's 29.2 enemies with 60 to 74
+   rows; ramps are 17-19% of the picks (10-11% elsewhere), and there is about one Octodog and one heli drone a level.
+   Until the zone's two new enemies arrive, the Ice Lab plays as a cyborg-and-obstacle zone with fewer enemies than its
+   neighbours.
+
+1117. **The Ice Lab's run speed.** (GDD §3: the run speed rises zone by zone.) Placeholder: 24.8 m/s
+   (`data/zones/ice_lab.tres`, `run_speed`), halfway between the Terminal's 24.6 and the Golden Zone's 25.0.
+
+1119. **Which cyborgs.** ("Enemies: cyborg gangsters, Octodogs and heli drones.") Placeholder: the cyborgs in all their
+   forms, the window cyborgs among them (GDD §9.2 counts them as cyborgs, and the Ice Lab's walls are ordinary walls that
+   can be run on), with the usual panic variant; no hosts (GDD §9.7: hosts and Bad Dreams are left out). The window
+   cyborgs need windows or openings in the lab's walls (consoles, jar racks, ice) for task Q2's skin to draw them in
+   (it does: a window cyborg's window is the only opening in its stretch of wall, `IceLabSkin.note_wall_enemies`). Should the Ice Lab have window cyborgs?
+
+1120. **The fence generators.** GDD §9.1 has them as part of the electric fences (an obstacle), though the build counts
+   them among the enemy types. Placeholder: kept (`generator` in the levels' features), with the electric fences they
+   power, as one of "the usual obstacles". Should they stay?
+
+1121. **The other obstacles and mechanics.** The design names "gaps, electric fences, signs, ceilings and pads, doodads"
+   and wall running as in other zones, and leaves out the dash walls. Placeholder: everything else introduced before the
+   Ice Lab stays too, under GDD §5's "anything introduced earlier keeps appearing later": pulsing fences, ramps, speed
+   pads, side wall gaps, wall-run gaps (with no guide, as in every zone after the Marketplace), full and partial wall
+   fences, the ceiling scenarios (the treasure stash and the fenced ceiling), two wider gaps a level, a cyborg in an
+   Octodog's charge path, and wall-hop credits (the levels' features and dials in `data/levels/ice_lab_*.tres`;
+   `tests/suites/test_ice_lab_levels.gd`, `KEEPS`). Should any of them make way for the falling gantryways and the
+   teleporters when those come (tasks Q3, Q4)?
+
+1122. **The music.** (GDD §5, proposed: "an earlier zone's song until the owner supplies or approves one".) Placeholder:
+   the Corporate zone's song (Concrete Fever) for its levels and the Corporate zone's generated loop for its
+   cinematics, its levels ending on the Corporate zone's riff (`data/audio/music_library.tres`, track `ice_lab`). The
+   cold, sterile, industrial song fits a frozen lab better than the others, and the Dead Zone's song already plays in two
+   zones in a row (the Dead Zone and the Terminal). Is that the right stand-in, and will the owner supply a song?
+
+1123. **Saves from before the Ice Lab.** The Golden Zone opened after the Terminal's outro; now it opens after the Ice
+   Lab's. Placeholder: a save that had finished the Terminal's outro keeps the Golden Zone open (`Profile` version 6
+   marks the Ice Lab's outro done for it, on every tier it had finished the Terminal's), so its player keeps their place
+   and can play the Ice Lab from the level select; Continue leads into the Ice Lab. A save from before the Terminal
+   (version 4) takes both steps, so it also finds the Ice Lab's intro open (its Terminal outro counts as done): such a
+   player may play either new zone first from the level select, while Continue leads into the Terminal. Should old saves
+   be sent back through the new zones instead?
+
+1124. **The Ice Lab's payouts.** Placeholder: each level's completion bonus is Dead Zone 2's (425; an off-curve level pays
+   the last on-curve level's, as the Beach's and the Terminal's do), and its credits come as in its neighbours' levels:
+   1,381, 1,224 and 1,365 on the levels' own seeds at five lanes (with 375, 300 and 275 in treasure stashes), so a
+   typical finish pays 1,392, 1,282 and 1,380, the most of any level (Dead Zone 1's 1,332; the Golden Zone's 1,155 to
+   1,275; measured October 21, 2026, `tools/measure/economy.gd --lanes=5 --seeds=0`). The three add 4,054 to a typical
+   playthrough (24,023 at the Golden Zone's end, 28,023 with the bosses; the PC catalog is 1.7 playthroughs, 1.4 with the
+   bosses, from 2.0 and 1.7). No shop tier's first fit moves (every one is placed before the Ice Lab). Should the Ice
+   Lab pay less, like the Terminal, or should the late prices rise?
+
+1125. **The weekly challenge.** Placeholder: the Ice Lab joins the weekly rotation like every zone, its week built on
+   Specimen Vault's rules (`data/weekly/weekly_challenge.tres`, `source_levels`): its features and look. The seed list
+   is re-picked for ten zones by its rule (`data/weekly/weekly_seeds.json`): the Ice Lab's seeds from 9900, and the
+   Golden Zone's moved to its new block, 10000. Once tasks Q3 and Q4 add the gantryways and the teleporters to Specimen
+   Vault, its weeks have them too, and the Ice Lab's seeds are checked again.
+
+1126. **The zone's cinematics and the Terminal's last words.** Placeholder: the Ice Lab's intro is the arrival flyover
+   with a placeholder title ("The Ice Lab"), its outro a placeholder card ("Out of the cold"), like the other zones'
+   unbuilt ones (`data/cinematics/ice_lab_intro.tres`, `ice_lab_outro.tres`); the Terminal's outro placeholder now heads
+   into the Ice Lab. The flyover shows the Ice Lab's own look (task Q2's skin).
+
+**The Ice Lab's skin** (task Q2 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q2.md`; GDD §3, Zone doodads; GDD §5, Zone 9)
+1127. **The hall's shape.** How tall are the walls, how far is the far ice wall, how high do the cranes ride and how high is the roof? (GDD §5,
+   Zone 9: "an indoor frozen hall with no sky, like the Terminal's vault: cold fog, ice walls behind the machinery".)
+   Placeholder: the machinery wall is 12 m tall in bays 5 m long (`wall_height`, `IceLabWalls.SLOT`), the hall's far ice wall stands 14 m
+   beyond it (`hall_extra`), crane runways ride at 16 m with a cross girder every 20 m (`crane_height`, `girder_pitch`), **the roof closes the
+   hall at 25 m** (`roof_height`: a dim underside of dark steel and ice with a truss across it every 10 m and great icicles hanging from the
+   trusses, so the dark above the cranes reads as a roof and never as a night sky), the frozen floor is 7 m under the street (`pit_depth`,
+   deeper than a fall that ends a run). The far end of the hall fades into the fog's colour, a cold haze.
+
+1128. **The palette and the haze.** The GDD says "ice blue and white snow, frost-crusted black steel, cold fog, small amber machine lamps, the
+   pale glow of the specimen jars" and gives no values. Placeholder: steel `(0.16, 0.19, 0.24)`, packed snow `(0.8, 0.86, 0.92)`, ice
+   `(0.3, 0.5, 0.66)`, crystals `(0.62, 0.82, 0.95)`; the haze `(0.12, 0.18, 0.26)` in level 1's lean and `(0.085, 0.14, 0.19)` in level 3's
+   (`fog_color_frost`, `fog_color_lab`: level 1 a little brighter and bluer, level 3 darker and greyer-green).
+
+1129. **The wall bays and their weights, and the wall-run band.** The GDD names the pieces ("lab machinery, consoles, jar racks and ice") but not
+   how many kinds or how often. Placeholder: ten bays of 5 m (a run of pipes, a lattice pillar, a pressure tank, a wall of ice; a bank of
+   consoles, a row of server racks, clean-room tile, a service door; a gallery of brain jars, a gallery with an Octodog among them), weighted by
+   the lean (`bay_weights_frost`, `bay_weights_lab`: the industrial four are 78% of level 1's walls, 23% of level 3's). **The wall is calm where
+   a runner can touch it, as in every wall-running zone** (up to `calm_top`, 6.6 m): nothing stands out of the face more than 4.5 cm
+   (`IceLabParts.PROUD`; the suite checks `wall - 0.05` as the Corporate, Golden and Beach suites do), nothing is recessed into it, nothing
+   glows (the screens and the racks' status lights down there are dull paint, flush), and no stretch has a window but the window cyborgs' own
+   (a bay within 4.7 m of a window cyborg is plain plating, `IceLabSkin.note_wall_enemies`; the cyborg draws its own window). **The depth and
+   the light are above the band:** the specimen jars stand in an alcove 0.8 m deep from 6.8 m up to the cornice (9 m), two or three jars a
+   bay, a row of lit bezelled screens over each bank of consoles, the machine lamps; the owner's brain jars are prominent up there and as
+   doodads. Is the walls' machinery too tall and far up to read from the camera? (The jars are 3 to 4 m above the camera, which rides 4.2 m up.)
+
+1130. **The machine lamps.** How many, how bright, how high? (GDD §5: "small amber machine lamps"; the colour rule, looser from the Terminal on:
+   `docs/art/reference/README.md`.) Placeholder: the Terminal's amber, a short bar light in a cage on 45-75% of the bays and on one cross girder in
+   two, **never lower than 7.2 m** (`lamp_min_height`: over the wall-run band with their halo, so nothing glows at floor level where a gap
+   edge's orange is, nor on the walls in the band), glowing 9% of an albedo times the emissive scale (a fifth of a gap edge's, under the bloom
+   threshold which the edge is over; 16% on the Compatibility renderer, which scales emissive colours in sRGB space), with a faint halo card; a
+   hashed half of them breathe slowly (a smooth swell every 4-7 s), holding still with Reduced flashing. The reference image has orange lamps
+   down on the pillars at head height; they are not at that height here because the colour rule keeps the band free of glows.
+
+1131. **The jars' and screens' light.** How pale and how dim? Placeholder: the jars' liquid `(0.42, 0.7, 0.78)` and the lit screens
+   `(0.5, 0.74, 0.84)`, glowing 7% and 6% of an albedo times the emissive scale (11% and 10% on the Compatibility renderer), so each is far under
+   the anti-grav pad's saturated cyan and under the bloom threshold, and both over the wall-run band; the screens show dull static readouts
+   (bars, a waveform, rings, rows of dashes: never a word, a symbol or a face), and in the band they are the same readouts as dull dark
+   monitors with no light of their own. The racks' status lights are pale dots of paint, never lit (so there is no Compatibility value for
+   them to scale). A brain is a dull pinkish grey `(0.5, 0.43, 0.46)`, not the electric fence's pink.
+
+1132. **The Octodog in its jar.** On the walls and in the jar doodads (`octodog_jar`): how should a sleeping Octodog look, and how many jars hold
+   one? (GDD §5, §9.4: "some jars hold a curled-up Octodog instead of a brain"; the colour rule: only hazards glow in hazard colours.)
+   Placeholder: a squashed mass of dim green in OctodogModel's own tentacle greens (darkened) with tentacles spiralling round it, its robot
+   chassis folded under it and four legs tucked up, **its three eyes shut** (dark red-brown slits, matte), **no glow at all** (the live one's
+   toxic green and red are hazards' colours), in the jar's pale liquid, so it is recognisably an Octodog and never an attack. On the walls
+   (measured over 8000 bays, `octodog_in_jar_share` and the bay weights): 0.8% of level 1's bays, 3.0% of level 2's and 6.5% of level 3's hold
+   one. In the lanes the small doodad class has the look `octodog_jar` among five, by the lean and with a rarity of 0.25
+   (`IceLabDoodads.RARITY`): **2.4% / 4.9% / 11.6% of the small doodads at levels 1 / 2 / 3** (before the rarity it was one in eleven,
+   one in six and one in three: too many, since a jar that never opens is the norm and task Q5 releases an Octodog only sometimes).
+   Question for the owner: are those shares right, and should the live one's three red eyes show, dimly, on the sleeping one?
+
+1133. **The ceilings.** GDD §5 names "crane gantries and overhead walkways". Placeholder: two kinds (`IceLabCeilings`): a GANTRY (a girder with
+   its web and ribs, a rail, a hoist trolley and its cable drum on top, rods up to the crane runways) and a WALKWAY (an overhead grated
+   walkway: grating seen from below, a railing with snow on it, lab cabinets and a lamp on the deck), weighted 3:1 in level 1's lean and 1:3
+   in level 3's (`gantry_weight_*`, `walkway_weight_*`). Task Q3's falling gantryways build their own look; the gantry here is only a ceiling.
+
+1134. **The lean for each level.** The owner: level 1 "heavily" snow and industry, level 3 "much more heavily" the laboratory, level 2 in
+   between (proposed). Placeholder: `lab_share` 0.1, 0.5 and 0.9 (the three skin files, named by the zone and the levels). It weighs the wall
+   bays, the ceilings and the doodad looks, thins the snow on the floor (`snow_frost` 0.9 to `snow_lab` 0.14) and makes more of its floor panels
+   clean tread plate, and tints the haze. Is 0.1/0.5/0.9 the right spread, and should level 2 be nearer one end? Level 1's floor is deep
+   snow, but with the grating showing through only in small, frosted, mid-grey patches (never black: the only dark things on the street are the
+   holes, with their orange edges).
+
+1135. **The doodads.** Which pieces, and how many looks a size? (GDD §3: "brain jars and other lab equipment", "ice crystal clusters and crates
+   of lab supplies among them" (proposed).) Placeholder: five looks a size (small: a brain jar, **the Octodog jar**, a cryo tank, lab supply
+   crates, a small crystal cluster; medium: a pair of jars on one base, a server rack bank, a lab bench (under a fume hood the box's full
+   height, so it reads too tall to jump), a big crystal cluster, a pallet of crates; large: a row of jars, a console bank, a mound of crystals,
+   stacks of crates, a machine frozen in ice), each with a laboratory affinity (`IceLabDoodads.LOOKS`) that the lean's weights follow.
+   **The Octodog jar** has its own look name (`IceLabDoodads.OCTODOG_JAR`, the manifest's `octodog_jar`), a way to find a seed that gives it
+   (`IceLabDoodads.look_seed_for(&"small", &"octodog_jar")`), a way to test a seed (`is_octodog_jar`) and a metadata key on a built doodad's
+   body (`IceLabDoodads.META_LOOK`), for task Q5; it pushes like any doodad (it is a card look on its box). The generator and gameplay code
+   never call them (they never learn a zone's theme): Q5 adds an abstract flag to the layout's doodads and a `ZoneSkin` hook that turns it into
+   a look here. The pictures are painted for the standard 2.6 m boxes (`DoodadArtSet.zone_tuning` reads the Ice Lab's levels' own
+   `doodad_height`, which Q1's levels do not set): **rerun `tools/godot.sh doodads --only=ice_lab` if a level sets one**, or `test_doodads`
+   fails.
+
+1136. **Motion, enemies and music.** The still catwalk gets the owner's motion cues as snow drifting down (thinning toward the lab end), puffs
+   of cold mist and speed streaks (as every still floor). Its cyborgs wear the Dead Zone's burned base until the owner asks for one of their
+   own (GDD §5: "an existing zone's look"); the zone has no dash walls (the skin keeps the base's default look, `test_dash_walls` lists the three
+   skins) and no song of its own (task Q1).
+
+**The Ice Lab's falling gantryways** (task Q3 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q3.md`; GDD §5, Zone 9)
+1137. **The numbers.** (GDD §5: "moderate in length: a little shorter than ceiling sections usually are"; "it takes about
+   a second to fall".) Placeholders in `data/tuning/gantryways.tres` (`GantrywayTuning`; times are seconds of run at
+   the level's speed, or at the fastest a runner comes through a pillar, so a faster zone keeps every window):
+   the walkway spans `length_seconds` 3.0 s of run (the patterns' ceilings run about 4 s), its box `deck_thickness`
+   0.5 m deep; it falls in `fall_seconds` 1.0 s, of which it holds on shuddering for `warning_seconds` 0.45 s (lurching
+   down `sag` 0.3 m, shaking `shudder_amplitude` 0.08 m at `shudder_hz` 18) before it drops; its falling hitbox is
+   `hitbox_inset` 0.2 m inside its look across, at its ends and underneath; its shadow reaches `shadow_darkness` 0.6
+   as it lands; the camera shakes `land_shake_strength` 0.22 for `land_shake_seconds` 0.3 s as it lands; the lane a
+   runner steps into stays clear `escape_after_seconds` 0.5 s past the landing; pillars stand at least
+   `spacing_seconds` 12 s apart. How many a level hangs is `LevelConfig.gantryways`: 3 in each Ice Lab level (fewer
+   only where a level has no fair room: `tools/measure/gantryways.gd` finds 108 of 108 standing in the 36 builds of the
+   three levels at 3, 5 and 6 lanes on their own seeds and three others, 106 with a cyborg under them). Frost Foundry
+   introduces them from 0.15 of the level (`feature_starts`), at the best fair spot within `intro_window_seconds`
+   11.5 s of that.
+
+1138. **Which lanes.** (GDD §5: "an upper walkway over one lane only"; it doesn't say which.) Placeholder: inner lanes
+   only, never the lane by a side wall (`GantrywayRules`), so no wall runner meets a pillar or runs beside a walkway,
+   and a runner under one always has a lane on either side to step into. At 3 lanes that is the middle lane only.
+   Should they hang over the outer lanes too (one way out only, and a wall runner beside the walkway)?
+
+1139. **The pillar.** (Proposed: in the walkway's own lane under its near end; met without the dash, it pushes like a
+   doodad.) Placeholder: its body is a small zone doodad's box (`Gantryway.PILLAR_SIZE`) that pushes the runner into
+   the lane on its seeded `side`, blocks a lane switch into it and can be stood on like any doodad's top; the column
+   that rises from it to the walkway is only its look, as is a doodad's picture. The dash smashes it with the doodads'
+   crunch (`gantry_pillar_smash` plays `doodad_smash`). Is one pillar under the near end right, or should a walkway
+   have one at each end (dashing either drops it)?
+
+1140. **The warning.** (CLAUDE.md: every attack warns, seen and heard, before it can hurt; proposed: a groan or creak, a
+   shudder, snow shaking loose, its shadow darkening.) Placeholder, from the moment the pillar breaks until it lands:
+   the creak at the pillar (`gantry_creak`), the lurch and the shudder (with Reduced flashing only the lurch: an 18 Hz
+   shake is a flicker of motion), snow and ice shaking loose ahead of the runner,
+   its shadow on the lane darkening as it comes down, and the lane's red line under its whole length (the floor
+   warnings' red, `BossProps`' lane warning: widening and pulsing, steady with Reduced flashing); then the crash
+   (`gantry_land`), its pieces and snow flung out, and the camera's shake. Is the red line wanted on top of the shadow
+   (it is the hazard colour the boss floor attacks use), or should the shadow and the shudder carry it alone?
+
+1141. **When it hits.** (GDD §5: "a runner under it when it lands is hit".) Placeholder: its hitbox is off while it stands
+   and while it shudders, and live only while it drops and as it lands (`Gantryway.LANDING_TICKS`, two physics ticks
+   counting the landing one), sweeping what the walkway went through each tick; a runner under it is hit when it
+   reaches them (a standing runner about 0.9 s after the break, a jumping one a little earlier), on contact only.
+   Jumping or sliding doesn't save a runner under it. Should only the landing itself hit (a runner still leaving the
+   lane in the last tenth of a second escapes)?
+
+1142. **The dash under a falling walkway.** Placeholder: the dash passes through its hitbox as it passes through every
+   hazard's (`Gantryway`). The dash that smashed the pillar is over before the walkway comes down to a runner's
+   height, so this only matters for a second dash under it. Should a falling walkway be one of the things the dash
+   doesn't pass?
+
+1143. **Once down.** (Proposed: it lies flat and harmless.) Placeholder: it's swapped for its wreck, flat on the floor
+   (0.14 m, `Gantryway.WRECK_HEIGHT`), with no collision: the runner runs over and through it. It stays down for the
+   attempt; a retry rebuilds it standing.
+
+1144. **The armor and the shield.** (GDD §5: "armor and the shield block it, as they block any hit".) Placeholder: the
+   armor that is up takes it, then the shield, as for a sign or a dash wall (`armor_blocks_solid`), and one blocked hit
+   pays for the whole walkway (`passes_after_block`: the runner isn't hit by it again while still inside it).
+
+1145. **The crush, and what it scores.** (GDD §5: "when it lands, it destroys any enemy in its path".) Placeholder:
+   every enemy whose body reaches into what the walkway swept (a heli drone low over its lane too), any kind but a
+   boss's part, dies by the usual kill path (`Enemy.defeat(&"gantryway")`, RunWorld), so it scores and sets off
+   whatever any kill of it does, with no bonus of its own. Should a crush score more than a plain kill?
+
+1146. **The enemy beneath.** (GDD §5's level schedule row: "dash a pillar to drop a one-lane walkway on the enemies
+   below"; the task's brief asked for an enemy beneath the introduction.) Placeholder: the generator plants a plain
+   floor cyborg under every gantryway (`plant_cyborg`), where the walkway lands on it before a runner who stays in the
+   lane could reach it (`crush_margin_seconds` 0.2 s), standing where it's put and holding its fire from
+   `hold_before_seconds` 2 s before the pillar until the calm stretch is over, so the dash and the step out are never
+   shot at. In practice it never fires at all: its hold lasts until the runner has all but reached it, so it is a target
+   for the walkway, not a threat. It's an extra, not one of the level's own cyborg encounters. Should every gantryway
+   have one, only the introduction, or a different enemy (an Octodog, a heli drone)? Should it shoot?
+
+1147. **The room to step out.** (The task's brief: an easy first one with room to step out; GDD §5, proposed: "knocking
+   one down is never required".)
+   Placeholder: through the calm stretch (from the pillar to `escape_after_seconds` past the landing at the fastest
+   a runner comes through) the lane on the pillar's push side holds nothing and no enemy attacks anywhere; the other
+   side lane is kept clear only until a caught corner's push has landed, except for Frost Foundry's first, which keeps
+   both clear (`intro_both_sides`). Should every gantryway keep both sides clear?
+
+1148. **The introduction.** Placeholder: Frost Foundry's first hangs at the best fair spot within 11.5 s of 0.15 of the
+   level, taking out pattern ceilings (with their pads and credits) or plain enemies to make room where none fits,
+   never another feature's introduction or last one; its first-encounter hint (`gantryway` in
+   `data/hints/hints.json`): "A pillar holds up a walkway over the lane. Dash through the pillar ({dash}) and the
+   walkway falls about a second later, crushing whatever is under it, so switch lanes ({move_left} / {move_right})
+   to get out from under it. Without the dash the pillar just pushes you aside." Is the wording right?
+
+1150. **Endless mode and the weekly challenge.** Placeholder: endless mode takes its level's own count, so with the Ice
+   Lab as the furthest zone it hangs Specimen Vault's 3 over its 20 minutes; the weekly challenge takes the count from
+   Sentinel Row, as it takes every feature's dial and the dash walls' count (`gantryways` is one of
+   `WeeklyChallenge.GOLDEN_FIELDS`), so the Ice Lab's week hangs 3 (the default, which the Golden Zone's levels keep).
+   How many should endless mode hang, and should an Ice Lab week take the zone's own count instead?
+
+1151. **The look.** (GDD §5: "looking like a ceiling section".) Placeholder: one default look for every zone
+   (`GantrywayKit`: a frosted steel catwalk with railings, snow and icicles, an icy steel pillar, the catwalk crushed
+   flat), lit and never glowing; the Ice Lab draws it in its own steel, frost, snow and ice and its sheen
+   (`IceLabSkin.gantryway_colors`, `gantryway_material`), so it sits beside the zone's overhead walkways. Should it
+   have a look of its own built from the Ice Lab's ceilings (`IceLabCeilings`' WALKWAY)? Its material dissolves near
+   the camera (an ordered dither from 2.6 m to 1.0 m, `GantrywayKit.NEAR_FADE`): the chase camera passes through a
+   pillar's column when the runner is in the lane beside it at 5 and 6 lanes, and under the walkway's edge as it
+   falls. As the walkway drops past the camera's height it sweeps through the chase camera's view, and for about 0.2 s
+   it hides the runner (the dither thins only what is nearest the camera). Is a brief dither acceptable there, and that
+   moment of the runner hidden, or should the camera keep clear of the column and lift over the falling walkway?
+
+1152. **The sounds.** Placeholders made by `tools/asset_gen/sfx_bank_gantryway.gd`: `gantry_creak` (a steel groan, a
+   squeal, rivets popping and snow sliding, about 1 s) and `gantry_land` (a boom, a crash, clangs, a rattle and snow).
+
+**The Ice Lab's teleporters** (task Q4 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q4.md`; GDD §5, Zone 9)
+1153. **The numbers.** Placeholders in `data/tuning/teleporters.tres` (`TeleporterTuning`; times are seconds of run at the
+   level's speed, or at the fastest a runner comes onto a pad: the run speed, the dash's bonus and a speed pad's or ramp's
+   boost, so a faster zone keeps every window): the pad is `pad_share` 0.84 of a lane wide and as long; the output pads
+   stand `hop_seconds_min` 2.0 to `hop_seconds_max` 2.6 s of run on (50 to 65 m in the Ice Lab, `hop_choices` 3); a
+   blinking light stays `blink_seconds` 1.0 s a side; the way around and the pad's lane are clear `approach_seconds` 0.8 s
+   before the pad; each landing is clear `landing_seconds` 1.0 s past the output pad (the introduction's
+   `intro_landing_seconds` 2.5 s); the flash is `flash_alpha` 0.55 fading over `flash_seconds` 0.28 s; pads stand at least
+   `spacing_seconds` 12 s apart. How many a level stands is `LevelConfig.teleporters` (Relay Station 3, Specimen Vault 4)
+   and how many of those blink `LevelConfig.blinking_teleporters` (2 of Specimen Vault's 4); `tools/measure/teleporters.gd`
+   finds every one standing in 42 builds of the two levels at 3, 5 and 6 lanes. Relay Station introduces them, and
+   Specimen Vault the blinking ones, from 0.15 of the level (`feature_starts`), each at the best fair spot within
+   `intro_window_seconds` 11.5 s of that.
+
+1154. **Which lanes.** (GDD §5, proposed: "the pad fills one floor lane"; it doesn't say which.) Placeholder: the input pad
+   stands in an inner lane only, never the lane by a side wall (`TeleporterRules`), so a wall run that ends there never
+   drops its runner onto it; at 3 lanes that is the middle lane only. Output pads may stand in any lane, outer ones
+   included. Should pads stand in the outer lanes too?
+
+1155. **The way around.** (Proposed: "it is never required (the way around it is always survivable)".) Placeholder: the
+   pad's lane and one lane beside it (its seeded `side`) hold nothing (no hole, fence, pad, speed pad, ramp's run, floor
+   cut, doodad, floor enemy) from 0.8 s of run before the pad to a lane switch's room past it, and no attack is timed onto
+   a runner in the pad's lane there. A runner who jumps over the pad isn't taken (only the feet on the floor take it), but
+   the rules don't keep the far side of such a jump clear, so the hint only offers switching lanes. Is one clear lane beside
+   it enough, and should jumping over it be a guaranteed way around too?
+
+1156. **The jump itself.** (Proposed: "the runner keeps their speed and arrives running in the output pad's lane"; "no
+   protection after landing".) Placeholder (`Player._teleport`, `RunCamera._on_teleported`): the runner arrives at once,
+   as far past the output pad's front as they were past the input pad's, keeping their speed, a boost, the dash and a
+   slide as they were, and the armor, the shield and an invulnerability window as they were (no window is added); a lane
+   switch, a bump or a doodad's push under way stops in the new lane and a jump pressed before the touch is let go. The
+   camera cuts (no sweep across the lanes) under the flash. Should the jump take a moment (a short fade, a beam), or
+   should the dash end at the touch?
+
+1157. **Credits and the stars.** (Proposed: the runner "skips the track in between and whatever it holds".) Placeholder
+   (`CreditField.skip`, `ScoreKeeper.skip_credits`): the credits between the pads are passed for good, and the stars'
+   best credit score leaves them out (as it leaves out what a thief holds), so taking a teleporter never costs a star and
+   never earns one; credits the magnet was already pulling are collected. The run's stats count them
+   (`credits_skipped`). Should skipped credits count against the stars instead (a choice between credits and a
+   shortcut)? No credit lies on a pad's approach or a landing (the calm stretches keep them off, as a doodad's stretch
+   does): is that wanted?
+
+1158. **What else it skips.** Placeholder (`RunWorld._on_teleported`, `EnemyDirector.runner_teleported`): enemies behind the
+   landing leave play and those still to come there never spawn; a heli drone in play comes along (it keeps pace with the
+   player, GDD §9.6) and one still waiting to swoop in where the runner skipped past never comes; every shot in the air
+   goes, the enemies' and the player's own; a cyborg's charge-up and a heli drone's wind-up or barrage under way are called
+   off, so the next attack warns from the start where the runner is now. Should a heli drone stay behind instead, or
+   should shots fired at the runner follow them?
+
+1159. **A teleporter with one output pad.** (GDD §5: the light shows which of two output pads; it doesn't say what a
+   one-output teleporter's antenna shows.) Placeholder: one with a single output pad lights neither side lamp but a green
+   beacon on the antenna's tip. Relay Station's first one and some later ones have one output pad (`two_output_share`
+   0.6 of the fixed ones past an introduction have two, and one of them always does where it fits). Should every
+   teleporter have two output pads, or a one-output one show no light at all?
+
+1160. **Blinking.** (GDD §5: "others blink left and right, and the side lit when the runner touches the pad decides";
+   proposed: about once a second.) Placeholder (`Teleporter.lit_side`, `lamp_level`): each blinking antenna runs on the
+   level clock from a seeded side and phase (so it blinks the same on every attempt at a seed, and slow time slows it); the
+   light fades over to the other side over `blink_fade_seconds` 0.06 s centred on the change, so the brighter lamp is
+   always the side a touch takes, and both are at a half for a few hundredths of a second at the change itself. Both of a
+   blinking teleporter's landings are kept fair. Should a blinking light give a cue just before it changes (a tick, a
+   flicker), or blink at a rhythm the music sets?
+
+1161. **The look.** (GDD §5: "a square pad with a look all its own, with a green, slightly space-age antenna on it"; its
+   green is the owner's choice; proposed: the output pads "in the teleporter's look without the antenna".) Placeholder
+   (`TeleporterKit`, ZoneSkin's `teleporter_pad`, `teleporter_antenna`, `teleporter_output`): a steel plate flush with the
+   floor, a raised rim, an inset glowing green frame, a four-by-four grid around a hexagonal emitter and corner lights,
+   with a soft green halo; on the input pad's far half, a slim dark mast ringed with green bands, a green halo ring, a
+   crossbar with a lamp housing at each end and a green tip; the lit lamp a bright green-white with a halo. An output pad
+   is the same pad without the antenna, and (added so the player sees where it leads from the start of the approach,
+   about 95 m off, where a flat pad on the floor is only a sliver) a marker of light floating 3.4 m over it: a soft green
+   glow, a bright core and the pad's hexagon traced round it, fading out near the camera. The Ice Lab gives the plate and
+   rim its hall's steel. Is the marker over the output pads wanted, and is the green right?
+
+1162. **Reduced flashing.** (Proposed: "a short flash ... (honouring Reduced flashing)".) Placeholder (`TeleportFlash`): with
+   Reduced flashing the flash is a soft tint, `reduced_flash_alpha` 0.18 at most, easing in and out over
+   `reduced_flash_seconds` 0.45 s; a blinking light fades over the slower `reduced_blink_fade_seconds` 0.3 s instead of
+   switching. A blinking antenna still blinks once a second (it's the mechanic). Is that enough, or should Reduced
+   flashing slow the blinking down too?
+
+1163. **The introductions.** (GDD §5: "the first teleporter is safe, to teach the mechanic".) Placeholder: Relay Station's
+   first one has one output pad straight ahead in its own lane, its lane clear for 2.5 s of run past it, no enemy on the
+   floor in any lane meanwhile and no attack landing there; Specimen Vault's first blinking one keeps both its landings
+   that safe. Later ones prefer output pads with a hole, a fence or a floor enemy in their lane within
+   `prefer_hazard_seconds` 1.5 s after the landing's clear second (GDD §5: "later output pads may sit right in front of a
+   gap or an enemy"). Should the first blinking one be as safe, and should the later ones seek out hazards this much?
+
+1164. **The hints' wording.** Placeholder (`data/hints/hints.json`, "teleporter" and "teleporter_blinking", shown before
+   Relay Station and Specimen Vault): what a teleporter is, that the output pad is the same pad without the antenna, that
+   the antenna's light shows the one you'll land on, that switching lanes goes around it; and that a blinking light's side
+   at the touch decides. Is the wording right?
+
+1166. **Endless mode and the weekly challenge.** Placeholder: endless mode in the Ice Lab plays its last level's counts
+   (Specimen Vault's 4, 2 blinking) over its 20 minutes, spread along it, with no introduction (endless gives no feature a
+   start), as it does with the falling gantryways; it shows blinking antennas to a player whose furthest level may be
+   Frost Foundry (as it shows every zone's last level's features). An Ice Lab week stands Sentinel Row's counts (3, 1
+   blinking: `teleporters` and `blinking_teleporters` are among `WeeklyChallenge.GOLDEN_FIELDS`). Should a long endless
+   level stand more of them (a count per minute)?
+
+1167. **The sound.** Placeholder (`tools/asset_gen/sfx_bank_teleporter.gd`, `assets/sfx/teleport.wav`): a space-age warp of
+   about 0.7 s (a bright chirp shooting up, a fluttering shimmer of sparkles, a soft thump and a glassy ping as the runner
+   lands). Nothing about a teleporter hurts, so it has no warning sound, and its antenna makes no sound as it blinks.
+
+1168. **Blinking antennas as a feature of their own.** Placeholder: `teleporter_blinking` is a level feature beside
+   `teleporter` (so the schedule shows Specimen Vault adding it, with its own introduction and hint); its rules script only
+   answers where the blinking ones are. Is that the right split, or should blinking be a dial of the teleporters only?
+
+1169. **Two output pads side by side.** (GDD §5: "a left and a right output pad".) Placeholder: both stand at the same
+   distance, at least `output_lane_gap` 2 lanes apart where the track has the lanes (the outer lanes at 3 lanes), so they
+   read as a left and a right; both landings are kept fair, a fixed light's unlit one too (it's in view as well). Should
+   they stand at different distances, or nearer each other?
