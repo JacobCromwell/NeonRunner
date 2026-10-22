@@ -37,13 +37,13 @@ const AT: float = 60.0
 const SPEEDS: Array[float] = [18.0, 25.0]
 ## Campaign builds, as {id, lanes, seed}, where the danger density pass would add a wall enemy on a
 ## Sentinel's wall section if it didn't ask the Sentinels' rules (SentinelWallsUnchecked; task K4): Golden 2 at
-## 3 lanes on seed 9011, whose pass would put a window cyborg on the wall section of the Sentinel at 3038 m (one of
-## six such builds of Golden 2's on seeds 9001-9060 since task Q6's teleporters, whose calm stretches move what the
-## pass adds; the Palace at 6 lanes on seed 9004 without its wall-run gaps, the case since task J2, the Palace at 3
-## lanes on seed 9024, the H series' case, at 3 lanes on seed 9039, task K5's, and Golden 2 at 5 lanes on seed 9034,
-## K4's, no longer build that way). Built as shipped every Sentinel keeps its rules; built without the check, the
-## problem shows (else re-pin the case). A case may name features to build it `without` (a feature that moves what
-## the pass adds on that seed).
+## 3 lanes on seed 9011 as shipped, whose pass would put a window cyborg on the wall section of the Sentinel at
+## 3038 m (with or without task Q6's teleporters; one of 14 such builds of Golden 2's and the Palace's at 3, 5 and
+## 6 lanes on seeds 9001-9060). The Palace at 6 lanes on seed 9004 without its wall-run gaps, the case since task
+## J2, no longer builds that way since Q6's teleporters moved what the pass adds there, nor do the Palace at 3 lanes
+## on seed 9024 (the H series' case), at 3 lanes on seed 9039 (task K5's) and Golden 2 at 5 lanes on seed 9034
+## (K4's). Built as shipped every Sentinel keeps its rules; built without the check, the problem shows (else re-pin
+## the case). A case may name features to build it `without` (one that moves what the pass adds on that seed).
 const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/2", "lanes": 3, "seed": 9011, "without": []}]
 
 var sim: RunSim
