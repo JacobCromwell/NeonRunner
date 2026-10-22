@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="GantrywayTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/gantryway_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+length_seconds = 3.0
+deck_thickness = 0.5
+fall_seconds = 1.0
+warning_seconds = 0.45
+sag = 0.3
+shudder_amplitude = 0.08
+shudder_hz = 18.0
+hitbox_inset = 0.2
+shadow_darkness = 0.6
+land_shake_strength = 0.22
+land_shake_seconds = 0.3
+escape_after_seconds = 0.5
+intro_both_sides = true
+plant_cyborg = true
+crush_margin_seconds = 0.2
+hold_before_seconds = 2.0
+spacing_seconds = 12.0
+intro_window_seconds = 11.5
+clear_plain_pieces = true
+search_step = 1.0

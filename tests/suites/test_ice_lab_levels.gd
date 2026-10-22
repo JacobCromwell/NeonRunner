@@ -17,8 +17,9 @@ extends TestSuite
 ##   (holes, fences, signs, ceilings and their pads, the zone doodads); every feature of the level, but the ones sprinkled
 ##   in (the ceiling scenarios, LayoutChecks.occasional).
 ## The zone's own mechanics come with their tasks, which add their features to the levels (and their checks here): Q3's
-## falling gantryways (all three levels), Q4's teleporters (levels 2 and 3), Q5's Octodog jars, and later the zone's two
-## new enemies (GDD §5, Level schedule). Nothing here stands in for them.
+## falling gantryways (all three levels, introduced in Frost Foundry: every build hangs the level's count of them, each
+## where LayoutChecks.check_gantryways finds it fair; test_gantryways has the rest), Q4's teleporters (levels 2 and 3), Q5's
+## Octodog jars, and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in for them.
 
 const ZONE_PATH: String = "res://data/zones/ice_lab.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
@@ -158,12 +159,16 @@ func _test_level_data() -> void:
 		# Nothing earlier is introduced again: a start only for a feature of the Ice Lab's own (tasks Q3 and Q4 bring theirs).
 		for f: String in level.feature_starts:
 			check(not before.has(f), "%s gives a start only to what it introduces (`%s`)" % [tag, f])
+		# Task Q3: every level hangs falling gantryways, and Frost Foundry introduces them.
+		check(level.has_feature("gantryway") and level.gantryways > 0 and level.feature_starts.has("gantryway") == (n == 0),
+			"%s hangs falling gantryways (%d)%s" % [tag, level.gantryways, ", introducing them" if n == 0 else ""])
 
 
 ## Every build at 3, 5 and 6 lanes on the levels' own seeds and others, as the campaign configures it.
 func _test_levels() -> void:
 	var builds: int = 0
 	var levels: int = 0
+	var gantryways: int = 0
 	var enemies: Dictionary = {}
 	for n: int in [1, 2, 3]:
 		var step: CampaignStep = campaign.step("ice_lab/%d" % n)
@@ -197,6 +202,10 @@ func _test_levels() -> void:
 					% [others, tag])
 				check(layout.dash_walls.is_empty() and layout.cuts.is_empty() and layout.maze.is_empty(),
 					"no dash walls, floor cuts or debris maze %s" % tag)
+				# Task Q3: as many falling gantryways as the level asks for (LayoutChecks.check_gantryways: each fair).
+				check(layout.gantryways.size() == config.gantryways,
+					"%d of the level's %d falling gantryways %s" % [layout.gantryways.size(), config.gantryways, tag])
+				gantryways += layout.gantryways.size()
 				check(not layout.gaps.is_empty() and not layout.fences.is_empty() and not layout.signs.is_empty()
 					and not layout.hulls.is_empty() and not layout.pads.is_empty() and not layout.doodads.is_empty(),
 					"the usual obstacles: %d holes, %d fences, %d signs, %d ceilings and %d pads, %d doodads %s" % [layout.gaps.size(),
@@ -208,5 +217,5 @@ func _test_levels() -> void:
 						continue
 					check(not LayoutChecks.feature_positions(layout, f).is_empty() or LayoutChecks.occasional(f),
 						"has `%s` (GDD §5: earlier features keep appearing) %s" % [f, tag])
-	print("  the Ice Lab's builds: %.2f generator builds a level over %d levels; enemies %s" % [float(builds) / maxf(levels, 1.0),
-		levels, enemies])
+	print("  the Ice Lab's builds: %.2f generator builds a level over %d levels; enemies %s; %d falling gantryways" % [
+		float(builds) / maxf(levels, 1.0), levels, enemies, gantryways])

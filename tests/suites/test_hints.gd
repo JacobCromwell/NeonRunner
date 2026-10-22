@@ -99,6 +99,8 @@ func _test_campaign_relevance() -> void:
 		"dead_zone/1": ["host", "bad_dream"],
 		# Task O2: the debris maze, where debris stops the runner; task O3: the Cybernetic Centipede that haunts it.
 		"terminal/1": ["debris_maze", "centipede"],
+		# Task Q3: Frost Foundry's falling gantryways.
+		"ice_lab/1": ["gantryway"],
 		"golden/1": ["resonator"],
 		"golden/2": ["gilded_sentinel"],
 	}

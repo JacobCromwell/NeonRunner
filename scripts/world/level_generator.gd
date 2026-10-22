@@ -155,6 +155,9 @@ const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const DangerDensity := preload("res://scripts/world/danger_density.gd")
 ## The dash walls' rules (task H7a), whose footprints the fill pass and the doodads keep off.
 const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
+## The params key of a cyborg planted under a falling gantryway (task Q3; gantryway_rules.gd's PARAM): counted out of
+## the level's own `cyborg` encounters (feature_positions), as a cyborg planted in a charge's path is.
+const GANTRYWAY_PARAM: String = "gantryway"
 ## A hover truck's stay and a cyborg's margin, for what a pattern reaches (_pattern_reach).
 const HoverTruckRules := preload("res://scripts/enemies/hover_truck_rules.gd")
 const CyborgRules := preload("res://scripts/enemies/cyborg_rules.gd")
@@ -1206,7 +1209,8 @@ func missing_features(needed: PackedStringArray) -> PackedStringArray:
 ## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), full-height wall fences
 ## (wall_fences) and partial ones (wall_fences_partial), host cyborgs (host), cyborgs that aren't hosts
 ## (cyborg; nor planted in a charge's path, task G7: an extra the charge flattens, never the level's own
-## cyborg encounter; nor a Buzz Overdrive's company, task L2, an extra too), screeches from wall vents
+## cyborg encounter; nor a Buzz Overdrive's company, task L2, an extra too; nor one planted under a falling
+## gantryway, task Q3, GANTRYWAY_PARAM, the extra its walkway crushes), screeches from wall vents
 ## (screech_vents), and otherwise the enemies of that type, which
 ## covers every enemy type. A feature whose rules script declares
 ## `static func positions(layout: LevelLayout) -> Array[float]` answers for itself (a new kind of
@@ -1251,7 +1255,7 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 				match feature:
 					"cyborg":
 						hit = type == "cyborg" and not host and not params.has(ChargePathPlacement.PARAM) \
-							and not params.has(BuzzCompanyPlacement.PARAM)
+							and not params.has(BuzzCompanyPlacement.PARAM) and not params.has(GANTRYWAY_PARAM)
 					"host":
 						hit = host
 					"screech_vents":

@@ -185,6 +185,13 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 @export var dash_wall_palette: PackedColorArray = PackedColorArray([Color(0.35, 0.36, 0.39), Color(0.25, 0.26, 0.29),
 	Color(0.07, 0.08, 0.1), Color(0.035, 0.035, 0.045)])
 
+@export_group("Gantryways")
+## The colours of the default falling gantryway look (gantryway(), gantry_pillar(), gantryway_wreck(), task Q3;
+## GantrywayKit), sRGB: its steel, its steel's lighter edges, frost, snow and ice. Lit, never glowing. Empty: the kit's
+## frosted steel (GantrywayKit.STEEL ...), the Ice Lab's own look; a zone may set its own, or draw its own look by
+## overriding the three.
+@export var gantryway_palette: PackedColorArray = PackedColorArray()
+
 @export_group("Wall-run gaps")
 ## Whether this zone lights a wall-run gap's way across with the green chevrons (wall_run_guide, task L5; the owner,
 ## October 17, 2026: the lit wall is fine where the mechanic is introduced, the Marketplace, but too easy after it, so
@@ -1173,6 +1180,79 @@ static func _dash_wall_crack(s: MeshLayer, from: Vector2, angle: float, segments
 		s.box_xform(xform, color, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY)
 		p = q
 		width *= 0.82
+
+
+## A falling gantryway's walkway (task Q3; GDD §5, Zone 9, owner, October 21, 2026: "an upper walkway over one lane
+## only, looking like a ceiling section"; Gantryway): `body` is the node that falls, centred on the walkway's box `size`
+## (width across its lane, its deck's depth, its length along the track): its underside at -size.y / 2, its near end,
+## toward the oncoming runner, at +size.z / 2. It hangs at the ceilings' height until the dash breaks its pillar. Every
+## look keeps to these (and a zone's own look must too: test_gantryways):
+## - inside its box, but for railings standing up to GantrywayKit.RAIL_HEIGHT above it and icicles hanging down to
+##   GantrywayKit.ICICLE_MAX below it: what falls is what the runner sees;
+## - solid, lit and never glowing, nothing in a hazard colour and nothing that reads as a sign or a fence: its warning as
+##   it falls (its shadow, the red line on its lane, the creak) is the Gantryway's own, the same in every zone;
+## - drawn with materials that dissolve near the camera (gantryway_material()): the chase camera passes under it as it
+##   falls, and through its pillar's column when the runner is in the lane beside it;
+## - everything under `body`; cheap: one mesh from cached templates, drawn on the Compatibility renderer.
+## The default is a frosted steel catwalk (GantrywayKit.walkway_mesh) in gantryway_palette.
+func gantryway(body: Node3D, size: Vector3, look_seed: int) -> void:
+	GantrywayKit.dress(body, GantrywayKit.walkway_mesh(size, look_seed, gantryway_palette), gantryway_material())
+
+
+## A falling gantryway's pillar (task Q3; GDD §5: "pillars stand in the floor lanes holding them up. Dashing through a
+## pillar knocks down its long section of gantryway"): `body` is its DashBreakable (TrackBuilder: a small zone doodad's
+## box, centred on it, which it pushes and blocks like one, its floor at `floor_y`), `size` the box its look fills
+## (width and length the doodad's, its height from that floor up to the walkway's underside), pushing to `side` (-1
+## left, +1 right). As gantryway()'s looks, and: it reads as something a dash breaks (cracks, welds), never as a hazard;
+## everything under `body` (the dash's break hides it whole); its colours tagged for the pieces it breaks into
+## (gantry_pillar_debris_colors). The default is an icy steel column (GantrywayKit.pillar_mesh).
+func gantry_pillar(body: Node3D, size: Vector3, floor_y: float, side: int, look_seed: int) -> void:
+	var look: MeshInstance3D = GantrywayKit.dress(body, GantrywayKit.pillar_mesh(size, side, look_seed, gantryway_palette),
+		gantryway_material())
+	look.position = Vector3(0.0, floor_y + size.y * 0.5, 0.0)
+
+
+## A fallen gantryway (task Q3; GDD §5, proposed: "once down, it lies flat and the runner runs over it harmlessly"):
+## `body` is centred on its box `size` (the walkway's width and length, a little height), on the floor of its lane.
+## Low and flat: the runner runs through it (it has no collision), so nothing stands above its box. As gantryway()'s
+## looks otherwise. The default is the catwalk crushed flat (GantrywayKit.wreck_mesh).
+func gantryway_wreck(body: Node3D, size: Vector3, look_seed: int) -> void:
+	GantrywayKit.dress(body, GantrywayKit.wreck_mesh(size, look_seed, gantryway_palette), gantryway_material())
+
+
+## The material the default gantryway looks draw with (GantrywayKit.material(): the kit's lit look, dissolving near
+## the camera). A zone drawing its own looks draws them in materials that do the same.
+func gantryway_material() -> Material:
+	return GantrywayKit.material()
+
+
+## The colours a gantryway's pillar breaks into (RunEffects' rubble as the dash smashes it, and its column's pieces as
+## its walkway goes: Gantryway), for `body` as gantry_pillar() dressed it: its look's own main lit colours (the builder
+## tagged them: tag_debris_colors), else the kit's steel and frost.
+func gantry_pillar_debris_colors(body: Node3D, _side: int, _look_seed: int) -> PackedColorArray:
+	return _tagged_colors(body, PackedColorArray([GantrywayKit.STEEL_LIGHT, GantrywayKit.FROST]))
+
+
+## The colours a gantryway's pieces fly in as it lands (Gantryway), for `body` as gantryway() dressed it: its look's
+## own (tagged), else the kit's steel and frost.
+func gantryway_debris_colors(body: Node3D, _look_seed: int) -> PackedColorArray:
+	return _tagged_colors(body, PackedColorArray([GantrywayKit.STEEL, GantrywayKit.STEEL_LIGHT]))
+
+
+## The snow and ice that shake loose from a gantryway as it shudders, and fly as it lands (Gantryway): lit, never
+## glowing. The default: snow, frost and ice in gantryway_palette (GantrywayKit.snow_colors).
+func gantryway_snow_colors() -> PackedColorArray:
+	return GantrywayKit.snow_colors(gantryway_palette)
+
+
+## The main lit colours tagged on the meshes under `body` (tag_debris_colors), or `fallback` where none is.
+static func _tagged_colors(body: Node3D, fallback: PackedColorArray) -> PackedColorArray:
+	var out := PackedColorArray()
+	for node: Node in body.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = (node as MeshInstance3D).mesh
+		if mesh != null and mesh.has_meta(DEBRIS_COLORS_META):
+			out.append_array(mesh.get_meta(DEBRIS_COLORS_META) as PackedColorArray)
+	return out if not out.is_empty() else fallback
 
 
 func finish_line(_parent: Node3D, _width: float, _distance: float) -> void:
