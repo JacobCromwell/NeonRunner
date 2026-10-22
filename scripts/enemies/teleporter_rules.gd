@@ -65,10 +65,11 @@ extends RefCounted
 ## `teleporter_blinking`. The introductions first, then the rest spread through the level past them (a part each, a seeded
 ## spot aimed for in the part, the best fair spot there: a blinking one only past the blinking start), then the best of
 ## the rest. Of the fixed ones past the introduction, one is given two output pads (so a level that brings in fixed
-## antennas shows one's light; it stands with one where two find no room), each other one two_output_share. Its own random
-## stream
-## (LevelGenerator.rng_for), after every other feature's rules (RUN_AFTER), so the passes before it place exactly what they
-## did; a level without the feature draws nothing and is built byte for byte as before.
+## antennas shows one's light; it stands with one where two find no room), each other one two_output_share. A blinking one
+## with no room of its own (the Golden Zone's crowded levels, task Q6: a level with no introduction, where the fixed ones
+## took the spots that fit two output pads) has a fixed one with two output pads blink instead (_blink_fixed). Its own
+## random stream (LevelGenerator.rng_for), after every other feature's rules (RUN_AFTER), so the passes before it place
+## exactly what they did; a level without the feature draws nothing and is built byte for byte as before.
 ##
 ## What keeps off them after the rules (doodad_keep_outs, fill_keep_outs): the pad stretch and each landing in every lane
 ## (the danger density pass, the wider gaps, the cyborgs planted in charge paths, the fill pass and the zone doodads), and P,
@@ -296,6 +297,12 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 			spot = _best(plan, SINGLE, lo_k, plan.hi, lo_k, fronts, spacing, false)
 		if not spot.is_empty():
 			_place(gen, spot, fronts, rng)
+	# A blinking antenna the level asks for with no room of its own (task Q6: the Golden Zone's crowded levels, where the
+	# fixed ones took the spots that fit two output pads): a fixed one with two output pads past the blinking start
+	# blinks instead.
+	var short: int = blink_count - positions_blinking(gen.layout).size()
+	if short > 0:
+		_blink_fixed(gen.layout, plan.t, rng, maxf(plan.lo, gen.feature_start(BLINKING)), short)
 	if fronts.is_empty():
 		gen.warnings.append("teleporters: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
 	elif blink_count > 0 and positions_blinking(gen.layout).is_empty():
@@ -317,6 +324,21 @@ static func _intro(gen: LevelGenerator, t: TeleporterTuning, pt: PowerupTuning, 
 		plan = plan_for(gen, t, pt, false, true, start + window, INF)
 		spot = _best(plan, kind, plan.lo, plan.hi, plan.lo, fronts, spacing, true)
 	return spot
+
+
+## Makes up to `count` of `lay`'s fixed teleporters with two output pads standing from `from` on blink (blink_seconds a
+## side from a seeded phase, starting from the side their light was on), picked with `rng`: where the level's blinking
+## ones found no room of their own (_apply; task Q6). A fixed one's landings keep a blinking one's rules already (either
+## output pad may be taken, the unlit one is in view as well).
+static func _blink_fixed(lay: LevelLayout, t: TeleporterTuning, rng: RandomNumberGenerator, from: float, count: int) -> void:
+	var fixed: Array[Dictionary] = []
+	for tp: Dictionary in lay.teleporters:
+		if (tp["outputs"] as Array).size() == 2 and float(tp["blink"]) <= 0.0 and float(tp["at"]) >= from - 0.01:
+			fixed.append(tp)
+	for k: int in mini(count, fixed.size()):
+		var tp: Dictionary = fixed.pop_at(rng.randi_range(0, fixed.size() - 1))
+		tp["blink"] = t.blink_seconds
+		tp["phase"] = snappedf(rng.randf(), 0.001)
 
 
 ## The kinds of the teleporters still to place past the introductions (`placed`), in a seeded order: the blinking ones

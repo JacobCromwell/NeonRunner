@@ -120,13 +120,10 @@ const LEFT_OUT: Dictionary = {
 	# its extended wall runs no room (LevelConfig.features_left_out; endless mode puts it back).
 	"drone": ["dead_zone/2"],
 	# Task Q3: the falling gantryways stay in the Ice Lab, the zone's own mechanic as the Terminal's maze is the Terminal's
-	# (GDD §5, Zone 9 names them for its three levels; DESIGN-TBD, docs/questions/q3.md: GDD §5 says anything introduced
-	# keeps appearing, so whether the Golden Zone hangs them too is the owner's call).
+	# (GDD §5, Zone 9; the owner, October 22, 2026: "For now, the Falling Gantryways should only be in the ice lab").
+	# (The teleporters, task Q4, keep appearing: the owner, October 22, 2026, "we should add the teleporters to the golden
+	# zone", task Q6, all three of its levels, fixed and blinking alike.)
 	"gantryway": ["golden/1", "golden/2", "golden/3"],
-	# Task Q4: the teleporters stay in the Ice Lab too, as the gantryways do (DESIGN-TBD, docs/questions/q4.md 13: GDD §5 says
-	# anything introduced keeps appearing, so whether the Golden Zone stands them too is the owner's call).
-	"teleporter": ["golden/1", "golden/2", "golden/3"],
-	"teleporter_blinking": ["golden/1", "golden/2", "golden/3"],
 	# Task Q5: the Octodog jars stay in the Ice Lab, its own doodads; the Golden Zone has no Octodogs to hold anyway
 	# (DESIGN-TBD, docs/questions/q5.md 12).
 	"octodog_jar": ["golden/1", "golden/2", "golden/3"],
