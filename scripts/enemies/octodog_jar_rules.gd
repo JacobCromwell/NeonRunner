@@ -127,8 +127,8 @@ const MAX_TAKEN_OUT: int = 3
 ## The most the introduction takes out (_intro: the level that gives the feature a start shows it where it can; Frost
 ## Foundry's own build at five lanes needs 4), else as MAX_TAKEN_OUT. DESIGN-TBD (docs/questions/q5.md 7 and 14).
 const INTRO_MAX_TAKEN_OUT: int = 4
-## How many pieces a pattern ceiling in the way counts as when dog_at weighs its dog's plans (_run_cost): _best takes the
-## fewest ceilings out first.
+## How many pieces a pattern ceiling in the way counts as when dog_at weighs its dog's plans (_at, _run_cost): _best takes
+## the fewest ceilings out first.
 const CEILING_COST: int = 10
 ## The most pattern ceilings one jar takes out of its way (with their pads and the credits on them), only where no spot
 ## needs none: their credits count towards the level's stars. DESIGN-TBD (docs/questions/q5.md 7).
@@ -204,7 +204,7 @@ class Plan:
 	var dogs: Array[Vector2] = []
 	var zones: Array[Vector2] = []
 	var room: LevelGenerator.DoodadRoom
-	## The charges planned from each first wind-up already tried, as the layout stands (_charges_at; refresh() clears it).
+	## What each first wind-up already tried gives, as the layout stands (_at; refresh() clears it).
 	var tried: Dictionary = {}
 	## While _best looks for spots with everything that may go gone: what may go (_removable), and what each charge's
 	## wind-up would need taken out of its way (_charge_cost), so dog_at picks the plan needing the least; null and empty
@@ -309,7 +309,7 @@ static func _ceiling_zones(gen: LevelGenerator) -> Array[Vector2]:
 ## fewest, in `plan`'s level: {anchors, span}, or {} where no fair one fits (see the header). Its first wind-up is from
 ## release_distance past the jar to pace_room later (the dog paces meanwhile), where its charges fit (_charges_at): at
 ## `prefer` where they fit there, else the soonest; while _best looks for spots with all that may go gone (plan.going),
-## the one whose charges need the least taken out of their way (_charge_cost), the soonest of those. The jar's own room
+## the one whose charges need the least taken out of their way (_run_cost), the soonest of those. The jar's own room
 ## keeps off every wall-run gap's stretch and every chase.
 static func dog_at(plan: Plan, j: float, wanted: int, prefer: float = -INF) -> Dictionary:
 	var region: Vector2 = jar_region(plan.gen, j)
@@ -318,22 +318,25 @@ static func dog_at(plan: Plan, j: float, wanted: int, prefer: float = -INF) -> D
 	var first: float = j + plan.release
 	var last: float = first + plan.pace_room + 0.001
 	if prefer >= first - 0.001 and prefer <= last:
-		var wanted_dog: Dictionary = _dog_from(plan, prefer, wanted)
+		var wanted_dog: Dictionary = _at(plan, prefer, wanted)[1]
 		if not wanted_dog.is_empty():
-			return wanted_dog
+			return wanted_dog.duplicate()
 	var best: Dictionary = {}
 	var best_cost: int = -1
 	var a0: float = first
 	while a0 <= last:
-		var past: float = _past_charges(plan, a0)
+		var info: Array = _at(plan, a0, wanted)
+		var past: float = info[0]
 		if past > a0:
-			a0 = first + ceilf((past - first) / plan.step - 0.0001) * plan.step
+			# On the grid past it, and on at least a step (a wind-up a hair from one tried shares its entry).
+			var next: float = first + ceilf((past - first) / plan.step - 0.0001) * plan.step
+			a0 = next if next > a0 + 0.001 else a0 + plan.step
 			continue
-		var dog: Dictionary = _dog_from(plan, a0, wanted)
+		var dog: Dictionary = info[1]
 		if not dog.is_empty():
 			if plan.going == null:
-				return dog
-			var cost: int = _run_cost(plan, dog)
+				return dog.duplicate()
+			var cost: int = info[2]
 			if best_cost < 0 or cost < best_cost:
 				best = dog
 				best_cost = cost
@@ -341,34 +344,50 @@ static func dog_at(plan: Plan, j: float, wanted: int, prefer: float = -INF) -> D
 					break
 		a0 += plan.step
 	if not best.is_empty():
-		return best
+		return best.duplicate()
 	return _no("no room for its dog's charges in its pace")
 
 
-## The charges of a freed dog whose first wind-up is at `a0` (_charges_at), worked out once for each as the layout stands
-## (plan.tried): {anchors, span}, or {}.
-static func _dog_from(plan: Plan, a0: float, wanted: int) -> Dictionary:
-	var key: String = "%d:%d" % [roundi(a0 * 100.0), wanted]
-	if not plan.tried.has(key):
-		plan.tried[key] = _charges_at(plan, a0, wanted)
-	var dog: Dictionary = plan.tried[key]
-	return dog.duplicate() if not dog.is_empty() else {}
+## What a first wind-up at `a0` gives a dog trying for `wanted` charges, worked out once as the layout stands
+## (plan.tried, by the centimetre; refresh() clears it): [the first wind-up past all its shortest run meets (-INF where
+## it meets nothing: _past_charges), its dog's plan ({anchors, span}, or {} where none fits from there: _charges_at), and
+## what that plan needs taken out of its way (_run_cost, each ceiling as CEILING_COST pieces, while _best looks with all
+## that may go gone; -1 otherwise)]. The plan then carries the ceilings in its run's way ("ceilings"), so _best skips a
+## spot needing more than a jar takes out.
+static func _at(plan: Plan, a0: float, wanted: int) -> Array:
+	var key: int = roundi(a0 * 100.0) * 16 + wanted
+	var got: Variant = plan.tried.get(key)
+	if got != null:
+		return got
+	var past: float = _past_charges(plan, a0)
+	var dog: Dictionary = {}
+	var cost: int = -1
+	if past <= a0:
+		past = -INF
+		dog = _charges_at(plan, a0, wanted)
+		if not dog.is_empty() and plan.going != null:
+			var run: Vector2i = _run_cost(plan, dog)
+			cost = run.x + CEILING_COST * run.y
+			dog["ceilings"] = run.y
+	var out: Array = [past, dog, cost]
+	plan.tried[key] = out
+	return out
 
 
 ## What dog plan `dog` ({anchors, span}) needs taken out of its way, of what may go (plan.going, _removable), as the layout
-## stood before it went, for ranking (_in_way counts it exactly): each charge's (_charge_cost), and the pattern ceilings
-## whose pads or landing reach the floor its charges use, each as CEILING_COST pieces (_best takes the fewest ceilings
-## out first).
-static func _run_cost(plan: Plan, dog: Dictionary) -> int:
+## stood before it went, for ranking (_in_way counts it exactly): Vector2i(each charge's pieces and enemies, summed
+## (_charge_cost), the pattern ceilings whose pads or landing reach the floor its charges use).
+static func _run_cost(plan: Plan, dog: Dictionary) -> Vector2i:
 	var anchors: Array[float] = dog["anchors"]
-	var cost: int = 0
+	var pieces: int = 0
 	for a: float in anchors:
-		cost += _charge_cost(plan, a)
+		pieces += _charge_cost(plan, a)
 	var span: Vector2 = dog["span"]
 	var charges := Vector2(span.x, maxf(span.y, anchors[-1] + plan.stop + plan.gen.metres(PAD_AFTER)))
+	var ceilings: int = 0
 	for r: Vector2 in plan.going.hull_reach:
-		cost += CEILING_COST if r.x <= charges.y and r.y >= charges.x else 0
-	return cost
+		ceilings += 1 if r.x <= charges.y and r.y >= charges.x else 0
+	return Vector2i(pieces, ceilings)
 
 
 ## What a charge whose wind-up is at `a` needs taken out of its way, of what may go (plan.going), as the layout stood
@@ -471,9 +490,10 @@ static func _past_charges(plan: Plan, a0: float) -> float:
 	var run_from: float = a0 - plan.run_lead
 	var shortest: float = a0 + (MIN_CHARGES - 1) * plan.cycle + plan.window
 	var past: float = a0
-	for s: Vector2 in plan.zones + plan.keeps + plan.wall_runs:
-		if s.x <= shortest and s.y >= run_from:
-			past = maxf(past, s.y + plan.run_lead + 0.001)
+	for list: Array[Vector2] in [plan.zones, plan.keeps, plan.wall_runs]:
+		for s: Vector2 in list:
+			if s.x <= shortest and s.y >= run_from:
+				past = maxf(past, s.y + plan.run_lead + 0.001)
 	for s: Vector2 in plan.chases:
 		if s.x <= shortest + plan.stop and s.y >= run_from:
 			past = maxf(past, s.y + plan.run_lead + 0.001)
@@ -495,8 +515,12 @@ static func _past_blocks(plan: Plan, j: float) -> float:
 
 
 ## A jar with its front at `j` and its dog's plan (dog_at), if both fit as `plan`'s layout stands: {front, anchors, span,
-## fits}, `fits` the lanes the jar fits in, each [lane, its sides that fit], or {}.
+## fits}, `fits` the lanes the jar fits in, each [lane, its sides that fit], or {}. The dog first: its plans are worked
+## out once for every front (_at), the jar's lanes for each.
 static func _fits_at(plan: Plan, j: float, wanted: int, prefer: float = -INF) -> Dictionary:
+	var dog: Dictionary = dog_at(plan, j, wanted, prefer)
+	if dog.is_empty():
+		return {}
 	var fits: Array[Array] = []
 	for lane: int in plan.gen.layout.lane_count:
 		var sides: Array[int] = []
@@ -507,9 +531,6 @@ static func _fits_at(plan: Plan, j: float, wanted: int, prefer: float = -INF) ->
 			fits.append([lane, sides])
 	if fits.is_empty():
 		return _no("no lane for the jar")
-	var dog: Dictionary = dog_at(plan, j, wanted, prefer)
-	if dog.is_empty():
-		return {}
 	dog["front"] = j
 	dog["fits"] = fits
 	return dog
@@ -634,6 +655,10 @@ static func _best(plan: Plan, rng: RandomNumberGenerator, a: float, b: float, ai
 	# [taken out, off the aim, front, option, lane, what's in its way, ceilings taken out]
 	var ranked: Array[Array] = []
 	for o: Dictionary in options:
+		# Its dog's charges alone meet more ceilings than a jar takes out (_run_cost): never taken.
+		if int(o.get("ceilings", 0)) > max_ceilings:
+			_no("more ceilings in its dog's run than a jar takes out")
+			continue
 		var pick: Array = _in_way(plan, o, going)
 		if int(pick[0]) <= (most if most >= 0 else max_taken) and int(pick[3]) <= max_ceilings:
 			ranked.append([int(pick[0]), absf(float(o["front"]) - aim), float(o["front"]), o, int(pick[1]), pick[2],
