@@ -16,6 +16,7 @@ features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "
 feature_starts = Dictionary[String, float]({
 "gantryway": 0.15
 })
+skin_path = "res://data/skins/ice_lab_frost_skin.tres"
 guarantee_features = true
 narrow_ceiling_share = 0.5
 spacing_seconds_easy = 1.1

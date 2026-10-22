@@ -4,7 +4,7 @@ extends TestSuite
 ## curve and leaves every other level as it was, and saves from before it, are test_campaign's. Checked here:
 ## - the data: data/zones/ice_lab.tres between the Terminal and the Golden Zone (id ice_lab, "The Ice Lab", Frost Foundry,
 ##   Relay Station and Specimen Vault, its music track `ice_lab`, an intro and an outro slot, no boss slot, outside the
-##   web demo, a skin: the Corporate zone's stands in until task Q2's), its run speed between its neighbours'; its levels:
+##   web demo, the Ice Lab's skin, task Q2's), its run speed between its neighbours'; its levels:
 ##   off the curve, their own seeds, the core patterns, the walls every other zone has (the shared wall-gap numbers, no
 ##   arches) with wall running, doodads that push and stand as tall as every other zone's, no dash walls and none of the
 ##   Terminal's debris maze, a danger density dial between their neighbours'; their features: the cyborg gangsters (window
@@ -76,9 +76,15 @@ func _test_zone() -> void:
 		and String(zone.outro.id) == "ice_lab_outro" and zone.intro.is_built() and not zone.outro.is_built()
 		and not zone.intro.is_skipped() and not zone.outro.is_skipped(),
 		"an intro slot (the placeholder flyover) and an outro slot (a placeholder card)")
-	# The zone's look is task Q2's (its own skin, and each level's own leaning: level 1 snow and industry, level 3 the lab,
-	# through LevelConfig.skin_path); until it comes, an existing zone's stands in, named in the zone's data alone.
-	check(zone.skin != null and zone.skin_path != "", "a skin, named by its path (the Corporate zone's stands in until task Q2's)")
+	# The zone's look is task Q2's: the Ice Lab's skin, and each level's own leaning (level 1 snow and industry, level 3 the
+	# lab, level 2 in between) through LevelConfig.skin_path.
+	check(zone.skin is IceLabSkin and zone.skin_path == "res://data/skins/ice_lab_skin.tres",
+		"the Ice Lab's skin, named by its path (task Q2's)")
+	var leans: Array[float] = []
+	for level: LevelConfig in zone.levels:
+		leans.append((level.skin as IceLabSkin).lab_share if level.skin is IceLabSkin else -1.0)
+	check(leans.size() == 3 and leans[0] >= 0.0 and leans[0] < leans[1] and leans[1] < leans[2],
+		"each level wears the Ice Lab's skin, leaning further into the laboratory from level 1 to level 3 (%s)" % [leans])
 	var terminal: ZoneDef = campaign.zones[at - 1] if at > 0 else null
 	var golden: ZoneDef = campaign.zones[at + 1] if at >= 0 and at + 1 < campaign.zones.size() else null
 	check(terminal != null and golden != null and zone.run_speed > terminal.run_speed and zone.run_speed < golden.run_speed,

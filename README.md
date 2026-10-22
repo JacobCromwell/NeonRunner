@@ -64,7 +64,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
 | `--outfit=rex` | The runner wears an outfit (a cosmetic's id from `data/shop/catalog.json`: `rex`, `camo`, `beach_master`, `centurion`, `party_wolf`; `echo` is his own look) in every run and cinematic, owned or not, without touching the save. Alone it starts quick play. The review scenes `avatar_showcase.tscn` and `avatar_run_review.tscn` (under `tools/showcase/`) take it too |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `casino`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden`, `golden_palace` (Golden 3's interior) or `beach` (the Beach) |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `casino`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden`, `golden_palace` (Golden 3's interior), `beach` (the Beach), `terminal` (the Terminal) or the Ice Lab: `ice_lab` (level 2's look, between), `ice_lab_frost` (level 1's: snow and industry) and `ice_lab_lab` (level 3's: the laboratory) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each spot along the level (`doodad_spot_seconds` apart) with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
@@ -173,7 +173,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   20. Ice Lab 1 *Frost Foundry*: a frozen laboratory (task Q1), nothing new yet: the cyborgs (window cyborgs too),
       Octodogs and heli drones, and none of the other earlier enemies; the usual holes, fences, signs, ceilings and
       pads, the zone doodads (they push, as everywhere but the Terminal) and wall running, and no dash walls. It
-      wears the Corporate zone's look until its own comes (task Q2), and plays the Corporate zone's song. Its falling
+      wears the Ice Lab's look (task Q2: a snow-and-industry lean, level 3 the laboratory, level 2 between), and plays the
+      Corporate zone's song. Its falling
       gantryways, its teleporters (levels 2 and 3), its Octodog jars and its two new enemies are still to come.
   21. Ice Lab 2 *Relay Station*: the same set.
   22. Ice Lab 3 *Specimen Vault*: the same set, then straight on to the Golden Zone (no boss). Like the Terminal's, the
