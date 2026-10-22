@@ -36,6 +36,10 @@ extends RefCounted
 ##   (the walkway hangs at a ceiling's height and looks like a ceiling section, but is never walked on: nobody rides a
 ##   ceiling beside it, nor drops off one into its step out). A ceiling over lanes further out may stand meanwhile, its
 ##   pads in its own lanes.
+## - No wall-run gap's stretch (WallRunGapPlacement.keep_out: its clear run-in to its landing floor, with its margins) from
+##   the pillar's lead to past the walkway's far end and the calm stretch's end, in any lane: a wall-run gap keeps every
+##   rule's keep-outs off it whatever lane they name (WallRunGapPlacement.problem), and these come after it. Nor within
+##   the planted cyborg's obstacle margin.
 ## - Within the level: the pillar's lead past the run-up (and past the feature's start), the walkway's end before the
 ##   end-clear stretch; pillars spacing_seconds apart.
 ## Plain holes and fences in those windows (never a pulsing fence, one a fence generator powers, or a wall-run gap's hole)
@@ -689,6 +693,12 @@ static func plant_for(gen: LevelGenerator, plan: Plan, spot: Dictionary) -> Dict
 	for span: Vector2 in CyborgRules.obstacle_spans(bare, gen.tuning, gen.zones):
 		if _hits(near, span):
 			fixed.append(span)
+	# A wall-run gap's stretch with its margins (keep_out): its own re-check keeps a cyborg's margin and that off its clear
+	# stretch (WallRunGapPlacement.problem), and this cyborg comes after it.
+	for w: Dictionary in lay.wall_run_gaps:
+		var k: Vector2 = WallRunGapPlacement.keep_out(w)
+		if _hits(near, k):
+			fixed.append(k)
 	var c: float = range_c.x
 	while c <= range_c.y + 0.001:
 		var entry: Dictionary = _cyborg(gen, plan.t, c, lane, front, 0)
@@ -863,6 +873,12 @@ static func plan_for(gen: LevelGenerator, t: GantrywayTuning = null, pt: Powerup
 	# What every lane keeps over the calm stretch.
 	for span: Vector2 in every_keeps(gen):
 		p.mark(p.every, span, b, p.calm)
+	# A wall-run gap (its rules run before these) keeps every rule's keep-outs off its stretch in every lane, whatever
+	# lane they name (WallRunGapPlacement.problem, floor_keeps): so the whole of a gantryway's (doodad_keep_outs: its lane
+	# to past the walkway's far end, and its calm stretch) keeps off it, with its margins (keep_out).
+	var reach: float = maxf(p.lane_after, p.calm)
+	for w: Dictionary in lay.wall_run_gaps:
+		p.mark(p.every, WallRunGapPlacement.keep_out(w), b, reach)
 	# A cyborg in any lane keeps its obstacle margin from the pillar (CyborgRules: a pillar is a doodad).
 	var ct := EnemyDirector.tuning_for(CYBORG) as CyborgTuning
 	var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
@@ -1051,6 +1067,9 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 	var every: Array[Vector2] = every_keeps(gen)
 	var ct := EnemyDirector.tuning_for(CYBORG) as CyborgTuning
 	var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
+	var wall_runs: Array[Vector2] = []
+	for w: Dictionary in lay.wall_run_gaps:
+		wall_runs.append(WallRunGapPlacement.keep_out(w))
 	var prev: float = -INF
 	for g: Dictionary in lay.gantryways:
 		var id: int = int(g["id"])
@@ -1103,6 +1122,9 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 			if lanes.x <= lane + 1 and lanes.y >= lane - 1 and float(h["start"]) <= end + OVER_MARGIN \
 					and gen.zones.landing_zone(h).y >= from:
 				out.append("%s: a ceiling over its lane or beside it from %.1f m" % [tag, float(h["start"])])
+		for k: Vector2 in wall_runs:
+			if k.x <= maxf(end + room, front + calm) and k.y >= from:
+				out.append("%s: a wall-run gap's stretch (%.1f-%.1f m) within what it keeps" % [tag, k.x, k.y])
 		for e: Dictionary in lay.enemies:
 			if String(e.get("type", "")) == CYBORG and not (e.get("params", {}) as Dictionary).has(PARAM):
 				var at: float = float(e["at"])
@@ -1116,6 +1138,8 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 			var hold: Variant = params.get("hold_fire")
 			if int(planted.get("lane", -1)) != lane or at < range_c.x - 0.01 or at > range_c.y + 0.01:
 				out.append("%s: its cyborg at %.1f m isn't under it where the walkway lands first" % [tag, at])
+			if CyborgRules.near_any(wall_runs, at, margin):
+				out.append("%s: its cyborg at %.1f m within its obstacle margin of a wall-run gap" % [tag, at])
 			if not bool(params.get("stand", false)) or bool(params.get("panic", true)) or bool(params.get("host", true)) \
 					or not (hold is Vector2) or (hold as Vector2).x > front - t.hold_before_seconds * gen.speed + 0.01 \
 					or (hold as Vector2).y < front + calm - 0.01:

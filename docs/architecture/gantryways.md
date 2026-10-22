@@ -42,6 +42,11 @@ fronts):
   planned charge window;
 - no ceiling over L or the lanes beside it (to its landing zone's end) from the pillar's lead to OVER_MARGIN past the
   walkway's end: nobody rides a ceiling beside it, nor drops off one into its step out;
+- no wall-run gap's stretch (`WallRunGapPlacement.keep_out`: its clear run-in to its landing floor, with its margins)
+  anywhere in what it keeps, from the pillar's lead to past the walkway's end or the calm stretch's, in any lane, nor
+  within its planted cyborg's obstacle margin: the wall-run gaps are placed first, and their own re-check
+  (`WallRunGapPlacement.problem`) counts every rule's keep-outs in every lane, whatever lane they name (the weekly
+  challenge's Ice Lab week 28 found a walkway's lane keep reaching a wall-run gap's run-in);
 - spacing_seconds between two pillars; between the run-up (or the feature's start) and the end-clear stretch.
 Plain holes and fences in those windows are taken out to make room (clear_plain_pieces; never a pulsing fence, one a fence
 generator powers, or a wall-run gap's hole), and a spot that needs nothing taken out is preferred. An introduction takes the
@@ -116,9 +121,14 @@ spacing from the pillar, and `GantrywayRules.problems()`; `check_doodads` leaves
 (`test_campaign`: FIRST_LEVEL Frost Foundry, the Ice Lab's NEW_MECHANICS, Frost Foundry out of NOTHING_NEW, and the Golden Zone
 leaving it out, LEFT_OUT, DESIGN-TBD as the Terminal's maze stays in the Terminal).
 
-**Tests.** `test_gantryways` (Tests, features), `test_ice_lab_levels` (every Ice Lab build hangs its count, each fair),
+**Tests.** `test_gantryways` (Tests, features; among it every campaign gantryway on real physics on a cut of its level,
+pushed into and dashed through), `test_ice_lab_levels` (every Ice Lab build hangs its count, each fair),
 `test_generator`'s `_test_gantryways` (quick play's level with the feature over lane counts, seeds, difficulties and both run
-speeds), `test_hints`, `test_audio`. DESIGN-TBD: `docs/questions/q3.md`.
+speeds), `test_hints`, `test_audio`, and the weekly challenge's suites (an Ice Lab week hangs Sentinel Row's count:
+`gantryways` is one of `WeeklyChallenge.GOLDEN_FIELDS`, as the dash walls' count is). `test_doodads` leaves the campaign's
+pillars to `test_gantryways`, and carries a level's gantryways into the cuts its campaign runs play on;
+`test_ice_lab_skin` leaves a gantryway's parts out of its whole-level scenery checks, as it leaves the doodads and hazards.
+DESIGN-TBD: `docs/questions/q3.md`.
 
 **Measured** (`tools/measure/gantryways.gd`, task Q3): the Ice Lab's three levels at 3, 5 and 6 lanes on their own seeds and
 three others (36 builds) hang 108 of 108, 106 with a cyborg under them, with no problems; the introduction lands 0.15 to 0.22

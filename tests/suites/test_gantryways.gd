@@ -11,7 +11,8 @@ extends TestSuite
 ##   planted under it; every planted cyborg plain, standing, holding its fire through the calm stretch, under its walkway
 ##   where it lands; a level without the feature, or with a count of 0, hangs none. (Every build's fairness, the count
 ##   and the same level twice: test_ice_lab_levels, through LayoutChecks.check_gantryways; quick play's level over seeds
-##   and difficulties: test_generator.)
+##   and difficulties: test_generator.) A wall-run gap's stretch (with its margins) lies outside everything a gantryway
+##   keeps, whatever lane it names, as the wall-run gaps' own re-check asks of every rule's keep-outs.
 ## - The track: a Gantryway over each entry, its walkway hanging at the ceilings' height over its lane, no collision but a
 ##   hitbox that is off; its pillar a DashBreakable of kind gantry_pillar with a small doodad's body (the doodad and lane
 ##   blocker layers, its entry as its "doodad"), its look rising to the walkway's underside.
@@ -21,7 +22,10 @@ extends TestSuite
 ##   runner aside and the walkway stays up; dashed through, it falls, and a runner who steps into either lane beside it
 ##   lives while it lands on the cyborg under it (a kill the score counts); a runner who stays under it is hit (the run
 ##   ends, "falling gantryway"; a jump or a slide too), the armor or the shield absorbs that and the run goes on, god mode
-##   shrugs it off; once down, the runner runs over it unharmed.
+##   shrugs it off; once down, the runner runs over it unharmed. And every gantryway of the Ice Lab's levels at 3, 5 and 6
+##   lanes on a cut of its level, at the level's speed: its pillar pushing a runner without the dash onto clear floor, and
+##   a runner who dashes it stepping out a reaction later (both ways for the introduction) and running on as it lands on
+##   its cyborg.
 ## - The warning (CLAUDE.md: seen and heard before it can hurt): the creak as the pillar goes, the shadow on its lane
 ##   darkening and the lane's red line from then until it lands, its hitbox off for hold_seconds and live only while it
 ##   drops and as it lands, the crash as it lands; the line pulses, steady with Reduced flashing; the crush: every enemy in
@@ -38,6 +42,10 @@ const LANE_COUNTS: Array[int] = [3, 5, 6]
 const PILLAR: float = 90.0
 ## Seconds of run every physics take is given (to well past the landing).
 const RUN_SECONDS: float = 7.5
+## The reaction the suites give a runner to see something and start to act (test_doodads' REACTION, the boss bots').
+const REACTION: float = 0.35
+## Metres of bare track before a cut of a campaign level (_cut), where the runner gets going.
+const RUN_IN: float = 30.0
 
 var gt: GantrywayTuning
 
@@ -46,11 +54,13 @@ func run() -> void:
 	gt = GantrywayTuning.load_default()
 	_test_layout()
 	_test_generator()
+	_test_wall_run_gaps()
 	await _test_track()
 	_test_damage_rules()
 	await _test_physics()
 	await _test_warning()
 	await _test_crush()
+	await _test_campaign()
 	_test_skins()
 	_test_tuning()
 
@@ -151,6 +161,53 @@ func _test_generator() -> void:
 			pillars += 1 if LevelLayout.is_gantry_pillar(d) else 0
 		check(layout.gantryways.is_empty() and pillars == 0 and not layout.to_dict().has("gantryways"),
 			"%s hangs none" % ["a level without the feature", "a count of 0"][c])
+
+
+## A wall-run gap (its rules run before the gantryways') keeps every rule's keep-outs off its stretch in every lane,
+## whatever lane they name (WallRunGapPlacement.problem): so the whole of a gantryway's, its lane to past the walkway's far
+## end as well as its calm stretch, keeps off its stretch with its margins (WallRunGapPlacement.keep_out), and so does its
+## planted cyborg's obstacle margin; GantrywayRules.problems says so where one doesn't (the weekly challenge's week 28, an
+## Ice Lab week, found a walkway's lane keep reaching a wall-run gap's run-in, task Q3's gate). At 3, 5 and 6 lanes.
+func _test_wall_run_gaps() -> void:
+	for lanes: int in LANE_COUNTS:
+		var layout := RunSim.layout(lanes, 1400.0)
+		var config := LevelConfig.new()
+		config.lane_count = lanes
+		config.features = PackedStringArray([GantrywayRules.FEATURE, "wall_run_gaps"])
+		var bare: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
+		var shape: WallRunGapPlacement.Shape = WallRunGapPlacement.shape_for(bare.tuning, bare.speed)
+		var w: Dictionary = WallRunGapPlacement.make(shape, 700.0, 1)
+		layout.wall_run_gaps.append(w)
+		var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
+		var k: Vector2 = WallRunGapPlacement.keep_out(w)
+		var plan: GantrywayRules.Plan = GantrywayRules.plan_for(gen, gt)
+		var reach: float = maxf(plan.lane_after, plan.calm)
+		var tag: String = "(lanes=%d, the wall-run gap's stretch %.1f-%.1f m)" % [lanes, k.x, k.y]
+		var wrong: PackedStringArray = []
+		var lane: int = 1
+		var counts: Array[int] = [0, 0, 0]
+		for i: int in plan.size():
+			var f: float = plan.front_at(i)
+			var reaches: bool = f - plan.before <= k.y and f + reach >= k.x
+			var blocked: bool = plan.blocked(lane, 1, false)[i] > 0
+			counts[0 if not reaches else (1 if f + plan.calm < k.x else 2)] += 1
+			if reaches != blocked and wrong.size() < 4:
+				wrong.append("%.1f m (%s)" % [f, "free" if reaches else "blocked"])
+		check(wrong.is_empty() and counts[0] > 0 and counts[1] > 0 and counts[2] > 0,
+			"every front whose keep-outs would reach it is blocked (%d, %d of them only by its lane keep), and no other (%d): %s %s"
+			% [counts[1] + counts[2], counts[1], counts[0], ", ".join(wrong), tag])
+		# The re-check: a walkway whose lane keep reaches it (but not its calm stretch), and one well before it.
+		for near: bool in [true, false]:
+			var front: float = (k.x - plan.lane_after + 2.0) if near else (k.x - reach - 60.0)
+			var probe: LevelLayout = layout.copy()
+			var start: float = front - GantrywayRules.NEAR_OVERHANG
+			probe.gantryways.append({"id": 0, "lane": lane, "start": start, "end": start + plan.walkway, "pillar": front,
+				"side": 1, "calm": [front, front + plan.calm], "seed": 0})
+			var found: bool = false
+			for why: String in GantrywayRules.problems(LevelGenerator.for_layout(config, tuning, probe)):
+				found = found or why.contains("wall-run gap")
+			check(found == near, "the re-check %s a gantryway %s it %s" % ["names" if near else "passes", "reaching" if near
+				else "well before", tag])
 
 
 # --- The track ----------------------------------------------------------------------------------
@@ -443,6 +500,130 @@ func _test_crush() -> void:
 		check(crushed.has(dummies[i]) == bool(c[4]), "an enemy %s is %scrushed" % [c[0], "" if c[4] else "not "])
 	check(world.score.kills - kills_before >= 2, "a crush is the runner's kill, with its score (%d)" % (world.score.kills - kills_before))
 	await sim.free_world(world)
+
+
+# --- The campaign's own, on real physics --------------------------------------------------------
+
+## Every gantryway of the Ice Lab's levels at 3, 5 and 6 lanes, at the level's speed, on real physics, on a cut of the
+## level around it (_cut: every piece of the level from where its lane is kept clear before its pillar to the end of its
+## calm stretch, and its planted cyborg; nothing past): run into without the dash, its pillar pushes the runner once into
+## the lane on its side, onto clear floor, the walkway staying up; dashed through (from half the dash before the pillar),
+## the runner stepping into that lane a reaction after the pillar breaks (REACTION; either way where the level introduces
+## them, both lanes kept clear) runs on alive, the pillar the only thing smashed, while the walkway lands on its cyborg (a
+## kill). test_doodads leaves the campaign's pillars to this.
+func _test_campaign() -> void:
+	var campaign := load(CAMPAIGN_PATH) as Campaign
+	var sim := RunSim.new(tree, tuning)
+	var pushes: int = 0
+	var dashes: int = 0
+	for n: int in [1, 2, 3]:
+		var step: CampaignStep = campaign.step("ice_lab/%d" % n)
+		for lanes: int in LANE_COUNTS:
+			var config: LevelConfig = campaign.configure(step, lanes)
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+			for g: Dictionary in gen.layout.gantryways:
+				var lane: int = int(g["lane"])
+				var side: int = int(g["side"])
+				var tag: String = "(%s lanes=%d, the gantryway at %.0f m over lane %d)" % [step.id, lanes, float(g["pillar"]), lane]
+				var r: Dictionary = await _campaign_take(sim, gen, g, 0)
+				check(bool(r["alive"]) and int(r["pushes"]) == 1 and int(r["lane"]) == lane + side and not bool(r["fell"])
+					and bool(r["reached"]),
+					"run into without the dash, its pillar pushes the runner once onto clear floor beside it, the walkway staying up %s %s"
+					% [_brief(r), tag])
+				pushes += 1
+				var crush: int = 0 if GantrywayRules.planted_under(gen.layout, g).is_empty() else 1
+				for out: int in ([side, -side] if bool(g.get("both", false)) else [side]):
+					r = await _campaign_take(sim, gen, g, out)
+					check(bool(r["alive"]) and int(r["smashes"]) == 1 and int(r["lane"]) == lane + out and bool(r["landed"])
+						and int(r["crushed"]) == crush and bool(r["reached"]),
+						"dashed through, the runner steps out to lane %d a reaction later and runs on as it lands on its cyborg %s %s"
+						% [lane + out, _brief(r), tag])
+					dashes += 1
+	check(pushes >= 27 and dashes > pushes, "the campaign's gantryways were run into (%d) and dashed through (%d)" % [pushes, dashes])
+	print("  the Ice Lab's gantryways on real physics: %d run into, %d dashed through and stepped out of" % [pushes, dashes])
+
+
+## One take of _test_campaign on a cut of `gen`'s level around gantryway `g` (_cut), at the level's run speed, the runner
+## coming at its pillar in its lane: `out` 0 runs into it without the dash; -1 or 1 dashes through it (from half the dash
+## before it) and steps that way a reaction after it breaks.
+func _campaign_take(sim: RunSim, gen: LevelGenerator, g: Dictionary, out: int) -> Dictionary:
+	var t: MovementTuning = gen.tuning
+	var front: float = float(g["pillar"])
+	var from: float = front - LevelGenerator.doodad_lead_for(t) - gen.doodad_lane_room()
+	var to: float = float((g["calm"] as Array)[1])
+	var offset: float = RUN_IN - from
+	var world: RunWorld = sim.build_world(_cut(gen, g, from, to, offset), null, t)
+	world.player.setup(world.tuning, world.geo, int(g["lane"]))
+	var p: Player = world.player
+	var out_r := {"fell": false, "landed": false, "crushed": 0}
+	world.track.gantryway_fell.connect(func(_g: Gantryway) -> void: out_r["fell"] = true)
+	world.track.gantryway_landed.connect(func(_g: Gantryway) -> void: out_r["landed"] = true)
+	world.director.enemy_defeated.connect(func(_e: Enemy, cause: StringName) -> void:
+		out_r["crushed"] = int(out_r["crushed"]) + (1 if cause == Gantryway.CRUSH_CAUSE else 0))
+	var pt := load("res://data/tuning/powerups.tres") as PowerupTuning
+	var dashing: float = t.run_speed + pt.dash_speed_bonus
+	var f: float = front + offset
+	var actions: Array = []
+	if out != 0:
+		actions.append([f - 0.5 * pt.dash_duration * dashing, &"dash"])
+		actions.append([f + REACTION * dashing, &"move_left" if out < 0 else &"move_right"])
+	var r: Dictionary = await sim.step_world(world, (to + offset + 2.0) / t.run_speed, actions, [], false)
+	r.merge(out_r)
+	r["reached"] = float(r["distance"]) >= to + offset
+	r["pushes"] = p.pushes
+	r["smashes"] = p.smashes
+	await sim.free_world(world)
+	return r
+
+
+## A plain track holding every piece of `gen`'s level that reaches into [from, to] moved on by `offset` (its gaps, fences,
+## pads, ceilings, ramps, speed pads, signs, doodads and falling gantryways, as test_doodads cuts a level), and the cyborg
+## planted under gantryway `g` (holding its fire as it does there).
+func _cut(gen: LevelGenerator, g: Dictionary, from: float, to: float, offset: float) -> LevelLayout:
+	var layout: LevelLayout = gen.layout
+	var t: MovementTuning = gen.tuning
+	var part := RunSim.layout(layout.lane_count, to - from + RUN_IN + 90.0)
+	var lists: Dictionary = layout.to_dict()
+	var into: Dictionary = part.to_dict()
+	var extent: Dictionary = {"fences": t.fence_depth * 0.5, "pads": t.pad_length, "ramps": t.ramp_length,
+		"speed_pads": t.speed_pad_length}
+	for key: String in ["gaps", "fences", "pads", "hulls", "ramps", "speed_pads", "signs", "doodads", "gantryways"]:
+		for item: Dictionary in lists.get(key, []):
+			var start: float = float(item.get("start", item.get("at", 0.0)))
+			var end: float = float(item["end"]) if item.has("end") else start + float(extent.get(key, 0.0))
+			if key == "fences":
+				start -= float(extent["fences"])
+			if end < from or start > to:
+				continue
+			var moved: Dictionary = _moved(item, offset)
+			if key == "doodads":
+				part.doodads.append(moved)
+			elif key == "gantryways":
+				part.gantryways.append(moved)
+			else:
+				(into[key] as Array).append(moved)
+	var c: Dictionary = GantrywayRules.planted_under(layout, g)
+	if not c.is_empty():
+		var moved: Dictionary = _moved(c, offset)
+		var params: Dictionary = (c["params"] as Dictionary).duplicate()
+		params["hold_fire"] = (params["hold_fire"] as Vector2) + Vector2(offset, offset)
+		moved["params"] = params
+		part.enemies.append(moved)
+	return part
+
+
+## A copy of layout entry `item` moved on by `offset` along the track: its at, start, end and pillar, a row's stretch and a
+## gantryway's calm stretch.
+static func _moved(item: Dictionary, offset: float) -> Dictionary:
+	var moved: Dictionary = item.duplicate()
+	for k: String in ["at", "start", "end", "pillar"]:
+		if moved.has(k):
+			moved[k] = float(moved[k]) + offset
+	for k: String in ["row", "calm"]:
+		if moved.has(k):
+			var stretch: Array = moved[k]
+			moved[k] = [float(stretch[0]) + offset, float(stretch[1]) + offset]
+	return moved
 
 
 # --- Skins, the warm-up and the numbers ---------------------------------------------------------

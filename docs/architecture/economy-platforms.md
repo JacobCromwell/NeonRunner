@@ -289,7 +289,8 @@ DESIGN-TBD with its number).
   seed, five lanes, no `feature_starts`, no recency curve, not off the curve, no mini-game, every feature must appear) and
   `GOLDEN_FIELDS` (everything else, from the campaign's own configuration of `golden/2`, Sentinel Row: difficulty 0.91,
   enemy scaling 0.94 for fire rate, projectile speed and health, 25 m/s, 150 s, `danger_density_increase` and every pacing,
-  density, gap and credit dial). A dial for a feature the zone lacks does nothing (the generator runs a rules script per
+  density, gap and credit dial, and the counts of the features' set pieces: dash walls, ceiling scenarios, falling
+  gantryways). A dial for a feature the zone lacks does nothing (the generator runs a rules script per
   feature the level lists). Generated and played like any level (`LevelCache` keys it by content, so a retry is instant).
 - *The run* (`RunContext.Mode.WEEKLY`, `ctx.weekly`, `ctx.weekly_board`): `App.start_weekly()` builds it with the uniform kit
   (`Loadout.weekly(catalog, kit, mobile)`: the free armor under Armor IV, the dash at IV, no breakable and nothing else,
