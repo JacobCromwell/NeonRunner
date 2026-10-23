@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="HeavyCyborgTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/heavy_cyborg_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 110.0
+score_value = 400
+health_early = 11.1
+health_late = 11.1
+engage_distance = 70.0
+charge_time = 1.0
+reload_early = 2.4
+reload_late = 1.8
+bolt_speed_early = 18.0
+bolt_speed_late = 22.0
+aim_error = 0.08
+shot_jitter = 0.06
+bolt_life = 3.5
+min_warning_time = 0.75
+clear_before_impact = 12.0
+clear_after_impact = 8.0
+burst_gap = 0.5
+crossfire_gap = 0.5
+reaction_time = 0.25
+walk_start_distance = 90.0
+walk_speed = 0.9
+walk_max = 6.0
+drop_back_speed = 6.0
+obstacle_margin = 10.0
+model_scale = 1.15
+bullets_early = 6
+bullets_late = 6
+bullet_gap_early = 0.18
+bullet_gap_late = 0.16
+invulnerability_share = 0.9
+windup_heard_within = 24.0
+keep_clear_seconds = 2.4
