@@ -456,4 +456,4 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   (200 of 200 test takes); warned flurries (raised red blades, scrape, red lane mark, a red sweep) dodged one lane away;
   makes room for other enemies' shots; hovers over gaps and fences; gives up after 25 s; auto-fire skips it beside the
   runner. After the owner's playtest it attacks more often (2.7x for a bait runner, 1.4x for a dodger, held by the
-  edge lanes). Questions in items 1208-1228 (1208, 1227, 1228 in the open list).
+  edge lanes). Questions in items 1208-1228 (1208 in the open list; 1227 and 1228 answered by the owner the same day).
