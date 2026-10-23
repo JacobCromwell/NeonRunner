@@ -7,7 +7,8 @@ extends RefCounted
 ## around its cyborgs, a share of the plain cyborgs from the feature's start on become Heavy Cyborgs, each where one
 ## fits (fits):
 ## - a plain cyborg: on the floor, not a host, no rule's mark in its params (a cyborg planted in a charge's path, a
-##   Buzz Overdrive's company, one planted under a falling gantryway are their rules' own);
+##   Buzz Overdrive's company, one planted under a falling gantryway are their rules' own), and none the danger density
+##   pass added (its own small threats, of the types its tuning lists: DangerDensity's `added_enemies`);
 ## - it keeps the cyborgs' margin from every obstacle (CyborgRules: their rules and its walk keep it), the zone
 ##   doodads' included;
 ## - its stream's zone (stream_zone: keep_clear_seconds of run before it) holds nothing that holds a stream
@@ -61,9 +62,10 @@ static func after_doodads(gen: LevelGenerator) -> void:
 	var taken: Array[Vector2] = taken_spans(gen)
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(lay, gen.tuning, gen.zones)
 	var left: int = LevelGenerator.feature_positions(lay, CYBORG).size()
+	var added: Array = gen.danger_density_result.get("added_enemies", [])
 	var candidates: Array[Dictionary] = []
 	for e: Dictionary in lay.enemies:
-		if is_plain_cyborg(e) and float(e["at"]) >= from - 0.001:
+		if is_plain_cyborg(e) and float(e["at"]) >= from - 0.001 and not _holds(added, e):
 			candidates.append(e)
 	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 	var last: float = -INF
@@ -86,6 +88,14 @@ static func after_doodads(gen: LevelGenerator) -> void:
 		if fits(gen, e, t, spans, taken, false):
 			_take_place(e)
 			return
+
+
+## True if `list` holds `item` itself (not an equal copy).
+static func _holds(list: Array, item: Dictionary) -> bool:
+	for x: Variant in list:
+		if is_same(x, item):
+			return true
+	return false
 
 
 ## Cyborg entry `e` becomes a Heavy Cyborg, in its place (none of a cyborg's params: no panic variant).
