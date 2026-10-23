@@ -43,3 +43,18 @@ extends CyborgGunTuning
 ## weapons hit hosts, and a weapon kill releases the Bad Dream). The GDD keeps the big bonus for a stomp,
 ## the claws and the dash; placeholder 0: a weapon kill pays an ordinary cyborg kill's score only.
 @export_range(0, 20000, 50) var weapon_host_bonus: int = 0
+
+@export_group("Host smoke")
+## Purple smoke rising off a host (GDD §9.7, owner, October 23, 2026; task S1), so the player can pick it out of
+## a crowd of cyborgs at a glance at running distance. One draw call per host (HostSmoke), shaded by
+## scripts/enemies/host_smoke.gdshader. DESIGN-TBD (docs/questions/s1.md 1): how strong, how tall, how thick.
+## Its opacity at the thickest; 0 turns the smoke off.
+@export_range(0.0, 1.0, 0.01) var host_smoke_strength: float = 0.75
+## How much of each column the billows fill: 0 thin wisps, 1 a solid column.
+@export_range(0.0, 1.0, 0.01) var host_smoke_density: float = 0.6
+## How fast the billows climb. The range stops at 1 m/s so the smoke never flickers: the finest billows pass a point
+## about 2.3 times a second then, soft and low-contrast, under the 3 a second that Reduced flashing guards against.
+@export_range(0.1, 1.0, 0.05, "suffix:m/s") var host_smoke_rise_speed: float = 0.7
+## The middle column's height (its top reaches this far above the host's shoulders) and its width at the base.
+@export_range(0.5, 6.0, 0.1, "suffix:m") var host_smoke_height: float = 2.2
+@export_range(0.2, 3.0, 0.05, "suffix:m") var host_smoke_width: float = 1.0

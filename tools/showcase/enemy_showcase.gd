@@ -16,6 +16,11 @@ extends Node3D
 ##   play             a generated level with the enemies on, run by a god-mode player with grapples (so
 ##                    gaps don't end the run) through the real run camera (options: --seed=N --lanes=N
 ##                    --difficulty=X --start=metres --features=a,b --claws); it runs until closed
+##   hosts            hosts and plain cyborgs close up (task S1): a plain cyborg, a host, a host charging its
+##                    cannon (the red must stay readable through the purple smoke) and a plain one charging
+##   hosts_far        hosts among plain cyborgs at running distance through the run camera, 14 to 100 m ahead,
+##                    in the skin's own lighting (try --skin=res://data/skins/dead_zone_skin.tres, and --dark
+##                    for The Hush's darkness); --smoke=<0-1> sets a host's smoke opacity (0 none, to compare)
 ##   lineup           every look side by side, the base first (GDD §9.2's zone variants), idle with the
 ##                    calm face; --face=aiming|shocked|dead shows another expression (aiming charges the
 ##                    weapon), --host makes them all hosts, --back turns them round, --side shows their
@@ -57,6 +62,8 @@ func _ready() -> void:
 	add_child(sun)
 	var env := WorldEnvironment.new()
 	env.environment = _world.skin.make_environment()
+	if OS.get_cmdline_user_args().has("--dark"):
+		env.environment = _world.skin.level_environment(0.7)  # The Hush's darkness (Dead Zone 2).
 	add_child(env)
 	match view:
 		"faces":
@@ -76,6 +83,11 @@ func _ready() -> void:
 			_look(Vector3(0.6, 1.4, -2.0), Vector3(0.0, 1.0, -9.0))
 		"far":
 			_far_scene()
+		"hosts":
+			_hosts_row(variant)
+			_look(Vector3(0.0, 1.9, 4.6), Vector3(0.0, 1.5, -1.0))
+		"hosts_far":
+			_hosts_far(variant)
 		"lineup":
 			_lineup()
 			_look(Vector3(0.0, 1.0, 4.05), Vector3(0.0, 0.86, -1.0))
@@ -226,6 +238,11 @@ func _body(v: StringName, host: bool, pos: Vector3, seed_value: int) -> CyborgBo
 	add_child(b)
 	b.build(v, host, false, seed_value)
 	b.position = pos
+	var smoke_opt: String = _opt("smoke", "")
+	if b.smoke != null and not smoke_opt.is_empty():
+		var tuning := CyborgTuning.new()
+		tuning.host_smoke_strength = float(smoke_opt)
+		b.smoke.configure(tuning)
 	return b
 
 
@@ -317,6 +334,35 @@ func _far_scene() -> void:
 		var p: Vector2 = _camera.unproject_position(head) / Vector2(get_viewport().get_visible_rect().size)
 		print("far head %s host=%s at %.0f m: screen %.4f %.4f" % [Kit.Face.keys()[b.face], b.host,
 			-b.global_position.z, p.x, p.y])
+
+
+## Task S1: a plain cyborg, a host, a host charging its cannon at the camera and a plain one charging.
+func _hosts_row(v: StringName) -> void:
+	var xs: Array[float] = [-1.8, -0.6, 0.6, 1.8]
+	for i: int in 4:
+		var b := _body(v, i == 1 or i == 2, Vector3(xs[i], 0.0, 0.0), 80 + i)
+		if i >= 2:
+			b.set_pose(CyborgBody.Pose.AIM)
+			b.aim_at(Vector3(xs[i] + 0.6, 1.0, 8.0))
+			b.set_charge(1.0)
+			b.set_expression(Kit.Face.AIMING)
+	_label(Vector3(-1.2, 3.3, 0.0), "plain | host", 24)
+	_label(Vector3(1.2, 3.3, 0.0), "host | plain, charging", 24)
+
+
+## Task S1: hosts and plain cyborgs through the run camera, rows 14, 30, 60 and 100 m ahead, a host or two
+## in each among the plain ones (a different lane each time).
+func _hosts_far(v: StringName) -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var rows: Array = [[14.0, [1, 3]], [30.0, [0, 2]], [60.0, [1, 4]], [100.0, [2]]]
+	for r: int in rows.size():
+		var at: float = rows[r][0]
+		var hosts: Array = rows[r][1]
+		for lane: int in 5:
+			_body(v, hosts.has(lane), _world.lane_point(lane, at), 90 + r * 10 + lane)
 
 
 func _charge_scene() -> void:

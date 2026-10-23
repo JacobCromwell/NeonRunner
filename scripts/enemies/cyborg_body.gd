@@ -5,8 +5,9 @@ extends GunModel
 ## the ragged "Static TV Head" base or one of its zone variants, CyborgSuit.look_for), the screen's
 ## face (on the look's screen, in its face set), the host's purple glitch and veins (GDD §9.7) and the
 ## weapon's charge glow all drawn by one material per cyborg (cyborg_body.gdshader): 11 draw calls for
-## a whole cyborg, 7 for a window cyborg's upper body. Visual only: it never touches collision or
-## gameplay, and its randomness never uses the enemy's gameplay random stream.
+## a whole cyborg, 7 for a window cyborg's upper body. A host also has purple smoke rising off it
+## (HostSmoke, task S1: one more draw call, on its own node). Visual only: it never touches collision
+## or gameplay, and its randomness never uses the enemy's gameplay random stream.
 ##
 ## It poses the rig itself (HumanoidRig.apply_pose with HumanoidPoses and CyborgPoses, blended), so
 ## nothing here changes how the player's avatar moves. The posture is hunched and the walk a shamble;
@@ -18,7 +19,7 @@ extends GunModel
 ##   head_turn (yaw, pitch radians: its head turned on top of the pose), snap(), advance(delta)
 ##   set_expression(face), set_charge(0–1: the arm cannon's charge glow, the attack telegraph)
 ##   muzzle_position(), flash() (hit), die(cause) (death animation; emits `death_finished`)
-##   draw_call_count()
+##   draw_call_count() (the body's; a host's smoke adds smoke.draw_call_count())
 ## The local front is +Z (the cyborg faces the player at rotation 0).
 
 signal death_finished
@@ -83,6 +84,8 @@ var twitches: bool = true
 ## The shared rig and this cyborg's own material.
 var rig: HumanoidRig
 var material: ShaderMaterial
+## A host's purple smoke (GDD §9.7, task S1), on its chest joint; null on any other cyborg.
+var smoke: HostSmoke
 
 var _root: Node3D
 var _cur := HumanoidPose.new()
@@ -131,6 +134,10 @@ func build(p_variant: StringName, p_host: bool = false, p_upper_body_only: bool 
 		var parts: Array[MeshInstance3D] = rig.part_instances()
 		for joint: int in LEG_JOINTS:
 			parts[joint].visible = false
+	elif host:
+		smoke = HostSmoke.new()
+		smoke.build(visual_seed)
+		rig.joint(&"chest").add_child(smoke)
 	set_charge(0.0)
 	set_expression(Kit.Face.NEUTRAL)
 	_snap = true
@@ -212,6 +219,8 @@ func die(cause: StringName) -> void:
 	_flash_left = 0.0
 	_glitch_left = 0.0
 	_aiming = false
+	if smoke != null:
+		smoke.clear()
 	set_charge(0.0)
 	set_expression(Kit.Face.DEAD)
 	material.set_shader_parameter(&"glitch", 0.0)

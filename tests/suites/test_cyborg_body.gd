@@ -12,12 +12,15 @@ extends TestSuite
 ## ornament); the faces keep their shapes far away, the VR visor's too; the Golden Zone's look wears
 ## the cult's emblem; a defeated cyborg's screen shows ERR, then goes dark; the posture is hunched,
 ## twitchy and shambling; Settings > Reduced flashing calms the host's glitch, the hit flash and the
-## screen; and building cyborgs leaves the player's avatar untouched.
+## screen; a host has purple smoke rising off it (task S1: one draw call, shared mesh and shader, a violet
+## that is no hazard colour, never flickering, tuned by CyborgTuning, clearing when it dies); and building
+## cyborgs leaves the player's avatar untouched.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const Poses = preload("res://scripts/enemies/cyborg_poses.gd")
 const GoldenLook = preload("res://scripts/enemies/cyborg_looks/golden.gd")
 const SHADER_PATH: String = "res://scripts/enemies/cyborg_body.gdshader"
+const SMOKE_SHADER_PATH: String = "res://scripts/enemies/host_smoke.gdshader"
 ## Draw calls: a whole cyborg (was 13, 14 while charging, before the rig) and a window cyborg's upper body.
 const FULL_BODY_CALLS: int = 11
 const UPPER_BODY_CALLS: int = 7
@@ -80,6 +83,7 @@ func run() -> void:
 	_test_far_faces()
 	await _test_deaths()
 	await _test_reduced_flashing()
+	await _test_host_smoke()
 	check(_meshes(avatar.rig) == avatar_meshes and avatar.draw_call_count() == avatar_calls,
 		"building cyborgs on the shared rig leaves the player's avatar as it was")
 	avatar.queue_free()
@@ -1012,6 +1016,130 @@ func _test_deaths() -> void:
 		"and its screen stays dark")
 	u.queue_free()
 	await tree.process_frame
+
+
+## Task S1 (GDD §9.7): purple smoke rises off a host so it stands out from the other cyborgs at running
+## distance. Only a host has it, in every look, on its chest joint; it is one draw call from a mesh and
+## a shader every host shares (a material each), no collision and nothing for gameplay; the colour is the
+## Bad Dream's violet and no hazard colour; the shader never flickers (all its motion is a slow drift,
+## which nothing in Reduced flashing needs to turn off); its numbers come from CyborgTuning and
+## data/enemies/cyborg.tres; and it clears when the host dies, along with its draw call.
+func _test_host_smoke() -> void:
+	for look: StringName in CyborgSuit.LOOKS:
+		var host := _body(look, true)
+		var plain := _body(look, false)
+		var upper := _body(look, false, true)
+		check(host.smoke != null and host.smoke.get_parent() == host.rig.joint(&"chest"),
+			"%s: a host has smoke rising off its chest" % look)
+		check(plain.smoke == null and upper.smoke == null and _smokes(plain).is_empty() and _smokes(upper).is_empty(),
+			"%s: a plain cyborg and a window cyborg have none" % look)
+		check(host.smoke != null and host.smoke.draw_call_count() == 1 and host.draw_call_count() == FULL_BODY_CALLS,
+			"%s: the smoke is one draw call on top of the body's %d" % [look, FULL_BODY_CALLS])
+		for b: CyborgBody in [host, plain, upper]:
+			b.queue_free()
+	var a := _body(&"city", true)
+	var b := CyborgBody.new()
+	tree.root.add_child(b)
+	b.build(&"city", true, false, 6)
+	check(a.smoke.mesh == b.smoke.mesh and a.smoke.material.shader == b.smoke.material.shader
+		and a.smoke.material != b.smoke.material,
+		"hosts share the smoke's mesh and shader, each with its own material")
+	check(a.smoke.material.get_shader_parameter(&"seed") != b.smoke.material.get_shader_parameter(&"seed"),
+		"no two hosts' smoke moves together")
+	var mesh: ArrayMesh = a.smoke.mesh as ArrayMesh
+	check(mesh.get_surface_count() == 1 and mesh.surface_get_array_len(0) == HostSmoke.COLUMNS.size() * 6,
+		"the smoke is %d quads in one surface" % HostSmoke.COLUMNS.size())
+	check(a.smoke.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and _collision_objects(a).is_empty(),
+		"the smoke casts no shadow and has no collision body")
+	# Colour: the Bad Dream's violet, purple, and no hazard colour.
+	var colour: Color = a.smoke.material.get_shader_parameter(&"smoke_color")
+	check(colour == BadDreamModel.PURPLE and _is_purple(colour), "the smoke is the Bad Dream's violet")
+	var nearest: float = INF
+	var hazards: Dictionary = _hazard_colors()
+	hazards["enemy fire"] = Kit.CHARGE_COLOR
+	for h: String in hazards:
+		nearest = minf(nearest, _chroma_distance(colour, hazards[h]))
+	check(nearest >= MIN_HAZARD_DISTANCE, "the smoke keeps clear of every hazard colour (%.2f)" % nearest)
+	# Never flickers or flashes: TIME is read for the billows' slow climb and the column's sway only, and
+	# the shader is an unshaded veil, so nothing pulses or strobes.
+	var code: String = FileAccess.get_file_as_string(SMOKE_SHADER_PATH)
+	var time_lines: PackedStringArray = []
+	for line: String in code.split("\n"):
+		if line.contains("TIME") and not line.strip_edges().begins_with("//"):
+			time_lines.append(line.strip_edges())
+	check(time_lines.size() == 2 and time_lines[0].begins_with("float sway = sin(TIME * 0.8")
+		and time_lines[1] == "float rise = TIME * rise_speed * mix(1.0, 0.6, reduced_flashing);",
+		"the smoke's only motion is its sway and the billows' climb (%s)" % str(time_lines))
+	check(code.contains("unshaded") and not code.contains("blend_add"),
+		"it is an unshaded veil, not an additive glow")
+	check(code.contains("kit_flash.gdshaderinc") and code.contains("mix(1.0, 0.6, reduced_flashing)"),
+		"with Reduced flashing the drift slows (the shader reads the global uniform)")
+	# Its numbers: CyborgTuning's, the resource sets them all, a host reads them when it spawns.
+	var tuning := load("res://data/enemies/cyborg.tres") as CyborgTuning
+	var defaults := CyborgTuning.new()
+	for key: String in ["host_smoke_strength", "host_smoke_density", "host_smoke_rise_speed", "host_smoke_height",
+			"host_smoke_width"]:
+		check(is_equal_approx(float(tuning.get(key)), float(defaults.get(key))),
+			"%s: the resource and the default agree (%s)" % [key, str(tuning.get(key))])
+	var m: ShaderMaterial = a.smoke.material
+	check(is_equal_approx(float(m.get_shader_parameter(&"strength")), tuning.host_smoke_strength)
+		and m.get_shader_parameter(&"size") == Vector2(tuning.host_smoke_width, tuning.host_smoke_height)
+		and is_equal_approx(float(m.get_shader_parameter(&"rise_speed")), tuning.host_smoke_rise_speed),
+		"a host's smoke takes its tuning's numbers")
+	var other := CyborgTuning.new()
+	other.host_smoke_strength = 0.4
+	other.host_smoke_height = 3.5
+	a.smoke.configure(other)
+	check(is_equal_approx(float(m.get_shader_parameter(&"strength")), 0.4)
+		and (m.get_shader_parameter(&"size") as Vector2).y == 3.5 and a.smoke.visible, "configure() applies new numbers")
+	other.host_smoke_rise_speed = 5.0
+	a.smoke.configure(other)
+	check(is_equal_approx(float(m.get_shader_parameter(&"rise_speed")), HostSmoke.MAX_RISE_SPEED),
+		"the billows never climb faster than %.1f m/s, whatever the resource says (they would flicker)" % HostSmoke.MAX_RISE_SPEED)
+	other.host_smoke_strength = 0.0
+	a.smoke.configure(other)
+	check(not a.smoke.visible and a.smoke.draw_call_count() == 0, "an opacity of 0 draws nothing")
+	# A defeated host's smoke clears, then it is hidden: no draw call at all.
+	var host := _body(&"city", true)
+	host.set_process(false)
+	check(host.smoke.draw_call_count() == 1, "a living host's smoke is drawn")
+	host.die(&"stomp")
+	await tree.create_timer(HostSmoke.CLEAR_TIME * 0.5).timeout
+	check(host.smoke.visible and float(host.smoke.material.get_shader_parameter(&"fade")) > 0.1,
+		"a defeated host's smoke is clearing")
+	await tree.create_timer(HostSmoke.CLEAR_TIME * 0.8).timeout
+	check(not host.smoke.visible and host.smoke.draw_call_count() == 0
+		and float(host.smoke.material.get_shader_parameter(&"fade")) >= 1.0, "and gone, with its draw call")
+	check(HostSmoke.CLEAR_TIME <= 0.4, "it clears about as the Bad Dream bursts out")
+	# In play: a Cyborg host builds it from the level's tuning; a plain one has none; a kill clears it.
+	var w: RunWorld = sim.build_world(RunSim.layout(5, 400.0))
+	var hc := w.director.spawn({"type": "cyborg", "at": 60.0, "lane": 2, "seed": 3,
+		"params": {"panic": false, "fires": false, "host": true}}) as Cyborg
+	var pc := w.director.spawn({"type": "cyborg", "at": 60.0, "lane": 3, "seed": 4,
+		"params": {"panic": false, "fires": false, "host": false}}) as Cyborg
+	await physics_frames(2)
+	check(hc.body.smoke != null and pc.body.smoke == null, "in play only the host has smoke")
+	check(is_equal_approx(float(hc.body.smoke.material.get_shader_parameter(&"strength")), hc.tuning.host_smoke_strength),
+		"it uses the cyborg tuning's numbers")
+	check(str(_hitboxes(hc)) == str(_hitboxes(pc)), "the smoke adds no hitbox: the host's are the plain cyborg's (%s)"
+		% str(_hitboxes(hc).keys()))
+	hc.defeat(&"claws")
+	await physics_frames(3)
+	check(float(hc.body.smoke.material.get_shader_parameter(&"fade")) > 0.0, "a killed host's smoke starts clearing")
+	await sim.free_world(w)
+	for node: Node in [a, b, host]:
+		node.queue_free()
+	await tree.process_frame
+
+
+## Every HostSmoke under `body`.
+func _smokes(body: Node) -> Array[Node]:
+	return body.find_children("*", "HostSmoke", true, false)
+
+
+## Every physics body or area under `node`.
+func _collision_objects(node: Node) -> Array[Node]:
+	return node.find_children("*", "CollisionObject3D", true, false)
 
 
 func _set_reduced_flashing(on: bool) -> void:
