@@ -1,4 +1,4 @@
-# Architecture: Enemies: Barnacle Turret, Buzz Overdrive, Gilded Sentinels, Enforcer Truck
+# Architecture: Enemies: Barnacle Turret, Buzz Overdrive, Gilded Sentinels, Enforcer Truck, Heavy Cyborg
 
 One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every part and topic.
 
@@ -390,3 +390,67 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
   materials are drawn with the level's effects (`ShaderWarmup`).
 - **Cheap.** A few transforms a frame, its hole checks walking each lane's gaps with a cursor; its bolts
   are the projectile pool's. A showing's checks read the stretches `EnforcerTruckRoom` indexed at load.
+
+**A heavier cyborg with a gatling: the Heavy Cyborg** (S1, GDD §9.16; owner, October 23, 2026: one of the Ice Lab's
+two new enemies, from Relay Station, then Specimen Vault and all three of the Golden Zone's levels). It is a cyborg
+with a drone's barrage in place of the arm cannon's bursts, so it is built on the cyborg's files rather than beside
+them: `heavy_cyborg.gd` (`HeavyCyborg extends Cyborg`), its gun (`heavy_cyborg_gun.gd`, `HeavyCyborgGun extends
+CyborgGun`), its body (`heavy_cyborg_body.gd`, `HeavyCyborgBody extends CyborgBody`) and armour
+(`cyborg_looks/heavy.gd`), its tuning (`HeavyCyborgTuning extends CyborgTuning`, `data/enemies/heavy_cyborg.tres`) and
+its rules (`heavy_cyborg_rules.gd`). The shared cyborg files carry only hooks: `CyborgGun`'s `shot_interval()`,
+`roll_shots()`, `most_shots()`, `charge_sound_point()` and `look` (a cyborg's behaviour unchanged), and
+`CyborgSuit.heavy_set()` (every look gets an armour set, worn only by a Heavy Cyborg).
+- **The stream.** A wind-up (`charge_time`, 1 s: the barrels spin up and turn red-hot, a red ring grows at the muzzle,
+  a red aim line runs from the muzzle to the runner and flickers faster as it ends, the `heavy_cyborg_windup` sound,
+  played on the way to the runner, no further than `windup_heard_within`, so it's heard as far off as the stream
+  starts), then the aim locks and a stream of rounds flies down that line (the drone gatling's red `enemy_bullet`
+  look). Its rounds reach a runner who keeps to the line `bullet_gap` apart (the drone's 0.18 to 0.16 s, the gap a
+  zigzag goes through), so the gatling fires them further apart, by the rounds' speed over the closing speed at the
+  level's run speed (`shot_interval`); and only as many (`barrage_count`, 6) as all arrive within
+  `invulnerability_share` of the hit invulnerability window, so armor or a shield protects through all of it
+  (`most_shots`; every stream is that long, `roll_shots`). Dodged by switching lanes once it locks; a runner who
+  moves during the wind-up is followed; the line's flicker thickens steadily instead with Reduced flashing, and the
+  muzzle's flash is left out.
+- **A cyborg's small attack** (owner: it fires when the other small enemies fire and doesn't wait its turn). It is a
+  `CyborgGun`, so its stream takes one of the cyborgs' places in the air from its wind-up until `burst_gap` after its
+  last round (The cyborgs' airspace, `docs/architecture/enemies.md`), keeps the crossfire rule (a cyborg's burst that
+  would leave no way out waits for it, and it for them), holds its fire at a ceiling rider and by anything
+  `path_clear` counts, and a teleport calls a stream under way off. It takes no part in `EnemyDirector`'s turns
+  (`is_major_attack_active` stays false): the big attacks don't wait for it, nor it for them.
+- **Kill and contact.** Declared on `Enemy`: `claw_immune` (the claws don't kill it; a claw runner who touches it is
+  hit like anyone), stompable and dash-killed as a cyborg. Health 11.1 in laser tier 1 shots: 14 shots with
+  `PowerupTuning.tier1_extra_shots`, twice a cyborg's in every level it appears in, and twice at every other weapon
+  tier (`test_heavy_cyborg` checks it against the cyborg's tuning at each level's enemy scaling); twice a cyborg's
+  score. Its body hurts on contact as a cyborg's does; another enemy's charge and a falling gantryway destroy it; it
+  never boards an Enforcer Truck (only a passed `cyborg` does). Not a host, no panic variant, no window version.
+- **Hitboxes.** A solid body (0.7 × 1.12 × 0.45 m) that ends below the stomp line, and a stompable top (0.9 wide, from
+  1.18 to 1.6 m: above a standing runner's hurtbox, its top at a jump's highest feet), both inside a body drawn bigger
+  than a cyborg's (the model only is scaled; the hitboxes and the gun's muzzle point never change).
+- **Look.** Its zone's cyborg (the same rig and poses, CRT head, clothes and colours) bulked out (`BULK`: each segment
+  wider and deeper, never longer; shoulders and hips set wider), under the look's armour set (merged into the same
+  segment meshes) and drawn `model_scale` (1.15) bigger than the zone's cyborgs. The gatling (receiver, six barrels,
+  drum, carry handle; built once and shared) hangs from the chest; the chest turns toward the aim and the arms reach
+  its grips (two-bone, `_reach`). Only the face and the gatling's red glow. Its `warm_up` look shows everything at once
+  (`show_everything`); the aim line is placed in the world only while it is top-level, so the warm-up stage keeps it
+  in its tiny space. `tools/showcase/enemy_showcase.gd` has heavy views (`--camera`).
+- **In the levels.** No pattern of its own: Heavy Cyborgs take the places of some of the level's cyborgs.
+  `HeavyCyborgRules.after_doodads` (after the zone doodads, when every rule and pass but the wall fences, the side wall
+  gaps, the gap density pass and the credits has built the level around its cyborgs) turns a share of the plain
+  cyborgs past the feature's start (no host, no rule's mark) into Heavy Cyborgs where one fits: the cyborgs' margin
+  from every obstacle; its stream's zone (`keep_clear_seconds` of run before it) clear of what holds a stream
+  (`LevelLayout.doodad_between`); what it reaches (that zone, its keep-out, its floor) off every dash wall's
+  footprint, wider gap's zone, wall-run gap's clear stretch and calm stretch a rule keeps in every lane (those let a
+  cyborg stand its margin away, any other enemy only its keep-out away, and their re-checks hold a Heavy Cyborg to
+  the rest's rule); `spacing_seconds` from the one before; never the level's last cyborg. The first that fits always
+  does (Relay Station's introduction, from 0.3 of the level); each later one with the chance `share` times the
+  campaign's recency factor for the feature (`LevelConfig.recency_factor`: most in Relay Station, fewer as it gets
+  older), from its own random stream. A Heavy Cyborg keeps a cyborg's keep-out (`keep_out`), so the level is built
+  exactly as without the feature but for those cyborgs' type, on every seed. Never forced (`OCCASIONAL`): a build
+  whose cyborgs leave it no place has none (the campaign's own seeds have one to three a level at 5 lanes; Relay
+  Station at 6 lanes has none). The Golden Zone dates it from the Ice Lab (a level old in Golden 1), as the teleporters.
+- **Sounds.** `tools/asset_gen/sfx_bank_heavy_cyborg.gd`: `heavy_cyborg_windup` (the warning: a motor grinding up
+  under a ratchet speeding into a rattle and the red charge's hum, lasting the wind-up and 30 ms into the first round;
+  lower and heavier than the drone's) and `heavy_cyborg_shot` (a low double crack, 0.2 s).
+- **Tests.** `test_heavy_cyborg` (Tests, features), `test_ice_lab_levels` (Relay Station brings it in after its
+  teleporters, none in Frost Foundry, none before its start), `test_campaign` (its place in the schedule, the Ice
+  Lab's first new enemy, the Golden Zone's ages), `test_hints`, `test_perf` (its warm-up look) and `test_audio`.

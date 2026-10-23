@@ -60,7 +60,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), wall-run gaps (`wall_run_gaps`: the whole street a hole, crossed on its lit side wall), falling gantryways (`gantryway`: a walkway over a lane held by a pillar; dash through the pillar to drop it on the cyborg under it, and step out from under it; with `--full-loadout` for the dash), teleporters (`teleporter`: a square pad with a green antenna that sends you to its output pad further down the track, the lit side of its antenna choosing between two; add `teleporter_blinking` for antennas whose light blinks left and right), Octodog jars (`octodog_jar`: a specimen jar holding a curled-up Octodog; dash it and the dog breaks out, runs ahead and attacks like any Octodog; two more look the same and let nothing out; with `--skin=ice_lab` for the jar's look and `--full-loadout` for the dash), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits), `heavy_cyborg` (with `cyborg`: Heavy Cyborgs take some of the cyborgs' places)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), wall-run gaps (`wall_run_gaps`: the whole street a hole, crossed on its lit side wall), falling gantryways (`gantryway`: a walkway over a lane held by a pillar; dash through the pillar to drop it on the cyborg under it, and step out from under it; with `--full-loadout` for the dash), teleporters (`teleporter`: a square pad with a green antenna that sends you to its output pad further down the track, the lit side of its antenna choosing between two; add `teleporter_blinking` for antennas whose light blinks left and right), Octodog jars (`octodog_jar`: a specimen jar holding a curled-up Octodog; dash it and the dog breaks out, runs ahead and attacks like any Octodog; two more look the same and let nothing out; with `--skin=ice_lab` for the jar's look and `--full-loadout` for the dash), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -185,14 +185,17 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       runs on to its usual distance and attacks like any Octodog, at least two lunges, each after its wind-up (sidestep or
       jump it, or dash it to kill it). One jar a level holds one that comes out (placeholder count, usually early on,
       before the heli drone's pads start, and none in a build where its attack has no room); two or three more hold one
-      that never does, and the rest hold nothing, all looking the same. Its two new enemies are still to come.
+      that never does, and the rest hold nothing, all looking the same. Its first new enemy, the Heavy Cyborg, comes in
+      Relay Station; the second is still to come.
   21. Ice Lab 2 *Relay Station*: the same set, the falling gantryways too, and the teleporters (task Q4). A square pad
       in a lane, with a green antenna on it: run onto it and you're sent straight to its output pad further down the
       track (the same pad, without the antenna, a green marker floating over it), keeping your speed, with a flash and
       a sound; whatever lay in between is skipped. Where it has a left and a right output pad, the light on the left or
       the right of its antenna shows the one you'll land on. The first one is safe (one output pad, straight ahead, a
       clear run after it); later ones may land you right in front of a hole, a fence or an enemy, with the usual time to
-      react. Never needed: the lane beside it is clear to go around. Three a level (placeholder count).
+      react. Never needed: the lane beside it is clear to go around. Three a level (placeholder count). From about a
+      third of the way in, the Heavy Cyborg (task S1): some of the cyborgs are heavy ones with a gatling (see the
+      enemies below).
   22. Ice Lab 3 *Specimen Vault*: the same set, the falling gantryways and teleporters too, and teleporters whose antenna's
       light blinks left and right about once a second: the side lit the moment you touch the pad decides where you land
       (two of its four, placeholder counts). Then straight on to the Golden Zone (no boss). Like the Terminal's, the
@@ -200,7 +203,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   23. Golden 1 *Gilded Canals*: the Resonator; and the Ice Lab's teleporters return (task Q6), fixed and blinking alike
       in all three of the zone's levels, with no introduction of their own (three a level, one of them blinking:
       placeholder counts) and in the teleporter's own look. Where a level is crowded they give way to its wider gaps
-      and dash walls (fewer of them, then). The falling gantryways and the Octodog jars stay in the Ice Lab.
+      and dash walls (fewer of them, then). The Heavy Cyborgs come back too, in all three levels. The falling
+      gantryways and the Octodog jars stay in the Ice Lab.
   24. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
   25. Golden 3 *The Golden Palace*, then the final boss.
 
@@ -323,6 +327,14 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     after its start, it arrives in the run-up and shows itself there. The generator keeps a calm stretch for a
     showing in every chase that has room for one, wherever you run. It gives up after about 25 s (in quick play,
     `--features=octodog,enforcer_truck`)
+  - the Heavy Cyborg (from Ice Lab 2, Relay Station, then Specimen Vault and the Golden Zone; task S1): a bigger,
+    bulkier cyborg in armour plates, carrying a big gatling at the hip, standing in the place of one of the level's
+    cyborgs (one to three a level, placeholder share). When its barrels spin up with a deep grinding whine, glow red
+    and a red line finds you, switch lanes: it locks your spot and fires a stream of rounds down that line, spaced so
+    you can zigzag back through. It fires when the cyborgs do (its stream takes one of their places in the air) and
+    never waits for the big attacks' turns. A stomp on its head or the dash kills it; weapons take twice a cyborg's
+    hits; the claws don't hurt it, and running into it is deadly (in quick play, `--features=cyborg,heavy_cyborg`;
+    a close look in the enemy showcase, `res://tools/showcase/enemy_showcase.tscn`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,

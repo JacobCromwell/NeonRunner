@@ -467,6 +467,24 @@ runner's head, light only and fading out near the camera, glowing only green or 
 on the F6 panel; the builds where task Q4's review found a teleporter in a fenced ceiling's pick; a fence just behind an
 output pad, never crossed, not hitting the runner who arrives (no sweep back on the step of the jump); and the flash
 cleared by a restart right after a jump. About 2.5 minutes.
+`test_heavy_cyborg` checks the Heavy Cyborg (task S1; Enemies of the later zones, Heavy Cyborg): its numbers (twice a
+cyborg's shots to kill at every weapon tier in each of its levels, twice its score, a stream that fits the hit
+invulnerability window, spaced to zigzag through, after a readable wind-up, that fits before the runner reaches it; the
+cyborg numbers it never reads hidden from the F6 panel, its own shown); its hitboxes (the body below the stomp line, the
+top within a jump's reach and above a standing runner, inside a body drawn bigger); the wind-up's sound lasting it; its
+look (bigger and bulkier than its zone's cyborg, its armour in every look, only the face and the gatling glowing, the
+warm-up look with everything shown and nothing physical); on real physics the stream (it follows the wind-up, the aim
+line and hot barrels, hits a runner who stays on its line, misses one who switches lanes once it fires, follows one who
+moves during the wind-up, lets one zigzag back through it), armor and the shield through a whole stream, no fire at a
+ceiling rider, a teleport calling it off; the cyborgs' airspace (never more than `max_bursts_in_air` bursts with its
+streams; with the limit at one, it and a cyborg take turns), the crossfire rule, no part in the big attacks' turns; its
+kills (a stomp and the dash, not the claws, a claw runner who touches it hit, armor not stopping its body, laser tier 1's
+shots, another enemy's charge, a falling gantryway) and never boarding an Enforcer Truck; the generator (each build on the
+prototype level at 3, 5 and 6 lanes, three difficulties and eight seeds the build without the feature but for the cyborgs
+whose places it took, each where one fits, spaced, the same on a second build, most builds with some, none without the
+feature) and the campaign (Relay Station's start after its teleporters, none in Frost Foundry, every own-seed build as
+without it, some in every level at the campaign's lane count, the counts printed); and full levels in god mode, every
+round fair and most Heavy Cyborgs passed firing a stream. About a minute.
 `test_octodog_jars` checks the Octodog jars that break open (task Q5; Octodog jars): the layout's marks (a jar and its dog
 finding each other, `copy` and `to_dict` keeping them, a held dog none of the level's standing Octodogs, a decoy holding
 no dog and never one of the feature's jars); the generator over the Ice Lab's levels at 3, 5 and 6 lanes (up to the count

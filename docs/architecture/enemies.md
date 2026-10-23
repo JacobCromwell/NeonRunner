@@ -210,7 +210,7 @@ attack for tests (with pauses in its asks and stalls when it may go).
 
 **The cyborgs' airspace** (GDD §9.2, owner, October 8, 2026: up to two cyborg-type bursts in the air at
 once; the build had allowed one, which looked unnatural). The cyborg-type guns (`CyborgGun`: cyborgs,
-window cyborgs, Barnacle Turrets) share one `CyborgAirspace` (`scripts/enemies/cyborg_airspace.gd`) per
+window cyborgs, Barnacle Turrets, the Heavy Cyborg's gatling, whose whole stream is one burst) share one `CyborgAirspace` (`scripts/enemies/cyborg_airspace.gd`) per
 world, in the RunWorld's metadata, so every attempt starts with it empty:
 - **Claims.** A burst claims its place from the start of its charge-up until `burst_gap` after its last
   bolt, and a gun starts one only while fewer than `GameRules.max_bursts_in_air` claims are on (2, in
