@@ -12,12 +12,16 @@ extends TestSuite
 ## ornament); the faces keep their shapes far away, the VR visor's too; the Golden Zone's look wears
 ## the cult's emblem; a defeated cyborg's screen shows ERR, then goes dark; the posture is hunched,
 ## twitchy and shambling; Settings > Reduced flashing calms the host's glitch, the hit flash and the
-## screen; and building cyborgs leaves the player's avatar untouched.
+## screen; a host glows purple and has pale smoke rising off it (task S1: one draw call, shared mesh and shader,
+## a veil that keeps a red charge-up away from fence pink and a fence away from host purple, never flickering,
+## tuned by CyborgTuning, gone near the camera and when the host dies); and building cyborgs leaves the
+## player's avatar untouched.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const Poses = preload("res://scripts/enemies/cyborg_poses.gd")
 const GoldenLook = preload("res://scripts/enemies/cyborg_looks/golden.gd")
 const SHADER_PATH: String = "res://scripts/enemies/cyborg_body.gdshader"
+const SMOKE_SHADER_PATH: String = "res://scripts/enemies/host_smoke.gdshader"
 ## Draw calls: a whole cyborg (was 13, 14 while charging, before the rig) and a window cyborg's upper body.
 const FULL_BODY_CALLS: int = 11
 const UPPER_BODY_CALLS: int = 7
@@ -80,6 +84,7 @@ func run() -> void:
 	_test_far_faces()
 	await _test_deaths()
 	await _test_reduced_flashing()
+	await _test_host_smoke()
 	check(_meshes(avatar.rig) == avatar_meshes and avatar.draw_call_count() == avatar_calls,
 		"building cyborgs on the shared rig leaves the player's avatar as it was")
 	avatar.queue_free()
@@ -1012,6 +1017,225 @@ func _test_deaths() -> void:
 		"and its screen stays dark")
 	u.queue_free()
 	await tree.process_frame
+
+
+## Task S1 (GDD §9.7): a host glows purple and pale smoke rises off it, so it stands out from the other cyborgs at
+## running distance. Only a host has either, in every look; the smoke is one draw call on its chest joint from a
+## mesh and a shader every host shares (a material each), with no collision and nothing for gameplay; it is a
+## veil that never hides or recolours a warning behind it (_test_smoke_veil); the shader never flickers (all its
+## motion is a slow drift, slower still with Reduced flashing); its numbers come from CyborgTuning and
+## data/enemies/cyborg.tres and stay within the limits the veil needs; it is gone near the camera, its culling
+## box follows its size, and it clears when the host dies, along with its draw call.
+func _test_host_smoke() -> void:
+	for look: StringName in CyborgSuit.LOOKS:
+		var host := _body(look, true)
+		var plain := _body(look, false)
+		var upper := _body(look, false, true)
+		check(host.smoke != null and host.smoke.get_parent() == host.rig.joint(&"chest"),
+			"%s: a host has smoke rising off its chest" % look)
+		check(plain.smoke == null and upper.smoke == null and _smokes(plain).is_empty() and _smokes(upper).is_empty(),
+			"%s: a plain cyborg and a window cyborg have none" % look)
+		check(host.smoke != null and host.smoke.draw_call_count() == 1 and host.draw_call_count() == FULL_BODY_CALLS,
+			"%s: the smoke is one draw call on top of the body's %d" % [look, FULL_BODY_CALLS])
+		for b: CyborgBody in [host, plain, upper]:
+			b.queue_free()
+	var a := _body(&"city", true)
+	var b := CyborgBody.new()
+	tree.root.add_child(b)
+	b.build(&"city", true, false, 6)
+	check(a.smoke.mesh == b.smoke.mesh and a.smoke.material.shader == b.smoke.material.shader
+		and a.smoke.material != b.smoke.material,
+		"hosts share the smoke's mesh and shader, each with its own material")
+	check(a.smoke.material.get_shader_parameter(&"seed") != b.smoke.material.get_shader_parameter(&"seed"),
+		"no two hosts' smoke moves together")
+	var mesh: ArrayMesh = a.smoke.mesh as ArrayMesh
+	check(mesh.get_surface_count() == 1 and mesh.surface_get_array_len(0) == HostSmoke.COLUMNS.size() * 6,
+		"the smoke is %d quads in one surface" % HostSmoke.COLUMNS.size())
+	check(a.smoke.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and _collision_objects(a).is_empty(),
+		"the smoke casts no shadow and has no collision body")
+	# Colour: pale lilac, the host purple lightened: no hazard colour, and the veil test (below) holds for it.
+	var colour: Color = a.smoke.material.get_shader_parameter(&"smoke_color")
+	check(colour == HostSmoke.SMOKE_COLOR and colour.h > 0.7 and colour.h < 0.82 and colour.s > 0.15 and colour.s < 0.3
+		and colour.v >= 0.95, "the smoke is a pale lilac (h %.2f s %.2f v %.2f)" % [colour.h, colour.s, colour.v])
+	var nearest: float = INF
+	var hazards: Dictionary = _hazard_colors()
+	hazards["enemy fire"] = Kit.CHARGE_COLOR
+	for h: String in hazards:
+		nearest = minf(nearest, _chroma_distance(colour, hazards[h]))
+	check(nearest >= MIN_HAZARD_DISTANCE, "the smoke keeps clear of every hazard colour (%.2f)" % nearest)
+	_test_smoke_veil()
+	# Never flickers or flashes: TIME is read for the billows' slow climb and the column's sway only, and
+	# the shader is an unshaded veil, so nothing pulses or strobes.
+	var code: String = FileAccess.get_file_as_string(SMOKE_SHADER_PATH)
+	var time_lines: PackedStringArray = []
+	for line: String in code.split("\n"):
+		if line.contains("TIME") and not line.strip_edges().begins_with("//"):
+			time_lines.append(line.strip_edges())
+	check(time_lines.size() == 2 and time_lines[0].begins_with("float sway = sin(TIME * 0.8")
+		and time_lines[1] == "float rise = TIME * rise_speed * mix(1.0, 0.6, reduced_flashing);",
+		"the smoke's only motion is its sway and the billows' climb (%s)" % str(time_lines))
+	check(code.contains("unshaded") and not code.contains("blend_add"),
+		"it is an unshaded veil, not an additive glow")
+	check(code.contains("kit_flash.gdshaderinc") and code.contains("mix(1.0, 0.6, reduced_flashing)"),
+		"with Reduced flashing the drift slows (the shader reads the global uniform)")
+	check(code.contains("VERTEX = v_alpha < 0.004 ? base :"),
+		"a quad with no opacity left (near the camera, or a defeated host's) collapses to nothing and is never shaded")
+	check(code.contains("alpha = pow(alpha, %s);" % String.num(HostSmoke.COMPAT_LIFT)),
+		"the shader lifts a thin veil on the Compatibility renderer by the exponent the veil test assumes")
+	check(code.contains("uniform vec4 smoke_color : source_color = vec4(0.88, 0.76, 1.0, 1.0);")
+		and code.contains("uniform float strength = %s;" % String.num(HostSmoke.MAX_STRENGTH)),
+		"the shader's own defaults are the pale lilac at the most opacity allowed")
+	# Its numbers: CyborgTuning's, the resource sets them all, a host reads them when it spawns.
+	var tuning := load("res://data/enemies/cyborg.tres") as CyborgTuning
+	var defaults := CyborgTuning.new()
+	for key: String in ["host_glow_energy", "host_smoke_strength", "host_smoke_density", "host_smoke_rise_speed",
+			"host_smoke_height", "host_smoke_width", "host_smoke_near_gone", "host_smoke_near_full"]:
+		check(is_equal_approx(float(tuning.get(key)), float(defaults.get(key))),
+			"%s: the resource and the default agree (%s)" % [key, str(tuning.get(key))])
+	var m: ShaderMaterial = a.smoke.material
+	check(is_equal_approx(float(m.get_shader_parameter(&"strength")), tuning.host_smoke_strength)
+		and m.get_shader_parameter(&"size") == Vector2(tuning.host_smoke_width, tuning.host_smoke_height)
+		and is_equal_approx(float(m.get_shader_parameter(&"rise_speed")), tuning.host_smoke_rise_speed),
+		"a host's smoke takes its tuning's numbers")
+	check(tuning.host_smoke_strength <= HostSmoke.MAX_STRENGTH and tuning.host_smoke_rise_speed <= HostSmoke.MAX_RISE_SPEED,
+		"the resource stays within the veil's limits (opacity %.2f of %.2f, climb %.2f of %.2f m/s)" % [
+			tuning.host_smoke_strength, HostSmoke.MAX_STRENGTH, tuning.host_smoke_rise_speed, HostSmoke.MAX_RISE_SPEED])
+	check(m.get_shader_parameter(&"near_fade") == Vector2(tuning.host_smoke_near_gone, tuning.host_smoke_near_full)
+		and tuning.host_smoke_near_gone >= 8.0 and tuning.host_smoke_near_full > tuning.host_smoke_near_gone,
+		"the smoke is gone for a host within a stomp's approach of the runner and full further out (%s)" % str(m.get_shader_parameter(&"near_fade")))
+	var other := CyborgTuning.new()
+	other.host_smoke_strength = 0.3
+	other.host_smoke_height = 3.5
+	a.smoke.configure(other)
+	check(is_equal_approx(float(m.get_shader_parameter(&"strength")), 0.3)
+		and (m.get_shader_parameter(&"size") as Vector2).y == 3.5 and a.smoke.visible, "configure() applies new numbers")
+	other.host_smoke_strength = 1.0
+	a.smoke.configure(other)
+	check(is_equal_approx(float(m.get_shader_parameter(&"strength")), HostSmoke.MAX_STRENGTH),
+		"the smoke is never more opaque than %.2f, whatever the resource says (it would veil a red charge pink)" % HostSmoke.MAX_STRENGTH)
+	# The culling box follows the tuned size: the tallest column and the widest are inside it.
+	other.host_smoke_height = 6.0
+	other.host_smoke_width = 3.0
+	a.smoke.configure(other)
+	var box: AABB = a.smoke.custom_aabb
+	check(box.has_point(Vector3(0.0, 6.0, 0.0)) and box.has_point(Vector3(3.0 * HostSmoke.SPREAD * 0.5, 0.0, 0.0))
+		and box.has_point(Vector3(0.0, -2.0, 0.0)), "the culling box holds the tallest, widest smoke (%s)" % str(box))
+	other.host_smoke_height = 3.5
+	other.host_smoke_width = 1.0
+	other.host_smoke_rise_speed = 5.0
+	a.smoke.configure(other)
+	check(is_equal_approx(float(m.get_shader_parameter(&"rise_speed")), HostSmoke.MAX_RISE_SPEED),
+		"the billows never climb faster than %.1f m/s, whatever the resource says (they would flicker)" % HostSmoke.MAX_RISE_SPEED)
+	other.host_smoke_strength = 0.0
+	a.smoke.configure(other)
+	check(not a.smoke.visible and a.smoke.draw_call_count() == 0, "an opacity of 0 draws nothing")
+	# A defeated host's smoke clears, then it is hidden: no draw call at all.
+	var host := _body(&"city", true)
+	host.set_process(false)
+	check(host.smoke.draw_call_count() == 1, "a living host's smoke is drawn")
+	host.die(&"stomp")
+	await tree.create_timer(HostSmoke.CLEAR_TIME * 0.5).timeout
+	check(host.smoke.visible and float(host.smoke.material.get_shader_parameter(&"fade")) > 0.1,
+		"a defeated host's smoke is clearing")
+	await tree.create_timer(HostSmoke.CLEAR_TIME * 0.8).timeout
+	check(not host.smoke.visible and host.smoke.draw_call_count() == 0
+		and float(host.smoke.material.get_shader_parameter(&"fade")) >= 1.0, "and gone, with its draw call")
+	check(HostSmoke.CLEAR_TIME <= 0.4, "it clears about as the Bad Dream bursts out")
+	# In play: a Cyborg host builds it from the level's tuning; a plain one has none; a kill clears it.
+	var w: RunWorld = sim.build_world(RunSim.layout(5, 400.0))
+	var hc := w.director.spawn({"type": "cyborg", "at": 60.0, "lane": 2, "seed": 3,
+		"params": {"panic": false, "fires": false, "host": true}}) as Cyborg
+	var pc := w.director.spawn({"type": "cyborg", "at": 60.0, "lane": 3, "seed": 4,
+		"params": {"panic": false, "fires": false, "host": false}}) as Cyborg
+	await physics_frames(2)
+	check(hc.body.smoke != null and pc.body.smoke == null, "in play only the host has smoke")
+	check(is_equal_approx(float(hc.body.smoke.material.get_shader_parameter(&"strength")), hc.tuning.host_smoke_strength),
+		"it uses the cyborg tuning's numbers")
+	check(float(hc.body.material.get_shader_parameter(&"host_rim")) == 1.0 and float(pc.body.material.get_shader_parameter(&"host_rim")) == 0.0
+		and is_equal_approx(float(hc.body.material.get_shader_parameter(&"rim_energy")), hc.tuning.host_glow_energy),
+		"only a host glows purple, with the tuning's energy")
+	check(str(_hitboxes(hc)) == str(_hitboxes(pc)), "the smoke adds no hitbox: the host's are the plain cyborg's (%s)"
+		% str(_hitboxes(hc).keys()))
+	hc.defeat(&"claws")
+	await physics_frames(3)
+	check(float(hc.body.smoke.material.get_shader_parameter(&"fade")) > 0.0, "a killed host's smoke starts clearing")
+	await sim.free_world(w)
+	for node: Node in [a, b, host]:
+		node.queue_free()
+	await tree.process_frame
+
+
+## The Compatibility renderer blends in sRGB space (the smoke's alpha lifted by HostSmoke.COMPAT_LIFT first), Forward+
+## and Mobile in linear light: `src` over `dst` at `alpha`, as the screen shows it.
+static func _veil(compatibility: bool, dst: Color, src: Color, alpha: float) -> Color:
+	if compatibility:
+		var k: float = pow(alpha, HostSmoke.COMPAT_LIFT)
+		return Color(lerpf(dst.r, src.r, k), lerpf(dst.g, src.g, k), lerpf(dst.b, src.b, k))
+	var s: Color = src.srgb_to_linear()
+	var d: Color = dst.srgb_to_linear()
+	return Color(lerpf(d.r, s.r, alpha), lerpf(d.g, s.g, alpha), lerpf(d.b, s.b, alpha)).linear_to_srgb()
+
+
+## The smoke is a veil over what stands behind the host on screen (the run camera shows a charging cyborg or a fence
+## further down a host's lane inside the host's column), so it must not recolour a warning into another one.
+## Blended under the smoke at every opacity from nothing up to HostSmoke.MAX_STRENGTH (the most it can ever be), at
+## its full colour and at the 78% brightness the shader darkens it to, with each renderer's blending:
+## - the cannon's red charge-up, the Bad Dream's red telegraph and the charge orb as drawn (red, a warm salmon
+##   once the tonemapper has had it) stay at least 0.3 from fence pink on the hue and saturation wheel, so a veiled
+##   attack warning is not mistaken for a fence;
+## - fence pink stays at least 0.3 from the smoke's own colour and from host purple, so a veiled fence does not
+##   turn into host purple.
+## A saturated violet veil (the first version's, 0.75 opacity) fails the first by a wide margin at every
+## opacity from about 0.1 up: 0.02 from fence pink.
+func _test_smoke_veil() -> void:
+	const ORB_AS_DRAWN := Color(1.0, 0.48, 0.35)  # hue 12 degrees, saturation 0.65: the orb's pixels in rendered frames
+	var peak: float = HostSmoke.MAX_STRENGTH
+	var reds: Dictionary = {"the cannon's red charge-up": Kit.CHARGE_COLOR, "the Bad Dream's red telegraph": BadDreamModel.ATTACK_RED,
+		"the charge orb as drawn": ORB_AS_DRAWN}
+	var dead_zone := load("res://data/skins/dead_zone_skin.tres") as ZoneSkin
+	check(dead_zone != null and dead_zone.get(&"fence_color") == Kit.FENCE_PINK,
+		"the fence colour the veil test uses is the Dead Zone's own, where the hosts are")
+	for compatibility: bool in [false, true]:
+		var renderer: String = "Compatibility" if compatibility else "Forward+"
+		for shade: float in [1.0, 0.78]:
+			var smoke: Color = HostSmoke.SMOKE_COLOR
+			var veil := Color(smoke.r * shade, smoke.g * shade, smoke.b * shade)
+			var worst_red: float = INF
+			var worst_which: String = ""
+			var worst_fence_smoke: float = INF
+			var worst_fence_host: float = INF
+			for step: int in range(1, 33):
+				var alpha: float = peak * step / 32.0
+				for which: String in reds:
+					var d: float = _chroma_distance(_veil(compatibility, reds[which], veil, alpha), Kit.FENCE_PINK)
+					if d < worst_red:
+						worst_red = d
+						worst_which = which
+				var fence: Color = _veil(compatibility, Kit.FENCE_PINK, veil, alpha)
+				worst_fence_smoke = minf(worst_fence_smoke, _chroma_distance(fence, smoke))
+				worst_fence_host = minf(worst_fence_host, _chroma_distance(fence, Kit.GLITCH_COLOR))
+			var tag: String = "%s, smoke at %d%% brightness, up to %.2f opacity" % [renderer, roundi(shade * 100.0), peak]
+			check(worst_red >= MIN_HAZARD_DISTANCE,
+				"%s: a red warning under the smoke stays %.2f (at least %.1f) from fence pink (worst: %s)" % [tag, worst_red, MIN_HAZARD_DISTANCE, worst_which])
+			check(worst_fence_smoke >= MIN_HAZARD_DISTANCE and worst_fence_host >= MIN_HAZARD_DISTANCE,
+				"%s: a fence under the smoke stays %.2f from its colour and %.2f from host purple (at least %.1f)" % [
+					tag, worst_fence_smoke, worst_fence_host, MIN_HAZARD_DISTANCE])
+	# The bar is real: the first version's saturated violet at 0.75 fails it, so a regression would be caught.
+	var old_violet := Color(0.58, 0.28, 1.0)
+	var old_worst: float = INF
+	for step: int in range(1, 33):
+		old_worst = minf(old_worst, _chroma_distance(_veil(false, Kit.CHARGE_COLOR, old_violet, 0.75 * step / 32.0), Kit.FENCE_PINK))
+	check(old_worst < MIN_HAZARD_DISTANCE, "a saturated violet veil would have turned the red charge-up pink (%.2f from fence pink)" % old_worst)
+
+
+## Every HostSmoke under `body`.
+func _smokes(body: Node) -> Array[Node]:
+	return body.find_children("*", "HostSmoke", true, false)
+
+
+## Every physics body or area under `node`.
+func _collision_objects(node: Node) -> Array[Node]:
+	return node.find_children("*", "CollisionObject3D", true, false)
 
 
 func _set_reduced_flashing(on: bool) -> void:

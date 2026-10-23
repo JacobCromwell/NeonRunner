@@ -16,6 +16,17 @@ extends Node3D
 ##   play             a generated level with the enemies on, run by a god-mode player with grapples (so
 ##                    gaps don't end the run) through the real run camera (options: --seed=N --lanes=N
 ##                    --difficulty=X --start=metres --features=a,b --claws); it runs until closed
+##   hosts            hosts and plain cyborgs close up (task S1): a plain cyborg, a host, a host charging its
+##                    cannon (the red must stay readable through the purple smoke) and a plain one charging
+##   hosts_far        hosts among plain cyborgs at running distance through the run camera, 14 to 100 m ahead,
+##                    in the skin's own lighting (try --skin=res://data/skins/dead_zone_skin.tres, and --dark
+##                    for The Hush's darkness); --smoke=<0-1> sets a host's smoke opacity (0 none, to compare),
+##                    and --smoke-density= --smoke-rise= --smoke-height= --smoke-width= --smoke-color=r,g,b;
+##                    --rim=<energy> sets the hosts' body glow (0 none)
+##   veil, veil2      (review) plain cyborgs charging behind hosts (veil: two lanes, with controls beside them;
+##                    veil2: one lane, --gaps=5,11 metres behind the host, --host_at=14), through the run camera
+##   stomp            (review) a host 2 m ahead of the runner (--host_at=) with a fence (--fence_at=) and a
+##                    charging cyborg (--plain_at=) behind it: the stomp approach as the run camera sees it
 ##   lineup           every look side by side, the base first (GDD §9.2's zone variants), idle with the
 ##                    calm face; --face=aiming|shocked|dead shows another expression (aiming charges the
 ##                    weapon), --host makes them all hosts, --back turns them round, --side shows their
@@ -57,6 +68,8 @@ func _ready() -> void:
 	add_child(sun)
 	var env := WorldEnvironment.new()
 	env.environment = _world.skin.make_environment()
+	if OS.get_cmdline_user_args().has("--dark"):
+		env.environment = _world.skin.level_environment(0.7)  # The Hush's darkness (Dead Zone 2).
 	add_child(env)
 	match view:
 		"faces":
@@ -76,6 +89,17 @@ func _ready() -> void:
 			_look(Vector3(0.6, 1.4, -2.0), Vector3(0.0, 1.0, -9.0))
 		"far":
 			_far_scene()
+		"hosts":
+			_hosts_row(variant)
+			_look(Vector3(0.0, 1.9, 4.6), Vector3(0.0, 1.5, -1.0))
+		"hosts_far":
+			_hosts_far(variant)
+		"veil":
+			_veil(variant)
+		"veil2":
+			_veil2(variant)
+		"stomp":
+			_stomp(variant)
 		"lineup":
 			_lineup()
 			_look(Vector3(0.0, 1.0, 4.05), Vector3(0.0, 0.86, -1.0))
@@ -205,6 +229,9 @@ func _build_world(view: String) -> RunWorld:
 		for lane: int in 5:
 			layout.fences.append({"lane": lane, "at": 69.0, "variant": "gapped", "pulsing": false,
 				"pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0})
+	if view == "stomp":
+		layout.fences.append({"lane": 2, "at": float(_opt("fence_at", "9")), "variant": "full", "pulsing": false,
+			"pulse_on": 1.0, "pulse_off": 1.0, "phase": 0.0})
 	var config := LevelConfig.new()
 	config.lane_count = 5
 	config.skin = _skin(_variant)
@@ -226,7 +253,31 @@ func _body(v: StringName, host: bool, pos: Vector3, seed_value: int) -> CyborgBo
 	add_child(b)
 	b.build(v, host, false, seed_value)
 	b.position = pos
+	_tune_host(b)
 	return b
+
+
+## A host's look as the command line says (to compare looks): --smoke=<opacity> (0: none) and --smoke-density=,
+## --smoke-rise=, --smoke-height=, --smoke-width=, --smoke-near=<gone>,<full> (CyborgTuning's host_smoke_*),
+## --smoke-color=r,g,b, and --rim=<energy> (the body glow, host_glow_energy).
+func _tune_host(b: CyborgBody) -> void:
+	var tuning := CyborgTuning.new()
+	for pair: Array in [["smoke", "host_smoke_strength"], ["smoke-density", "host_smoke_density"],
+			["smoke-rise", "host_smoke_rise_speed"], ["smoke-height", "host_smoke_height"],
+			["smoke-width", "host_smoke_width"], ["rim", "host_glow_energy"]]:
+		var value: String = _opt(pair[0], "")
+		if not value.is_empty():
+			tuning.set(pair[1], float(value))
+	var near: String = _opt("smoke-near", "0,1" if _opt("view", "") == "hosts" else "")  # the close-up shows it
+	if not near.is_empty():
+		var n: PackedFloat64Array = near.split_floats(",")
+		tuning.host_smoke_near_gone = n[0]
+		tuning.host_smoke_near_full = n[1]
+	b.apply_host_tuning(tuning)
+	var color: String = _opt("smoke-color", "")
+	if b.smoke != null and not color.is_empty():
+		var c: PackedFloat64Array = color.split_floats(",")
+		b.smoke.material.set_shader_parameter(&"smoke_color", Color(c[0], c[1], c[2]))
 
 
 ## Idle, walk, aim (charged), panic run, cower, host.
@@ -317,6 +368,91 @@ func _far_scene() -> void:
 		var p: Vector2 = _camera.unproject_position(head) / Vector2(get_viewport().get_visible_rect().size)
 		print("far head %s host=%s at %.0f m: screen %.4f %.4f" % [Kit.Face.keys()[b.face], b.host,
 			-b.global_position.z, p.x, p.y])
+
+
+## Task S1: a plain cyborg, a host, a host charging its cannon at the camera and a plain one charging.
+func _hosts_row(v: StringName) -> void:
+	var xs: Array[float] = [-1.8, -0.6, 0.6, 1.8]
+	for i: int in 4:
+		var b := _body(v, i == 1 or i == 2, Vector3(xs[i], 0.0, 0.0), 80 + i)
+		if i >= 2:
+			b.set_pose(CyborgBody.Pose.AIM)
+			b.aim_at(Vector3(xs[i] + 0.6, 1.0, 8.0))
+			b.set_charge(1.0)
+			b.set_expression(Kit.Face.AIMING)
+	_label(Vector3(-1.2, 3.3, 0.0), "plain | host", 24)
+	_label(Vector3(1.2, 3.3, 0.0), "host | plain, charging", 24)
+
+
+## Task S1: hosts and plain cyborgs through the run camera, rows 14, 30, 60 and 100 m ahead, a host or two
+## in each among the plain ones (a different lane each time).
+func _hosts_far(v: StringName) -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var rows: Array = [[14.0, [1, 3]], [30.0, [0, 2]], [60.0, [1, 4]], [100.0, [2]]]
+	for r: int in rows.size():
+		var at: float = rows[r][0]
+		var hosts: Array = rows[r][1]
+		for lane: int in 5:
+			_body(v, hosts.has(lane), _world.lane_point(lane, at), 90 + r * 10 + lane)
+
+
+## Reviewer scratch: hosts with a plain cyborg charging behind them in the same lane, and the same charging
+## cyborgs with nothing in front (controls), through the run camera.
+func _veil(v: StringName) -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var host_at: float = float(_opt("host_at", "14"))
+	var gap_a: float = float(_opt("gap_a", "6"))
+	var gap_b: float = float(_opt("gap_b", "12"))
+	# lane 1: host, plain charging gap_a behind; lane 3: host, plain charging gap_b behind
+	# lane 0: plain charging at host_at + gap_a (control); lane 4: plain charging at host_at + gap_b (control)
+	_body(v, true, _world.lane_point(1, host_at), 201)
+	_body(v, true, _world.lane_point(3, host_at), 203)
+	var specs: Array = [[1, host_at + gap_a], [3, host_at + gap_b], [0, host_at + gap_a], [4, host_at + gap_b]]
+	for i: int in specs.size():
+		var lane: int = specs[i][0]
+		var at: float = specs[i][1]
+		var b := _body(v, false, _world.lane_point(lane, at), 210 + i)
+		b.set_pose(CyborgBody.Pose.AIM)
+		b.aim_at(Vector3(0.0, 1.0, t.camera_distance))
+		b.set_charge(1.0)
+		b.set_expression(Kit.Face.AIMING)
+
+
+func _veil2(v: StringName) -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var host_at: float = float(_opt("host_at", "14"))
+	_body(v, true, _world.lane_point(2, host_at), 301)
+	var gaps: PackedStringArray = _opt("gaps", "5,11").split(",")
+	for i: int in gaps.size():
+		var b := _body(v, false, _world.lane_point(2, host_at + float(gaps[i])), 310 + i)
+		b.set_pose(CyborgBody.Pose.AIM)
+		b.aim_at(Vector3(0.0, 1.0, t.camera_distance))
+		b.set_charge(1.0)
+		b.set_expression(Kit.Face.AIMING)
+
+
+func _stomp(v: StringName) -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var h := _body(v, true, _world.lane_point(2, float(_opt("host_at", "2"))), 401)
+	h.scale = Vector3.ONE * CyborgSuit.draw_scale(_world.skin)
+	var b := _body(v, false, _world.lane_point(2, float(_opt("plain_at", "16"))), 402)
+	b.scale = Vector3.ONE * CyborgSuit.draw_scale(_world.skin)
+	b.set_pose(CyborgBody.Pose.AIM)
+	b.aim_at(Vector3(0.0, 1.0, t.camera_distance))
+	b.set_charge(1.0)
+	b.set_expression(Kit.Face.AIMING)
 
 
 func _charge_scene() -> void:

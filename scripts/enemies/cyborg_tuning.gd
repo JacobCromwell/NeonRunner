@@ -43,3 +43,30 @@ extends CyborgGunTuning
 ## weapons hit hosts, and a weapon kill releases the Bad Dream). The GDD keeps the big bonus for a stomp,
 ## the claws and the dash; placeholder 0: a weapon kill pays an ordinary cyborg kill's score only.
 @export_range(0, 20000, 50) var weapon_host_bonus: int = 0
+
+@export_group("Host look")
+## What picks a host out of a crowd of cyborgs at running distance (GDD §9.7, owner, October 23, 2026; task S1):
+## its body glows purple (a rim glow in cyborg_body.gdshader, lighting only the host itself) and a faint pale
+## lilac smoke rises off it (HostSmoke, one draw call per host, host_smoke.gdshader). The smoke is a veil over
+## whatever stands behind the host on screen, a cyborg charging its cannon or a fence among them, and a violet
+## veil turns a red charge pink (the fences' colour): so the smoke has to stay thin and pale, the glow on the
+## body carries the read, and the smoke fades out as the runner closes on the host.
+## DESIGN-TBD (docs/questions/s1.md 1): how much of each, and how far out the smoke fades.
+## The purple glow on the host's body (0 none; 1.5 is a clear violet outline from 14 to 100 m).
+@export_range(0.0, 3.0, 0.05) var host_glow_energy: float = 1.5
+## The smoke's opacity at the thickest, at most HostSmoke.MAX_STRENGTH (more would veil a red charge pink); 0
+## turns the smoke off.
+@export_range(0.0, 0.4, 0.01) var host_smoke_strength: float = 0.4
+## How much of each column the billows fill: 0 thin wisps, 1 a solid column.
+@export_range(0.0, 1.0, 0.01) var host_smoke_density: float = 0.6
+## How fast the billows climb. The range stops at 1 m/s so the smoke never flickers: no billow passes a point more
+## than about 1.3 times a second then, under the 3 a second that Reduced flashing guards against.
+@export_range(0.1, 1.0, 0.05, "suffix:m/s") var host_smoke_rise_speed: float = 0.7
+## The middle column's height (its top reaches this far above the host's spine) and its width at the base.
+@export_range(0.5, 6.0, 0.1, "suffix:m") var host_smoke_height: float = 1.8
+@export_range(0.2, 3.0, 0.05, "suffix:m") var host_smoke_width: float = 1.0
+## The smoke is gone closer to the camera than the first distance and at full strength beyond the second (the run
+## camera is 7.5 m behind the runner, so 12 and 22 m: gone for a host within 4.5 m of the runner, a stomp's reach
+## and the approach to it, full from 14.5 m ahead).
+@export_range(0.0, 60.0, 0.5, "suffix:m") var host_smoke_near_gone: float = 12.0
+@export_range(0.0, 60.0, 0.5, "suffix:m") var host_smoke_near_full: float = 22.0
