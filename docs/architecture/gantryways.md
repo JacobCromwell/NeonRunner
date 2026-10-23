@@ -53,9 +53,13 @@ Plain holes and fences in those windows are taken out to make room (clear_plain_
 generator powers, or a wall-run gap's hole), and a spot that needs nothing taken out is preferred. An introduction takes the
 best fair spot within intro_window_seconds of the feature's start (within test_campaign's introduction reach), one with a
 cyborg under it, making room where none fits by taking out pattern ceilings (with their pads and the credits on them) or
-plain enemies (`_make_room`; never a feature's last one, nor another feature's introduction); the rest spread through the
+plain enemies (`_make_room`; never a feature's last one, nor another feature's introduction); then one in each stretch
+another feature's rules want one in (`wanted`: a rules script's `gantryway_wanted(gen)`; task S2, the Hunter's
+introduction, 12 to 18 s of run past its feature's start, `enemy-hunter.md`), both lanes beside it clear where it can,
+unless one hangs there already; the rest spread through the
 level past it, a part each, at a seeded spot. The rules run after every other feature's (RUN_AFTER), on their own random
-stream, so a level without the feature builds byte for byte as before.
+stream, so a level without the feature builds byte for byte as before (and one whose features want none, as before task
+S2).
 
 **The enemy beneath** (plant_cyborg; GDD §5's level schedule row: "dash a pillar to drop a one-lane walkway on the enemies
 below"; one under every gantryway is task Q3's proposal, DESIGN-TBD). Under each gantryway the rules plant a plain cyborg (params `stand`, `hold_fire`,

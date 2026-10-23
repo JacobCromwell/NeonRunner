@@ -12,9 +12,10 @@ difficulty = 0.816
 difficulty_bias = 0.0
 enemy_scaling = 0.865
 off_curve = true
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "wall_run_gaps", "wall_fences", "treasure_stash", "fenced_ceiling", "wall_fences_partial", "gantryway", "octodog_jar", "teleporter", "heavy_cyborg", "teleporter_blinking")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "wall_run_gaps", "wall_fences", "treasure_stash", "fenced_ceiling", "wall_fences_partial", "gantryway", "octodog_jar", "teleporter", "heavy_cyborg", "teleporter_blinking", "hunter")
 feature_starts = Dictionary[String, float]({
-"teleporter_blinking": 0.15
+"teleporter_blinking": 0.15,
+"hunter": 0.4
 })
 skin_path = "res://data/skins/ice_lab_lab_skin.tres"
 guarantee_features = true

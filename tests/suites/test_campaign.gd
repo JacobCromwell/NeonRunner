@@ -20,7 +20,8 @@ extends TestSuite
 ## Lab (task Q1; the owner, October 21, 2026, GDD §5 Zone 9): zone 9, between the Terminal and the Golden Zone (now zone
 ## 10), three levels and no boss, off the difficulty curve between Terminal 2's and Golden 1's, its enemies the cyborgs,
 ## the Octodogs and the heli drones, no other earlier enemy and no dash walls (ICE_LAB_LEAVES_OUT), its own mechanics
-## (tasks Q3, Q4, Q5) and its new enemies (the Heavy Cyborg, task S1, GDD §9.16, from Relay Station), and every other
+## (tasks Q3, Q4, Q5) and its new enemies (the Heavy Cyborg, task S1, GDD §9.16, from Relay Station; the Hunter,
+## task S2, GDD §9.17, from Specimen Vault), and every other
 ## level and boss configured exactly as in the campaign before it; a save from before it keeps the Golden Zone it had open
 ## (Profile version 6). test_ice_lab_levels checks its levels' own rules. The Golden Zone keeps the Ice Lab's teleporters,
 ## fixed and blinking (task Q6; the owner, October 22, 2026), and its Heavy Cyborgs (task S1; the owner, October 23, 2026),
@@ -98,6 +99,9 @@ const FIRST_LEVEL: Dictionary = {
 	# Task S1 (GDD §9.16; the owner, October 23, 2026; Relay Station proposed, after its teleporters): the Heavy Cyborg,
 	# from Relay Station, then in Specimen Vault and the Golden Zone's three levels.
 	"heavy_cyborg": "ice_lab/2",
+	# Task S2 (GDD §9.17, owner, October 23, 2026; proposed: "introduced in Specimen Vault (level 3), after its blinking
+	# teleporters"): the Hunter.
+	"hunter": "ice_lab/3",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
@@ -132,6 +136,8 @@ const LEFT_OUT: Dictionary = {
 	# Task Q5: the Octodog jars stay in the Ice Lab, its own doodads; the Golden Zone has no Octodogs to hold anyway
 	# (DESIGN-TBD, docs/questions/q5.md 12).
 	"octodog_jar": ["golden/1", "golden/2", "golden/3"],
+	# Task S2 (GDD §9.17, proposed: "Ice Lab only for now"): the Hunter, whose bait is the Ice Lab's falling gantryways.
+	"hunter": ["golden/1", "golden/2", "golden/3"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
@@ -152,7 +158,7 @@ const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "terminal/2", "
 ## at least one new enemy, except the Casino, which reuses the Marketplace's", owner, October 8, 2026) and the Beach,
 ## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"). None of them introduces anything
 ## else either (NOTHING_NEW), but for the mechanics in NEW_MECHANICS. (The Ice Lab was one until its first new enemy, the
-## Heavy Cyborg, came in: task S1.)
+## Heavy Cyborg, came in: task S1; then the Hunter, task S2.)
 const NO_NEW_ENEMY: Dictionary = {
 	"casino": "it reuses the Marketplace's (GDD §5, owner)",
 	"beach": "a remix of everything before it (owner, October 9, 2026)",
@@ -210,7 +216,7 @@ const V2_STEPS: PackedStringArray = ["city/intro", "city/1", "city/2", "city/3",
 ## Features that are enemies (for "every zone introduces at least one new enemy").
 const ENEMIES: Array = ["cyborg", "window_cyborg", "hover_truck", "screech", "octodog", "generator", "drone",
 	"barnacle_turret", "buzz_overdrive", "tithe_collector", "enforcer_truck", "host", "resonator", "gilded_sentinel",
-	"centipede", "heavy_cyborg"]
+	"centipede", "heavy_cyborg", "hunter"]
 ## The Ice Lab's new enemies the Golden Zone keeps (task S1: the Heavy Cyborg, in all three of its levels with no
 ## introduction of its own; the owner, October 23, 2026), which it dates from the Ice Lab as it does the teleporters
 ## (_ages_but_ice_lab).

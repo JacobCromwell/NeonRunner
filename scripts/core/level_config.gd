@@ -129,6 +129,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   cyborg with a gatling, where its stream gets to fire (its pattern's cyborg, data/patterns/heavy_cyborg.json, and
 ##   a share of the level's other plain cyborgs become Heavy Cyborgs where one fits, last of the rules: its rules,
 ##   heavy_cyborg_rules.gd; numbers in data/enemies/heavy_cyborg.tres)
+## - hunter: the Hunter (task S2; GDD §9.17, owner, October 23, 2026), from Specimen Vault: a torso on a hover disc with red
+##   blades that comes up beside the runner from behind and slashes into their lane, follows them into the lane they leave,
+##   and dies under a falling gantryway the runner drops on it (no patterns: its rules, hunter_rules.gd, bring one in only
+##   where a falling gantryway it can be lured under comes during its chase, so it needs the gantryway feature; numbers in
+##   data/enemies/hunter.tres)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.

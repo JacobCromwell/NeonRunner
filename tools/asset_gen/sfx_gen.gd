@@ -70,6 +70,8 @@ extends SceneTree
 ##                        sloshing out, its startled snarl)
 ##   sfx_bank_heavy_cyborg.gd  the Heavy Cyborg: its gatling's wind-up (the warning: the barrels spinning up, the red
 ##                        charge's hum) and one round of its stream
+##   sfx_bank_hunter.gd   the Hunter: its hover disc's whine (its arrival), its blades' scrape (a flurry's warning),
+##                        the flurry's swishes, its turbine winding down as it gives up, and its death
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -112,6 +114,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_gantryway.gd"),
 	preload("res://tools/asset_gen/sfx_bank_teleporter.gd"),
 	preload("res://tools/asset_gen/sfx_bank_octodog_jar.gd"),
+	preload("res://tools/asset_gen/sfx_bank_hunter.gd"),
 	preload("res://tools/asset_gen/sfx_bank_terminal_outro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_heavy_cyborg.gd"),
 ]

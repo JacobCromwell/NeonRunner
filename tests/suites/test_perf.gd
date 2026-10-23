@@ -41,6 +41,7 @@ const WARM_ENTRIES: Array[Dictionary] = [
 	{"type": "enforcer_truck", "at": 620.0, "lane": 1, "seed": 14, "params": {}},
 	{"type": "hover_truck", "at": 640.0, "lane": 4, "side": 1, "seed": 15, "params": {}},
 	{"type": "heavy_cyborg", "at": 660.0, "lane": 2, "seed": 16, "params": {}},
+	{"type": "hunter", "at": 680.0, "lane": 1, "seed": 17, "params": {}},
 ]
 
 var sim: RunSim
@@ -240,7 +241,7 @@ func _test_enemy_warm_up() -> void:
 	for e: Dictionary in director.warm_entries():
 		if not EnemyDirector._scripts.has(String(e["type"])) or EnemyDirector._scripts[String(e["type"])] == null:
 			unloaded.append(String(e["type"]))
-	check(unloaded.is_empty() and director.warm_entries().size() == 15,
+	check(unloaded.is_empty() and director.warm_entries().size() == 16,
 		"each type's script is loaded with the level (%d kinds; not loaded: %s)" % [director.warm_entries().size(), ", ".join(unloaded)])
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes_before and director.get_child_count() == children_before
 		and director.active.is_empty(), "nothing it built stays: no node in the tree, no enemy in play")
@@ -259,7 +260,7 @@ func _test_enemy_warm_up() -> void:
 			physics.append(String(look.name))
 		look.free()
 	check(physics.is_empty(), "a look has no physics object (freeing one would reorder later contacts): %s" % ", ".join(physics))
-	check(looks.size() == 15 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
+	check(looks.size() == 16 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
 		looks.size(), empty])
 	await sim.free_world(world)
 
