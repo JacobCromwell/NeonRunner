@@ -121,6 +121,7 @@ const BUZZ: String = "buzz_overdrive"
 ## Metres before a Tithe Collector's spot its stay is kept from (it appears ahead of the runner there).
 const TITHE_LEAD: float = 5.0
 const CYBORG: String = "cyborg"
+const HEAVY_CYBORG: String = "heavy_cyborg"
 const TRUCK: String = "hover_truck"
 const ENFORCER: String = "enforcer_truck"
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
@@ -808,18 +809,19 @@ static func powered_fences(gen: LevelGenerator) -> Array[Dictionary]:
 
 
 ## The stretches enemy entry `e` keeps a wall's footprint off (see the header), as a wider gap's are kept
-## (WideGapPlacement.keeps_of): what the fill pass keeps for it (LevelGenerator.enemy_keep_out) and the floor
-## it uses; for a floor cyborg its obstacle margin either side (CyborgRules.obstacle_margin_at: its bolts never
-## land near a wall, CyborgGun.path_clear); for a planned Resonator each pulse, from its warning until its wave
-## has passed (DangerDensity.resonator_pulse_windows: between them it only hovers, rising over a wall, and
-## every pulse waits for floor clear of walls, Resonator.pulse_clear); for a Tithe Collector its whole stay;
-## nothing for NO_KEEP_TYPES.
+## (WideGapPlacement.keeps_of): what the fill pass keeps for it (LevelGenerator.enemy_keep_out) and the floor it uses;
+## for a floor cyborg its obstacle margin either side (CyborgRules.obstacle_margin_at: its bolts never land near a wall,
+## CyborgGun.path_clear), a Heavy Cyborg's too (task S1: its rules give it back as a cyborg after the zone doodads where
+## a wall's footprint reaches its stream's zone); for a planned Resonator each pulse, from its warning until its wave
+## has passed (DangerDensity.resonator_pulse_windows: between them it only hovers, rising over a wall, and every pulse
+## waits for floor clear of walls, Resonator.pulse_clear); for a Tithe Collector its whole stay; nothing for
+## NO_KEEP_TYPES.
 static func enemy_spans(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var type: String = String(e.get("type", ""))
 	if NO_KEEP_TYPES.has(type):
 		return out
-	if type == CYBORG:
+	if type == CYBORG or type == HEAVY_CYBORG:
 		var ct := EnemyDirector.tuning_for(CYBORG) as CyborgTuning
 		var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
 		out.append(Vector2(float(e["at"]) - margin, float(e["at"]) + margin))

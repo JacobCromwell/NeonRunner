@@ -84,6 +84,14 @@ const WALL_RUN_GAP_ROOM: Dictionary = {"late": {3: 0.04}}
 ## teleporters (TELEPORTER_FEATURES) still keeps the floor above. By band, then lane count. DESIGN-TBD
 ## (docs/questions/q6.md item 11): which request gives way at 3 lanes (as with the wall-run gaps, item 874).
 const TELEPORTER_ROOM: Dictionary = {"late": {3: 0.05}}
+## Task S1 (GDD §9.16, the owner, October 23, 2026: the Heavy Cyborg in all three of the Golden Zone's levels): Sentinel
+## Row's and the Golden Palace's Heavy Cyborgs stand in their pattern's places and some of the cyborgs', and this pass
+## twins no Heavy Cyborg (it adds only the types its tuning lists, whose rules it applies itself) and keeps its rows off
+## a stream's zone. At 3 lanes, with the fewest places, the final band then lands at about x1.22 for enemies over this
+## sample (x1.24 built without its teleporters, against about x1.29 before the Heavy Cyborg): its floor is this much
+## lower there, with its teleporters and without them. By band, then lane count. DESIGN-TBD (docs/questions/s1.md item
+## 13): which request gives way at 3 lanes.
+const HEAVY_CYBORG_ROOM: Dictionary = {"late": {3: 0.03}}
 const TELEPORTER_FEATURES: Array[String] = ["teleporter", "teleporter_blinking"]
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
 ## final ones' and above the first band and below the last (less WALL_RUN_GAP_ROOM), at every lane count, for
@@ -234,6 +242,7 @@ func _test_density(campaign: Campaign) -> void:
 				lo = float(TARGET_RATIO[band]) - TOLERANCE
 				hi = float(TARGET_RATIO[band]) + TOLERANCE
 			lo -= float((WALL_RUN_GAP_ROOM.get(band, {}) as Dictionary).get(LANES[li], 0.0))
+			lo -= float((HEAVY_CYBORG_ROOM.get(band, {}) as Dictionary).get(LANES[li], 0.0))
 			var room: float = float(teleporter_room.get(LANES[li], 0.0))
 			check(e >= lo - room - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, lo - room, hi])
 			check(o >= lo - room - 0.0005 and o <= hi + 0.0005, "%s: obstacles x%.3f, within x%.2f..x%.2f" % [tag, o, lo - room,
@@ -253,10 +262,11 @@ func _test_density(campaign: Campaign) -> void:
 		var early: Vector2 = ratios["early"][li]
 		var middle: Vector2 = ratios["middle"][li]
 		var late: Vector2 = ratios["late"][li]
-		# Where the final band's floor is lower (WALL_RUN_GAP_ROOM, TELEPORTER_ROOM), its rise past the middle band may
-		# fall short by as much.
+		# Where the final band's floor is lower (WALL_RUN_GAP_ROOM, TELEPORTER_ROOM, HEAVY_CYBORG_ROOM), its rise past the
+		# middle band may fall short by as much.
 		var room: float = float((WALL_RUN_GAP_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0)) \
-			+ float((TELEPORTER_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0))
+			+ float((TELEPORTER_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0)) \
+			+ float((HEAVY_CYBORG_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0))
 		check(early.x < middle.x and middle.x < late.x + room, "lanes=%d: enemies rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
 			LANES[li], early.x, middle.x, late.x])
 		check(early.y < middle.y and middle.y < late.y + room, "lanes=%d: obstacles rise along the campaign (x%.3f, x%.3f, x%.3f)" % [

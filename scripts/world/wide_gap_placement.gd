@@ -31,7 +31,9 @@ extends RefCounted
 ##   no other hole, fence, ramp (or where its wall run
 ##   drops the runner back), anti-grav pad's zone, speed pad, ceiling's landing zone, floor cut's window,
 ##   enemy's attack (what the fill pass keeps for it, LevelGenerator.enemy_keep_out, with its floor; for a floor
-##   cyborg its obstacle margin, CyborgRules: its bolts never land near a hole anyway, CyborgGun; for a planned
+##   cyborg, a Heavy Cyborg's too, its obstacle margin, CyborgRules: its bolts never land near a hole anyway,
+##   CyborgGun, and a Heavy Cyborg whose stream's zone a wider gap reaches goes back to a cyborg after the zone
+##   doodads, HeavyCyborgRules: it gives way; for a planned
 ##   Resonator each pulse from its warning until its wave has passed, DangerDensity.resonator_pulse_windows:
 ##   between them it only hovers, and every pulse waits for clear floor) or attack the rules keep doodads off (a
 ##   Gilded Sentinel's strike; not a host's possible Bad Dream chase, which the danger density pass exempts too)
@@ -70,6 +72,9 @@ extends RefCounted
 const TUNING_PATH: String = "res://data/tuning/wide_gaps.tres"
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+## The Heavy Cyborg (task S1): kept off as a cyborg is (keeps_of), its rules giving it back as a cyborg where a wider
+## gap reaches its stream's zone.
+const HEAVY_CYBORG: String = "heavy_cyborg"
 const TeleporterRules = preload("res://scripts/enemies/teleporter_rules.gd")
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
 ## The danger density pass's tuning (DangerDensity.TUNING_PATH): its keep_out_exempt_features.
@@ -449,7 +454,7 @@ static func keeps_of(gen: LevelGenerator) -> Array[Dictionary]:
 		var type: String = String(e.get("type", ""))
 		if NO_KEEP_TYPES.has(type):
 			continue
-		if type == "cyborg":
+		if type == "cyborg" or type == HEAVY_CYBORG:
 			# Its obstacle margin (its walk and panic run keep it too); a host's chase is exempt (below).
 			var at: float = float(e["at"])
 			out.append(_keep(Vector2(at - cyborg_margin, at + cyborg_margin), "a cyborg"))

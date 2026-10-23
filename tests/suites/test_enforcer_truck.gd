@@ -1267,16 +1267,30 @@ func _only_its_trucks() -> void:
 					kept.append(e)
 			stripped.enemies = kept
 			if not company:
-				check(not Rules.trucks_in(with_it).is_empty() and JSON.stringify(stripped.to_dict()) == JSON.stringify(plain.to_dict()),
+				check(not Rules.trucks_in(with_it).is_empty()
+					and JSON.stringify(_in_order(stripped.to_dict())) == JSON.stringify(_in_order(plain.to_dict())),
 					"%s (no danger density, no wider gaps, no company): the same level but for its trucks" % id)
 			else:
-				check(JSON.stringify(_without_company(stripped)) == JSON.stringify(_without_company(plain)),
+				check(JSON.stringify(_in_order(_without_company(stripped))) == JSON.stringify(_in_order(_without_company(plain))),
 					"%s (no danger density, no wider gaps): the same level but for its trucks and the company they withhold" % id)
 
 
 ## `layout` without a Buzz Overdrive's company (task L2, BuzzCompanyPlacement: its cyborgs, holes and fences, its cut
 ## keys) and without what moves with it (the wall fences, which run by a tank with company, the wall gaps, which keep
 ## off them, and the credits), as a dictionary.
+## Layout dictionary `d` with its enemies in one order whatever order enemies at the same spot came in: the generator
+## sorts them by their spot only (task S1: two Gilded Sentinels on both walls at one spot came out either way round
+## with the trucks' entries in the list or not).
+static func _in_order(d: Dictionary) -> Dictionary:
+	var out: Dictionary = d.duplicate(true)
+	var enemies: Array = out["enemies"]
+	enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if float(a["at"]) != float(b["at"]):
+			return float(a["at"]) < float(b["at"])
+		return JSON.stringify(a) < JSON.stringify(b))
+	return out
+
+
 static func _without_company(layout: LevelLayout) -> Dictionary:
 	var d: Dictionary = layout.to_dict().duplicate(true)
 	for key: String in ["wall_fences", "wall_gaps", "credits"]:

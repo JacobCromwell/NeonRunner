@@ -292,9 +292,10 @@ func _test_numbers() -> void:
 			shown.append(String(prop["name"]))
 	for name: String in HeavyCyborgTuning.UNUSED:
 		check(not shown.has(name), "`%s` (a cyborg's, unused) is hidden from the F6 panel" % name)
-	for name: String in ["engage_distance", "charge_time", "reload_late", "bolt_speed_late", "bullets_late", "bullet_gap_late",
-			"invulnerability_share", "later_round_warning_share", "min_stream_rounds", "model_scale", "health_late", "score_value",
-			"walk_speed", "obstacle_margin", "keep_clear_seconds", "share", "spacing_seconds", "windup_heard_within", "crossfire_gap"]:
+	for name: String in ["engage_distance", "charge_time", "reload_late", "bolt_speed_late", "bullets_late",
+			"bullet_gap_late", "invulnerability_share", "later_round_warning_share", "min_stream_rounds", "model_scale",
+			"health_late", "score_value", "walk_speed", "obstacle_margin", "keep_clear_seconds", "share", "spacing_seconds",
+			"windup_heard_within", "crossfire_gap"]:
 		check(shown.has(name), "`%s` is in the F6 panel" % name)
 	check(ht.score_value == 2 * ct.score_value, "it pays twice a cyborg's score (%d, %d)" % [ht.score_value, ct.score_value])
 	# Owner: twice a cyborg's laser hits (laser tier 1); proposed: the other tiers and the missiles twice too.

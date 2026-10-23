@@ -159,7 +159,8 @@ static func after_doodads(gen: LevelGenerator) -> void:
 ## Where none is left after the zone doodads: the first of the level's own plain cyborgs from the feature's start on
 ## that fits becomes one (never the last plain cyborg, nor the last own floor cyborg before the danger density pass's
 ## first, nor one the pass added), which saves a build of the guarantee.
-static func _last_resort(gen: LevelGenerator, t: HeavyCyborgTuning, spans: Array[Vector2], taken: Array[Vector2]) -> void:
+static func _last_resort(gen: LevelGenerator, t: HeavyCyborgTuning, spans: Array[Vector2],
+		taken: Array[Vector2]) -> void:
 	var from: float = gen.feature_start(TYPE)
 	# The danger density pass's own cyborgs are none of these: it adds them only past the level's first.
 	var added: Array = gen.danger_density_result.get("added_enemies", [])
