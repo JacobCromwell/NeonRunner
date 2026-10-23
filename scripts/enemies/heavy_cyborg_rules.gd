@@ -41,7 +41,8 @@ const TUNING_PATH: String = "res://data/enemies/heavy_cyborg.tres"
 ## leave a Heavy Cyborg no place has none, the generator never builds it again for one (each build again would move
 ## everything else: the rest of the level is built exactly as without the feature), and the campaign's checks don't ask
 ## every build for one (LayoutChecks.occasional). test_heavy_cyborg checks that every build of the campaign's levels on
-## their own seeds has some, and counts them over other seeds. DESIGN-TBD (docs/questions/s1.md).
+## their own seeds at the campaign's lane count has some (and counts them at 3 and 6 lanes), and that most builds of the
+## prototype level over seeds, lane counts and difficulties do. DESIGN-TBD (docs/questions/s1.md).
 const OCCASIONAL: bool = true
 ## The params a plain cyborg's entry may carry (its pattern's and its rules' panic roll); any other is a rule's mark.
 const PLAIN_PARAMS: PackedStringArray = ["panic", "host"]
