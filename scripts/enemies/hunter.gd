@@ -135,6 +135,10 @@ var _cross_side: int = 0
 var _approach_whined: bool = false
 ## _out_open's answers by bait and side ("<id>:<side>": [level time, answer]), each good for OUT_OPEN_REFRESH.
 var _out_open_memo: Dictionary = {}
+## Its rules' baits (its entry's params "baits": {at, lane, side, id}), read once (_build).
+var _baits: Array[Dictionary] = []
+## LevelGenerator.enemy_uses_floor by enemy type, asked once a type (its checks ask every frame).
+static var _uses_floor: Dictionary = {}
 ## _small_attacks's answer for the physics frame `_small_frame`: whether a cyborg-type gun is on, and the lanes enemy
 ## shots are on their way to (a bit each).
 var _small_frame: int = -1
@@ -196,6 +200,9 @@ func _build() -> void:
 	dash_kills = false
 	follows_runner = true
 	_run_speed = world.tuning.run_speed
+	for b: Variant in (spawn.get("params", {}) as Dictionary).get("baits", []):
+		if b is Dictionary:
+			_baits.append(b)
 	_index_layout()
 	model = HunterModel.new()
 	model.name = "Model"
@@ -317,12 +324,14 @@ func _approach(delta: float) -> void:
 	var n: int = world.geo.lane_count
 	var r: int = runner_lane()
 	var want: int = r + side
-	if want < 0 or want >= n or (gap > VIEW_GAP and not _lane_clear_ahead(want, true)) or _blocks_bait(side, r):
+	var blocks: bool = _blocks_bait(side, r)
+	if want < 0 or want >= n or (gap > VIEW_GAP and not _lane_clear_ahead(want, true)) or blocks:
 		var s: int = _pick_side(false)
-		if s != 0:
+		if s != 0 and s != side:
 			side = s
 			want = r + side
-	if want < 0 or want >= n or _blocks_bait(side, r):
+			blocks = _blocks_bait(side, r)
+	if want < 0 or want >= n or blocks:
 		# No lane beside the runner to come up into, or only one between them and its bait's walkway lane (it lets them past
 		# first, _blocks_bait): it holds back unseen, just behind the camera.
 		_ease_gap(maxf(VIEW_GAP + 1.0, minf(gap, tuning.yield_gap)), tuning.approach_speed, delta)
@@ -795,7 +804,7 @@ func _out_open_now(b: Dictionary, out: int) -> bool:
 		return false
 	for e: Dictionary in world.layout.enemies:
 		var at: float = float(e.get("at", -INF))
-		if int(e.get("lane", -1)) == lane and at >= from - 3.0 and at <= to + 3.0 and LevelGenerator.enemy_uses_floor(e):
+		if int(e.get("lane", -1)) == lane and at >= from - 3.0 and at <= to + 3.0 and _type_uses_floor(StringName(e.get("type", ""))):
 			return false
 	return true
 
@@ -804,24 +813,20 @@ func _out_open_now(b: Dictionary, out: int) -> bool:
 func _run_up_bait() -> Dictionary:
 	var d: float = world.player_distance()
 	var v: float = maxf(world.player.speed, _run_speed)
-	for b: Variant in (spawn.get("params", {}) as Dictionary).get("baits", []):
-		if b is Dictionary:
-			var at: float = float((b as Dictionary).get("at", -INF))
-			if at > d and at - tuning.bait_hold_seconds * v <= d:
-				return b
+	for b: Dictionary in _baits:
+		var at: float = float(b.get("at", -INF))
+		if at > d and at - tuning.bait_hold_seconds * v <= d:
+			return b
 	return {}
 
 
 ## The next bait its rules planned (params "baits") that the runner hasn't passed and could reach in its chase, or {}.
 func _next_bait() -> Dictionary:
-	var baits: Array = (spawn.get("params", {}) as Dictionary).get("baits", [])
 	var d: float = world.player_distance()
 	var v: float = maxf(world.player.speed, _run_speed)
 	var left: float = maxf(tuning.chase_seconds - chase_time, 0.0) * v
-	for b: Variant in baits:
-		if not (b is Dictionary):
-			continue
-		var at: float = float((b as Dictionary).get("at", -INF))
+	for b: Dictionary in _baits:
+		var at: float = float(b.get("at", -INF))
 		if at > d and at <= d + left:
 			return b
 	return {}
@@ -962,6 +967,13 @@ func _doodad_entry_in(l: int, from: float, to: float) -> Dictionary:
 	return {}
 
 
+## LevelGenerator.enemy_uses_floor for enemy type `type_id` (it reads only the type's tuning), asked once a type.
+static func _type_uses_floor(type_id: StringName) -> bool:
+	if not _uses_floor.has(type_id):
+		_uses_floor[type_id] = LevelGenerator.enemy_uses_floor({"type": String(type_id)})
+	return bool(_uses_floor[type_id])
+
+
 ## A floor enemy in play (or a hover truck holding its lane) in lane `l` between `from` and `to`. With
 ## `skip_crushed`, one under a walkway falling on that lane doesn't count.
 func _floor_enemy_in(l: int, from: float, to: float, skip_crushed: bool) -> bool:
@@ -975,7 +987,7 @@ func _floor_enemy_in(l: int, from: float, to: float, skip_crushed: bool) -> bool
 			if int(e.get(&"lane")) == l:
 				return true
 			continue
-		if not LevelGenerator.enemy_uses_floor({"type": String(e.type_id)}):
+		if not _type_uses_floor(e.type_id):
 			continue
 		if world.geo.lane_at(e.global_position.x) != l:
 			continue
@@ -1033,7 +1045,7 @@ func _needs_leaving(r: int, from: float, to: float, v: float) -> Vector2:
 			out = Vector2(from, maxf(out.y, to))
 			continue
 		var d: float = e.track_distance()
-		if d < from or d > to or not LevelGenerator.enemy_uses_floor({"type": String(e.type_id)}) \
+		if d < from or d > to or not _type_uses_floor(e.type_id) \
 				or world.geo.lane_at(e.global_position.x) != r:
 			continue
 		out = Vector2(minf(out.x, maxf(from, d - lead)), maxf(out.y, d + ENEMY_ROOM))
