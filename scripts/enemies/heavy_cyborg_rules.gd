@@ -12,10 +12,12 @@ extends RefCounted
 ##   stays a plain cyborg where none does; then a share of the level's other plain cyborgs from the feature's start on
 ##   become Heavy Cyborgs where one fits (the top-up): each with the chance `share` times the campaign's recency factor
 ##   for the feature (LevelConfig.recency_factor: most in the level that introduces it, fewer as it gets older), the
-##   first that fits always where the pattern's left none. The passes after the rules (the danger density pass, the
-##   wider gaps, the fill pass, the zone doodads, the dash walls past their introduction) keep off a Heavy Cyborg's
-##   keep-out and floor as off any enemy that isn't a cyborg, its stream's zone among them. (A level without cyborgs of
-##   its own, quick play's `--features=heavy_cyborg`, drops the pattern's cyborgs that don't become Heavy Cyborgs.)
+##   first that fits always where the pattern's left none. The passes after the rules (the danger density pass's rows,
+##   the fill pass, the zone doodads) keep off a Heavy Cyborg's keep-out and floor as off any enemy that isn't a cyborg,
+##   its stream's zone among them; the counted features keep only a cyborg's margin from it (the wider gaps, the dash
+##   walls past their introduction), and the danger density pass may add enemies near it as near a cyborg (a small
+##   threat). (A level without cyborgs of its own, quick play's `--features=heavy_cyborg`, drops the pattern's cyborgs
+##   that don't become Heavy Cyborgs.)
 ## - After the zone doodads (after_doodads), once everything that stands on the floor is placed (nothing after them
 ##   adds a gap, a fence or a doodad in its levels; the gap density pass runs in City 1 only): every Heavy Cyborg that
 ##   no longer fits is given back as a plain cyborg (_give_back); where none is left, the first of the level's own
@@ -34,9 +36,9 @@ extends RefCounted
 ## - what it reaches (its stream's zone, its keep-out and the floor it uses) meets no dash wall's footprint, no wider
 ##   gap's zone, no wall-run gap's clear stretch and no calm stretch a rule keeps in every lane
 ##   (LevelGenerator.rules_doodad_keep_outs with `calm`: an Enforcer Truck's showing window): those let a cyborg stand
-##   nearer than any other enemy, its obstacle margin away (DashWallRules.enemy_spans, WideGapPlacement.keeps_of,
-##   WallRunGapPlacement.floor_keeps, the Enforcer Truck's ROOM_TYPES), and their re-checks hold a Heavy Cyborg to the
-##   rest's rule;
+##   nearer than any other enemy, its obstacle margin away (WallRunGapPlacement.floor_keeps, the Enforcer Truck's
+##   ROOM_TYPES: their re-checks hold a Heavy Cyborg to the rest's rule; DashWallRules.enemy_spans and
+##   WideGapPlacement.keeps_of keep a cyborg's margin from a Heavy Cyborg too, which then gives way to them);
 ## - at least spacing_seconds of run from every other Heavy Cyborg;
 ## - never the level's last plain cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions), nor,
 ##   in the last resort, the last of the level's own floor cyborgs before the danger density pass's first (the pass,
