@@ -989,32 +989,36 @@ func _test_small_attacks() -> void:
 				"beside them as the cyborg's gun charges, it drops back out of the lane they need (%s), and comes up again after %s %s"
 				% [room, _brief(r), tag])
 		await sim.free_world(w)
-	# No flurry while a cyborg's gun is on at the runner: cyborgs in the edge lanes ahead, firing as the runner passes.
+	# No flurry while a cyborg's gun is on at the runner: its next flurry falls due as the gun begins to charge; it waits
+	# until the gun's burst is over (charging, firing and its bolts gone by), then warns.
 	var layout2 := _layout(5)
-	for k: int in 4:
-		layout2.enemies.append({"type": "cyborg", "at": 200.0 + 110.0 * k, "lane": 0 if k % 2 == 0 else 4, "side": 0,
-			"seed": 30 + k, "params": {"stand": true, "fires": true, "panic": false, "host": false}})
+	layout2.enemies.append({"type": "cyborg", "at": 330.0, "lane": 0, "side": 0, "seed": 21,
+		"params": {"stand": true, "fires": true, "panic": false, "host": false}})
 	var w2: RunWorld = _world(layout2, 2)
 	w2.player.god_mode = true
-	# Frames a gun was on, flurries begun, flurries begun with a gun on before and after that step, a gun on last frame.
-	var counts: Array = [0, 0, 0, false]
-	var last_flurries: Array = [0]
+	_no_flurries(w2)
+	var marks: Array = [-1.0, -1.0, -1.0]  # level times: due (the gun began to charge), the gun off again, the warning
 	var watch := func(ww: RunWorld) -> void:
-		var on: bool = false
-		for e: Variant in ww.director.active:
-			if is_instance_valid(e) and e is Cyborg and (e as Cyborg).alive and (e as Cyborg).gun.is_attacking():
-				on = true
 		var hh: Hunter = _hunter(ww)
-		if hh != null and hh.flurries != last_flurries[0]:
-			last_flurries[0] = hh.flurries
-			counts[1] += 1
-			counts[2] += 1 if bool(counts[3]) and on else 0
-		counts[0] += 1 if on else 0
-		counts[3] = on
-	var r2: Dictionary = await _run(w2, 640.0 / mt.run_speed, [], watch)
-	check(int(counts[0]) > 30 and int(counts[1]) >= 2 and int(counts[2]) == 0,
-		"no flurry starts while a cyborg's gun is charging or firing at the runner (%d flurries, %d begun with a gun on; guns on %d frames) %s"
-		% [counts[1], counts[2], counts[0], _brief(r2)])
+		var cy: Cyborg = null
+		for e: Variant in ww.director.active:
+			if is_instance_valid(e) and e is Cyborg:
+				cy = e as Cyborg
+		if hh == null or cy == null:
+			return
+		var on: bool = cy.alive and cy.gun.is_attacking()
+		if marks[0] < 0.0 and on and cy.gun.state == CyborgGun.State.CHARGING and hh.state == Hunter.State.ALONGSIDE \
+				and hh.slash == Hunter.Slash.IDLE:
+			marks[0] = ww.level_time()
+			hh.set(&"_next_slash", hh.chase_time)
+		if marks[0] >= 0.0 and marks[1] < 0.0 and not on:
+			marks[1] = ww.level_time()
+		if marks[0] >= 0.0 and marks[2] < 0.0 and hh.slash == Hunter.Slash.WARNING:
+			marks[2] = ww.level_time()
+	var r2: Dictionary = await _run(w2, 560.0 / mt.run_speed, [], watch, func(_ww: RunWorld) -> bool: return marks[2] >= 0.0)
+	check(marks[0] >= 0.0 and marks[1] > marks[0] and marks[2] >= marks[1],
+		"no flurry starts while a cyborg's gun is on at the runner: one due as it begins to charge waits for its burst (due %.2f s, the gun off %.2f s, the warning %.2f s) %s"
+		% [marks[0], marks[1], marks[2], _brief(r2)])
 	await sim.free_world(w2)
 
 
