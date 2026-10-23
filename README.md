@@ -661,7 +661,9 @@ Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
 explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,
 `--scenario=sizes|drone|truck|buzz|enforcer|generator|missile|bomb`, `--reduced` for Reduced flashing),
-any campaign slot's cinematic and the cinematic toolkit's sampler (from any moment with `--from=S`),
+any campaign slot's cinematic and the cinematic toolkit's sampler (from any moment with `--from=S`, and close-ups riding with an
+actor with `--cam=... --follow=runner`), the runner's cinematic poses in a row over one cycle of their leg phase on a slope
+(`cine_pose_review`, `--pose=crawl --slope=30`; `--bounds` prints how high and far a pose reaches),
 and the Beach's volleyball match played by a bot,
 with screenshots on its events and a close-up of the rival or a view beside the court: `xvfb-run -a godot --path .
 --rendering-method gl_compatibility --resolution 960x540 --fixed-fps 30 -s res://tools/showcase/volleyball_review.gd --

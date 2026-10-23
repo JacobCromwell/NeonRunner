@@ -11,6 +11,11 @@ const GANTRY_PILLAR: String = "gantryway"
 ## The key that marks a hole of a wall-run gap (gaps; wall_run_gaps): it isn't one to jump, so the checks on
 ## jumpable holes and rows of holes leave it out (is_wall_run_hole).
 const WALL_RUN_HOLE: String = "wall_run"
+## The key that marks a side wall gap (wall_gaps) that sets a wall runner down where they're meant to come off the
+## wall: an extended wall run's notch at its platform's near end (WallRunGapPlacement.openings_of). Task S3: the
+## Player keeps the runner's first move away from that wall the dismount it would have been on it, until they step back
+## onto a wall (wall_gap_at).
+const SETS_DOWN: String = "sets_down"
 ## The key of a zone doodad that holds an enemy until it's smashed (task Q5; GDD §5, Zone 9, the owner, October 21,
 ## 2026: "some jars hold a curled-up Octodog", and "sometimes smashing an Octodog jar doodad releases its Octodog into
 ## the world"): the enemy's type. Its entry in `enemies` stands at the doodad's front in its lane, its params marked
@@ -92,9 +97,10 @@ var wall_fences: Array[Dictionary] = []
 ## `side` (-1 left, 1 right) has no wall-running surface from track distance `start` to `end`. The
 ## track builder leaves the wall out there and marks its edges (ZoneSkin.wall_gap), a runner can't
 ## get onto the wall there, and one on it drops off at the gap (Player.wall_supported). Sorted by
-## start; both walls may have one over the same stretch. In a level whose walls are a row of narrow arches (task O1,
-## the Terminal: WallGapTuning's Arches group) they are the open space between the arches, from before the track's
-## first chunk to past its run-out, so the arches are exactly the walls' solid pieces (wall_solid_pieces).
+## start; both walls may have one over the same stretch; an extended wall run's notch carries SETS_DOWN: true. In a
+## level whose walls are a row of narrow arches (task O1, the Terminal: WallGapTuning's Arches group) they are the open
+## space between the arches, from before the track's first chunk to past its run-out, so the arches are exactly the
+## walls' solid pieces (wall_solid_pieces).
 var wall_gaps: Array[Dictionary] = []
 ## Whether a runner can step onto the side walls (LevelConfig.wall_running, which the generator copies here): false in a
 ## level whose walls are a boundary everywhere (task O1; GDD §5, Zone 8: the Terminal has no wall running). The player
@@ -664,6 +670,14 @@ static func wall_supported_in(gaps: Array[Dictionary], side: int, d: float) -> b
 		if int(g["side"]) == side and d >= float(g["start"]) and d < float(g["end"]):
 			return false
 	return true
+
+
+## The entry of `gaps` (wall gap entries) that holds wall `side` at track distance `d`, or {} where the wall stands.
+static func wall_gap_at(gaps: Array[Dictionary], side: int, d: float) -> Dictionary:
+	for g: Dictionary in gaps:
+		if int(g["side"]) == side and d >= float(g["start"]) and d < float(g["end"]):
+			return g
+	return {}
 
 
 ## The solid stretches of wall `side` within [from, to): that range with its wall gaps taken out, in

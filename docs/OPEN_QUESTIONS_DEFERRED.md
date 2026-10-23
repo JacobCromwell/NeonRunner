@@ -1080,17 +1080,13 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     fades in over 0.8 s and out over 0.45 s (its data).
 
 **Free armor** (from G3; numbers in `data/tuning/game_rules.tres`, F6 "Game rules", Armor; the shop line in `data/shop/catalog.json`; review the HUD with the screens showcase `--screen=hud_armor`)
-244. **Worn armor** (GDD §4, §8). An upgraded armor takes more than one hit. When it has lost some hits
-    but isn't broken, does anything come back?
-    **Placeholder:** nothing comes back until its last hit goes; then it breaks and comes back whole
-    after its tier's wait (`DamageRules.Armor` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`).
-    The alternative: each lost hit comes back on its own after the wait.
 245. **An armor pickup when the armor is whole** (GDD §10, the standard armor rule). A pickup brings
     broken or worn armor back whole at once. Taken while the armor is already whole, what should it do?
     **Placeholder:** it adds one hit over the armor's count, up to `armor_pickup_extra_hits` = 1
     (`data/tuning/game_rules.tres`, F6 "Game rules"; `DESIGN-TBD`). The extra hit is used first and
     doesn't come back: after a break the armor returns to its own count. The alternative: it gives
-    credits.
+    credits. *(Refined by task S3, October 23, 2026: losing the extra hit starts no wait, item 1217.)*
+
 246. **Switching the armor off** (GDD §8, Rules: the equip toggle). The shop's equip toggle switches
     the armor upgrade off, down to the free armor. Should the free armor be switchable too (a challenge
     run without it)?
@@ -6118,7 +6114,7 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     up at the crack; they scramble up its slope on hands and feet (`scramble`, 2.8 s) and squeeze through the crack head first,
     lying down as they go (`squeeze`, 1.6 s). The poses (`CinePoses`) are hand-set placeholders like the others. Poses do not
     blend, so each change of the runner's pose (the walk to the scramble, the scramble to the squeeze, the crawl to the jump) is on
-    a camera cut.
+    a camera cut. *(Changed by task S2, October 23, 2026: item 1208, the crawl.)*
 
 1113. **Inside.** Placeholder (`TerminalIntroEntry`): after a 0.4 s dip to black, the Terminal's own stage (the zone's skin, from its
     data): a section of the station's wall standing at the left platform's back, in the Terminal's old tile and ashlar, with the
@@ -6133,7 +6129,7 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     twenty shots: the face (2.8 s), the sweep (3.4 s), the station from across the street (4.4 s: the fallen letters, the pull
     back, the crane), following the runner across the forecourt (3.0 s), at the board (2.6 s), the board close up (2.5 s), the
     runner deciding (2.3 s), the entrance (1.4 s), the climb (4.5 s), inside (4.6 s). The zone's music fades in over 4 s from the
-    start.
+    start. *(Changed by task S2, October 23, 2026: item 1207, 33.2 s.)*
 
 1115. **Its sounds.** Seven new ones (`tools/asset_gen/sfx_bank_terminal_intro.gd`): `waste_wind`, `sign_buzz`, `sign_zap` (a
     letter sparking), `grime_wipe`, `rubble_scramble`, `landing_thud` and `station_hum`; the game's `rubble_shift` for the squeeze
@@ -6800,10 +6796,124 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    still says "a couple of holes, not many": to be updated with this decision. Rows across every lane but one (like
    other zones' added rows) would be easier. Right length and number?
 
+### Folded on October 23, 2026 (task S2, the Terminal's intro, fixes)
+
+1207. **How long the intro may now run.** GDD §6 (Cinematics, "Terminal intro") sets no length; F2k's brief suggested about 25 to 32 s. A crawl
+   at a believable pace up the 6 m of rubble takes about 4.6 s, where the old scramble took 2.8 s, so everything after the climb moved
+   1.2 s later. Placeholder: 33.2 s in all (`duration`, `fade_at`, `card_at`, `inside_at`, `jump_at`, `climb_from`, `crest_at`,
+   `through_at` in the tuning, marked `DESIGN-TBD` on `duration`); the look at the entrance before the climb was shortened from
+   1.5 s to 0.9 s to give some of it back. The alternative is to shorten an earlier beat (the facade shot is 4.4 s) by that much.
+
+1208. **The crawl's pace and look.** GDD §6 says only that the runner climbs the rubble; the owner asked for hands and knees, "naturally".
+   Placeholder (`CinePoses.crawl`, constants `CRAWL_*`): the body pitched along the slope, the diagonal hand and knee reaching together,
+   about 1.35 m/s over the surface (a brisk crawl, 1.05 m of ground per cycle of the limbs, so a bit over one cycle a second), the head up
+   to look ahead at the crack; the camera rides with them from beside the heap (`climb_cam`). A slower, more labouring crawl would need more time
+   (item 1207).
+
+1209. **The squeeze, lowered.** The orchestrator's brief kept the squeeze and the jump as they were (the owner didn't mention them). To stop the runner's head and hands going through
+   the lintel's stone teeth (the crouch the squeeze starts from reached 0.87 m over the rubble, the crack is 0.85 m), the crouch is lower
+   (0.60 m) and the lying body slimmer (head carried 0.45 m over the rubble, was 0.52 m), and the lintel's teeth are shallow (0.14 m) over the
+   stretch the runner passes (`TerminalIntroStation.LINTEL_CALM_*`; it still has ragged teeth elsewhere, so the crack still reads as a
+   crack). The alternative is a taller crack (`door_height`, `heap_height` in the tuning), which changes how much light shows.
+
+1210. **Where the runner goes after the sign.** The owner's beat says they make up their mind and then look at the entrance. Placeholder: they
+   turn and set off back the way they came (out along the bare pavement, not across the heap's flank, which was a walk through the rubble
+   before), and the next shot cuts to them standing at the heap's foot, on its surface (they stood in it, 0.34 m deep, before). Nothing
+   shows them cross the forecourt between the two.
+
+1211. **The route board's step.** The station had a broad step, 1.4 m out and 0.5 m high, along the whole front of the head house (the
+   "big grey block" the runner walked into at the board). It is gone; the plinth's own course (0.28 m out) stays, and the board hangs at its
+   foot. No design is lost: the owner's beats do not mention a step.
+
+1212. **The sign's spark.** The owner left the choice between no spark sound and a better one. Placeholder: a longer (1.0 s) electrical
+   zap (`sign_zap`, `tools/asset_gen/sfx_bank_terminal_intro.gd`), played with each burst of sparks that shows (one in three
+   with Reduced flashing), but at least 0.7 s after the last zap (`TerminalIntro.ZAP_GAP`, by the orchestrator at review) so most of each
+   zap's buzz is heard before the next restarts it. A sound of its own for the sign, or none, is the owner's to choose.
+
+### Folded on October 23, 2026 (task S1, the host cyborg stands out)
+
+1213. **How much smoke, and how much of the read on the glow?** Smoke and fair warnings pull against each other, and the
+   owner's first choice (smoke) is the weaker one for it. The run camera sits behind and above the runner, so everything
+   further down a host's lane (a cyborg charging its cannon, a fence) is on screen *inside the host's column*: the smoke
+   is a veil over exactly what the player has to read. A saturated violet veil turns a red charge-up pink (the fences'
+   colour) from an opacity of about 0.1 up, and a fence purple (the host's): the first version, violet at 0.75, put a
+   charge orb 0.02 from fence pink on the hue and saturation wheel (the project's measure; the rule is 0.3), and 0.4 was
+   still borderline. A smoke dense enough to read from 60 m is therefore a smoke that hides or recolours a warning
+   behind a host. So the smoke can only be a faint beacon (pale lilac, at most 0.4 opaque, thinning above the head, gone
+   for a host within a stomp's approach of the runner) and the **glow on the host's body carries the read** (a violet
+   outline; it lights only the host, so it tints nothing behind it). The GDD allows either a smoke or a glow. Is a
+   smoke this faint, with the glow doing the work, what the owner wants, or should the smoke be denser at the cost of
+   the warnings seen through it (and which warnings may it hide)? (GDD §9.7, Origin; the readability rules in CLAUDE.md.)
+   Placeholder: `host_glow_energy` 1.5; smoke opacity 0.4 (`host_smoke_strength`, capped there by `HostSmoke.MAX_STRENGTH`,
+   which `test_cyborg_body` checks numerically on both renderers' blending), billows filling 60% of each column
+   (`host_smoke_density`), climbing 0.7 m/s (`host_smoke_rise_speed`, at most 1: no billow passes a point more than about
+   1.3 times a second), a middle column 1.0 m wide at its base and 1.8 m tall (`host_smoke_width`, `host_smoke_height`;
+   a zone draws its cyborgs 1.2 times bigger), gone closer than 12 m from the camera and full beyond 22 m
+   (`host_smoke_near_gone`, `host_smoke_near_full`: the camera is 7.5 m behind the runner, so gone for a host within 4.5 m
+   of the runner and full from 14.5 m ahead). An opacity or a glow of 0 turns it off. DESIGN-TBD in `cyborg_tuning.gd`.
+
+1214. **Which purple?** The smoke is a pale lilac (`HostSmoke.SMOKE_COLOR`, 0.88 / 0.76 / 1.0): the host purple (the
+   glitching screen's and the veins', `CyborgKit.GLITCH_COLOR`, 0.72 / 0.25 / 1.0) lightened towards white, because a
+   more saturated smoke fails the veil rule in item 1213 at any useful opacity (the Bad Dream's own violet, 0.58 / 0.28 /
+   1.0, included). The body glow is the host purple itself. Should the smoke match the screen's purple exactly (it
+   would have to be fainter still), and should the smoke get a brighter, glowing core (the owner's "or a purple glow")?
+   (GDD §9.7, Look and Origin; §9.1, fence pink.)
+   Placeholder: the pale lilac, a flat veil with no glowing core. DESIGN-TBD in `host_smoke.gd` (`SMOKE_COLOR`).
+
+1215. **Cinematic hosts.** The host in the Dead Zone's intro cinematic (`CineActorNode` with `host`) glows and smokes too,
+   because it is the same body: at the distance of the establishing shots they point the host out; in the close-up on its
+   face the smoke has faded out (it fades within 12 m of the camera). Should the cinematic's host glow and smoke, or
+   stay as it was? (GDD §9.7, Origin; the Dead Zone's intro, `docs/architecture/cinematics.md`.)
+   Placeholder: it does, like every host. DESIGN-TBD in `cyborg_body.gd` (`CyborgBody.build`, the `elif host:` branch
+   that makes the smoke; the glow is the material's `host_rim`, set in `CyborgSuit.new_material`).
+
+### Folded on October 23, 2026 (task S3, the armor's wait from any hit; coming off a wall moves one lane; item 244 answered by the owner, `docs/OPEN_QUESTIONS_ANSWERED.md`)
+
+1216. **A hit while the armor's wait runs** (GDD §4, Free armor; §8, Armor). GDD §4 now says any hit starts the wait and
+   at its end the armor is back whole, and still says "after it breaks it comes back 30 seconds later". Placeholder: a
+   hit the armor survives while its wait runs leaves the wait running (it doesn't start again), but the hit that
+   breaks it starts the wait again, so broken armor is always back the tier's whole wait after it broke. Armor III
+   (3 hits, 25 s): hits at 0 s and 10 s, back whole at 25 s; hits at 0, 10 and 20 s (broken), back at 45 s.
+   `DamageRules.Armor.block()` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`. Alternatives: (a) the wait keeps
+   running through the break too (back at 25 s in the second example: 5 s after it broke, against "after it breaks it
+   comes back 30 seconds later"); (b) every hit starts the wait again (back 25 s after the last hit). Each is a
+   one-line change.
+
+1217. **A pickup's extra hit** (GDD §10, the standard armor rule; item 245's placeholder adds one hit over the armor's
+   count to whole armor). Placeholder: the extra hit isn't part of the armor's own count. It goes first, and losing it
+   leaves the armor whole, so no wait starts; the wait brings back the armor's own count, never the extra hit
+   (`DamageRules.Armor.block()` and `tick()`, `DESIGN-TBD`). Alternative: losing it starts the wait, and the wait
+   brings it back too.
+
+1218. **The HUD's worn armor** (GDD §4; the HUD's contents are open, OPEN_QUESTIONS §5). Placeholder: from any hit the
+   armor's icon shows the ring filling in the kit's calm accent until it's back whole (then it flashes and
+   `armor_back` plays, as for broken armor). While it still has hits left the icon stays lit, with its hits left on
+   the badge and no shading over it (`CooldownIcon.lit_while_cooling`, set by `RunHud`); broken, it dims and shades as
+   before. The shop's armor texts now say "back {seconds} s after a hit" (`data/shop/catalog.json`). Review:
+   `screens_showcase.tscn -- --screen=hud_armor --tier=3 --worn`.
+
+1219. **Coming off the wall at The Hush's platforms** (GDD §3, Side walls and "Extended wall runs in The Hush"; the owner:
+   coming off the wall "must behave exactly as it does everywhere else in the game: one lane"). The cause: the notch
+   at each platform's near end (item 1050) drops every standard wall run off onto the platform just as it reaches it,
+   0.25 to 0.8 s before that wall run would have ended, and just where the move to come off the wall is due; that move,
+   a moment after the drop, was a lane switch from the outer lane into the hole beside the platform. Placeholder: the
+   notch is marked as a wall gap that sets the runner down (`LevelLayout.SETS_DOWN`, `WallRunGapPlacement.openings_of`),
+   and the runner's first move away from the wall after it is the dismount it would have been on the wall, whenever it
+   comes: it moves them no further (`Player._on_move`, `DESIGN-TBD`). It lasts until they step back onto a wall, or a
+   pull out of a pit, a teleport, a death or a revive ends it; no timer, so a late move does what an early one does. A
+   second move switches lanes; a move back toward the wall still steps back on. It can't swallow a move that would have
+   saved them: the lane beside every platform is a hole all along it (checked in The Hush's builds at 3, 5 and 6 lanes).
+   One harmless cost: on the double with both walls lit, crossing from one platform to the other wall in a jump takes
+   one move more. Nothing else changed: after a wall run's own end, a plain wall gap's drop or a repel, a move away
+   switches lanes as it always did. Alternatives: (a) the same after every drop and every wall run's end, for a moment
+   (it would swallow a quick move right after one, such as the hover truck's dodge out of its lane after a wall gap
+   drops the runner into it, which `test_hover_truck` relies on); (b) the move as a late wall jump, with its leap,
+   rather than nothing.
+
 ### Folded on October 23, 2026 (task O6, the Terminal's free centipedes)
 
 **The Terminal's free centipedes** (task O6, the owner's answer to item 1202, October 23, 2026: drop the escape guarantee for some; GDD §9.15)
-1207. **How many free centipedes, and where.** Placeholder: 2 in Rubble Line and 3 in Last Stop
+1220. **How many free centipedes, and where.** Placeholder: 2 in Rubble Line and 3 in Last Stop
    (`free_centipedes` in `data/tuning/terminal_maze_*.tres`), one a block spread through the level from the
    centipedes' start, each in an open cell joined to the runner's part of its block, on the block's quickest way as
    often as `way_weight` says, else beside it ("near"), with no escape proof. The other centipedes keep the guarantee

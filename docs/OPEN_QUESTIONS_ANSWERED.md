@@ -1783,10 +1783,21 @@ Captain Cogs).
    spent on a centipede. Relax it, or keep it?
    **Answered (owner, October 23, 2026):** relax it. The dash through a centipede, tried first, barely changed anything
    (the maze's walls use up the dash), so the owner chose to drop the guarantee for a few centipedes a level instead:
-   the free centipedes (task O6, item 1207). Recorded in GDD §9.15.
+   the free centipedes (task O6, item 1220). Recorded in GDD §9.15.
 1206. **Endless mode and the weekly week in the Terminal.** Both copy Last Stop's maze tuning, so they inherit every
    change: endless mode's 20-minute Terminal run goes from about 26-30 centipedes to 84-110, with 68 rows of holes across
    every lane, 2 ambushes and 1 escape section (the ambushes and escapes counted for the whole run, not per stretch).
    Is that the endless Terminal wanted, or should endless and the weekly week keep their own numbers (fewer centipedes,
    ambushes and escapes spread through the run)?
    **Answered (owner, October 23, 2026):** yes, that is fine. Recorded in GDD §9.15.
+
+### Answered on October 23, 2026 (the owner's batch: armor comes back after any hit)
+
+244. **Worn armor** (GDD §4, §8). An upgraded armor takes more than one hit. When it has lost some hits
+    but isn't broken, does anything come back?
+    **Placeholder:** nothing comes back until its last hit goes; then it breaks and comes back whole
+    after its tier's wait (`DamageRules.Armor` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`).
+    The alternative: each lost hit comes back on its own after the wait.
+    **Answered** (owner, October 23, 2026, reported as a bug): any hit starts the wait, and at its end the armor is back
+    whole (armor of 3 knocked to 2 starts the timer and comes back to 3). Recorded in GDD §4 and §8; built in task S3
+    (a hit during the wait: item 1216).

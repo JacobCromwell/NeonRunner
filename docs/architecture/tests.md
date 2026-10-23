@@ -88,9 +88,11 @@ checks the armor rule on every built boss that uses it (the campaign's slots and
 built later joins) at 3, 5 and 6 lanes, in a fight begun with the free armor and two shields: shield breaks
 (the armor on, then down) schedule and offer no armor pickup, a hit the armor survives schedules the
 phase's one within the boss's delay, and its last hit brings no second. `test_armor` covers the
-free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
-each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
-line and texts, the save migration, and every kind of run through the App (the web demo's too).
+free armor and its upgrade (G3): the state's rules (since S3 any hit starts the wait: worn armor back
+whole, a second hit leaving the wait running, the break starting it again, a pickup's extra hit no part
+of it), its wait at any frame rate and not while paused, each tier's numbers alternating as GDD §8 says,
+a run's block, worn armor's return, revive and pickups, the HUD (worn: lit, its ring filling; broken:
+dimmed), the shop line and texts, the save migration, and every kind of run through the App (the web demo's too).
 `test_sign_armor` covers a sign taking the armor's hit (task K3, the owner's request): the sign as the track
 builds it (solid, `armor_blocks_solid`, `passes_after_block`, its layers; nothing else built lets a runner
 through after a block); a wall runner into the longest pattern sign at 3, 5 and 6 lanes on both walls (with the

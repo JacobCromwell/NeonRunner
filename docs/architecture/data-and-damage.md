@@ -161,7 +161,7 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     off high ceilings, and the anti-grav pull up to a ceiling higher than `ceiling_height` (which could
     pass through it and fall back).
 - **The armor** (GDD §4 and §8, owner's playtest, September 30, 2026) is a state with rules of its own,
-  `DamageRules.Armor`: up with its hits left, or broken and coming back. Every run the profile starts
+  `DamageRules.Armor`: up with its hits left, or broken, and from any hit coming back whole. Every run the profile starts
   (levels, boss fights, retries, quick play, endless, the web demo) carries it free (`Loadout.armor`),
   and the shop's armor is an upgrade to it (its tier, `tiers[&"armor"]`; the equip toggle switches only
   the upgrade off). RunWorld makes the run's armor (`Armor.create(rules, tier, carried)`) from
@@ -169,14 +169,20 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   2/30 s, 2/25 s, 3/25 s, 3/20 s: the tiers alternate one more hit and a shorter wait). The Player holds
   it (`armor_state`; `armor` is its hits left, and setting it, for tests and tools, puts that many hits
   up) and applies what resolve() says: a blocked hit takes one (`block()`) with the usual
-  invulnerability (event `armor_hit`), the last one breaks it (`item_used(&"armor")`, `armor_break`),
-  and from the Player's physics step its wait runs (`tick()`: the run's clock, so a pause or a death
-  stops it, the same at any frame rate) until it's back whole (`armor_back`). A revive brings it back
-  whole (`restore()`); an armor pickup (`take_pickup()`) does too, at once, and on whole armor adds a
-  hit, up to `armor_pickup_extra_hits` over its count. `armor_changed` tells the HUD and the player
-  model; `ScoreKeeper` counts every blocked hit. A bare `Loadout` (tests, tools) has no armor until a
-  pickup gives it. DESIGN-TBD (`docs/questions/g3.md`): worn armor gets nothing back until it breaks;
-  the pickup's extra hit; the revive; that the free armor can't be switched off.
+  invulnerability (event `armor_hit`), the last one breaks it (`item_used(&"armor")`, `armor_break`).
+  **Any hit starts its wait** (task S3; GDD §4, owner, October 23, 2026, a bug fix: armor knocked from 3
+  hits to 2 starts the wait, and at its end it's back whole; until then only the break did, and worn
+  armor never came back): a hit that leaves it under `max_hits` starts the wait, and from the Player's
+  physics step it runs (`tick()`: the run's clock, so a pause or a death stops it, the same at any frame
+  rate) until it's back whole (`armor_back`, from broken or worn; `is_recharging()` and `progress()`
+  cover both). A revive brings it back whole (`restore()`); an armor pickup (`take_pickup()`) does too,
+  at once, ending the wait, and on whole armor adds a hit, up to `armor_pickup_extra_hits` over its
+  count. `armor_changed` tells the HUD and the player model; `ScoreKeeper` counts every blocked hit. A
+  bare `Loadout` (tests, tools) has no armor until a pickup gives it. DESIGN-TBD (`docs/OPEN_QUESTIONS_DEFERRED.md` items 1216-1218):
+  a hit the armor survives while the wait runs leaves it running, the hit that breaks it starts it again
+  (back the whole wait after it broke, GDD §4); a pickup's extra hit is no part of its own count (losing
+  it starts no wait, the wait never brings it back). DESIGN-TBD (items 245-247 in `docs/OPEN_QUESTIONS*.md`):
+  the pickup's extra hit; that the free armor can't be switched off; the revive.
 - Enemy shots go through `ProjectilePool.fire_enemy()`; the pool sweeps each shot against the
   player's hitbox and calls `receive_hit`, so armor, shield, invulnerability and the dash all apply.
 - **Signs: the armor takes the hit** (task K3, the owner's request: a sign no longer kills a runner whose armor

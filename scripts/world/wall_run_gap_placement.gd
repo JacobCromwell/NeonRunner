@@ -360,7 +360,9 @@ static func open_wall_of(w: Dictionary) -> Dictionary:
 ## The side wall gaps (LevelLayout.wall_gaps' {side, start, end}) an extended wall run makes at run speed `speed`: its
 ## open wall (open_wall_of), and on each lit wall a notch platform_notch_seconds long at each platform's near end, so a
 ## runner whose wall run would carry them past the platform (claws, the dash) drops onto it (Player: a wall gap drops a
-## wall runner off into the outer lane). [] for an ordinary wall-run gap.
+## wall runner off into the outer lane). It drops every standard wall run there too, just where the move to come off
+## the wall is due, so it's marked LevelLayout.SETS_DOWN (task S3: Player keeps the runner's first move away from the
+## wall the dismount, one lane, until they step back onto a wall). [] for an ordinary wall-run gap.
 static func openings_of(w: Dictionary, speed: float, t: WallRunGapTuning = null) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if runs_of(w) < 2:
@@ -371,7 +373,8 @@ static func openings_of(w: Dictionary, speed: float, t: WallRunGapTuning = null)
 		out.append(open)
 	for side: int in sides_of(w):
 		for p: Vector2 in platforms_of(w):
-			out.append({"side": side, "start": p.x, "end": p.x + tt.platform_notch_seconds * speed})
+			out.append({"side": side, "start": p.x, "end": p.x + tt.platform_notch_seconds * speed,
+				LevelLayout.SETS_DOWN: true})
 	return out
 
 

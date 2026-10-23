@@ -18,19 +18,21 @@ extends RefCounted
 ## ease, breathing, its weight shifting (walk at amount 0, the same stance `get_in` starts from, so one leads
 ## into the other). CineActorNode poses the runner's rig with them
 ## (HumanoidRig.apply_pose, put on the ground) in place of PlayerAvatar's own animation.
-## And three for the Terminal's intro (task F2k): `wipe` (standing at a board, the right arm raised to it and wiping it in
-## strokes, over a progress: a reach, three strokes working down it, the arm lowered), `scramble` (up a slope of loose rubble on
-## hands and feet, leaning into it, the arms reaching in turn with the leg phase) and `squeeze` (into a low gap head first: from
-## a crouch to lying prone, the arms reaching ahead, crawling in turn with the leg phase, over a progress).
+## And three for the Terminal's intro (task F2k, `crawl` task S2): `wipe` (standing at a board, the right arm raised to it and wiping
+## it in strokes, over a progress: a reach, three strokes working down it, the arm lowered), `crawl` (up a slope of loose rubble on
+## hands and knees, the body pitched forward along the slope, the hands reaching ahead in turn with the knees, over the leg
+## phase, which follows the ground covered at `CRAWL_CYCLE` metres a cycle; its progress is the slope, `crawl_progress`) and
+## `squeeze` (into a low gap head first: from a crouch to lying prone, the arms reaching ahead, crawling in turn with the leg
+## phase, over a progress).
 ## And two for the Terminal's outro (task F2l), also over a progress: `brace` (bracing against something in front of it: feet
 ## apart, knees bent, leaning in with its arms forward, to heave at it or pound on it; the cinematic's script works the arms'
 ## reach and the heaving) and `hands_up` (throwing its hands up in frustration: flung up, held, then slumping back to standing
 ## at ease).
-## DESIGN-TBD (docs/questions/f2c.md, f2d.md; `wipe`, `scramble` and `squeeze` of the Terminal's intro:
+## DESIGN-TBD (docs/questions/f2c.md, f2d.md, s2.md; `wipe`, `crawl` and `squeeze` of the Terminal's intro:
 ## docs/OPEN_QUESTIONS_DEFERRED.md item 1112; `brace` and `hands_up` of the Terminal's outro: docs/questions/f2l.md): the key
 ## poses are hand-set placeholders.
 
-const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"wipe", &"scramble", &"squeeze", &"brace",
+const POSES: Array[StringName] = [&"lie", &"get_up", &"climb", &"walk", &"get_in", &"wipe", &"crawl", &"squeeze", &"brace",
 	&"hands_up"]
 ## The walk: metres covered by one gait cycle in its full stride (two steps), the share of the cycle a foot is
 ## down (from its heel strike), the shortest stride (a share of the full one, walking slowly), and (degrees) the
@@ -273,31 +275,38 @@ const WIPE_PITCH := Vector2(124.0, 42.0)
 const WIPE_SWEEP: float = 24.0
 const WIPE_MIDDLE: float = 8.0
 
-## Climbing rubble on hands and feet: the lean (degrees), the arms' reach and swing, the head up.
-const SCRAMBLE_LEAN: float = -26.0
-const SCRAMBLE_REACH: float = 62.0
-const SCRAMBLE_SWING: float = 30.0
+## Crawling up rubble on hands and knees (task S2): the slope at which the pose's progress is 1 (degrees; progress = slope over it),
+## the metres the body covers in one cycle of the limbs, and (degrees) how far the arms and the thighs swing about their rest,
+## how far the back is tipped up from the slope's line and how far the head is held up from the back.
+const CRAWL_SLOPE_MAX: float = 45.0
+const CRAWL_CYCLE: float = 1.05
+const CRAWL_ARM: float = 34.0
+const CRAWL_THIGH: float = 30.0
+const CRAWL_BACK_UP: float = 6.0
+const CRAWL_HEAD_UP: float = 38.0
+## How high its hips are over the slope, as a share of the rig's pelvis height.
+const CRAWL_HIP: float = 0.57
 
 ## Squeezing in: the crouch it starts from (progress 0) and lying prone (progress 1).
 const SQUEEZE_CROUCH := {
-	"root_rot": Vector3(-52, 0, 0),
-	CHEST: Vector3(-18, 0, 0), NECK: Vector3(20, 0, 0), HEAD: Vector3(30, 0, 0),
-	UPPER_ARM_R: Vector3(128, 0, 12), FOREARM_R: Vector3(20, 0, 0),
-	UPPER_ARM_L: Vector3(128, 0, 12), FOREARM_L: Vector3(20, 0, 0),
-	THIGH_R: Vector3(70, 0, 8), SHIN_R: Vector3(-110, 0, 0), FOOT_R: Vector3(20, 0, 0),
-	THIGH_L: Vector3(70, 0, 8), SHIN_L: Vector3(-110, 0, 0), FOOT_L: Vector3(20, 0, 0),
+	"root_rot": Vector3(-79, 0, 0),
+	CHEST: Vector3(-8, 0, 0), NECK: Vector3(12, 0, 0), HEAD: Vector3(14, 0, 0),
+	UPPER_ARM_R: Vector3(140, 0, 12), FOREARM_R: Vector3(12, 0, 0),
+	UPPER_ARM_L: Vector3(140, 0, 12), FOREARM_L: Vector3(12, 0, 0),
+	THIGH_R: Vector3(78, 0, 8), SHIN_R: Vector3(-105, 0, 0), FOOT_R: Vector3(20, 0, 0),
+	THIGH_L: Vector3(78, 0, 8), SHIN_L: Vector3(-105, 0, 0), FOOT_L: Vector3(20, 0, 0),
 }
 const SQUEEZE_PRONE := {
 	"root_rot": Vector3(-86, 0, 0),
-	CHEST: Vector3(-8, 0, 0), NECK: Vector3(34, 0, 0), HEAD: Vector3(40, 0, 0),
+	CHEST: Vector3(-8, 0, 0), NECK: Vector3(12, 0, 0), HEAD: Vector3(14, 0, 0),
 	UPPER_ARM_R: Vector3(168, 0, 10), FOREARM_R: Vector3(8, 0, 0),
 	UPPER_ARM_L: Vector3(168, 0, 10), FOREARM_L: Vector3(8, 0, 0),
 	THIGH_R: Vector3(6, 0, 5), SHIN_R: Vector3(-14, 0, 0), FOOT_R: Vector3(30, 0, 0),
 	THIGH_L: Vector3(6, 0, 5), SHIN_L: Vector3(-14, 0, 0), FOOT_L: Vector3(30, 0, 0),
 }
-## How far the crawl moves the limbs (degrees).
-const CRAWL_ARM: float = 14.0
-const CRAWL_LEG: float = 16.0
+## How far the squeeze's crawl moves the limbs (degrees).
+const SQUEEZE_ARM: float = 14.0
+const SQUEEZE_LEG: float = 16.0
 
 ## Braced against something in front of it: feet apart, knees bent, leaning in, its arms forward (where the hands go
 ## is the cinematic's to say), its head up to look at it.
@@ -360,7 +369,9 @@ static func add_steps(p: HumanoidPose, scratch: HumanoidPose, phase: float, spee
 
 
 ## The leg phase advanced by `moved` metres at `speed` (m/s), as the rig's stride does (HumanoidRig.animate).
-static func step_phase(phase: float, moved: float, speed: float, t: HumanoidAnimTuning) -> float:
+static func step_phase(phase: float, moved: float, speed: float, t: HumanoidAnimTuning, cycle: float = 0.0) -> float:
+	if cycle > 0.0:
+		return fposmod(phase + moved / cycle, 1.0)
 	var amount: float = clampf(speed / t.full_stride_speed, 0.0, 1.0)
 	var stride: float = maxf(t.stride_length * maxf(amount, 0.2), speed / t.max_cadence)
 	return fposmod(phase + moved / maxf(stride, 0.01), 1.0)
@@ -371,9 +382,14 @@ static func is_cine_pose(pose_name: StringName) -> bool:
 
 
 ## How much a pose's legs step while it's moved along (add_steps): not while walking (the walk is its own
-## steps), getting in, wiping, squeezing, bracing or throwing its hands up (their legs are their own).
+## steps), getting in, wiping, crawling, squeezing, bracing or throwing its hands up (their legs are their own).
 static func steps_while_moving(pose_name: StringName) -> float:
-	return 0.0 if pose_name in [&"walk", &"get_in", &"wipe", &"squeeze", &"brace", &"hands_up"] else 1.0
+	return 0.0 if pose_name in [&"walk", &"get_in", &"wipe", &"crawl", &"squeeze", &"brace", &"hands_up"] else 1.0
+
+
+## The metres a pose's limbs take for one cycle of their phase, when it is not the run's stride (0: the run's; CinePoses.step_phase).
+static func cycle_length(pose_name: StringName) -> float:
+	return CRAWL_CYCLE if pose_name == &"crawl" else 0.0
 
 
 ## The walk's phase advanced by `moved` metres, its stride `stride` of its full one (walk_stride).
@@ -492,8 +508,8 @@ static func runner(p: HumanoidPose, pose_name: StringName, progress: float, time
 		&"wipe":
 			wipe(p, progress, time)
 			return
-		&"scramble":
-			scramble(p, phase)
+		&"crawl":
+			crawl(p, progress, phase, pelvis_height)
 			return
 		&"squeeze":
 			squeeze(p, progress, phase, pelvis_height)
@@ -525,6 +541,8 @@ static func wipe(p: HumanoidPose, progress: float, time: float) -> void:
 	p.set_limb(UPPER_ARM_R, 1, Vector3(lerpf(4.0, pitch, raise), 0.0, lerpf(7.0, WIPE_MIDDLE + WIPE_SWEEP * sweep, raise)))
 	p.set_limb(FOREARM_R, 1, Vector3(lerpf(14.0, lerpf(30.0, 52.0, level), raise), 0.0, 0.0))
 	p.set_limb(HAND_R, 1, Vector3(lerpf(-4.0, -14.0, raise), 0.0, 0.0))
+	# (As built: UPPER_ARM_L is the right arm's index minus the side stride, so with side -1 this lands on the chest, which cancels part of its
+	# lean; the hand placement is measured off the rig, so it holds either way. The left arm of the poses below goes through UPPER_ARM_R, side -1.)
 	p.add_limb(UPPER_ARM_L, -1, Vector3(8.0 * raise, 0.0, 0.0))
 	p.ground = 1.0
 
@@ -547,22 +565,51 @@ static func wipe_stroke(u: float) -> float:
 	return (-1.0 + 2.0 * f) if idx % 2 == 0 else (1.0 - 2.0 * f)
 
 
-## The runner climbing a slope of rubble on hands and feet at leg phase `phase` (0-1): leaning forward into it, head up, the arms
-## reaching in turn (one forward and low as the other draws back), the legs by add_steps over it.
-static func scramble(p: HumanoidPose, phase: float) -> void:
+## The progress that keys the crawl on a slope of `degrees` (0 on the level, 1 at CRAWL_SLOPE_MAX).
+static func crawl_progress(degrees: float) -> float:
+	return clampf(degrees / CRAWL_SLOPE_MAX, 0.0, 1.0)
+
+
+## The runner crawling up a slope of rubble on hands and knees (task S2), `progress` the slope (crawl_progress), at leg phase `phase`
+## (0-1; the body covers CRAWL_CYCLE metres a cycle). The body is pitched forward about its hips so its back lies along the slope (a
+## touch above it), the arms and thighs hang square to it, hands flat and the shins lying along the slope; one diagonal pair moves
+## at a time (the right hand and the left knee reach together, the other pair planted), the hands and knees lifting as they swing
+## forward and the shoulders and hips turning with them. The head is held up to look ahead. Tipped about its hips like the poses
+## that play out over time (`pelvis_height` the rig's).
+static func crawl(p: HumanoidPose, progress: float, phase: float, pelvis_height: float) -> void:
 	p.reset()
+	var slope: float = clampf(progress, 0.0, 1.0) * CRAWL_SLOPE_MAX
 	var c: float = cos(TAU * phase)
-	p.add_table({"root_rot": Vector3(SCRAMBLE_LEAN, 0.0, 0.0)}, 1.0)
-	p.add_deg(CHEST, Vector3(-10.0, 4.0 * c, 0.0))
-	p.add_deg(NECK, Vector3(14.0, 0.0, 0.0))
-	p.add_deg(HEAD, Vector3(20.0, 0.0, 0.0))
-	p.set_limb(UPPER_ARM_R, 1, Vector3(SCRAMBLE_REACH + SCRAMBLE_SWING * c, 0.0, 12.0))
-	p.set_limb(FOREARM_R, 1, Vector3(34.0 - 22.0 * c, 0.0, 0.0))
-	p.set_limb(UPPER_ARM_L, -1, Vector3(SCRAMBLE_REACH - SCRAMBLE_SWING * c, 0.0, 12.0))
-	p.set_limb(FOREARM_L, -1, Vector3(34.0 + 22.0 * c, 0.0, 0.0))
-	p.set_limb(HAND_R, 1, Vector3(-20.0, 0.0, 0.0))
-	p.set_limb(HAND_L, -1, Vector3(-20.0, 0.0, 0.0))
-	p.ground = 1.0
+	var s: float = sin(TAU * phase)
+	# A limb swings forward while its angle is rising (the right hand while c rises, i.e. sin < 0), and is lifted then.
+	var lift_r: float = maxf(-s, 0.0)
+	var lift_l: float = maxf(s, 0.0)
+	p.add_table({"root_rot": Vector3(-(90.0 - slope - CRAWL_BACK_UP), 0.0, 0.0)}, 1.0)
+	p.add_deg(PELVIS, Vector3(0.0, -4.0 * c, 0.0))
+	p.add_deg(CHEST, Vector3(-4.0, 6.0 * c, 0.0))
+	p.add_deg(NECK, Vector3(CRAWL_HEAD_UP * 0.5, -4.0 * c, 0.0))
+	p.add_deg(HEAD, Vector3(CRAWL_HEAD_UP * 0.5, 0.0, 0.0))
+	p.set_limb(UPPER_ARM_R, 1, Vector3(92.0 + CRAWL_ARM * c, 0.0, 6.0))
+	p.set_limb(UPPER_ARM_R, -1, Vector3(92.0 - CRAWL_ARM * c, 0.0, 6.0))
+	p.set_limb(FOREARM_R, 1, Vector3(6.0 + 34.0 * lift_r, 0.0, 0.0))
+	p.set_limb(FOREARM_R, -1, Vector3(6.0 + 34.0 * lift_l, 0.0, 0.0))
+	p.set_limb(HAND_R, 1, Vector3(50.0 - 30.0 * lift_r, 0.0, 0.0))
+	p.set_limb(HAND_R, -1, Vector3(50.0 - 30.0 * lift_l, 0.0, 0.0))
+	# The left knee reaches with the right hand.
+	var thigh_l: float = 86.0 + CRAWL_THIGH * c
+	var thigh_r: float = 86.0 - CRAWL_THIGH * c
+	p.set_limb(THIGH_R, -1, Vector3(thigh_l, 0.0, 4.0))
+	p.set_limb(THIGH_R, 1, Vector3(thigh_r, 0.0, 4.0))
+	p.set_limb(SHIN_R, -1, Vector3(-thigh_l - 4.0 - 30.0 * lift_r, 0.0, 0.0))
+	p.set_limb(SHIN_R, 1, Vector3(-thigh_r - 4.0 - 30.0 * lift_l, 0.0, 0.0))
+	p.set_limb(FOOT_R, -1, Vector3(-60.0, 0.0, 0.0))
+	p.set_limb(FOOT_R, 1, Vector3(-60.0, 0.0, 0.0))
+	# Put on the slope's surface, not on the level: the rig's own grounding (the body's lowest point at the key's height) would leave a
+	# crawler on a slope hovering by the way its trailing foot is lower than its planted hands and knees, so the hips are set the same
+	# height over the slope's surface (CRAWL_HIP of the rig's pelvis height), straight above the key, whatever the phase.
+	p.root_offset = Vector3(0.0, CRAWL_HIP * pelvis_height / cos(deg_to_rad(slope)) - pelvis_height * cos(p.root_rot.x),
+		-pelvis_height * sin(p.root_rot.x))
+	p.ground = 0.0
 
 
 ## The runner squeezing in head first, `progress` 0-1 (from a crouch at the gap to lying prone in it), crawling at leg phase
@@ -574,13 +621,13 @@ static func squeeze(p: HumanoidPose, progress: float, phase: float, pelvis_heigh
 	p.add_table(SQUEEZE_CROUCH, 1.0 - k)
 	p.add_table(SQUEEZE_PRONE, k)
 	var c: float = cos(TAU * phase)
-	var crawl: float = smoothstep(0.2, 0.7, progress)
-	p.add_limb(UPPER_ARM_R, 1, Vector3(CRAWL_ARM * c * crawl, 0.0, 0.0))
-	p.add_limb(UPPER_ARM_L, -1, Vector3(-CRAWL_ARM * c * crawl, 0.0, 0.0))
-	p.add_limb(THIGH_R, 1, Vector3(-CRAWL_LEG * c * crawl, 0.0, 0.0))
-	p.add_limb(THIGH_L, -1, Vector3(CRAWL_LEG * c * crawl, 0.0, 0.0))
-	p.add_limb(SHIN_R, 1, Vector3(-CRAWL_LEG * maxf(-c, 0.0) * crawl, 0.0, 0.0))
-	p.add_limb(SHIN_L, -1, Vector3(-CRAWL_LEG * maxf(c, 0.0) * crawl, 0.0, 0.0))
+	var creeping: float = smoothstep(0.2, 0.7, progress)
+	p.add_limb(UPPER_ARM_R, 1, Vector3(SQUEEZE_ARM * c * creeping, 0.0, 0.0))
+	p.add_limb(UPPER_ARM_R, -1, Vector3(-SQUEEZE_ARM * c * creeping, 0.0, 0.0))
+	p.add_limb(THIGH_R, 1, Vector3(-SQUEEZE_LEG * c * creeping, 0.0, 0.0))
+	p.add_limb(THIGH_R, -1, Vector3(SQUEEZE_LEG * c * creeping, 0.0, 0.0))
+	p.add_limb(SHIN_R, 1, Vector3(-SQUEEZE_LEG * maxf(-c, 0.0) * creeping, 0.0, 0.0))
+	p.add_limb(SHIN_R, -1, Vector3(-SQUEEZE_LEG * maxf(c, 0.0) * creeping, 0.0, 0.0))
 	p.root_offset.z -= pelvis_height * sin(p.root_rot.x)
 	p.ground = 1.0
 

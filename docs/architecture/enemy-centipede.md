@@ -39,7 +39,7 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   `test_centipede_fuzz`. Scales 1.15 and 2.3 keep the totals: at 5 lanes over 12 seeds Rubble Line about 8.8 a level,
   Last Stop about 11.5 plus 2 ambushes, walled-in ones about 43% in both. A dash through a centipede as a way past
   (tried first for item 1202) is not in the proof: in the maze the dash is nearly always spent on a wall, so it changed
-  nothing, and a sound bound after a dash would need to know whether it met the centipede. DESIGN-TBD (item 1207).
+  nothing, and a sound bound after a dash would need to know whether it met the centipede. DESIGN-TBD (item 1220).
 - **Ambushes** (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can barely
   see its body, and when you get close to it, the debris shatters and the centipede is released", two in Last Stop's
   last half). `DebrisMazeTuning.ambush_count` and `ambush_from`; `_place_ambushes` runs first, one a block from

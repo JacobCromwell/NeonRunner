@@ -11,7 +11,8 @@ shader_type spatial;
 //            defeated cyborg (`screen_power`: the picture collapses to a line, then goes dark);
 //   glow 20  the arm cannon's emitter ring, brightening with `charge` (the attack telegraph);
 //   glow 30  the charge orb at the muzzle, grown from nothing by `charge` in the vertex stage;
-//   glow 40  a host's purple veins, pulsing slowly;
+//   glow 40  a host's purple veins, pulsing slowly (and, on every plain piece of a host, `host_rim`: a purple
+//            glow hugging its body, task S1);
 //   glow 50  a small secondary screen (the Broadcast Brute's side monitors): dark glass with a dim X
 //            in the face's cold white over faint static (purple on a host), switching off with it;
 //   glow 60  an unlit medallion showing the cult's emblem (`emblem`, the Golden Zone's variant), faded
@@ -95,6 +96,13 @@ uniform vec3 orb_center = vec3(0.0, -0.43, 0.0);
 // A host's veins: emission over their colour, and the pulse's rate (Hz) and depth. Kept near 1: much
 // brighter and the purple's blue clips first, drifting it toward the fences' pink.
 uniform float vein_energy = 1.0;
+// A host's purple glow hugging its body (task S1): `host_rim` is 1 on a host and 0 on any other cyborg, the
+// glow rises with a surface's slant from the viewer (a fresnel rim) to `rim_energy` times the purple, and
+// like the veins it goes out when the host is defeated (`glow_boost`). It lights nothing but the host's own
+// surfaces, so unlike the smoke it never tints what is behind it.
+uniform float host_rim = 0.0;
+uniform float rim_energy = 1.5;
+uniform float rim_power = 3.0;
 uniform float vein_rate = 1.1;
 uniform float vein_depth = 0.3;
 
@@ -167,6 +175,8 @@ void fragment() {
 		}
 		ALBEDO = mix(base, tint.rgb, tint.a);
 		EMISSION = base * glow * glow_energy * glow_boost + tint.rgb * (tint.a * 0.6);
+		float rim = host_rim * glow_boost * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), rim_power);
+		EMISSION += humanoid_glow(glitch_color.rgb, rim_energy * rim);
 	} else if (v_kind < 1.5) {
 		// The glass, seen from the front: u runs from the cyborg's right to its left, v from the top.
 		vec2 size = screen_rect.zw - screen_rect.xy;

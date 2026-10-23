@@ -112,7 +112,7 @@ static func apply(gen: LevelGenerator) -> void:
 ## a runner waiting for the dash at a wall, and armor, the shield or a well-timed dash may be what gets them past. It
 ## keeps everything else a centipede keeps (an open cell, its floor off every pad and landing zone, min_spacing from the
 ## block's others, never an escape block's pad room); its entry's params.free is true, and every other centipede's
-## proof leaves it out (LayoutChecks.check_centipedes, the tests' bots). Returns how many it placed. DESIGN-TBD (item 1207
+## proof leaves it out (LayoutChecks.check_centipedes, the tests' bots). Returns how many it placed. DESIGN-TBD (item 1220
 ## in docs/OPEN_QUESTIONS*.md): how many and where.
 static func _place_free(gen: LevelGenerator, t: CentipedeTuning, start: float) -> int:
 	var lay: LevelLayout = gen.layout

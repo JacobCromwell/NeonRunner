@@ -205,8 +205,8 @@ func _cosmetic_data(look: ShopCosmetic, p: Profile) -> Dictionary:
 
 
 ## A catalog text with the numbers the game rules give its item at `tier`, so the shop always says
-## what the data does: the armor's {hits} ("2 hits") and {seconds} (the wait before it comes back) at
-## that upgrade tier (0: the free armor, GDD §4). Other items' texts come back as they are.
+## what the data does: the armor's {hits} ("2 hits") and {seconds} (the wait from a hit to its being
+## whole again) at that upgrade tier (0: the free armor, GDD §4). Other items' texts come back as they are.
 static func item_text(item: ShopItem, text: String, tier: int) -> String:
 	if item.id != &"armor" or App.rules == null:
 		return text

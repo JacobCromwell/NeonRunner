@@ -24,6 +24,14 @@ signal became_ready
 	set(v):
 		key_hint = v
 		queue_redraw()
+## The item still works while it recharges (the armor worn but not broken: GDD §4, any hit starts its wait,
+## task S3): the icon stays lit and unshaded, and only the ring's progress shows the wait.
+@export var lit_while_cooling: bool = false:
+	set(v):
+		if v == lit_while_cooling:
+			return
+		lit_while_cooling = v
+		queue_redraw()
 ## The power-up is working right now (a dash in progress, slow time on): a pulsing ring.
 @export var active: bool = false:
 	set(v):
@@ -124,10 +132,12 @@ func _draw() -> void:
 	var r: float = minf(size.x, size.y) * 0.5 - ring_w - 2.0
 	var cooling: bool = remaining > 0.0
 	var empty: bool = count == 0
+	# Shaded while it recharges, unless it works meanwhile (lit_while_cooling): then only the ring shows the wait.
+	var shaded: bool = cooling and not (lit_while_cooling and not empty)
 	var f: float = _flash / FLASH_TIME
 	draw_circle(center, r + ring_w * 0.5, get_theme_color(&"disc", t), true, -1.0, true)
 
-	var icon_color: Color = get_theme_color(&"icon_cooling", t) if cooling or empty else get_theme_color(&"icon", t)
+	var icon_color: Color = get_theme_color(&"icon_cooling", t) if shaded or empty else get_theme_color(&"icon", t)
 	if empty:
 		icon_color = Color(icon_color, icon_color.a * 0.45)
 	icon_color = icon_color.lerp(get_theme_color(&"flash", t), f)
@@ -140,13 +150,13 @@ func _draw() -> void:
 
 	var start: float = -PI / 2.0
 	if cooling:
-		# The part still recharging is shaded; it clears clockwise.
+		# The part still recharging is shaded (unless it works meanwhile); it clears clockwise.
 		var done: float = charge()
 		var sweep: Color = get_theme_color(&"sweep", t)
-		if done < 0.001:
+		if shaded and done < 0.001:
 			# A full pie would start and end on the same point, which the triangulator rejects.
 			draw_circle(center, r, sweep, true, -1.0, true)
-		elif done < 0.999:
+		elif shaded and done < 0.999:
 			var pie := PackedVector2Array([center])
 			pie.append_array(IconFactory.arc_points(center, r, start + TAU * done, start + TAU, maxi(2, ceili(48.0 * (1.0 - done)))))
 			draw_colored_polygon(pie, sweep)

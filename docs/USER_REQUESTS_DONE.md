@@ -449,10 +449,38 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   11 m; rows of holes across every lane between maze blocks (Rubble Line about 3 more, Last Stop 6). Questions in items
   1201-1206 (1201, 1202 and 1206 in `docs/OPEN_QUESTIONS.md`).
 
-## October 23, 2026
+## October 23, 2026 (the owner's batch)
 
+- [x] **The Terminal's intro, fixes** (task S2): the runner walks through a big grey block on the way to the sign (move
+  the block or the path so they don't pass through a solid object); the sign's spark sound is poor (remove it, or a
+  longer electrical zap); the rubble climb bends the runner's back about 90 degrees backwards (crawl up on hands and
+  knees instead); no floor under the runner where they land inside the terminal (add floor matching the rest of the
+  terminal's: the train tracks and the rest).
+  DONE (S2): the step along the station's front removed and the rubble kept off the walk (the runner goes back the way
+  they came); a 1.0 s electrical zap, at most one every 0.7 s; a hands-and-knees crawl up the rubble (the bent back was a
+  left-arm mix-up in the pose); the floor under the landing was built but freed a moment before the cut inside, now kept.
+  Questions in items 1207-1212 (all deferred).
+- [x] **The host cyborg, easier to tell apart** (task S1): give the host of the Cyborg's Bad Dream a purple smoke coming
+  off it (ideal), or a purple glow, without hurting performance much, so the player can pick that cyborg out more easily.
+  DONE (S1): a host glows purple around its body (a rim glow in its own material: no extra draw call) and pale lilac
+  smoke rises off it (one draw call), fading out as the runner closes in for a stomp. The smoke is kept faint because,
+  denser, it recoloured the warnings behind a host (a red charge read as a fence's pink); the glow carries the read.
+  Questions in items 1213-1215 (all deferred; 1213 asks whether the smoke should be denser at that cost).
+- [x] **Armor comes back after any hit** (task S3, a bug): the armor regenerates only once it is at 0. Its wait should
+  start when a hit is taken: armor of 3 knocked to 2 starts the timer, and at its end the armor is back to 3.
+  DONE (S3): any hit the armor survives starts its wait, and at its end it is back whole; the HUD keeps worn armor's icon
+  lit with its hits left while its ring fills. Questions in items 1216-1218 (deferred; item 244 answered).
+- [x] **The Hush's chasms: letting go of the wall moves two lanes** (task S3, a bug): on The Hush's long extended wall
+  runs (the owner's "chasms"), pressing left or right to come off the wall threw the runner two lanes instead of one,
+  maybe where the wall section ends right before a recharge platform. Coming off the wall should behave as it does
+  everywhere else in the game.
+  DONE (S3): the cause was the short notch cut into the wall at each recharge platform's near end: it dropped the
+  runner onto the platform just before their move to come off the wall, so that move became a lane switch from the
+  platform into the hole beside it. Now, after that drop, the first move away from the wall is the dismount (one lane in
+  all), however late it comes, until the runner steps back onto a wall. Everywhere else is unchanged. Question in item
+  1219 (deferred).
 - [x] **The Terminal: the owner's answers to items 1195, 1201, 1202 and 1206** (task O6): yes to the escape's second
   dash, 11 regular plus 2 ambushes, endless and weekly as built; and relax the escape guarantee, then (asked again) drop
   it for some centipedes.
   DONE (O6): free centipedes, 2 in Rubble Line and 3 in Last Stop, with no escape proof, out where the runner goes;
-  walled-in ones down to about 43%. Answers recorded in GDD §5 Zone 8 and §9.15; item 1207 deferred.
+  walled-in ones down to about 43%. Answers recorded in GDD §5 Zone 8 and §9.15; item 1220 deferred.
