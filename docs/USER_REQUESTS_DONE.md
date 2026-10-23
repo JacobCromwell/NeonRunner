@@ -479,3 +479,8 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   platform into the hole beside it. Now, after that drop, the first move away from the wall is the dismount (one lane in
   all), however late it comes, until the runner steps back onto a wall. Everywhere else is unchanged. Question in item
   1219 (deferred).
+- [x] **The Terminal: the owner's answers to items 1195, 1201, 1202 and 1206** (task O6): yes to the escape's second
+  dash, 11 regular plus 2 ambushes, endless and weekly as built; and relax the escape guarantee, then (asked again) drop
+  it for some centipedes.
+  DONE (O6): free centipedes, 2 in Rubble Line and 3 in Last Stop, with no escape proof, out where the runner goes;
+  walled-in ones down to about 43%. Answers recorded in GDD §5 Zone 8 and §9.15; item 1220 deferred.

@@ -92,6 +92,12 @@ extends Resource
 ## Where in the level (a share of its length) the first block an ambush may hide in starts at the earliest.
 @export_range(0.0, 1.0, 0.05) var ambush_from: float = 0.5
 
+## Free centipedes this level's maze holds (the owner's answer to item 1202, October 23, 2026: drop the escape guarantee
+## for some): one in each of that many blocks, in an open cell on or beside the runner's way, placed with no escape proof
+## (centipede_rules.gd, _place_free). It may catch a runner waiting for the dash at a wall. Counted apart from
+## centipede_scale's and the ambushes.
+@export_range(0, 6) var free_centipedes: int = 0
+
 @export_group("Gaps between blocks")
 ## Rows of holes across every lane, to jump, in the normal track between two blocks (task O5; the owner, October 22,
 ## 2026: "add some more gaps to jump over in the sections in between maze portions"): this many in each stretch from one

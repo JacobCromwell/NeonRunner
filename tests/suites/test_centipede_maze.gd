@@ -94,6 +94,15 @@ func _test_generator() -> void:
 				if k == 0:
 					check(ambushes == mt.ambush_count if lanes >= 5 else ambushes >= mini(mt.ambush_count, 1),
 						"the level's own seed holds its %d ambushes (%d) %s" % [mt.ambush_count, ambushes, tag])
+				# The owner's answer to item 1202: a few free ones, with no escape proof, out where the runner is.
+				var free: int = 0
+				for e: Dictionary in mine:
+					free += 1 if CentipedeRulesScript.is_free(e) else 0
+				if k == 0 and lanes >= 5:
+					# One short where no block has an open spot for it left.
+					check(free >= mt.free_centipedes - 1 and free <= mt.free_centipedes,
+						"the level's own seed holds its %d free centipedes, or one fewer (%d) %s"
+						% [mt.free_centipedes, free, tag])
 				if k == 0:
 					var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 					check(JSON.stringify(_centipedes(again)) == JSON.stringify(mine), "the same centipedes every attempt " + tag)
@@ -297,7 +306,9 @@ func _test_bot() -> void:
 		for lanes: int in LANES:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			var mt: MovementTuning = config.movement_for(tuning)
-			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
+			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config)).copy()
+			# The free ones (the owner's answer to item 1202) have no escape proof: the bot runs the blocks without them.
+			layout.enemies = layout.enemies.filter(func(e: Dictionary) -> bool: return not CentipedeRulesScript.is_free(e))
 			var by_block: Dictionary = {}
 			for e: Dictionary in _centipedes(layout):
 				var i: int = int(e["params"]["block"])

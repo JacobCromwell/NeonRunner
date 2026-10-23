@@ -28,6 +28,18 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   time; at 5 lanes over 12 seeds Rubble Line about 8.7 a level (6.75 at first), Last Stop about 11 plus its two ambushes
   (4.4 at first), walled-in ones about 60% and 70% (73% at first: most open spots fail the proof). An escape block's
   pad room (`DebrisMaze.is_escape`) takes none.
+- **Free centipedes** (task O6; the owner's answer to item 1202, October 23, 2026: drop the escape guarantee for some).
+  `DebrisMazeTuning.free_centipedes` (Rubble Line 2, Last Stop 3); `_place_free` runs last, one a block spread from the
+  feature's start, in an open cell joined to the runner's part of the block (the quickest way first as often as
+  `way_weight` says, else "near"), min_spacing from the block's others, its floor off pads and landing zones, never in an
+  escape block's pad room, and with **no escape proof**: it may catch a runner waiting for the dash at a wall.
+  `params.free`; `is_free(e)`. Every other centipede's proof leaves it out (the others are placed before it;
+  `LayoutChecks.check_centipedes` skips it, and skips a block holding only free ones: the conservative proof finds no
+  way through some blocks even empty), as do `test_centipede_maze`'s bot (the blocks run without them) and
+  `test_centipede_fuzz`. Scales 1.15 and 2.3 keep the totals: at 5 lanes over 12 seeds Rubble Line about 8.8 a level,
+  Last Stop about 11.5 plus 2 ambushes, walled-in ones about 43% in both. A dash through a centipede as a way past
+  (tried first for item 1202) is not in the proof: in the maze the dash is nearly always spent on a wall, so it changed
+  nothing, and a sound bound after a dash would need to know whether it met the centipede. DESIGN-TBD (item 1220).
 - **Ambushes** (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can barely
   see its body, and when you get close to it, the debris shatters and the centipede is released", two in Last Stop's
   last half). `DebrisMazeTuning.ambush_count` and `ambush_from`; `_place_ambushes` runs first, one a block from

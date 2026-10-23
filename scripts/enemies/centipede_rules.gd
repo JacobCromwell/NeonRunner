@@ -96,13 +96,80 @@ static func apply(gen: LevelGenerator) -> void:
 		want = mini(want, most - (ambushed.get(i, []) as Array).size())
 		if want > 0:
 			placed += _place_block(gen, t, rng, i, start, want, intro, false, ambushed.get(i, []))
-	if placed > 0:
-		return
-	# Every level that has the feature has its centipedes: the first block where any spot fits gets one.
+	if placed == 0:
+		# Every level that has the feature has its centipedes: the first block where any spot fits gets one.
+		for i: int in lay.maze.size():
+			if float((lay.maze[i] as Dictionary)["end"]) > start \
+					and _place_block(gen, t, rng, i, start, 1, false, true, ambushed.get(i, [])) > 0:
+				break
+	_place_free(gen, t, start)
+
+
+## The level's free centipedes (DebrisMazeTuning.free_centipedes; the owner's answer to item 1202, October 23, 2026: drop
+## the escape guarantee for some, so they are "not always separated from the player"): one in each of that many blocks
+## from the feature's start, spread evenly over them (the others tried in turn where one has no spot), in an open cell
+## joined to the runner's part of the block ("near" or "way", drawn by their weights), with NO escape proof: it may catch
+## a runner waiting for the dash at a wall, and armor, the shield or a well-timed dash may be what gets them past. It
+## keeps everything else a centipede keeps (an open cell, its floor off every pad and landing zone, min_spacing from the
+## block's others, never an escape block's pad room); its entry's params.free is true, and every other centipede's
+## proof leaves it out (LayoutChecks.check_centipedes, the tests' bots). Returns how many it placed. DESIGN-TBD (item 1220
+## in docs/OPEN_QUESTIONS*.md): how many and where.
+static func _place_free(gen: LevelGenerator, t: CentipedeTuning, start: float) -> int:
+	var lay: LevelLayout = gen.layout
+	var mt: DebrisMazeTuning = DebrisMaze.tuning_for(gen.config)
+	if mt.free_centipedes <= 0:
+		return 0
+	var eligible: Array[int] = []
 	for i: int in lay.maze.size():
-		if float((lay.maze[i] as Dictionary)["end"]) > start \
-				and _place_block(gen, t, rng, i, start, 1, false, true, ambushed.get(i, [])) > 0:
-			return
+		if float((lay.maze[i] as Dictionary)["end"]) > start:
+			eligible.append(i)
+	if eligible.is_empty():
+		return 0
+	var rng: RandomNumberGenerator = gen.rng_for(FEATURE + "_free")
+	var order: Array[int] = []
+	var n: int = mini(mt.free_centipedes, eligible.size())
+	for j: int in n:
+		var k: int = 0 if n == 1 else roundi(float(j) * (eligible.size() - 1) / float(n - 1))
+		if not order.has(eligible[k]):
+			order.append(eligible[k])
+	for i: int in eligible:
+		if not order.has(i):
+			order.append(i)
+	var placed: int = 0
+	for i: int in order:
+		if placed >= mt.free_centipedes:
+			break
+		var others: Array[Dictionary] = []
+		for e: Dictionary in lay.enemies:
+			if String(e.get("type", "")) == FEATURE and int((e.get("params", {}) as Dictionary).get("block", -1)) == i:
+				others.append(e)
+		if others.size() >= max_per_block(gen.config):
+			continue
+		var ctx: CentipedeEscape.Context = CentipedeEscape.context(lay, gen.tuning, i)
+		var pool: Array[Dictionary] = []
+		for c: Dictionary in candidates_for(gen, ctx, start, rng):
+			if String(c["situation"]) != "trapped" and _spaced(c, others, t):
+				pool.append(c)
+		_shuffle(pool, rng)
+		# The way first, as often as its weight says: "in the only way through".
+		var way_first: bool = rng.randf() * maxf(t.near_weight + t.way_weight, 0.001) < t.way_weight
+		pool.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return (String(a["situation"]) == "way") == way_first and (String(b["situation"]) == "way") != way_first)
+		for c: Dictionary in pool:
+			var entry: Dictionary = _entry(i, c)
+			if not gen.zones.enemy_clear(lay, entry):
+				continue
+			entry["params"]["free"] = true
+			gen.add_enemy(FEATURE, float(entry["at"]), int(entry["lane"]), 0, entry["params"])
+			placed += 1
+			break
+	return placed
+
+
+## True if centipede entry `e` (a layout enemy) is a free one (_place_free): no escape proof keeps its block escapable
+## past it.
+static func is_free(e: Dictionary) -> bool:
+	return bool((e.get("params", {}) as Dictionary).get("free", false))
 
 
 ## The level's ambush centipedes (DebrisMazeTuning.ambush_count, from ambush_from of the level and the feature's start
