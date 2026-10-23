@@ -35,6 +35,16 @@ const THICK: float = 1.4
 const SHAFT_NEAR: float = 9.0
 ## The glass's offset in front of the wall.
 const GLASS_Z: float = 0.05
+## How far the broken lintel's stone teeth hang into the doorway at most outside, and from inside (the way in's wall, TerminalIntroEntry),
+## in metres beyond the 0.12 m every tooth has.
+const LINTEL_TOOTH: float = 0.5
+const LINTEL_TOOTH_INSIDE: float = 0.4
+## Where the runner squeezes through (x along the wall, and how far either side of it the teeth are shallower), so that the crack there
+## is wide enough for their body: a tooth over this stretch hangs this far at most (metres; the runner lying prone is 0.45 m deep, the
+## crack 0.85 m, its crouch 0.6 m).
+const LINTEL_CALM_AT: float = 0.2
+const LINTEL_CALM_HALF: float = 1.0
+const LINTEL_CALM_DEPTH: float = 0.14
 
 var n: TerminalIntroTuning
 var skin: ZoneSkin
@@ -50,6 +60,11 @@ var lights: Array[OmniLight3D] = []
 ## Track-space x of the front.
 var front_x: float = 0.0
 var along_at: float = 0.0
+## Every solid block the front, its plinth, piers and fallen masonry are built of, as boxes in the station's frame (x along the front, y up,
+## z out from it): what a runner on foot must keep out of (`test_terminal_intro` walks them against the blocks).
+var solids: Array[AABB] = []
+## The paths on foot kept clear of the heap's slabs and chunks (x, z of the station's frame; TerminalIntroHeap.keep_clear).
+var clear_paths: Array[PackedVector2Array] = []
 var _rng := RandomNumberGenerator.new()
 
 
@@ -93,6 +108,7 @@ func setup(p_skin: ZoneSkin, p_numbers: TerminalIntroTuning, p_front_x: float, p
 	rotation_degrees = Vector3(0.0, 90.0, 0.0)
 	_rng.seed = 7311
 	heap = TerminalIntroHeap.new(n.heap_height, n.heap_length, n.heap_foot_width, n.door_width)
+	heap.keep_clear = clear_paths
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(solid)
 	var g: MeshLayer = batch.layer(glow)
@@ -116,6 +132,7 @@ func setup(p_skin: ZoneSkin, p_numbers: TerminalIntroTuning, p_front_x: float, p
 ## A box from x0 to x1, y0 to y1 and from `back` to `out` in z (the front is z = 0).
 func _slab(s: MeshLayer, x0: float, x1: float, y0: float, y1: float, color: Color, out: float = 0.0, back: float = -THICK,
 		pattern: int = MeshKit.PAT_DZ_CONCRETE, faces: int = MeshKit.ALL_FACES) -> void:
+	solids.append(AABB(Vector3(x0, y0, back), Vector3(x1 - x0, y1 - y0, out - back)))
 	s.box(Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5, (out + back) * 0.5), Vector3(x1 - x0, y1 - y0, out - back), color, 0.0,
 		pattern, faces, 0.0)
 
@@ -213,8 +230,8 @@ func _ground(s: MeshLayer) -> void:
 	_slab(s, -n.frontage * 0.5, n.frontage * 0.5, 0.0, 0.07, STONE_DARK, n.forecourt + 0.45, n.forecourt - 0.5)
 	for side: float in [-1.0, 1.0]:
 		_slab(s, side * n.frontage * 0.5 - 0.9, side * n.frontage * 0.5 + 0.9, 0.0, 7.4, STONE_DARK, n.forecourt + 0.9, n.forecourt - 1.0)
-	# The kerb of the station's plinth.
-	_slab(s, -n.hall_width * 0.5 - 1.0, n.hall_width * 0.5 + 1.0, 0.0, 0.5, STONE_DARK, 1.4, 0.0)
+	# (No broad step out in front of the head house's plinth: the route board hangs at its foot and the runner stands at the board,
+	# which would put them inside it. The plinth's own course, 0.28 m out, is drawn with the head house.)
 
 
 ## Fallen masonry on the forecourt: blocks of the cornice and the broken pilasters, scattered in front of the wings.
@@ -229,7 +246,10 @@ func _fallen(s: MeshLayer) -> void:
 			continue
 		var size := Vector3(_rng.randf_range(0.5, 2.0), _rng.randf_range(0.25, 0.9), _rng.randf_range(0.5, 1.5))
 		var basis := Basis.from_euler(Vector3(_rng.randf_range(-0.3, 0.3), _rng.randf_range(-PI, PI), _rng.randf_range(-0.3, 0.3)))
-		s.box_xform(Transform3D(basis * Basis.from_scale(size), Vector3(x, size.y * 0.35, z)),
+		var at := Vector3(x, size.y * 0.35, z)
+		var reach: float = Vector3(size.x, 0.0, size.z).length() * 0.5
+		solids.append(AABB(at - Vector3(reach, size.y, reach), Vector3(reach * 2.0, size.y * 2.0, reach * 2.0)))
+		s.box_xform(Transform3D(basis * Basis.from_scale(size), at),
 			(STONE if _rng.randf() < 0.6 else STONE_DARK) * _rng.randf_range(0.8, 1.15), 0.0, MeshKit.PAT_DZ_CONCRETE, MeshKit.ALL_FACES, 0.0)
 
 
@@ -248,15 +268,9 @@ func _head_house(s: MeshLayer, g: MeshLayer) -> void:
 	_slab(s, dw, dw + 0.5, 0.0, n.door_height + 0.5, STONE_DARK, 0.5, -THICK, MeshKit.PAT_DZ_CONCRETE)
 	_slab(s, -dw - 0.5, dw + 0.5, n.door_height, n.door_height + 0.6, STONE_DARK, 0.6, -THICK, MeshKit.PAT_DZ_CONCRETE)
 	# The lintel broken: stone teeth hanging into the doorway, so the crack under it is ragged.
-	var tooth: float = -dw
-	var ti: int = 0
-	while tooth < dw - 0.1:
-		var tw: float = 0.5 + 0.9 * MeshKit.hash01(ti, 7, 71)
-		var td: float = 0.12 + 0.5 * MeshKit.hash01(ti, 8, 72)
-		_tri(s, Vector3(tooth, n.door_height, 0.25), Vector3(tooth + tw * 0.5, n.door_height - td, 0.25), Vector3(minf(tooth + tw, dw), n.door_height, 0.25),
+	for t: Vector3 in lintel_teeth(dw, 0, LINTEL_TOOTH):
+		_tri(s, Vector3(t.x, n.door_height, 0.25), Vector3(t.x + t.y * 0.5, n.door_height - t.z, 0.25), Vector3(minf(t.x + t.y, dw), n.door_height, 0.25),
 			STONE_DARK, 0.0, MeshKit.PAT_DZ_CONCRETE)
-		tooth += tw
-		ti += 1
 	# Plinth and courses.
 	_slab(s, -hw - 0.5, hw + 0.5, 0.0, 0.45, STONE_DARK, 0.28)
 	_slab(s, -hw - 0.3, hw + 0.3, 8.2, 8.75, STONE_LIGHT, 0.4)
@@ -466,3 +480,32 @@ func draw_calls() -> int:
 		if m.is_visible_in_tree() and m.mesh != null:
 			calls += m.mesh.get_surface_count()
 	return calls
+
+
+# --- The broken lintel ----------------------------------------------------------------------------------------------
+
+## The stone teeth that hang from the lintel into the doorway (one doorway, from -`door_half` to `door_half`), as (x, width, depth): the
+## same ones the wall draws and the tests hold the runner against. `first` is the hash index they start at (the way in's wall has its own
+## run of them) and `reach` how much deeper than 0.12 m they may hang.
+static func lintel_teeth(door_half: float, first: int, reach: float) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var tooth: float = -door_half
+	var ti: int = first
+	while tooth < door_half - 0.1:
+		var tw: float = 0.5 + 0.9 * MeshKit.hash01(ti, 7, 71)
+		var td: float = 0.12 + reach * MeshKit.hash01(ti, 8, 72)
+		if tooth < LINTEL_CALM_AT + LINTEL_CALM_HALF and tooth + tw > LINTEL_CALM_AT - LINTEL_CALM_HALF:
+			td = minf(td, LINTEL_CALM_DEPTH)
+		out.append(Vector3(tooth, tw, td))
+		tooth += tw
+		ti += 1
+	return out
+
+
+## The height of the lintel's underside at `x` (the doorway's frame): the teeth are triangles, point down in the middle of their width.
+static func lintel_bottom(teeth: Array[Vector3], door_height: float, x: float) -> float:
+	var low: float = door_height
+	for t: Vector3 in teeth:
+		if x >= t.x and x <= t.x + t.y:
+			low = minf(low, door_height - t.z * (1.0 - absf(2.0 * (x - t.x) / t.y - 1.0)))
+	return low

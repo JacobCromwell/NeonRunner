@@ -5,8 +5,9 @@ extends TestSuite
 ## "TERMINAL" drooping with only some of its letters lit, flickering and sparking; the light spilling out; the runner's head turning as
 ## they survey, the walk round the heap to the route board arriving as the wipe starts, the hand on the board and the trail it wipes,
 ## the close-up of the board (its stops, THE PALACE last and in gold, the camera in front of it with nobody in the way), the nod and
-## the turn, the entrance blocked by the heap to a crack, the climb following the heap and the squeeze through the crack; the cut
-## inside onto the Terminal's own stage, the jump down onto the track, the title card; the camera in the street or on the heap, never in
+## the turn, the entrance blocked by the heap to a crack, the climb on hands and knees following the heap and the squeeze through the
+## crack; the runner never in a solid block of the front or the heap on foot, nor through the lintel's teeth; the cut
+## inside onto the Terminal's own stage, the jump down onto the track and the floor under it, the title card; the camera in the street or on the heap, never in
 ## the front or in the rubble; Reduced flashing (no flicker, fewer and softer sparks); what it costs. Then skipping, and the App's flow.
 
 const LANES: Array[int] = [3, 5, 6]
@@ -16,6 +17,8 @@ const STEP: float = 1.0 / 30.0
 const POSE_JOINTS: Array[StringName] = [&"head", &"hand_l", &"hand_r", &"foot_l", &"foot_r"]
 const SOUNDS: Array[String] = ["waste_wind", "sign_buzz", "sign_zap", "grime_wipe", "rubble_scramble", "landing_thud", "station_hum"]
 const MAX_SOUND_SECONDS: float = 2.5
+## The sign's spark is a zap of this length at least (it was 0.55 s, and the owner asked for a longer one).
+const ZAP_SECONDS: float = 0.8
 ## The runner stands within this of their places (metres).
 const STAND_SLACK: float = 0.12
 ## The hand is on the board within this of its face (metres), and inside its frame by this much.
@@ -26,6 +29,18 @@ const WALK_PACE := Vector2(1.2, 2.0)
 ## A joint of the runner moves at most this far in one step (at 30 fps, over what the actor itself moved), on a frame the camera does
 ## not cut in: poses do not blend, so a change of pose on camera would show as a pop of more than half a metre.
 const POSE_JUMP_MAX: float = 0.5
+## On foot the runner's body (a column this wide, at these heights over their feet) keeps out of the front's blocks and the heap's pieces.
+const BODY_RADIUS: float = 0.25
+const BODY_HEIGHTS: Array[float] = [0.1, 0.45, 0.85, 1.2]
+## Crawling, the back stays straight (the chest tips this much at most, degrees), and the hands and feet are on the surface: not further
+## in than the first and not further off than the second (metres).
+const CRAWL_BACK_MAX: float = 25.0
+const CRAWL_SINK_MAX: float = 0.05
+const CRAWL_FLOAT_MAX: float = 0.2
+## Their feet go this far into a slope of rubble at most (metres).
+const SLOPE_SINK_MAX: float = 0.05
+## Through the crack, the body keeps this far under the lintel's teeth (metres).
+const LINTEL_CLEARANCE: float = 0.02
 ## The wipe leaves this much of THE PALACE and its gold ring clear by the cut to the close-up (mean over its box, and at its worst
 ## point with the film's edge at its most torn).
 const PALACE_CLEAR: float = 0.95
@@ -54,6 +69,7 @@ func run() -> void:
 		App.rules.lanes_pc = lanes
 		await _check_intro(lanes)
 	App.rules.lanes_pc = lanes_pc
+	await _test_floor_steps()
 	await _test_reduced_flashing()
 	await _test_skip()
 	await _test_app_flow()
@@ -107,6 +123,8 @@ func _test_sounds() -> void:
 		if stream != null:
 			check(stream.get_length() > 0.3 and stream.get_length() < MAX_SOUND_SECONDS,
 				"%s is %.2f s (under %.1f s)" % [v, stream.get_length(), MAX_SOUND_SECONDS])
+			if v == "sign_zap":
+				check(stream.get_length() >= ZAP_SECONDS, "the sign's zap is a long one (%.2f s, at least %.1f s)" % [stream.get_length(), ZAP_SECONDS])
 
 
 ## The runner's place in the station's frame (x along its front, z out from it).
@@ -137,7 +155,7 @@ func _check_intro(lanes: int) -> void:
 		and own_mat.get_shader_parameter(&"dz_ash") == shared.get_shader_parameter(&"dz_ash"),
 		"%s: the letters' materials copy the Dead Zone's, and leave its own parameters intact" % tag)
 	check(seq.playing.problems(sfx).is_empty(), "%s: its timeline has no problems (%s)" % [tag, seq.playing.problems(sfx)])
-	check(seq.duration() >= 25.0 and seq.duration() <= 32.0 + 0.001, "%s: it lasts %.1f s (the brief suggested about 25 to 32)" % [tag, seq.duration()])
+	check(seq.duration() >= 25.0 and seq.duration() <= 34.0 + 0.001, "%s: it lasts %.1f s (the brief suggested about 25 to 32; the crawl up the rubble took 1.2 s more)" % [tag, seq.duration()])
 	var stage: CineStage = seq.stage
 	var station: TerminalIntroStation = seq.station
 	# The station stands back from the street's left wall in an opening of it, and only there.
@@ -218,6 +236,17 @@ func _check_intro(lanes: int) -> void:
 	var landed_y: float = INF
 	var in_flight: bool = false
 	var low_out: String = ""
+	var walk_clash: String = ""
+	var walk_on_heap: String = ""
+	var crawl_steps: int = 0
+	var crawl_sink: float = 0.0
+	var crawl_float: float = 0.0
+	var crawl_back: float = 0.0
+	var crawl_pose_ok: bool = true
+	var lintel_clash: String = ""
+	var lintel_in_clash: String = ""
+	var in_slope: float = 0.0
+	var in_slope_at: String = ""
 	var played: PackedStringArray = []
 	while not seq.done:
 		var s0: int = Time.get_ticks_usec()
@@ -262,6 +291,10 @@ func _check_intro(lanes: int) -> void:
 				camera_out = "%.2f s at %s (the rubble %.2f m)" % [t, cam, surface]
 			if cam.y > 30.0:
 				camera_out = "%.2f s up at %s" % [t, cam]
+			# Nor in a slab or a chunk of the heap (the camera rides close beside it on the crawl).
+			var piece_gap: float = heap.clearance(cam)
+			if camera_out == "" and piece_gap < CAMERA_CLEARANCE:
+				camera_out = "%.2f s at %s (%.2f m from a piece of the rubble)" % [t, cam, piece_gap]
 		var p: Vector3 = _in_station(seq, runner.track_position)
 		# Surveying: the head turns right, then left toward the station.
 		if t < n.survey_at + 2.0:
@@ -298,9 +331,33 @@ func _check_intro(lanes: int) -> void:
 				var trail_at: Vector2 = _trail_at(board, t)
 				if trail_at.x < INF:
 					trail_off = maxf(trail_off, on_board.distance_to(trail_at))
-		# Climbing: their feet follow the heap's surface.
+		# On foot (the walk to the board, the wipe, the way back to the heap's foot): never in a block of the front or a piece of the heap, and
+		# on the ground, not in the heap's surface (at its foot, from the cut to the entrance, they stand on it).
+		if runner.visible and t >= seq.t_walk + 0.2 and t < n.climb_from - 0.05:
+			var clash: String = _body_clash(station, p)
+			if walk_clash == "" and clash != "":
+				walk_clash = "%.2f s at %s: %s" % [t, p, clash]
+			if walk_on_heap == "" and t < n.door_at - 0.05 and heap.height(p.x, p.z) > 0.03:
+				walk_on_heap = "%.2f s at %s (the heap %.2f m high)" % [t, p, heap.height(p.x, p.z)]
+		# Climbing: their feet follow the heap's surface, on hands and knees with a straight back, and nothing of them in the rubble.
 		if t > n.climb_from + 0.3 and t < n.crest_at - 0.1:
 			climb_off = maxf(climb_off, absf(p.y - heap.height(p.x, p.z)))
+			crawl_pose_ok = crawl_pose_ok and runner.pose == &"crawl"
+			var rig: HumanoidRig = runner.avatar.rig
+			crawl_steps += 1
+			crawl_back = maxf(crawl_back, absf(rig.joint(&"chest").rotation_degrees.x))
+			var lowest: float = INF
+			for joint: StringName in [&"hand_l", &"hand_r", &"foot_l", &"foot_r"]:
+				var at_joint: Vector3 = _in_station(seq, stage.to_track(rig.joint(joint).global_position))
+				var above: float = at_joint.y - heap.height(at_joint.x, at_joint.z)
+				crawl_sink = maxf(crawl_sink, -above)
+				lowest = minf(lowest, above)
+			crawl_float = maxf(crawl_float, lowest)
+		# Squeezing through the crack: the body clears the lintel's teeth.
+		if runner.visible and t >= n.crest_at and t <= n.through_at and lintel_clash == "":
+			lintel_clash = _lintel_clash(seq, runner, TerminalIntroStation.lintel_teeth(n.door_width * 0.5, 0, TerminalIntroStation.LINTEL_TOOTH), false)
+			if lintel_clash != "":
+				lintel_clash = "%.2f s: %s" % [t, lintel_clash]
 		if not checked.has("sign_cut") and t >= n.sign_at + 0.2:
 			checked["sign_cut"] = true
 			var cam: Vector3 = _in_station(seq, stage.to_track(seq.camera.global_position))
@@ -318,9 +375,9 @@ func _check_intro(lanes: int) -> void:
 			checked["turn"] = true
 			var turned: float = absf(rad_to_deg(angle_difference(runner.yaw, deg_to_rad(90.0))))
 			check(turned > 60.0, "%s: they turn from the board toward the entrance (%.0f° round)" % [tag, turned])
-		if not checked.has("door") and t >= n.door_at + 0.9:
+		if not checked.has("door") and t >= n.door_at + 0.7:
 			checked["door"] = true
-			var foot := Vector3(n.heap_foot.x, 0.0, n.heap_foot.y)
+			var foot := Vector3(n.heap_foot.x, heap.height(n.heap_foot.x, n.heap_foot.y), n.heap_foot.y)
 			check(p.distance_to(foot) < STAND_SLACK and rad_to_deg(runner.look_up) > 18.0,
 				"%s: they stand at the heap's foot looking up at the entrance (%.2f m off, looking up %.0f°)" % [tag, p.distance_to(foot), rad_to_deg(runner.look_up)])
 		if not checked.has("square") and t >= n.wipe_at - 0.05:
@@ -346,10 +403,20 @@ func _check_intro(lanes: int) -> void:
 			checked["inside"] = true
 			check(seq.inside and seq.stage.skin == _step().zone.skin and seq.entry != null and seq.entry.is_inside_tree() and runner_in.visible,
 				"%s: it has cut inside onto the Terminal's own stage, with the way in on it" % tag)
+		if seq.inside and runner_in.visible and t >= n.inside_at and t <= n.jump_at - 0.1 and lintel_in_clash == "":
+			lintel_in_clash = _lintel_clash(seq, runner_in, seq.entry.lintel_teeth(), true)
+			if lintel_in_clash != "":
+				lintel_in_clash = "%.2f s: %s" % [t, lintel_in_clash]
 		if seq.inside and runner_in.visible and t >= n.inside_at:
 			var q: Vector3 = runner_in.track_position
 			if t >= n.jump_at and t <= seq.t_land + 0.02:
 				in_flight = true
+			# Their feet, from the crawl out over the crest to the landing, are over the heap's slope and never in it.
+			if t >= n.inside_at + 0.1 and t <= seq.t_land + 0.02:
+				var under: float = seq.entry.heap.height(q.z - seq.entry.along, q.x - seq.entry.wall_x)
+				if under - q.y > in_slope:
+					in_slope = under - q.y
+					in_slope_at = "%.2f s at %s (the slope %.2f m high)" % [t, q, under]
 			if t >= seq.t_land + 0.1:
 				landed_y = minf(landed_y, q.y)
 			var cam_in: Vector3 = seq.stage.to_track(seq.camera.global_position)
@@ -361,6 +428,9 @@ func _check_intro(lanes: int) -> void:
 			var lane: int = stage.geo.lane_at(q.x + stage.origin_x)
 			check(absf(q.y) < 0.03 and q.x > seq.inside_wall_x + 3.0 and q.x < stage.wall_x(1) and in_flight,
 				"%s: they jump down and land on the floor inside, out from the wall, on the track bed (lane %d, at %s)" % [tag, lane, q])
+			# The floor under them: the Terminal's own, built under the landing and down the line in every lane.
+			var floor_gaps: String = _floor_gaps(seq, q.z)
+			check(floor_gaps == "", "%s: there is Terminal floor under the landing and down the line, in every lane (%s)" % [tag, floor_gaps])
 			var d: Vector3 = (seq.camera.global_transform.basis * Vector3.FORWARD)
 			check(-d.z > 0.8 and absf(runner_in.yaw) < deg_to_rad(20.0),
 				"%s: the camera looks down the line, the tracks running off ahead, the runner facing along them" % tag)
@@ -372,6 +442,15 @@ func _check_intro(lanes: int) -> void:
 	check(jump_worst < POSE_JUMP_MAX, "%s: their pose never pops (a joint moves %.2f m at most in a step, %s)" % [tag, jump_worst, jump_where])
 	check(square_yaw < 6.0, "%s: they are square to the board when the wipe starts (%.1f° off)" % [tag, square_yaw])
 	check(climb_off < 0.06, "%s: climbing, their feet follow the rubble's surface (%.3f m off at worst)" % [tag, climb_off])
+	check(walk_clash == "", "%s: on foot they never walk through a block of the front or a piece of the heap (%s)" % [tag, walk_clash])
+	check(walk_on_heap == "", "%s: on foot, to the cut to the entrance, they walk on the ground, not through the heap (%s)" % [tag, walk_on_heap])
+	check(crawl_steps > 20 and crawl_pose_ok, "%s: they crawl up the rubble (the crawl pose through the climb, %d steps)" % [tag, crawl_steps])
+	check(crawl_back < CRAWL_BACK_MAX, "%s: crawling, their back stays straight (the chest tips %.0f degrees at most)" % [tag, crawl_back])
+	check(crawl_sink < CRAWL_SINK_MAX and crawl_float < CRAWL_FLOAT_MAX,
+		"%s: crawling, their hands and feet are on the rubble (%.2f m in it at most, the nearest %.2f m off at worst)" % [tag, crawl_sink, crawl_float])
+	check(lintel_clash == "", "%s: squeezing in, the body keeps under the lintel's teeth (%s)" % [tag, lintel_clash])
+	check(in_slope < SLOPE_SINK_MAX, "%s: jumping down inside, their feet never go into the heap's slope (%.2f m in it at worst, %s)" % [tag, in_slope, in_slope_at])
+	check(lintel_in_clash == "", "%s: crawling out inside, the body keeps under the wall's lintel (%s)" % [tag, lintel_in_clash])
 	check(camera_out == "", "%s: the camera keeps in front of the station, in the street and over the rubble (%s)" % [tag, camera_out])
 	check(low_out == "", "%s: inside, the camera stays in the hall (%s)" % [tag, low_out])
 	check(landed_y < 0.03, "%s: they end standing on the floor (%.3f m)" % [tag, landed_y])
@@ -396,9 +475,88 @@ func _check_intro(lanes: int) -> void:
 	check(inside_looks, "%s: the cut inside builds the Terminal's skin" % tag)
 	var mean: float = step_total / maxf(float(steps), 1.0)
 	print("    %s: set up %.1f ms, a step %.2f ms on average, %.2f ms at worst; props %d draw calls outside" % [tag, setup_msec, mean, worst_step, draw_calls])
+	print("    %s: crawling, hands and feet at most %.2f m into the rubble and the nearest %.2f m off it at worst, the chest tipped %.0f degrees at most" % [tag, crawl_sink, crawl_float, crawl_back])
 	check(setup_msec < SETUP_BUDGET_MSEC and worst_step < STEP_BUDGET_MSEC and draw_calls <= PROP_DRAW_CALLS,
 		"%s: it costs little (set up %.0f ms, a step at worst %.1f ms, %d draw calls)" % [tag, setup_msec, worst_step, draw_calls])
 	await _free(seq)
+
+
+## What the runner's body (a column of BODY_RADIUS at BODY_HEIGHTS over `p`, in the station's frame) is in or too near: a block of the
+## station's front, or a piece of the heap (an empty string: nothing).
+func _body_clash(station: TerminalIntroStation, p: Vector3) -> String:
+	for h: float in BODY_HEIGHTS:
+		var q := Vector3(p.x, p.y + h, p.z)
+		for box: AABB in station.solids:
+			if box.grow(BODY_RADIUS).has_point(q):
+				return "in a block of the front at %.2f m up" % h
+		var gap: float = station.heap.clearance(q)
+		if gap < BODY_RADIUS:
+			return "%.2f m from a piece of the heap at %.2f m up" % [gap, h]
+	return ""
+
+
+## Whether the body of `node` (the bounds of its rig) is up in the lintel's teeth of a wall (`teeth`; the wall's frame: x along it, z out
+## of it, the teeth in the plane z = 0.25): the station's frame outside, the way in's inside. An empty string: it clears them.
+func _lintel_clash(seq: TerminalIntro, node: CineActorNode, teeth: Array[Vector3], inside: bool) -> String:
+	if node.avatar == null:
+		return ""
+	var b: AABB = node.avatar.rig.bounds()
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	for i: int in 8:
+		var corner := Vector3(b.position.x + b.size.x * float(i & 1), b.position.y + b.size.y * float((i >> 1) & 1), b.position.z + b.size.z * float((i >> 2) & 1))
+		var track: Vector3 = seq.stage.to_track(node.avatar.to_global(corner))
+		var w: Vector3 = Vector3(track.z - seq.entry.along, track.y, track.x - seq.entry.wall_x) if inside else _in_station(seq, track)
+		lo = Vector3(minf(lo.x, w.x), minf(lo.y, w.y), minf(lo.z, w.z))
+		hi = Vector3(maxf(hi.x, w.x), maxf(hi.y, w.y), maxf(hi.z, w.z))
+	if lo.z > 0.25 or hi.z < 0.25:
+		return ""
+	var low: float = INF
+	var x: float = lo.x
+	while x <= hi.x:
+		low = minf(low, TerminalIntroStation.lintel_bottom(teeth, seq.n.door_height, x))
+		x += 0.05
+	if hi.y > low - LINTEL_CLEARANCE:
+		return "the body reaches %.2f m, the lintel hangs to %.2f m over x %.2f to %.2f" % [hi.y, low, lo.x, hi.x]
+	return ""
+
+
+## What lacks floor in `seq`'s stage under the landing and down the line: for each lane, the track's floor pieces must cover the point at
+## `z` (a track distance) and 100 m on. An empty string: all of it is there.
+func _floor_gaps(seq: TerminalIntro, z: float) -> String:
+	var stage: CineStage = seq.stage
+	var missing: PackedStringArray = []
+	for lane: int in stage.geo.lane_count:
+		var x: float = stage.geo.lane_x(lane)
+		for ahead: float in [0.0, 100.0]:
+			var point := Vector3(x, -0.3, -(z + ahead))
+			var found: bool = false
+			for chunk: Node in stage.track.get_children():
+				if chunk.is_queued_for_deletion():
+					continue
+				for m: Node in chunk.find_children("*", "MeshInstance3D", true, false):
+					var mesh := m as MeshInstance3D
+					if mesh.mesh != null and mesh.name != &"Hall" and (mesh.global_transform * mesh.get_aabb()).has_point(point):
+						found = true
+			if not found:
+				missing.append("lane %d at %.0f m on" % [lane, ahead])
+	return ", ".join(missing)
+
+
+## The floor under the landing is there however the clock is stepped: the cut inside (the cue, under black) comes a moment before the
+## camera's own, and a frame between them once took the stage's first chunks, the floor under the landing, for behind the camera and freed
+## them (at 60 fps there are several such frames; the other tests step at 1/30 s, which is enough to hit it, but not to see it unless asked).
+func _test_floor_steps() -> void:
+	for step: float in [1.0 / 60.0, 1.0 / 30.0, 0.1, 0.25]:
+		var seq: TerminalIntro = _start()
+		if seq == null:
+			check(false, "floor steps: the intro starts")
+			return
+		while not seq.done and seq.time < seq.t_land + 0.3:
+			seq.advance(step)
+		var gaps: String = _floor_gaps(seq, seq.n.inside_at_z + 0.2)
+		check(seq.inside and gaps == "", "stepped by %.3f s: the floor under the landing is built (%s)" % [step, gaps])
+		await _free(seq)
 
 
 # --- The wipe and the walk ---------------------------------------------------------------------------------------

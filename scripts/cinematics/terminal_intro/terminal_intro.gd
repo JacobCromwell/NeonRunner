@@ -31,6 +31,8 @@ const KEY_STEP: float = 0.05
 const CUT_LEAD: float = 0.1
 ## How far the hand's palm is held off the board's grime (metres), so it never goes into it.
 const HAND_OFF: float = 0.03
+## How many points the way up the heap is measured at (for the crawl's even pace and the slope under it).
+const CRAWL_PATH_POINTS: int = 120
 ## The runner's own height when it lies on the heap's crest, over the surface (metres): its body is prone there.
 const CREST_LIFT: float = 0.04
 ## The runner's eye line (metres): the face shot looks at it.
@@ -83,6 +85,8 @@ func _make_timeline() -> CineTimeline:
 	var wipe_mid: float = _wipe_height()
 	station = TerminalIntroStation.new()
 	stage.add_child(station)
+	# The runner's route on foot (the street's side of the heap to the board and back) stays clear of the heap's slabs and chunks.
+	station.clear_paths = [PackedVector2Array([n.start_at, n.walk_corner, Vector2(n.board_x, 0.9)])]
 	station.setup(stage.skin, n, stage.wall_x(-1) - n.forecourt, n.station_at, stage)
 	street_edge = stage.wall_x(1) - station.front_x - 0.9
 	inside_wall_x = stage.wall_x(-1) - n.inside_wall_back
@@ -266,12 +270,13 @@ func _runner(t: CineTimeline) -> void:
 	_key(r, n.nod_at + 0.25, back, &"walk", 90.0, 0.0, -14.0)
 	_key(r, n.nod_at + 0.55, back, &"walk", 90.0, 0.0, 2.0)
 	_key(r, n.turn_at, back, &"walk", 90.0, 18.0, 2.0)
-	var foot := Vector3(n.heap_foot.x, 0.0, n.heap_foot.y)
-	var to_foot: float = yaw_to(foot.x - back.x, foot.z - back.z)
-	_key(r, n.turn_at + 0.45, back, &"walk", to_foot, 0.0, 2.0)
-	# They walk along the front toward the heap and are at its foot by the cut to the entrance (a cut key).
+	var foot := Vector3(n.heap_foot.x, station.heap.height(n.heap_foot.x, n.heap_foot.y), n.heap_foot.y)
+	var to_corner: float = yaw_to(corner.x - back.x, corner.z - back.z)
+	_key(r, n.turn_at + 0.45, back, &"walk", to_corner, 0.0, 2.0)
+	# They turn and set off the way they came (round the heap's foot, never over its flank) and are at the heap's foot by the cut to the
+	# entrance (a cut key, on the heap's own surface).
 	var foot_yaw: float = yaw_to(-n.heap_foot.x + 0.35, -(n.heap_foot.y - 0.45))
-	_key(r, n.turn_at + 1.1, back.lerp(foot, 0.3), &"walk", NAN)
+	_key(r, n.turn_at + 1.1, back.lerp(corner, 0.16), &"walk", NAN)
 	var arrive: CineActorKey = _key(r, n.door_at, foot, &"walk", foot_yaw, 0.0, 0.0)
 	arrive.move = CinePath.Move.CUT
 	# Looking up at the entrance, the crack of light, then the climb.
@@ -290,19 +295,34 @@ static func _along(from: Vector3, corner: Vector3, to: Vector3, d: float) -> Vec
 	return corner.lerp(to, clampf((d - first) / maxf(second, 0.001), 0.0, 1.0))
 
 
-## Up the heap on the way TerminalIntroHeap keeps smooth (`way_x`), then the squeeze in through the crack at its crest.
+## Up the heap on the way TerminalIntroHeap keeps smooth (`way_x`) on hands and knees (`crawl`: the body pitched along the slope, the
+## pose's progress the slope under them), at an even pace over the surface, then the squeeze in through the crack at its crest.
 func _climb(r: CineActor) -> void:
 	var heap: TerminalIntroHeap = station.heap
 	var z0: float = n.heap_foot.y
 	var z1: float = 0.45
 	var up_seconds: float = n.crest_at - n.climb_from
-	var steps: int = int(ceil(up_seconds / KEY_STEP))
-	for i: int in range(0, steps + 1):
-		var u: float = float(i) / float(steps)
+	# The way as points on the surface and how far along it each is, so the keys can be spaced by distance covered.
+	var points := PackedVector3Array()
+	var lengths := PackedFloat32Array()
+	for i: int in range(0, CRAWL_PATH_POINTS + 1):
+		var u: float = float(i) / float(CRAWL_PATH_POINTS)
 		var z: float = lerpf(z0, z1, u)
 		var x: float = lerpf(n.heap_foot.x, heap.way_x(z1), u)
-		var p := Vector3(x, heap.height(x, z), z)
-		_key(r, n.climb_from + u * up_seconds, p, &"scramble" if i == 0 else &"", _climb_yaw(u), 0.0, 22.0)
+		points.append(Vector3(x, heap.height(x, z), z))
+		lengths.append(0.0 if i == 0 else lengths[i - 1] + points[i].distance_to(points[i - 1]))
+	var steps: int = int(ceil(up_seconds / KEY_STEP))
+	var k: int = 0
+	for i: int in range(0, steps + 1):
+		var u: float = float(i) / float(steps)
+		var d: float = u * lengths[lengths.size() - 1]
+		while k < points.size() - 2 and lengths[k + 1] < d:
+			k += 1
+		var f: float = clampf((d - lengths[k]) / maxf(lengths[k + 1] - lengths[k], 0.0001), 0.0, 1.0)
+		var p: Vector3 = points[k].lerp(points[k + 1], f)
+		var run: float = Vector2(points[k + 1].x - points[k].x, points[k + 1].z - points[k].z).length()
+		var slope: float = rad_to_deg(atan2(points[k + 1].y - points[k].y, maxf(run, 0.0001)))
+		_key(r, n.climb_from + u * up_seconds, p, &"crawl" if i == 0 else &"", _climb_yaw(u), 0.0, 0.0, CinePoses.crawl_progress(slope))
 	# At the crest they turn square to the gap and squeeze through it, head first, lying down as they go (progress 0 to 1).
 	var crest := Vector3(heap.way_x(z1), heap.height(heap.way_x(z1), z1), z1)
 	var squeeze_seconds: float = n.through_at - n.crest_at
@@ -385,11 +405,11 @@ func _camera(t: CineTimeline) -> void:
 	var foot := Vector3(n.heap_foot.x, 0.0, n.heap_foot.y)
 	_shot(t, n.door_at, foot + n.door_cam, n.door_look, n.door_fov.x, CinePath.Move.CUT)
 	_shot(t, n.climb_from - 0.004, foot + n.door_cam_to, n.door_look_to, n.door_fov.y)
-	# The climb: from beside the heap, then close on the crack as they squeeze in. Each change of the runner's pose (the walk to the
-	# scramble, the scramble to the squeeze) is on a cut, at the same moment: poses do not blend.
+	# The climb: riding with them from beside the heap (the crawl up it close enough to read), then close on the crack as they squeeze in.
+	# Each change of the runner's pose (the walk to the crawl, the crawl to the squeeze) is on a cut, at the same moment: poses do not blend.
 	var c: PackedVector3Array = n.climb_cam
-	_shot(t, n.climb_from, c[0], c[1], c[2].x, CinePath.Move.CUT)
-	_shot(t, n.crest_at - 0.004, c[3], c[4], c[5].x)
+	_follow_shot(t, n.climb_from, c[0], c[1], c[2].x, CinePath.Move.CUT)
+	_follow_shot(t, n.crest_at - 0.004, c[3], c[4], c[5].x)
 	_shot(t, n.crest_at, c[6], c[7], c[8].x, CinePath.Move.CUT)
 	_shot(t, n.inside_at - 0.5, c[9], c[10], c[11].x)
 	# Inside.
@@ -398,6 +418,17 @@ func _camera(t: CineTimeline) -> void:
 
 func _shot(t: CineTimeline, at: float, pos: Vector3, look: Vector3, fov: float, move: CinePath.Move = CinePath.Move.SMOOTH) -> CineCameraKey:
 	return t.shot(at, st(pos.x, pos.y, pos.z), st(look.x, look.y, look.z), move, fov)
+
+
+## A shot riding with the runner: `offset` the camera's place from them and `look` what it looks at, in track axes (x toward the street, y
+## up, z along it; CineCameraKey.follow).
+func _follow_shot(t: CineTimeline, at: float, offset: Vector3, look: Vector3, fov: float, move: CinePath.Move = CinePath.Move.SMOOTH) -> CineCameraKey:
+	var k: CineCameraKey = t.shot(at, Vector3.ZERO, Vector3.ZERO, move, fov)
+	k.follow = &"runner"
+	k.watch = &"runner"
+	k.position = offset
+	k.target = look
+	return k
 
 
 ## A point of the way in (the entry's frame: x along the wall, y up, z out of it into the hall) in track space.
@@ -494,8 +525,13 @@ func _events(t: CineTimeline) -> void:
 	while at < n.inside_at - 0.5:
 		t.sound(at, &"station_hum", -8.0)
 		at += 2.3
-	t.sound(n.climb_from + 0.1, &"rubble_scramble")
-	t.sound(n.climb_from + 1.5, &"rubble_scramble", -3.0)
+	# The crawl's knocks and slips of stone, a scramble's length (1.8 s) at a time, from the first handhold to the crest.
+	at = n.climb_from + 0.1
+	var first_knock: bool = true
+	while at < n.crest_at - 0.8:
+		t.sound(at, &"rubble_scramble", 0.0 if first_knock else -3.0)
+		first_knock = false
+		at += 1.7
 	t.sound(n.crest_at + 0.1, &"rubble_shift", -2.0)
 	t.effect(n.inside_at - 0.45, CineEvent.FADE_OUT, 0.35)
 	t.cue(n.inside_at - 0.08, &"enter")
@@ -520,10 +556,13 @@ func _on_cue(cue_name: StringName) -> void:
 	entry.setup(stage.skin, n, stage, inside_wall_x, n.inside_at_z)
 
 
-## The street stays built back down it behind the cameras outside (the wasteland's haze), and as it is inside.
+## The street stays built back down it behind the cameras outside (the wasteland's haze). Inside, the stretch where the runner lands stays
+## built whatever the camera is doing: the cut inside (the cue `enter`, under black) is a moment before the camera's own cut there, and a
+## frame in between would take `near` from the camera still out at the station, 60 m up the street, and the Terminal stage would free its
+## first chunks, the floor under the landing, as built (a stage's chunks are only ever freed, not built again behind).
 func _stage_near(near: float) -> float:
 	if inside:
-		return near
+		return minf(near, n.inside_at_z)
 	return minf(near, n.station_at - 70.0)
 
 

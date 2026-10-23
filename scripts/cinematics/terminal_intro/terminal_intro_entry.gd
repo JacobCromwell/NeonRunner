@@ -53,6 +53,11 @@ func setup(p_skin: ZoneSkin, p_numbers: TerminalIntroTuning, stage: CineStage, p
 	_beam(glow)
 
 
+## The stone teeth that hang from this wall's lintel into the crack (TerminalIntroStation.lintel_teeth): the run of them its own.
+func lintel_teeth() -> Array[Vector3]:
+	return TerminalIntroStation.lintel_teeth(n.door_width * 0.5, 3, TerminalIntroStation.LINTEL_TOOTH_INSIDE)
+
+
 func _slab(s: MeshLayer, x0: float, x1: float, y0: float, y1: float, color: Color, out: float = 0.0, back: float = -THICK,
 		pattern: int = MeshKit.PAT_TERMINAL_WALL, param: float = 0.0) -> void:
 	s.box(Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5, (out + back) * 0.5), Vector3(x1 - x0, y1 - y0, out - back), color, 0.0, pattern,
@@ -78,15 +83,9 @@ func _wall(s: MeshLayer) -> void:
 ## doorway above the heap, the dusk outside.
 func _crack(s: MeshLayer) -> void:
 	var dw: float = n.door_width * 0.5
-	var tooth: float = -dw
-	var ti: int = 3
-	while tooth < dw - 0.1:
-		var tw: float = 0.5 + 0.9 * MeshKit.hash01(ti, 7, 71)
-		var td: float = 0.12 + 0.4 * MeshKit.hash01(ti, 8, 72)
-		s.quad(Vector3(tooth, n.door_height, 0.25), Vector3(tooth + tw * 0.5, n.door_height - td, 0.25), Vector3(minf(tooth + tw, dw), n.door_height, 0.25),
-			Vector3(minf(tooth + tw, dw), n.door_height, 0.25), STONE_DARK, 0.0, MeshKit.PAT_DZ_CONCRETE)
-		tooth += tw
-		ti += 1
+	for t: Vector3 in lintel_teeth():
+		s.quad(Vector3(t.x, n.door_height, 0.25), Vector3(t.x + t.y * 0.5, n.door_height - t.z, 0.25), Vector3(minf(t.x + t.y, dw), n.door_height, 0.25),
+			Vector3(minf(t.x + t.y, dw), n.door_height, 0.25), STONE_DARK, 0.0, MeshKit.PAT_DZ_CONCRETE)
 	# The dusk outside, through the crack: a pale card behind the doorway (emissive, a cold grey, under the bloom threshold).
 	s.rect(Vector3(-dw, 0.0, -THICK + 0.05), Vector3(dw * 2.0, 0.0, 0.0), Vector3(0.0, n.door_height, 0.0), COLD * 0.9, 0.14, MeshKit.PAT_PLAIN)
 
