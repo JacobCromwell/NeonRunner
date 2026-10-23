@@ -96,23 +96,24 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   its sweep shows and its cuts are live (`_lifted_between`: the sweep is drawn from its hover), and finishing before it
   gives up (`slash_problem` names the first rule that holds one back, "" when it may: `may_slash`). The first comes
   `first_slash_seconds` after it settles beside them, the next a seeded `slash_interval_min` to `slash_interval_max`
-  from the last one's warning (1.0 s; 1.8 to 2.3 s: task S2's review, the attack rate). Its warning (both
-  blades raised, eyes and blades brighter, `hunter_scrape` from where it is, and the red mark on the locked lane:
-  `_update_mark`, widening and pulsing, only widening with Reduced flashing), then `flurry_seconds` of cuts
-  (`hunter_slash`; its attack hitbox over the locked lane, `slash_height` high and `slash_depth` long, placed each tick
-  where the runner is along the track: `_place_slash_box`), then `recover_seconds`. What the cuts reach is drawn
-  (CLAUDE.md principle 4; task S2's review): over the warning's last `TRAIL_IN` (0.12 s) a see-through red fan of its
-  blades (`_build_trail`, `HunterModel.slash_mesh` and `slash_material`, unlit, both faces) sweeps out across the locked
-  lane from a pivot in front of its chest and stays whole through the cuts, and its rig lunges `HunterModel.LUNGE` (0.5
-  m) that way (`model.reach`, easing back as it recovers); the fan is built round the hitbox, every corner of it inside
-  with `SLASH_MARGIN` (0.1 m) and `SLASH_ANGLE_PAD` to spare, and clipped where it would reach more than `SLASH_MARGIN`
-  past the cut lane's far edge (`x_max`); its mesh is shared by every Hunter with the same numbers
-  (`HunterModel.shared_slash_mesh`), and `slash_fan` reports it to the tests. It's steady (one
-  sweep a flurry, no pulse), so Reduced flashing leaves it as it is. It holds its lane through a warning and its cuts. A
-  runner who takes a pad, steps onto a wall or teleports calls them off (`_on_player_event` runs before the hazard check
-  in the same step; the mark and the sweep go at once). One flurry is one hit: the damage rules' armor and shield take
-  the first contact and the invulnerability window the rest. A runner at an edge with it inward has no lane away from
-  it, so it never slashes them there (an edge refuge, a question for the owner: `docs/questions/s2.md`).
+  from the last one's warning (1.0 s; 1.8 to 2.3 s: task S2's review, the attack rate). Its warning (both blades raised,
+  eyes and blades brighter, `hunter_scrape` from where it is, and the red mark on the locked lane: `_update_mark`,
+  widening and pulsing, only widening with Reduced flashing), then `flurry_seconds` of cuts (`hunter_slash`; its attack
+  hitbox over the locked lane, `slash_height` high and `slash_depth` long, placed each tick where the runner is along
+  the track: `_place_slash_box`), then `recover_seconds`. What the cuts reach is drawn (CLAUDE.md principle 4; task S2's
+  review): over the warning's last `TRAIL_IN` (0.12 s) a see-through red fan of its blades (`_build_trail`,
+  `HunterModel.slash_mesh` and `slash_material`, unlit, both faces) sweeps out across the locked lane from a pivot in
+  front of its chest and stays whole through the cuts, and its rig lunges `HunterModel.LUNGE` (0.5 m) that way
+  (`model.reach`, easing back as it recovers); the fan is built round the hitbox, every corner of it inside with
+  `SLASH_MARGIN` (0.1 m) and `SLASH_ANGLE_PAD` to spare, and clipped where it would reach more than `SLASH_MARGIN` past
+  the cut lane's far edge (`x_max`); its mesh is shared by every Hunter with the same numbers
+  (`HunterModel.shared_slash_mesh`), and `slash_fan` reports it to the tests. It's steady (one sweep a flurry, no
+  pulse), so Reduced flashing leaves it as it is. It holds its lane through a warning and its cuts; what shuts that lane
+  ahead meanwhile calls them off as it steers, crosses or drops back. A runner who takes a pad, steps onto a wall or
+  teleports calls them off (`_on_player_event` runs before the hazard check in the same step; the mark and the sweep go
+  at once). One flurry is one hit: the damage rules' armor and shield take the first contact and the invulnerability
+  window the rest. A runner at an edge with it inward has no lane away from it, so it never slashes them there (an edge
+  refuge, a question for the owner: `docs/questions/s2.md`).
 - **Its cost** (task S2's review: its per-frame checks had doubled). Its checks run every tick; what they read more than
   once a frame is kept: whether a runner can step out of a bait's walkway lane to a side (`_out_open`, per bait and side,
   looked at again every `OUT_OPEN_REFRESH`, 0.25 s), the small attacks at the runner (`_small_attacks`, once a physics
