@@ -35,8 +35,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
 | 1061 | The Terminal pays about half of what its neighbours do, yet the Heavy missile (line 15,800) now first fits at Terminal 1, a level earlier than the Golden Zone it was placed for, so Golden 1 gets easier for buyers. Raise the missile's price (8,000 puts it back), or let the Terminal pay like its neighbours? |
 | 1072 | A bot taking the quickest way through Rubble Line's maze finishes in 140 to 159 s (4 to 23 s of it waiting for the dash) on 138 s of track, so a run can outlast the level by up to 21 s. Are 1 or 2 breaks a block right, or should they scale with depth, difficulty or lane count? |
-| 1207 | The Heavy Cyborg's placement leaves the Golden Zone's final stretch about x1.27 more dangerous at 5 lanes, below the approved 30-40%. Accept, raise the Golden levels' danger density, or rework the placement (a count rule, S1b, was started and stopped unmerged at the owner's word)? |
-| 1208 | The Hunter's 25 laser hits: auto-fire never aims at it beside the runner, so only stray shots hurt it. Keep, give it low-priority targeting beside the runner, or a smaller `target_ahead`? |
 
 ## The items in full
 
@@ -146,29 +144,3 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    quickest way with that dash (test_debris_maze) runs Rubble Line's 138 s of track in 140, 151 and 159 s at 3, 5 and 6
    lanes (4, 15 and 23 s of it waiting for the dash), and Last Stop's 143 s in about 141 s (its dashes make up for its
    stops). Should blocks need more breaks further into a level, or with the difficulty, or fewer at 6 lanes?
-
-**S1, the Heavy Cyborg** (task S1, October 23, 2026; from `docs/questions/s1.md`, whose item n is 1194 + n here; GDD §9.16; numbers in `data/enemies/heavy_cyborg.tres`, F6)
-1207. **The danger density pass in the Golden Zone** (the owner's danger density request against the Heavy Cyborg). Each
-    Heavy Cyborg keeps two seconds of clear floor before it, which the pass's rows keep off as off any big attack's
-    window, and the pass adds no cyborg or window cyborg within a second of run of one (other enemies, and those further
-    off, it may add near one), so in the Golden Zone it adds a little less: over test_danger_density's sample the final
-    band lands at about x1.27 for enemies at 5 lanes (x1.30 at the least before; x1.26 at 3 lanes, x1.27 built without
-    its teleporters, and x1.32 at 6, which keep their floors). Placeholder: the suite's floor is 0.04 lower there at 5
-    lanes (HEAVY_CYBORG_ROOM), as for the wall-run gaps and the teleporters at 3. The band moves a few hundredths with
-    each level's weight for the pattern (Golden 2's was chosen where it holds at 3 and 6 lanes). Which request gives
-    way?
-
-**S2, the Hunter** (task S2 with its review rounds and S2c, October 23, 2026; from `docs/questions/s2.md`, whose item n is 1207 + n here; GDD §9.17; numbers in `data/enemies/hunter.tres`, F6 "Enemy: hunter"; notes in `docs/architecture/enemy-hunter.md`)
-1208. **The laser beside the runner: can its 25 laser hits ever be dealt?** The owner: it "stays on the player's side when
-   it does its slashing attacks, making it difficult for the player to damage it with dashes or with laser attacks", and
-   its health is 25 laser hits. Built so (the placeholder, "not while alongside"): auto-fire, the laser and the missiles
-   alike, never picks it while it rides alongside (`Hunter.targetable`), only while it's seen and its middle
-   `target_ahead` (3 m) or more in front of the runner's. It never rides that far ahead in this build (it comes from
-   behind and rides with its middle 0.6 m ahead), so in play weapons never aim at it, and its 25 laser hits can only
-   come from shots meant for something else that pass through it. Measured (test_hunter): over a whole 25 s chase beside
-   a runner auto-firing laser tier 1 at cyborgs ahead in the other lanes, 40 shots, none at the Hunter, none reaching
-   it; it gave up whole. Before this, auto-fire picked it beside the runner and laser tier 1 destroyed it in about 8 s
-   of its chase. Which does the owner want: (a) as built, weapons in effect never hurt it (the gantryway is the only
-   way); (b) auto-fire picks it beside the runner only when nothing else is ahead (a lower priority), so the laser wears
-   it down slowly; (c) a smaller `target_ahead` (it's picked while it rides a little ahead, as it does while it warns
-   and cuts)?
