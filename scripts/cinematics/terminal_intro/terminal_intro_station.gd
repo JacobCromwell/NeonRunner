@@ -486,7 +486,8 @@ func draw_calls() -> int:
 
 ## The stone teeth that hang from the lintel into the doorway (one doorway, from -`door_half` to `door_half`), as (x, width, depth): the
 ## same ones the wall draws and the tests hold the runner against. `first` is the hash index they start at (the way in's wall has its own
-## run of them) and `reach` how much deeper than 0.12 m they may hang.
+## run of them) and `reach` how much deeper than 0.12 m they may hang (over the stretch the runner squeezes through, LINTEL_CALM_*, no deeper
+## than LINTEL_CALM_DEPTH).
 static func lintel_teeth(door_half: float, first: int, reach: float) -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	var tooth: float = -door_half
