@@ -57,6 +57,9 @@ extends SceneTree
 ##   sfx_bank_casino_intro.gd  Casino intro's: the violet sports car cruising down the casino street and pulling up
 ##   sfx_bank_terminal_intro.gd  Terminal intro's: the wasteland's wind, the dying sign's buzz and sparks, a hand wiping the route
 ##                        board, climbing the rubble, dropping into the station, its hum
+##   sfx_bank_terminal_outro.gd  Terminal outro's: the metro train's front door (a firm rattle, a violent clatter, fist
+##                        bangs, the pneumatic door opening and closing), the train waking, pulling away and rushing off,
+##                        and the screech's friendly squeak
 ##   sfx_bank_centipede.gd  the Cybernetic Centipede: its wake (the warning: a hiss and a clatter of legs), a bite's
 ##                        warning (its mandibles ratcheting open, a rising hiss), the snap, a wound and its death
 ##   sfx_bank_gantryway.gd  the falling gantryways: the groan and creak of steel as a pillar goes (the warning) and the
@@ -107,6 +110,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_gantryway.gd"),
 	preload("res://tools/asset_gen/sfx_bank_teleporter.gd"),
 	preload("res://tools/asset_gen/sfx_bank_octodog_jar.gd"),
+	preload("res://tools/asset_gen/sfx_bank_terminal_outro.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

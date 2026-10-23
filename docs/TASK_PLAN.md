@@ -511,13 +511,14 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2i | **The Casino's boss intro**, before The House (the owner's beats and reference, October 17, 2026) | F1 | L | T2 |
 | F2j | **The Casino's intro**, pulling up at the Brass Lotus (the owner's beats and reference, October 18, 2026) | F1 | M | T2 |
 | F2k | **The Terminal's intro**, outside the abandoned Grand Terminal and in through the rubble (the owner's beats, October 21, 2026) | F1 | M–L | T2 |
+| F2l | **The Terminal's outro**, the screech opens an abandoned metro train (the owner's beats, October 21, 2026) | F1, O4 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2k have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2l have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -632,6 +633,26 @@ close-up of the stops with THE PALACE in gold, a nod and a turn, the entrance bl
 the squeeze in; then, after a dip to black, the Terminal's own stage: out through the crack, a jump, the tracks running off ahead,
 the zone's title card. Three runner poses on the toolkit (`wipe`, `scramble`, `squeeze`), seven new sounds
 (`tools/asset_gen/sfx_bank_terminal_intro.gd`), `test_terminal_intro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115`.
+
+**F2l: the Terminal's outro** (owner, October 21, 2026; GDD §6, Cinematics, "Terminal outro"). In the Terminal's
+outro slot, in place of its placeholder card (`data/cinematics/terminal_outro.tres`), on the Terminal's skin (task O4). The
+runner finds an abandoned metro train (modern, dirty and run down, not a steam train), the camera pans along it, the
+runner shakes the front door (once, then violently and noisily), bangs on it and throws their hands up; the screech pops
+up in the door's window on the other side, squeaks, opens the door; the runner goes in and the camera pulls back as the
+train speeds away out of sight.
+**Done:** `TerminalOutro` (`scripts/cinematics/terminal_outro/`) in the Terminal's outro slot, which was a placeholder card:
+28.0 s on the zone's street. The runner jogs in and eases to a stop short of the tail of a dark, modern metro train
+(`TerminalTrainModel`, built by code: four articulated cars with two cabs, faded cream paint with a blue stripe under rain
+streaks, grime, rust, flaked paint and a few vines, rubber gangway bellows, a folded pantograph, a cab nose with two
+windscreens either side of a front door that has a window and a handle bar; `terminal_train.gdshader` paints the dirt and
+the hall's work-lamp pools over it, `terminal_train_glass.gdshader` is the door window's clear glass), and looks up at it;
+the camera pans along its length; at the front door they shake the handle once (firm), pause, then violently (the leaf
+rattling, the camera shaking with Screen shake, a clatter), bang on it three times and throw their hands up (two new
+generic poses in `CinePoses`, `brace` and `hands_up`; the arms' reach is two-bone IK in the script); the screech
+(`BeachOutroScreech`) pops up in the door's window and squeaks, the door slides open with a hiss and they go in behind it; the
+camera pulls back behind the tail as the train's lights come on (a stutter, one slow glow with Reduced flashing) and it
+pulls away out of sight. Nine new sounds (`tools/asset_gen/sfx_bank_terminal_outro.gd`), `test_terminal_outro`. The staging
+choices are `docs/questions/f2l.md`.
 
 ### H. The owner's requests (October 8, 2026)
 

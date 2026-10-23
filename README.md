@@ -22,8 +22,9 @@ Casino 2 (`--boss=casino_boss`), the Corporate zone's Hostile Takeover after Cor
 Mecha Guppy and Captain Cogs after Beach 3 (`--boss=beach_boss`), and the Golden Zone's final villain, The
 Golden Convergence, after Golden 3 (`--boss=golden_boss`). The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable). The owner's story beats are
-built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
-crater as a host cyborg looks on); until the owner describes the rest, each other zone's intro (and the City's boss
+built for the City's outro, Gangland's boss intro, the Dead Zone's intro (the runner climbing out of a smoking
+crater as a host cyborg looks on) and the Terminal's outro (an abandoned metro train, a door that won't open, and the
+screech that opens it from inside); until the owner describes the rest, each other zone's intro (and the City's boss
 intro) plays a placeholder arrival flyover over the zone, and the other outros are placeholder cards.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md` (the few needing the owner) or
 `docs/OPEN_QUESTIONS_DEFERRED.md` (standing as built).
@@ -993,7 +994,7 @@ spare (see Tools, above). Covered:
   and crouching), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
   skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
   camera's view), and the App's flow through a built slot, the web demo's too; each owner-beat cinematic has
-  its own suite (`test_city_intro`, `test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`).
+  its own suite (`test_city_intro`, `test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`, `test_terminal_outro`).
 - **Screens:** every screen at desktop and touch sizes; and (`phone_screens`) every screen the web demo shows at
   the sizes of a phone's page, sideways and upright: text and finger targets big enough, nothing cut off or
   out of sight, scrolling where it must.
@@ -1054,7 +1055,7 @@ scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
 scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...), the flyover and
-                        the owner-beat cinematics (the City outro, sewer_swarm_intro/, dead_zone_intro/)
+                        the owner-beat cinematics (the City outro, sewer_swarm_intro/, dead_zone_intro/, terminal_outro/)
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
                         and one folder per boss (floating_head/, sleep_taker/, the_house/, hostile_takeover/,
                         sewer_swarm/)
