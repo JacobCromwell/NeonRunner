@@ -54,6 +54,6 @@ bait_prefer_min_seconds = 8.0
 bait_prefer_max_seconds = 14.0
 bait_lane_before_seconds = 0.0
 bait_lane_after_seconds = 0.9
-arrival_calm_seconds = 3.0
+arrival_calm_seconds = 1.5
 intro_bait_min_seconds = 12.0
 intro_bait_max_seconds = 18.0

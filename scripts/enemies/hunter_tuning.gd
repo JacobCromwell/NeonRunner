@@ -121,11 +121,13 @@ extends EnemyTuning
 @export_range(0.0, 3.0, 0.1, "suffix:s") var bait_lane_before_seconds: float = 0.0
 @export_range(0.3, 1.5, 0.05, "suffix:s") var bait_lane_after_seconds: float = 0.9
 ## DESIGN-TBD (the orchestrator's brief: "a calm arrival"): the stretch of run from its arrival that no other attack is
-## planned on and later passes leave calm (seconds at the run speed).
-@export_range(0.0, 8.0, 0.5, "suffix:s") var arrival_calm_seconds: float = 3.0
+## planned on and later passes leave calm (seconds at the run speed; in every lane, so the zone doodads keep off it too:
+## 1.5 s leaves Specimen Vault room for all of its decoy jars, task Q5's count, where 3 s took one at five lanes).
+@export_range(0.0, 8.0, 0.5, "suffix:s") var arrival_calm_seconds: float = 1.5
 ## DESIGN-TBD: where a level introduces it (gives the feature a start), the falling gantryway its first chase takes as its
 ## bait is hung this many seconds of run past the feature's start (GantrywayRules.wanted, hunter_rules.gd
-## gantryway_wanted), so the first Hunter arrives about as the feature starts and shows its flurry before the bait.
+## gantryway_wanted), so the first Hunter arrives about as the feature starts, with time to show a flurry before the bait
+## where the runner's lane allows one (it never slashes them two lanes past the bait's walkway lane, Hunter.may_slash).
 @export_range(6.0, 21.0, 0.5, "suffix:s") var intro_bait_min_seconds: float = 12.0
 @export_range(6.0, 21.0, 0.5, "suffix:s") var intro_bait_max_seconds: float = 18.0
 
