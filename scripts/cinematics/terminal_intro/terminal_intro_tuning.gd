@@ -17,14 +17,15 @@ extends Resource
 @export_group("Timing")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1114): the length and the shots' times; the orchestrator's brief for the task suggested about 25
 ## to 32 s (the owner's beats set no length). Longer than GDD §1's 5-15 s, as the other intros are. It ends on black: Terminal 1
-## opens on its own view.
-@export_range(10.0, 60.0, 0.1, "suffix:s") var duration: float = 32.0
+## opens on its own view. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1207): task S2 made it 1.2 s longer (33.2 s), to give the owner's hands-and-knees crawl up
+## the rubble its time (4.6 s, was 2.8 s of scramble) and an unhurried look at the entrance before it (0.9 s, was 1.5 s).
+@export_range(10.0, 60.0, 0.1, "suffix:s") var duration: float = 33.2
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_in: float = 1.0
 @export_range(0.0, 8.0, 0.1, "suffix:s") var music_fade: float = 4.0
-@export_range(10.0, 60.0, 0.05, "suffix:s") var fade_at: float = 30.8
+@export_range(10.0, 60.0, 0.05, "suffix:s") var fade_at: float = 32.0
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_out: float = 1.2
 ## The zone's title card over the last shot (inside), and how long it shows.
-@export_range(0.0, 60.0, 0.05, "suffix:s") var card_at: float = 29.4
+@export_range(0.0, 60.0, 0.05, "suffix:s") var card_at: float = 30.6
 @export_range(0.5, 6.0, 0.05, "suffix:s") var card_seconds: float = 2.6
 ## The shots: the face (from the start), the camera sweeping round to look over the wasteland and the station
 ## (`survey_at`), the station's front (`facade_at`), the runner walking across to the sign (`walk_at`), at the sign as
@@ -37,7 +38,7 @@ extends Resource
 @export_range(0.0, 60.0, 0.05, "suffix:s") var sign_at: float = 16.2
 @export_range(0.0, 60.0, 0.05, "suffix:s") var mind_at: float = 18.7
 @export_range(0.0, 60.0, 0.05, "suffix:s") var door_at: float = 21.0
-@export_range(0.0, 60.0, 0.05, "suffix:s") var inside_at: float = 27.4
+@export_range(0.0, 60.0, 0.05, "suffix:s") var inside_at: float = 28.6
 ## The stage's street (metres; the finish line the track builder draws at its end stays out of view).
 @export_range(300.0, 2000.0, 10.0, "suffix:m") var stage_length: float = 400.0
 
@@ -76,7 +77,7 @@ extends Resource
 @export_range(0.0, 3.0, 0.05, "suffix:m") var inside_wall_back: float = 0.25
 @export_range(1.0, 8.0, 0.05, "suffix:m") var inside_slope: float = 3.2
 @export_range(1.0, 8.0, 0.05, "suffix:m") var landing_out: float = 4.4
-@export_range(0.0, 60.0, 0.05, "suffix:s") var jump_at: float = 28.2
+@export_range(0.0, 60.0, 0.05, "suffix:s") var jump_at: float = 29.4
 
 @export_group("The sign")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1104, 1105): how "GRAND" is shown fallen, TERMINAL's droop, which letters are lit and how they spark.
@@ -148,16 +149,17 @@ extends Resource
 @export var looks: PackedVector3Array = PackedVector3Array([Vector3(0.0, 0.0, 0.0), Vector3(0.7, 4.0, 0.0), Vector3(1.5, -38.0, -2.0),
 	Vector3(2.15, -38.0, -2.0), Vector3(3.2, 44.0, 6.0), Vector3(4.6, 52.0, 14.0), Vector3(6.4, 54.0, 16.0)])
 ## After the wipe they have stepped back from the board (how far out from the front), look at it, nod (`nod_at`), and turn to
-## the entrance (`turn_at`), walking off toward it.
+## the entrance (`turn_at`), setting off back the way they came (DESIGN-TBD, docs/OPEN_QUESTIONS_DEFERRED.md item 1210: out round the heap's foot, never
+## across its flank, as the cut to the foot follows).
 @export_range(1.0, 4.0, 0.05, "suffix:m") var step_back: float = 2.0
 @export_range(0.0, 60.0, 0.05, "suffix:s") var nod_at: float = 19.2
 @export_range(0.0, 60.0, 0.05, "suffix:s") var turn_at: float = 19.8
 ## The heap's foot, where they stand to look at the entrance (x, z), and the way up: when they start (`climb_from`), reach the
 ## crest (`crest_at`), where they start to squeeze, and are through (`through_at`).
 @export var heap_foot: Vector2 = Vector2(1.9, 5.6)
-@export_range(0.0, 60.0, 0.05, "suffix:s") var climb_from: float = 22.5
-@export_range(0.0, 60.0, 0.05, "suffix:s") var crest_at: float = 25.3
-@export_range(0.0, 60.0, 0.05, "suffix:s") var through_at: float = 26.9
+@export_range(0.0, 60.0, 0.05, "suffix:s") var climb_from: float = 21.9
+@export_range(0.0, 60.0, 0.05, "suffix:s") var crest_at: float = 26.5
+@export_range(0.0, 60.0, 0.05, "suffix:s") var through_at: float = 28.1
 
 @export_group("The cameras")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1108, 1114): every shot's place, look and lens.
@@ -222,9 +224,11 @@ extends Resource
 @export var door_cam_to: Vector3 = Vector3(2.2, 1.0, 4.4)
 @export var door_look_to: Vector3 = Vector3(0.0, 3.4, 0.0)
 @export var door_fov: Vector2 = Vector2(52.0, 48.0)
-## The climb: from beside the heap, then close on the crack as they squeeze in ([camera, look, fov] each: beside, nearer, close, at the end).
-@export var climb_cam: PackedVector3Array = PackedVector3Array([Vector3(-6.0, 2.0, 7.5), Vector3(0.8, 2.3, 3.2), Vector3(50.0, 0.0, 0.0),
-	Vector3(-3.5, 3.0, 6.0), Vector3(0.4, 3.2, 1.0), Vector3(46.0, 0.0, 0.0),
+## The climb: riding with the runner from beside the heap as they crawl up it, then close on the crack as they squeeze in ([camera, look,
+## fov] each: beside at the start of the crawl and at its end, as offsets from the runner in track axes, x toward the street, y up, z along
+## it, then in the station's frame: close on the crack, and at the end of the squeeze).
+@export var climb_cam: PackedVector3Array = PackedVector3Array([Vector3(1.6, 1.5, -3.4), Vector3(0.0, 0.35, 0.5), Vector3(40.0, 0.0, 0.0),
+	Vector3(1.2, 1.3, -2.5), Vector3(0.0, 0.4, 0.5), Vector3(36.0, 0.0, 0.0),
 	Vector3(-1.8, 3.6, 2.5), Vector3(0.2, 3.95, 0.1), Vector3(38.0, 0.0, 0.0),
 	Vector3(-1.5, 3.7, 2.2), Vector3(0.2, 3.95, -0.4), Vector3(36.0, 0.0, 0.0)])
 ## Inside, in the way in's frame (x along the wall, y up, z out of it into the hall) [camera, look, fov] each: at the crack and the runner

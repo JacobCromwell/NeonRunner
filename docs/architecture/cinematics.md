@@ -29,7 +29,7 @@ never ends, and a level never starts, unattended.
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
-| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`), wiping a board with its right arm in strokes (`wipe`), and squeezing head first into a low gap (`squeeze`), bracing against something in front of it (`brace`) and throwing its hands up in frustration (`hands_up`), and one that follows the leg phase as it moves, up loose rubble on hands and feet (`scramble`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`), wiping a board with its right arm in strokes (`wipe`), and squeezing head first into a low gap (`squeeze`), bracing against something in front of it (`brace`) and throwing its hands up in frustration (`hands_up`), and one that follows the leg phase as it moves, up loose rubble on hands and knees (`crawl`, its progress the slope); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
 | `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level, but without the alley a level's wall gaps get: the stage's track is built with a copy of the skin whose `wall_gap_recess_on` is off, task L4, since the set builds what the opening shows); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
@@ -81,7 +81,7 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
 keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
-(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`, `wipe`, `squeeze`, `brace`, `hands_up`, and `scramble`, which follows its leg phase) take the keys' `progress` (0-1, sampled like the position; a key below 0
+(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`, `wipe`, `squeeze`, `brace`, `hands_up`, and `crawl`, which follows its leg phase and takes the slope as its progress) take the keys' `progress` (0-1, sampled like the position; a key below 0
 keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
 hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises; not while it
 gets in, whose legs are its key poses); and while it
@@ -551,7 +551,7 @@ mesh caches), about 0.6 ms a step and at most about 3 ms; its props add about 97
 
 **The Terminal's intro** (`TerminalIntro`, task F2k; the owner's beats, October 21, 2026, GDD §6 Cinematics, "Terminal intro"; the
 Terminal's look from `docs/art/reference/terminal_zone.jpg`; what they leave open is DESIGN-TBD, `docs/OPEN_QUESTIONS_DEFERRED.md items 1102-1115`; numbers in
-`data/cinematics/terminal_intro_tuning.tres`): 32.0 s before Terminal 1 on two stages. **Outside** is the Dead Zone's look, not the
+`data/cinematics/terminal_intro_tuning.tres`): 33.2 s before Terminal 1 on two stages. **Outside** is the Dead Zone's look, not the
 zone's own: the stage def carries the Dead Zone's skin (`CineStageDef.skin`, so its sky, haze and greys, and a skin set on the def
 takes no sky of the slot's), in the level's lanes, with the street's left wall open for 110 m (`wall_gaps`) on the station. **Inside**
 is the zone's own Terminal stage, after a 0.4 s dip to black: the cue `enter` calls `switch_stage` with no skin, so the slot's own
@@ -597,24 +597,37 @@ platform. **The beats.** 0-2.8 s the runner's face (a close shot from in front a
 their head turning right, then left toward the station and up at it; 2.8-6.2 s the camera sweeps round them by their right, over the
 wasteland, to behind them and the station; cut at 6.2 s to the station's front from across the street, low on the letters of GRAND
 in the rubble (held a second), then pulling back and tilting up to the wide view and craning up to the sign (TERMINAL sparking and
-drooping, light in shafts from the window and the crack); 10.6 s following them across the forecourt (they walk at 1.55 m/s; this
+drooping, light in shafts from the window and the crack); 10.6 s following them across the forecourt (they walk at 1.55 m/s, round the heap's foot on bare pavement: its slabs and chunks keep clear of the route
+(`TerminalIntroHeap.keep_clear`, set from the walk's corner and the board's place), and the front's own blocks are out of the way, as the front has no broad step
+in front of its plinth; this
 shot is the last 4.6 m of the walk, square on to the board: a CUT key moves them there a moment before the shot, while the camera is
 on the station and they are out of its frame; a camera riding with an actor reads its path across a cut, so the cut is not at the
 camera's own); 13.6 s at the board as they wipe it (`wipe`, 2.4 s, three strokes
 down it); at the cut to the close-up (16.2 s) they step back out of shot and the camera, square in front of the board, shows all of
-it and pushes in toward THE PALACE; 18.7 s close on them (a nod, a turn to the entrance); 21 s low at the heap's foot, the crack of
-light above (they look up at it); 22.5 s the climb (`scramble`, their feet on the heap's surface) and, at the crest, the squeeze in
-through the crack head first (`squeeze`, lying down as they go), the camera close on the crack (poses do not blend, so the walk to the scramble, the scramble to the
-squeeze and the crawl to the jump are each on a camera cut); 27.4 s inside (a second actor,
+it and pushes in toward THE PALACE; 18.7 s close on them (a nod, a turn, and they set off back out the way they came); 21 s low at the heap's foot (they
+stand on its surface there), the crack of
+light above (they look up at it); 21.9 s the climb (`crawl`: on hands and knees, the body pitched along the slope, the hands reaching ahead in turn with
+the knees, at an even pace over the surface for 4.6 s, the shot riding with them from beside the heap) and, at the crest (26.5 s), the squeeze in
+through the crack head first (`squeeze`, from a low crouch to lying prone, 1.6 s; the crouch and the lying body are low enough, and the lintel's teeth
+shallow enough where they pass (`TerminalIntroStation.LINTEL_CALM_*`), that the body is never in them), the camera close on the crack (poses do not blend, so the walk to the crawl, the crawl to the
+squeeze and the crawl to the jump are each on a camera cut); 28.6 s inside (a second actor,
 `runner_in`): they crawl out through the crack over the crest, jump (a free fall, 0.84 s), land on the track bed (the thud) and turn to
 face along the line, the camera round behind them looking down it, the tracks running off into the distance, the platforms, arches
 and lamps, the zone's title card over it, and black. **Toolkit.** `CinePoses` gained three runner poses: `wipe` (the right arm to a
-board and wiping it in strokes over a progress, the body leaning and turning with them), `scramble` (up loose rubble on hands and
-feet, the arms reaching in turn with the leg phase) and `squeeze` (head first into a low gap, a crouch to lying prone, crawling with
+board and wiping it in strokes over a progress, the body leaning and turning with them), `crawl` (up loose rubble on hands and knees:
+the body pitched forward about its hips so its back lies along the slope that is its progress (`CinePoses.crawl_progress`), put on the slope's surface rather than
+the level (the rig's grounding would hold a crawler on a slope off it by the way its trailing foot is lower than the planted hands and knees), the arms and thighs square to the
+back, one diagonal pair reaching at a time, the head up; its leg phase follows the ground covered at `CRAWL_CYCLE` metres a cycle, `CinePoses.cycle_length`, not the run's stride; it replaces
+the first `scramble`, whose left-limb keys went to the chest, neck and head through `set_limb(UPPER_ARM_L, -1, ...)`, which takes the **right** joint's index and mirrors it, and so
+bent the back about 90 degrees: the left arm and leg of `squeeze` were misrouted the same way and are fixed too) and `squeeze` (head first into a low gap, a crouch to lying prone, crawling with
 the phase); `CinePoses.runner()` takes the leg phase (the cyclic poses use it; the others ignore it). Its sounds
-(`tools/asset_gen/sfx_bank_terminal_intro.gd`, none a warning): `waste_wind`, `sign_buzz`, `sign_zap`, `grime_wipe`,
+(`tools/asset_gen/sfx_bank_terminal_intro.gd`, none a warning): `waste_wind`, `sign_buzz`, `sign_zap` (an electrical zap, 1.0 s: a hard snap, a thump and a falling chirp, then a ragged buzz that gutters out, crackling), `grime_wipe`,
 `rubble_scramble`, `landing_thud` and `station_hum`, with the game's `rubble_shift`; the zone's music fades in from the start.
-Everything is worked out from the time, so stepping or skipping shows the same. Cost (headless, `test_terminal_intro`): about 45 ms
+Everything is worked out from the time, so stepping or skipping shows the same, **but for what the stage has built**: a stage keeps only the chunks near
+what the camera and the actors are looking at (`CineStage.update(near)`: chunks well behind are freed and never built again), and the cue `enter` (under
+black, 0.08 s before the camera's own cut inside) switches stages while the camera is still out at the station, so any frame in that gap, at 60 fps several, took `near` from
+the camera 60 m up the street and freed the Terminal stage's first chunks, **the floor under the landing**; `_stage_near` now holds the way in's stretch built inside
+(`test_terminal_intro` steps the clock by 1/60, 1/30, 0.1 and 0.25 s and looks for the floor in every lane). Cost (headless, `test_terminal_intro`): about 45 ms
 to set up (350 to 540 ms the first time, with cold mesh caches), about 0.6 ms a step and at most about 22-35 ms (the step that builds
 the Terminal stage); its props add about 61 draw calls outside, the runner's rig and the actors on top. The cinematic's own
 materials (the letters', the shafts', the halos') are made with `TerminalIntroStation.own()`, which copies a skin's material by
