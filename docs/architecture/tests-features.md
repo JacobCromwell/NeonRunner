@@ -391,28 +391,30 @@ owner's 25 s and 25 laser hits, a warning with time to change lanes, cuts over a
 every number in F6), its look (draw calls, standard materials, only the eyes, blades and jets glowing, the blades in the
 hazard red, raised for a warning and chopping in turn) and, through the chase camera's resting view (EnforcerTruckView),
 its whole look on screen beside the runner at 3, 5 and 6 lanes, every lane and side, lunging as it cuts too and risen
-over a full fence (a runner off the edges), hiding neither them nor the floor they need; then on real physics at the Ice
-Lab's speed, every frame watched (its body never meets the runner's, never sinks below the floor, cuts only the lane it
-warned of a whole warning later): its arrival, a runner crossing into its lane as it comes up (it keeps behind them),
-following into the lane the runner leaves (and bumping them back unharmed, dashing too), riding beside a runner by the
-edge on the wrong side of a bait until its pillar is near, then letting them past (beside them and in view before the
-window, the walkway landing on it), its flurries (dodged one lane away; a runner who stays or jumps cut down; the armor
-and the shield taking one hit for a whole flurry), no flurry without a way out (an edge, a hole in the other lane) and
-hovering over holes, the gantryway bait at 3, 5 and 6 lanes both ways round, a late step out (0.8 s after the break),
-the bait lined up from the push side, every bait of Specimen Vault's own builds on a cut of the level, whole encounters
-at those builds' own leads with its flurries on, a cyborg's burst at a runner by the edge with it beside them (it drops
-back so they can step into its lane) and no flurry while a cyborg's gun is on, weapons (auto-fire never picking it
-beside the runner, only clearly ahead, nor over a whole chase beside a runner auto-firing laser tier 1; 25 shots, the
-other tiers in proportion), contacts and charges, steering round a doodad and a standing enemy, rising over full fences
-in its lane (risen over each, never too low, staying beside the runner, never risen while its sweep shows or its cuts
-are live, flurries between them) and going round a gapped one, its lane shut with no lane further out (it crosses behind
-the runner to their other side at least 2.6 m behind them, or makes room where they need that lane), a ceiling, a fenced
-ceiling (no flurry in its pick, a trap pad's lane never open), a teleport, giving up, the director's turns, its warning
-mark with and without Reduced flashing, the sweep of its cuts (on every frame its cuts' box is live, the box inside the
-drawn sweep, the sweep reaching no further than the cut lane's far edge and a margin; only from the warning's end
-through the cuts, never pulsing, the same with Reduced flashing; one mesh shared by two Hunters); its placement on
-Specimen Vault (a bait in every chase, never two at once, the same every build, none elsewhere), its warm-up and its
-data (hint, sounds).
+over a full fence (a runner off the edges), hiding neither them nor the floor they need, and wherever else it rides near
+them hiding nothing of them or their lane ahead (coming up or dropping back in a lane beside theirs, in their way behind
+them at `cross_gap` with its disc rolled into a lane change, recovering in the lane it held); then on real physics at
+the Ice Lab's speed, every frame watched (its body never meets the runner's, never sinks below the floor, cuts only the
+lane it warned of a whole warning later): its arrival, a runner crossing into its lane as it comes up (it keeps behind
+them), following into the lane the runner leaves (and bumping them back unharmed, dashing too), riding beside a runner
+by the edge on the wrong side of a bait until its pillar is near, then letting them past (beside them and in view before
+the window, the walkway landing on it), its flurries (dodged one lane away, holding its lane through each recovery; a
+runner who stays or jumps cut down; the armor and the shield taking one hit for a whole flurry), no flurry without a way
+out (an edge, a hole in the other lane) and hovering over holes, the gantryway bait at 3, 5 and 6 lanes both ways round,
+a late step out (0.8 s after the break), the bait lined up from the push side, every bait of Specimen Vault's own builds
+on a cut of the level, whole encounters at those builds' own leads with its flurries on, a cyborg's burst at a runner by
+the edge with it beside them (it drops back so they can step into its lane) and no flurry while a cyborg's gun is on,
+weapons (auto-fire never picking it beside the runner, only clearly ahead, nor over a whole chase beside a runner
+auto-firing laser tier 1; 25 shots, the other tiers in proportion), contacts and charges, steering round a doodad and a
+standing enemy, rising over full fences in its lane (risen over each, never too low, staying beside the runner, never
+risen while its sweep shows or its cuts are live, flurries between them) and going round a gapped one, its lane shut
+with no lane further out (it crosses behind the runner to their other side at least 2.6 m behind them, or makes room
+where they need that lane), a ceiling (a warning called off by a pad stops its scrape), a fenced ceiling (no flurry in
+its pick, a trap pad's lane never open), a teleport, giving up, the director's turns, its warning mark with and without
+Reduced flashing, the sweep of its cuts (on every frame its cuts' box is live, the box inside the drawn sweep, the sweep
+reaching no further than the cut lane's far edge and a margin; only from the warning's end through the cuts, never
+pulsing, the same with Reduced flashing; one mesh shared by two Hunters); its placement on Specimen Vault (a bait in
+every chase, never two at once, the same every build, none elsewhere), its warm-up and its data (hint, sounds).
 `test_hunter_baits` (slow, about 2 minutes) plays the Hunter's bait at every lead Specimen Vault's builds give it (3, 5
 and 6 lanes, the campaign's seed and 9001-9004, re-read from the builds each run), on a plain track with its walkway's
 lane and its push both ways round, the runner starting in every lane, its flurries on; the runner (the review's bait
