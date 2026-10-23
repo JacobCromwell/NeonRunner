@@ -681,14 +681,14 @@ func _test_contact_armor() -> void:
 	check(max_hits >= 2, "the first armor upgrade has charges to spare")
 	await _step_until(w, func() -> bool: return w.score.blocked > 0 or not w.player.alive, 10.0)
 	check(w.player.alive and w.player.armor == max_hits - 1 and w.player.shield == 1
-		and not w.player.armor_state.is_recharging() and w.player.is_invulnerable()
+		and w.player.armor_state.is_up() and w.player.armor_state.is_recharging() and w.player.is_invulnerable()
 		and first_hits == [DamageRules.Outcome.BLOCKED_ARMOR] and events.count(&"armor_hit") == 1,
-		"real body contact spends just one upgraded armor charge, grants grace and leaves the shield")
+		"real body contact spends just one upgraded armor charge (its wait starts: GDD §4, any hit), grants grace and leaves the shield")
 	r = await sim.step_world(w, 2.5)
 	check(r["alive"] and w.player.armor == max_hits - 2 and w.player.shield == 1 and w.score.blocked == 2
 		and later_hits == [DamageRules.Outcome.BLOCKED_ARMOR]
 		and events.count(&"armor_hit") + events.count(&"armor_break") == 2
-		and w.player.armor_state.is_recharging() == (max_hits == 2),
+		and w.player.armor_state.is_up() == (max_hits > 2) and w.player.armor_state.is_recharging(),
 		"a second real contact after grace consumes exactly one more charge, breaking only on the last")
 	await sim.free_world(w)
 

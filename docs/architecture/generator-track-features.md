@@ -537,6 +537,22 @@ ScoreKeeper ends the wall run). A wall entry (move or ramp) inside a gap is refu
 bump. Past the gap, the usual move input steps back onto the wall. `HintDirector` introduces them through the
 `wall_gap` hint. `test_wall_gaps` covers all of this.
 
+**Coming off a wall moves one lane** (task S3; the owner, October 23, 2026: on The Hush's extended wall runs a move to
+come off the wall threw the runner two lanes, into the hole beside a platform). A move away from the wall while on it
+is a wall jump into the outer lane. An extended wall run's notch at each platform's near end (Extended wall runs,
+below) drops every standard wall run off there, just where that move is due, and the move, a moment later, was a lane
+switch from the outer lane. So a wall gap can carry `LevelLayout.SETS_DOWN` (only the notches do,
+`WallRunGapPlacement.openings_of`): where one drops the runner, their first move away from the wall is still the
+dismount, whenever it comes, and moves them no further (`Player._on_move`, `_set_down_side`, `LevelLayout.wall_gap_at`;
+once: a second move is a lane switch), until they step back onto a wall, or a pull out of a pit, a teleport, a death or
+a revive ends it. It has no timer, so a move made late after the same drop does what an early one does; and it can't
+swallow a move that would have saved them, since the lane beside every platform is a hole all along it (the extended
+wall run's holes run in every lane but its platforms', `test_extended_wall_runs` checks The Hush's at 3, 5 and 6
+lanes). Nothing else changed: after the wall run's own end, a plain wall gap's drop or a repel a move away switches
+lanes as it always did (the hover truck's dodge out of its lane right after a wall gap drops the runner into it,
+`test_hover_truck`, relies on it). DESIGN-TBD (`docs/questions/s3.md`): the rule. `test_movement` (ordinary and ramp
+wall runs, plain and set-down gaps) and `test_extended_wall_runs` (The Hush) cover it.
+
 **A level's own wall gaps, and the Beach's open walls** (task D10b; the owner, October 9, 2026: the Beach should
 "feel more open ... much longer sections where there aren't sidewalls", its walls appearing "about 50% of the
 time that they are now currently appearing"; GDD §5, Zone 6: the Beach). `LevelConfig.wall_gap_tuning` gives a level
@@ -1118,7 +1134,10 @@ Sentinel Row's (none: `GOLDEN_FIELDS`). Every level without them is built exactl
   wall the other wall opens over its crossing, from its run-in to its far edge (`open_wall_of`), so the runner reads from
   the run-in which way to go; and each lit wall opens for `platform_notch_seconds` (0.1 s, about 2.4 m) at each
   platform's near end, so a runner still on the wall there (claws' longer run, the dash) drops onto the platform rather
-  than being carried into the next hole (a press toward the wall does nothing while on it); shorter than the drop off
+  than being carried into the next hole (a press toward the wall does nothing while on it). It drops every standard
+  wall run there too, so it carries `LevelLayout.SETS_DOWN`: the runner's first move away from the wall after it, until
+  they step back onto one, is that dismount, one lane (task S3: Wall gaps, Coming off a wall moves one lane); shorter
+  than the drop off
   the wall, so a step back on as soon as the runner lands is never refused. Both walls (`wall_path`: from
   `wall_clear_seconds` before its run-in) keep everything wall-side off, as an ordinary one's lit wall does
   (`wall_keep_outs_for`, `on_wall_section`). `problem()` checks its shape, its platforms, its holes lane by lane, both

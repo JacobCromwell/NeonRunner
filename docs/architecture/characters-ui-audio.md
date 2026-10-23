@@ -107,9 +107,10 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
 - **UI:** a theme built in code (`scripts/ui/theme/`: `UiStyle` in `data/ui/ui_style.tres`,
   `UiTheme`), code-drawn icons (`scripts/ui/icons/`) and a widget kit (`scripts/ui/widgets/`). Screens
   (`scripts/ui/screens/`) extend `ScreenBase`; the HUD is `RunHud`: its protections show the armor's
-  hits and, while it's broken, the cooldown ring filling in the kit's calm accent until it's back, when
-  the icon flashes and the player's `armor_back` plays (a latch and a low chime; a hit the armor survives
-  plays `armor_hit`). Orbitron is for titles and Exo 2
+  hits and, from any hit (task S3, GDD §4: any hit starts the wait), the cooldown ring filling in the
+  kit's calm accent until it's back whole, when the icon flashes and the player's `armor_back` plays (a
+  latch and a low chime; a hit the armor survives plays `armor_hit`). Worn but not broken, the icon stays
+  lit with its hits left (`CooldownIcon.lit_while_cooling`); broken, it dims. Orbitron is for titles and Exo 2
   for text and numbers. On the HUD, draw icons from `IconFactory.texture()` (cached, tinted with a
   modulate colour) rather than `IconFactory.draw()`: every polygon or polyline command costs its own
   draw call every frame, and the HUD's icons alone were once 220 of about 370.

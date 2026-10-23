@@ -35,7 +35,7 @@ extends RefCounted
 ## window runs out first.
 ##
 ## The armor itself (GDD §4, §8) is a state with rules of its own, below (Armor): up with its hits left,
-## or broken and coming back. The Player holds one and applies what resolve() says to it.
+## or broken, and from any hit coming back whole. The Player holds one and applies what resolve() says to it.
 
 enum Outcome {
 	IGNORE,          ## No effect: inactive, invulnerable, passed through, or a harmless part.
@@ -135,31 +135,38 @@ static func lets_through(hazard: Hazard, outcome: Outcome) -> bool:
 ## starts with it, free; the shop's armor is an upgrade to it (GameRules: hits and wait per tier).
 ## - Up, with `hits` left: each contact resolve() answers BLOCKED_ARMOR (an enemy attack, an electrical
 ##   hazard, or a solid one that declares armor_blocks_solid: a dash wall, a sign) takes one hit (block()),
-##   and the Player gives the usual invulnerability.
-## - When its last hit goes, it breaks, and it comes back whole `recharge_time` later, on the run's
-##   clock: tick() advances the wait from the Player's physics step, so a pause (or a death) stops it,
-##   and it's the same at any frame rate.
+##   and the Player gives the usual invulnerability. When its last hit goes, it breaks.
+## - **Any hit starts its wait** (GDD §4, owner, October 23, 2026, a bug fix: armor knocked from 3 hits to 2
+##   starts the wait, and at its end the armor is back whole, 3): a hit that leaves it down (under
+##   `max_hits`, broken or not) starts the wait, and `recharge_time` later it's back whole, on the run's
+##   clock: tick() advances the wait from the Player's physics step, so a pause (or a death) stops it, and
+##   it's the same at any frame rate. (Before task S3 only the break started it, and worn armor never
+##   came back.)
 ## - A pickup (GDD §10) brings it back whole at once, and a revive does too (restore()).
 ## A run whose loadout has no armor (a bare Loadout: tests and tools) starts without it (`carried`
 ## false); a pickup gives it.
-## DESIGN-TBD (docs/questions/g3.md): armor worn by some hits gets nothing back until it breaks; a
-## pickup taken while it's whole adds a hit, up to `pickup_extra_hits` over its count; a revive brings
-## it back whole.
+## DESIGN-TBD (docs/questions/s3.md): another hit while the wait runs keeps it running (it doesn't
+## start again), but the hit that breaks the armor starts it again, so broken armor is always back
+## `recharge_time` after it broke (GDD §4: "after it breaks it comes back 30 seconds later"); a pickup's
+## extra hit over `max_hits` is no part of the armor's own count: losing it leaves the armor whole, with
+## no wait, and the wait brings back `max_hits`, not the extra.
+## DESIGN-TBD (items 245 and 247 in docs/OPEN_QUESTIONS*.md): a pickup taken while it's whole adds a hit,
+## up to `pickup_extra_hits` over its count; a revive brings it back whole.
 class Armor:
 	## A wait this close to its end counts as over (float steps never land on exactly 0).
 	const EPSILON: float = 0.0001
 
-	## Hits it blocks before it breaks.
+	## Hits it blocks before it breaks: its own count, whole.
 	var max_hits: int = 1
-	## Seconds from breaking to coming back whole.
+	## Seconds from a hit that leaves it down to its being back whole.
 	var recharge_time: float = 30.0
 	## Hits a pickup may add over max_hits while the armor is whole.
 	var pickup_extra_hits: int = 1
 	## The run has armor: its loadout's, or a pickup's.
 	var carried: bool = false
-	## Hits left now: 0 while it's broken (or not carried).
+	## Hits left now: 0 while it's broken (or not carried); above max_hits with a pickup's extra hit.
 	var hits: int = 0
-	## Seconds until it's back whole: above 0 only while it's broken and coming back.
+	## Seconds until it's back whole: above 0 only while it's down (fewer hits than max_hits) and coming back.
 	var recharge_left: float = 0.0
 
 	func _init(p_max_hits: int = 1, p_recharge_time: float = 30.0, p_pickup_extra_hits: int = 1,
@@ -179,28 +186,31 @@ class Armor:
 	func is_up() -> bool:
 		return hits > 0
 
+	## It's down, broken or worn (fewer hits than max_hits), and its wait is running.
 	func is_recharging() -> bool:
-		return hits <= 0 and recharge_left > 0.0
+		return recharge_left > 0.0
 
-	## How far broken armor has come back, 0 as it breaks to 1 as it's back; 1 while nothing is coming
-	## back (it's up, or there is none).
+	## How far down armor has come back, 0 as its wait starts to 1 as it's whole; 1 while nothing is
+	## coming back (it's whole, or there is none).
 	func progress() -> float:
 		if not is_recharging():
 			return 1.0
 		return clampf(1.0 - recharge_left / recharge_time, 0.0, 1.0)
 
-	## One contact it blocked (resolve() answered BLOCKED_ARMOR). True if that was its last hit: it
-	## broke, and its wait starts.
+	## One contact it blocked (resolve() answered BLOCKED_ARMOR). True if that was its last hit: it broke.
+	## A hit that leaves it down starts its wait (GDD §4: any hit), or, while that runs, leaves it running,
+	## but for the one that breaks it, which starts it again (DESIGN-TBD, docs/questions/s3.md).
 	func block() -> bool:
 		if not is_up():
 			return false
 		hits -= 1
-		if hits > 0:
-			return false
-		recharge_left = recharge_time
-		return true
+		var broke: bool = hits <= 0
+		if hits < max_hits and (broke or not is_recharging()):
+			recharge_left = recharge_time
+		return broke
 
-	## `delta` seconds of the run pass (the Player's physics step). True when it came back whole now.
+	## `delta` seconds of the run pass (the Player's physics step). True when it came back whole now,
+	## from broken or worn.
 	func tick(delta: float) -> bool:
 		if not is_recharging():
 			return false
@@ -208,7 +218,7 @@ class Armor:
 		if recharge_left > EPSILON:
 			return false
 		recharge_left = 0.0
-		hits = max_hits
+		hits = maxi(hits, max_hits)
 		return true
 
 	## Back whole at once (a revive). True if anything changed. Armor the run doesn't carry stays away.
@@ -219,8 +229,9 @@ class Armor:
 		recharge_left = 0.0
 		return true
 
-	## An armor pickup was taken: the armor is back whole at once (and carried from now on); taken
-	## while it's whole, it adds a hit, up to pickup_extra_hits over its count. True if anything changed.
+	## An armor pickup was taken: the armor is back whole at once, its wait over (and carried from now
+	## on); taken while it's whole, it adds a hit, up to pickup_extra_hits over its count. True if
+	## anything changed.
 	func take_pickup() -> bool:
 		carried = true
 		if hits < max_hits:

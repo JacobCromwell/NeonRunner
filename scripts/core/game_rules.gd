@@ -25,18 +25,18 @@ extends Resource
 ## GDD §4 (owner's playtest, September 30, 2026): every level and boss fight starts with armor, free.
 ## It blocks this many enemy attacks or electrical hazards before it breaks (GDD §8: one)...
 @export_range(1, 5) var armor_hits: int = 1
-## ...and comes back whole this long after it breaks (GDD §4: 30 seconds), on the run's clock
-## (DamageRules.Armor).
+## ...and comes back whole this long after a hit (GDD §4: 30 seconds; any hit starts the wait, owner, October 23,
+## 2026), on the run's clock (DamageRules.Armor).
 @export_range(1.0, 120.0, 0.5, "suffix:s") var armor_recharge: float = 30.0
 ## DESIGN-TBD (the balancing pass, R7, tunes them): the shop's armor upgrade, one entry per tier (tier 1
 ## first, as many as the shop catalog's armor tiers): hits before it breaks. GDD §8: the tiers alternate
 ## between one more hit and a shorter wait.
 @export var armor_tier_hits: PackedInt32Array = PackedInt32Array([2, 2, 3, 3])
-## DESIGN-TBD (R7 tunes them): the armor upgrade's wait before it comes back, per tier (tier 1 first).
+## DESIGN-TBD (R7 tunes them): the armor upgrade's wait from a hit to its being back whole, per tier (tier 1 first).
 @export var armor_tier_recharge: PackedFloat32Array = PackedFloat32Array([30.0, 25.0, 25.0, 20.0])
-## DESIGN-TBD (docs/questions/g3.md): an armor pickup (GDD §10) brings broken or worn armor back whole at
-## once; taken while the armor is whole, it adds a hit, up to this many over the armor's count (0: it
-## does nothing then).
+## DESIGN-TBD (item 245 in docs/OPEN_QUESTIONS*.md): an armor pickup (GDD §10) brings broken or worn armor
+## back whole at once; taken while the armor is whole, it adds a hit, up to this many over the armor's
+## count (0: it does nothing then).
 @export_range(0, 3) var armor_pickup_extra_hits: int = 1
 
 @export_group("Thefts")
@@ -110,7 +110,7 @@ func armor_hits_at(tier: int) -> int:
 	return maxi(armor_tier_hits[mini(tier, armor_tier_hits.size()) - 1], 1)
 
 
-## Seconds the armor takes to come back after it breaks, at upgrade tier `tier` (0: the free armor).
+## Seconds the armor takes to come back whole after a hit, at upgrade tier `tier` (0: the free armor).
 func armor_recharge_at(tier: int) -> float:
 	if tier <= 0 or armor_tier_recharge.is_empty():
 		return armor_recharge
