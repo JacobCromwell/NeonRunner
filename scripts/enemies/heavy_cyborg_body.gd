@@ -295,7 +295,9 @@ func _update_gatling(delta: float) -> void:
 	_flash.visible = _muzzle_flash_left > 0.0
 	if _aim_line.visible:
 		_line_time += delta
-		if is_inside_tree():
+		# Drawn in the world (top-level) only in play: a warm-up's look outside the tree, or in the warm-up stage's
+		# tiny space (ShaderWarmup turns top-level parts off), keeps its line where it is.
+		if is_inside_tree() and _aim_line.top_level:
 			_place_aim_line()
 
 
