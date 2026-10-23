@@ -2,16 +2,21 @@ extends TestSuite
 ## The Heavy Cyborg in the campaign's own builds, played through (GDD §9.16; task S1, the review's play check): Relay
 ## Station, Specimen Vault and the Golden Zone's three levels at 3, 5 and 6 lanes on their own seeds, as the campaign
 ## configures them, at each level's own pace, with everything else the level holds in play (its heli drones, window
-## cyborgs and cyborgs sharing the airspace). A runner in god mode who keeps to their lane (grapples pull them out of
-## gaps) passes every Heavy Cyborg, and every one winds up (its warning first) and fires a stream of min_stream_rounds
-## rounds at the least, Relay Station's first, its introduction, among them; every round comes from ahead after a
-## whole wind-up, flies its warning from the barrels' tips and arrives where the path around it is clear of fences and
-## gaps. test_heavy_cyborg has the rest.
+## cyborgs and cyborgs sharing the airspace). A runner in god mode who stays on the floor (steering round the anti-grav
+## pads, which would lift them onto a ceiling, where a Heavy Cyborg holds its fire as a cyborg does, and the
+## teleporters, which would carry them past it; grapples pull them out of gaps) passes every Heavy Cyborg, and every one
+## winds up (its warning first) and fires a stream of min_stream_rounds rounds at the least, Relay Station's first, its
+## introduction, among them; every round comes from ahead after a whole wind-up, flies its warning from the barrels'
+## tips and arrives where the path around it is clear of fences and gaps. test_heavy_cyborg has the rest.
 
 const LEVELS: Array[String] = ["ice_lab/2", "ice_lab/3", "golden/1", "golden/2", "golden/3"]
 const LANES: Array[int] = [3, 5, 6]
 ## Metres past the last Heavy Cyborg the run goes on (its last rounds land behind the runner's spot by then).
 const PAST: float = 30.0
+## Metres ahead in their lane the runner looks for an anti-grav pad or a teleporter to steer round (_steer), and seconds
+## between two lane switches.
+const LOOK_AHEAD: float = 30.0
+const STEER_EVERY: float = 0.3
 
 var sim: RunSim
 var ht: HeavyCyborgTuning
@@ -60,7 +65,9 @@ func _play(campaign: Campaign, id: String, lanes: int, others: Dictionary) -> St
 	w.player.running = true
 	var end: float = homes[-1] + PAST
 	var frames: int = int((end + 60.0) / movement.run_speed * 1.3 * Engine.physics_ticks_per_second)
+	var steered: Array[float] = [-INF]
 	for i: int in frames:
+		_steer(w, layout, steered)
 		await tree.physics_frame
 		if w.player.distance > end:
 			break
@@ -80,6 +87,35 @@ func _play(campaign: Campaign, id: String, lanes: int, others: Dictionary) -> St
 			% [tag, home, shots, ", Relay Station's introduction" if id == "ice_lab/2" and home == homes[0] else ""])
 	await sim.free_world(w)
 	return "%s: %d of %d fired, %d rounds" % [tag, fired, homes.size(), rounds]
+
+
+## Keeps the runner on the floor (see the header): where an anti-grav pad or a teleporter lies within LOOK_AHEAD in their
+## lane, a switch to the nearest lane free of both there, at most every STEER_EVERY seconds (`steered`: the last one's
+## level time).
+static func _steer(w: RunWorld, layout: LevelLayout, steered: Array[float]) -> void:
+	var p: Player = w.player
+	if p.surface != Player.Surface.FLOOR or w.level_time() - steered[0] < STEER_EVERY \
+			or not _lift_ahead(layout, p.lane, p.distance):
+		return
+	for s: int in [1, -1, 2, -2]:
+		var to: int = p.lane + s
+		if to < 0 or to >= layout.lane_count or _lift_ahead(layout, to, p.distance):
+			continue
+		for k: int in absi(s):
+			p.press(&"move_right" if s > 0 else &"move_left")
+		steered[0] = w.level_time()
+		return
+
+
+## True if an anti-grav pad or a teleporter's pad lies in `lane` within LOOK_AHEAD past track distance `d`.
+static func _lift_ahead(layout: LevelLayout, lane: int, d: float) -> bool:
+	for pad: Dictionary in layout.pads:
+		if int(pad["lane"]) == lane and float(pad["at"]) >= d - 2.0 and float(pad["at"]) <= d + LOOK_AHEAD:
+			return true
+	for t: Dictionary in layout.teleporters:
+		if int(t["lane"]) == lane and float(t["end"]) >= d - 2.0 and float(t["at"]) <= d + LOOK_AHEAD:
+			return true
+	return false
 
 
 ## Checks every round `gun` fired (see the header): after a whole wind-up, from ahead, its warning from the barrels'

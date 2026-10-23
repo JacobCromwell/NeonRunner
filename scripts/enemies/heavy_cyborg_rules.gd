@@ -58,15 +58,12 @@ const RUN_AFTER: Array[String] = ["cyborg", "window_cyborg", "host", "hover_truc
 	"debris_maze"]
 ## The params a plain cyborg's entry may carry (its rules' panic roll); any other is a rule's mark.
 const PLAIN_PARAMS: PackedStringArray = ["panic", "host"]
-static var trace: Array[String] = []  # PROBE-ONLY
-static var apply_trace: Array[String] = []  # PROBE-ONLY
 
 
 ## Last of the rules: the cyborg of each of its pattern's picks still standing becomes a Heavy Cyborg where one fits,
 ## spaced from the one before (never the level's last plain cyborg); one that doesn't stays the plain cyborg it is.
 ## Then the top-up (see the header), from its own random stream.
 static func apply(gen: LevelGenerator) -> void:
-	apply_trace.clear()  # PROBE-ONLY
 	var t: HeavyCyborgTuning = tuning_of()
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(gen.layout, gen.tuning, gen.zones)
 	var taken: Array[Vector2] = taken_spans(gen)
@@ -80,9 +77,6 @@ static func apply(gen: LevelGenerator) -> void:
 		if left > 1 and _spaced(placed, at, spacing) and fits(gen, e, t, spans, taken):
 			_take(e, placed)
 			left -= 1
-			apply_trace.append("%.0f:ok" % at)  # PROBE-ONLY
-		else:  # PROBE-ONLY
-			apply_trace.append("%.0f:no:%s" % [at, "left" if left <= 1 else ("spacing" if not _spaced(placed, at, spacing) else _why_not(gen, e, t, spans, taken))])  # PROBE-ONLY
 	# The top-up: a share of the level's other plain cyborgs, the first that fits always where the pattern's left none.
 	var from: float = gen.feature_start(TYPE)
 	var chance: float = clampf(t.share * gen.config.recency_factor([TYPE]), 0.0, 1.0)
@@ -100,7 +94,6 @@ static func apply(gen: LevelGenerator) -> void:
 		var roll: float = rng.randf()
 		if not placed.is_empty() and roll >= chance:
 			continue
-		apply_trace.append("%.0f:topup" % at)  # PROBE-ONLY
 		_take(e, placed)
 		left -= 1
 
@@ -126,7 +119,6 @@ static func pattern_cyborgs(gen: LevelGenerator) -> Array[Dictionary]:
 ## After the zone doodads: every Heavy Cyborg that no longer fits (or stands nearer the one before than the spacing) is
 ## given back as a plain cyborg; where none is left, the last resort (see the header).
 static func after_doodads(gen: LevelGenerator) -> void:
-	trace.clear()  # PROBE-ONLY
 	if not gen.config.has_feature(TYPE):
 		return
 	var lay: LevelLayout = gen.layout
@@ -144,9 +136,7 @@ static func after_doodads(gen: LevelGenerator) -> void:
 		var at: float = float(e["at"])
 		if _spaced(placed, at, spacing) and fits(gen, e, t, spans, taken):
 			placed.append(at)
-			trace.append("%.0f:kept" % at)  # PROBE-ONLY
 		else:
-			trace.append("%.0f:back:%s" % [at, "spacing" if not _spaced(placed, at, spacing) else _why_not(gen, e, t, spans, taken)])  # PROBE-ONLY
 			_give_back(e)
 	if placed.is_empty():
 		_last_resort(gen, t, spans, taken)
@@ -177,31 +167,9 @@ static func _last_resort(gen: LevelGenerator, t: HeavyCyborgTuning, spans: Array
 		var at: float = float(e["at"])
 		var first_kept: bool = at < added_first and _counts_first(e) and before_added <= 1
 		if at >= from - 0.001 and is_plain_cyborg(e) and left > 1 and not first_kept and fits(gen, e, t, spans, taken):
-			trace.append("%.0f:lastresort" % at)  # PROBE-ONLY
 			var placed: Array[float] = []
 			_take(e, placed)
 			return
-
-
-static func _zone_why(lay: LevelLayout, z: Vector2, at: float) -> String:  # PROBE-ONLY
-	var what: PackedStringArray = []  # PROBE-ONLY
-	for d: Dictionary in lay.doodads:  # PROBE-ONLY
-		var sp: Vector2 = LevelLayout.doodad_extent(d)  # PROBE-ONLY
-		if sp.x <= z.y and sp.y >= z.x: what.append("doodad@%.0f/l%d" % [sp.x - at, int(d["lane"])])  # PROBE-ONLY
-	if lay.gantryway_between(z.x, z.y): what.append("gantryway")  # PROBE-ONLY
-	if lay.teleporter_between(z.x, z.y): what.append("teleporter")  # PROBE-ONLY
-	if lay.dash_wall_between(z.x, z.y): what.append("dashwall")  # PROBE-ONLY
-	for f: Dictionary in lay.fences:  # PROBE-ONLY
-		if float(f["at"]) >= z.x and float(f["at"]) <= z.y and not f.get("disabled", false): what.append("fence@%.0f/l%d" % [float(f["at"]) - at, int(f["lane"])])  # PROBE-ONLY
-	for g: Dictionary in lay.gaps:  # PROBE-ONLY
-		if float(g["start"]) <= z.y and float(g["end"]) >= z.x: what.append("gap@%.0f..%.0f/l%d" % [float(g["start"]) - at, float(g["end"]) - at, int(g["lane"])])  # PROBE-ONLY
-	return ",".join(what)  # PROBE-ONLY
-static func _why_not(gen: LevelGenerator, e: Dictionary, t: HeavyCyborgTuning, spans: Array[Vector2], taken: Array[Vector2]) -> String:  # PROBE-ONLY
-	var at: float = float(e["at"])  # PROBE-ONLY
-	if CyborgRules.near_any(spans, at, CyborgRules.obstacle_margin_at(t, gen.pace)): return "margin"  # PROBE-ONLY
-	var z: Vector2 = stream_zone(gen, at, t)  # PROBE-ONLY
-	if not zone_clear(gen.layout, z): return "zone:" + _zone_why(gen.layout, z, at)  # PROBE-ONLY
-	return "taken"  # PROBE-ONLY
 
 
 ## True if `at` is at least `spacing` from every one of `placed`.

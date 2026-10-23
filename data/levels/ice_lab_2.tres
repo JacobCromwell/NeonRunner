@@ -19,6 +19,9 @@ feature_starts = Dictionary[String, float]({
 })
 skin_path = "res://data/skins/ice_lab_skin.tres"
 guarantee_features = true
+feature_weights = Dictionary[String, float]({
+"heavy_cyborg": 2.9
+})
 narrow_ceiling_share = 0.5
 spacing_seconds_easy = 1.1
 fill_empty_seconds = 2.0

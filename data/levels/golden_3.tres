@@ -12,6 +12,9 @@ difficulty_bias = -0.05
 features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "speed_pads", "generator", "drone", "barnacle_turret", "wall_run_gaps", "wall_fences", "screech_vents", "treasure_stash", "fenced_ceiling", "buzz_overdrive", "wall_fences_partial", "dash_wall", "tithe_collector", "enforcer_truck", "host", "teleporter", "heavy_cyborg", "teleporter_blinking", "resonator", "gilded_sentinel")
 skin_path = "res://data/skins/golden_palace_skin.tres"
 guarantee_features = true
+feature_weights = Dictionary[String, float]({
+"heavy_cyborg": 1.8
+})
 narrow_ceiling_share = 0.5
 spacing_seconds_easy = 1.1
 fill_empty_seconds = 2.0
