@@ -777,6 +777,17 @@ in later sessions. Core tasks run one at a time: Q1 → Q3 → Q4 → Q5 → Q6;
 | Q6 | **Done.** **Teleporters in the Golden Zone** (owner, October 22, 2026; GDD §5 Zone 9, "Also in the Golden Zone"): Q4's teleporters in Golden 1-3, fixed and blinking, no introduction of their own, the teleporter's own look; the weekly Golden week; remove the Golden Zone from the tests' left-out lists. Gantryways stay Ice Lab only. **Core** (Golden level data, generator). | Q5 | M | T1 |
 | Q5 | **Done.** **Octodog jars that break open** (GDD §5 Zone 9, §9.4): some Ice Lab jar doodads hold an Octodog; smashing one sometimes frees it to run ahead and attack as usual, cue first; the generator leaves it room. Its own files plus a **core** hook (generator). | Q2, Q4 | M | T1 |
 
+### S. The owner's batch (October 23, 2026)
+
+From `docs/USER_REQUESTS.md` (October 23, 2026), run by one batch orchestrator (`docs/WORKFLOW.md`). S3 is the only
+core task; S1 and S2 run alongside it.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| S1 | **The host cyborg stands out:** purple smoke rising off a host (or a purple glow), cheap enough for phones and the Compatibility renderer (GDD §9.7, Origin). | – | S | T2 |
+| S2 | **The Terminal's intro, fixes** (task F2k's cinematic): no walking through the grey block on the way to the sign, a longer electrical zap for the sign's sparks (or none), a hands-and-knees crawl up the rubble, a floor with the track bed under the landing inside. | – | M | T2 |
+| S3 | **Two runner bugs:** the armor's wait starts on any hit and brings it back whole (GDD §4, Free armor); coming off a wall on The Hush's extended wall runs moves one lane, as everywhere else. **Core** (damage rules, player). | – | M | T1 |
+
 ## Order at a glance
 
 **Wave 1 (start now):**
