@@ -684,8 +684,7 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   spacing between two patterns at its difficulty, or its burst spacing in The Hush) holds, in any lane (a piece
   that only touches its end is out of its way), no other hole, fence, ramp or the point
   where its wall run drops the runner back, pad's zone, speed pad, ceiling's landing zone, floor cut's window,
-  enemy's attack (the fill pass's keep-out with its floor; a floor cyborg's obstacle margin, a Heavy Cyborg's too,
-  which gives way after the zone doodads where a wider gap reaches its stream's zone; a planned
+  enemy's attack (the fill pass's keep-out with its floor; a floor cyborg's obstacle margin; a planned
   Resonator's pulses one by one, `DangerDensity.resonator_pulse_windows`: between them it only hovers and every
   pulse waits for clear floor) or the rules' doodad keep-outs (a Gilded Sentinel's strike; not a host's Bad
   Dream chase, which the danger density pass exempts too, `keep_out_exempt_features`). No ceiling, no
@@ -821,7 +820,7 @@ count of 0 (or without the feature) is built byte for byte as before. Its header
   speed pad, pad's zone, ramp or the wall run it launches, no ceiling from its start to the end of its landing
   zone ("no ceiling overlaps a dash wall"), and no enemy's attack: what the fill pass keeps for an enemy and its
   floor (`enemy_spans`, as a wider gap keeps them: a floor cyborg's obstacle margin only, whose bolts never land
-  near a wall, and a Heavy Cyborg's, which gives way as by a wider gap; a planned Resonator's pulses only; a Tithe Collector's whole stay; a hover truck's entrance only,
+  near a wall; a planned Resonator's pulses only; a Tithe Collector's whole stay; a hover truck's entrance only,
   since it gives way; nothing for the heli drone and the Enforcer Truck, `NO_KEEP_TYPES`) and what the rules keep
   doodads off in every lane (a Bad Dream's chase, a Gilded Sentinel's turn; a rule's keep-out of one lane, the
   hover truck's, doesn't count). Plain holes and fences there (never a pulsing fence or one a fence generator

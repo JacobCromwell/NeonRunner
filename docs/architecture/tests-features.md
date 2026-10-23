@@ -484,7 +484,7 @@ not stopping its body, laser tier 1's shots, another enemy's charge, a falling g
 Truck; the generator (each build on the prototype level at 3, 5 and 6 lanes, three difficulties and eight seeds: every
 Heavy Cyborg where its stream gets to fire, its stream's zone clear of every gap, live fence and doodad in every lane,
 clear of every obstacle by the cyborgs' margin, its reach off every dash wall, wider gap, wall-run gap and calm stretch,
-spaced, the same on a second build, most builds with some, none without the feature) and the campaign (Relay Station's
+no cyborg or window cyborg within `rival_clear_seconds` of run, spaced, the same on a second build, most builds with some, none without the feature) and the campaign (Relay Station's
 start after its teleporters, none in Frost Foundry, every own-seed build at 3, 5 and 6 lanes with two at the least at
 the campaign's lane count and one at 3 and 6, each placed as on the prototype, no warning, the counts printed); and full
 levels in god mode, every round fair (every later round flying half the minimum warning at least) and every Heavy

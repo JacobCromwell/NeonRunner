@@ -290,8 +290,8 @@ The Heavy Cyborg (`heavy_cyborg`; GDD §9.16, task S1: from Relay Station, in Sp
 pattern, `heavy_cyborg.json`: a plain `cyborg` alone at 36 m of a 40 m pattern that requires `heavy_cyborg`, so the
 pattern's own empty floor is the two seconds before it that its stream needs clear. Every rule plans around it as a
 cyborg; last of the rules (`heavy_cyborg_rules.gd`) it becomes a Heavy Cyborg where one fits (its stream's zone clear
-of every gap, live fence and doodad in every lane, its margin from every obstacle) and stays a cyborg where none does,
-and a share of the level's other plain cyborgs (the cyborg patterns' own, never a host nor one a rule planted) become
-Heavy Cyborgs too where one fits. Its pick weight is tuned level by level (`feature_weights` in each level's data). For
+of every gap, live fence and doodad in every lane, its margin from every obstacle, no cyborg or window cyborg within a
+second of run) and stays a cyborg where none does, and a share of the level's other plain cyborgs (the cyborg patterns'
+own, never a host nor one a rule planted; never one of a pair) become Heavy Cyborgs too where one fits. Its pick weight is tuned level by level (`feature_weights` in each level's data). For
 other patterns this means only that a cyborg they place may stand there as a Heavy Cyborg. See `docs/ARCHITECTURE.md`,
 Enemies of the later zones, Heavy Cyborg.

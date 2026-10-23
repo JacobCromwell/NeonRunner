@@ -329,7 +329,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     `--features=octodog,enforcer_truck`)
   - the Heavy Cyborg (from Ice Lab 2, Relay Station, then Specimen Vault and the Golden Zone; task S1): a bigger,
     bulkier cyborg in armour plates, carrying a big gatling at the hip, alone on a clear stretch or in the place of
-    one of the level's cyborgs, always where its stream gets to fire (two to four a level at five lanes, placeholder
+    one of the level's cyborgs, always where its stream gets to fire (two or three a level at five lanes, placeholder
     counts). When its barrels spin up with a deep grinding whine, glow red and a red line finds you, switch lanes: it
     locks your spot and fires a stream of rounds down that line, spaced so you can zigzag back through (a stream that
     starts late fires the rounds that still fit, four at the least). It fires when the cyborgs do (its stream takes

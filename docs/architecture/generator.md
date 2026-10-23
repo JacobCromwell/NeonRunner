@@ -50,7 +50,10 @@ little of the room the wall fences placed after them would have (its obstacles x
 x1.265; item 976 in `docs/OPEN_QUESTIONS*.md`). The Golden Zone's teleporters (task Q6) take more of it: each keeps
 its pad stretch and landings clear in every lane, so the band at 3 lanes has about 27% more enemies and 23% more
 obstacles, and the suite lets it land 5% lower again there (`TELEPORTER_ROOM`; built without them it keeps the floor
-above; DESIGN-TBD, `docs/questions/q6.md` item 11).
+above; DESIGN-TBD, `docs/questions/q6.md` item 11). The Golden Zone's Heavy Cyborgs (task S1) take a little more: each
+keeps two seconds of clear floor before it (the rows keep off its window) and no cyborg within a second of it, so the
+band has about 21% more enemies at 3 lanes (23% without the teleporters) and 28% at 5 and 6, and the suite lets it land
+4%, 2% and 3% lower (`HEAVY_CYBORG_ROOM`; DESIGN-TBD, `docs/questions/s1.md` item 13).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -61,7 +64,9 @@ The pass checks the reachable route through successive rows, not just a permanen
 Wall fences retain their placement rules, Resonators keep their whole visit clear, a window cyborg or a
 vent's screech it adds keeps off what the rules keep wall enemies off (`LevelGenerator.wall_section_rules`:
 the rules scripts that declare `on_wall_section`, a Gilded Sentinel's wall section; task K4, after a build
-on one of the curves it tried put one there; `test_gilded_sentinel` pins a build that shows it), and
+on one of the curves it tried put one there; `test_gilded_sentinel` pins a build that shows it), a cyborg or
+window cyborg it adds keeps a second of run from every Heavy Cyborg (task S1, `HeavyCyborgRules.rival_may_stand`: its
+burst could hold the stream's start; the pass may otherwise add near one, `twin_tolerated_types`), and
 doodads cannot occupy the only route the new rows require. Added pieces receive no extra risk-credit pay.
 Durations and reward tables are unchanged, including City 1's 55 seconds.
 

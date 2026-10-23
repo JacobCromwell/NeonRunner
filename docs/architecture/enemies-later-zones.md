@@ -445,9 +445,12 @@ behaviour unchanged), and `CyborgSuit.heavy_set()` (every look gets an armour se
   lane (`CyborgGun.floor_clear`: a gap, a live fence, a doodad, a falling gantryway's or a teleporter's calm stretch, a
   dash wall); the cyborgs' margin from every obstacle; what it reaches (that zone, its keep-out, its floor) off every
   dash wall's footprint, wider gap's zone, wall-run gap's clear stretch and calm stretch a rule keeps in every lane
-  (those let a cyborg stand its margin away, any other enemy only its keep-out away: a Heavy Cyborg gives way to the
-  wider gaps and dash walls, which keep a cyborg's margin from it, and the wall-run gaps' and an Enforcer Truck's
-  showing's re-checks hold it to the rest's rule); `spacing_seconds` from every other one; never the level's last plain
+  (those let a cyborg stand its margin away, any other enemy only its keep-out away: the wall-run gaps' and an Enforcer
+  Truck's showing's re-checks hold it to the rest's rule); no cyborg or window cyborg within `rival_clear_seconds` (1 s)
+  of run either side (`rivals_clear`: one that near engages when it does, from a little further, and its burst's place
+  in the air and the crossfire rule, from an outer lane with a wall beside it, could hold the stream's start through its
+  whole window, about a second between the engage distance and where the first round would no longer warn in time; a
+  Barnacle Turret fires only at a ceiling rider); `spacing_seconds` from every other one; never the level's last plain
   cyborg.
   - Its own encounters: `data/patterns/heavy_cyborg.json` (weight 1.6, as a single cyborg's; each level's
     `feature_weights` and the recency curve on top) places a plain cyborg alone at 36 m of 40, the pattern's own empty
@@ -457,24 +460,26 @@ behaviour unchanged), and `CyborgSuit.heavy_set()` (every look gets an armour se
     the level's other plain cyborgs past the feature's start do too where they fit (the top-up: `share` times the
     campaign's recency factor, from its own random stream, the first always where the pattern's left none).
   - The passes after the rules keep off a Heavy Cyborg's keep-out and floor as off any enemy that isn't a cyborg (the
-    fill pass, the zone doodads, the danger density pass's rows), so its zone stays clear, but for the counted
-    features, which keep a cyborg's margin from it as from the cyborg it stands in for (the wider gaps,
-    `WideGapPlacement.keeps_of`; the dash walls past their introduction, `DashWallRules.enemy_spans`), and the danger
-    density pass may add enemies near it as near a cyborg (its tuning's `twin_tolerated_types`: a small threat).
-    After the zone doodads (`after_doodads`) one that no longer fits (a wider gap or a dash wall in its zone) is given
-    back as a plain cyborg, and where none is left the first own plain cyborg that fits becomes one (`_last_resort`;
-    never the last own floor cyborg before the danger density pass's first). A build with none is built again with
-    its pattern's picks forced (`guarantee_features`). It keeps a cyborg's keep-out (`keep_out`).
+    danger density pass's rows, the wider gaps, the fill pass, the zone doodads, the dash walls past their
+    introduction), so its zone stays clear and no later pass moves it: where the Heavy Cyborgs stand is settled last
+    of the rules, the same with the danger density pass on and off. That pass may add enemies near one as near a
+    cyborg (its tuning's `twin_tolerated_types`), but no cyborg or window cyborg within its rivals' clearance
+    (`DangerDensity._type_rules_ok` asks `rival_may_stand`). After the zone doodads (`after_doodads`) one that no
+    longer fits (a cyborg a later rule planted beside it) is given back as a plain cyborg, and where none is left the
+    first own plain cyborg that fits becomes one (`_last_resort`; never the last own floor cyborg before the danger
+    density pass's first). A build with none is built again with its pattern's picks forced (`guarantee_features`). It
+    keeps a cyborg's keep-out (`keep_out`).
   - The pattern moves the levels' other picks, as any new pattern does. Each level's weight for it (`feature_weights`
     in its data) is one whose own-seed builds at 3, 5 and 6 lanes keep every counted feature their builds had before
     it (teleporters, blinking ones, dash walls, wider gaps, gantryways, Enforcer Trucks, Octodog jars and decoys,
-    treasure stashes and fenced ceilings) and have two Heavy Cyborgs at least at 5 lanes and one at 3 and 6: Relay
-    Station 2.9 (2, 3 and 3 Heavy Cyborgs at 3, 5 and 6 lanes), Specimen Vault 2.5 (6, 3, 2), Golden 1 2.3 (5, 4, 2),
-    Golden 2 3 (3, 3, 3), Golden 3 1.8 (2, 2, 2); only Golden 1's and Golden 3's wall-run gaps at 3 lanes, which come
-    by frequency, are fewer. The generator takes about as long as before. Any change that moves the levels' picks (a
-    new pattern, the Hunter's) calls for the weights to be checked again. The Golden Zone dates it from the Ice Lab (a
-    level old in Golden 1), as the teleporters. The danger density pass, which twins no Heavy Cyborg, adds a little
-    less in the Golden Zone at 3 lanes (`test_danger_density`'s HEAVY_CYBORG_ROOM).
+    treasure stashes and fenced ceilings) and have two Heavy Cyborgs at least at 5 lanes and one at 3 and 6, and
+    whose builds on seed 9101 keep their wider gaps (`test_wide_gaps`): Relay Station 2.9 (2, 3 and 3 Heavy Cyborgs at
+    3, 5 and 6 lanes), Specimen Vault 2.5 (6, 3, 2), Golden 1 3.8 (6, 3, 2), Golden 2 3.6 (2, 2, 4), Golden 3 1.8 (2,
+    3, 2); only Golden 1's wall-run gaps at 5 lanes (3 to 2) and Golden 3's at 3 lanes (3 to 1), which come by
+    frequency, are fewer. The generator takes no longer than before. Any change that moves the levels' picks (a new
+    pattern, the Hunter's) calls for the weights to be checked again. The Golden Zone dates it from the Ice Lab (a
+    level old in Golden 1), as the teleporters. The danger density pass adds a little less in the Golden Zone
+    (`test_danger_density`'s HEAVY_CYBORG_ROOM).
 - **Sounds.** `tools/asset_gen/sfx_bank_heavy_cyborg.gd`: `heavy_cyborg_windup` (the warning: a motor grinding up
   under a ratchet speeding into a rattle and the red charge's hum, lasting the wind-up and 30 ms into the first round;
   lower and heavier than the drone's) and `heavy_cyborg_shot` (a low double crack, 0.2 s).
