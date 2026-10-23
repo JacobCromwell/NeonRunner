@@ -30,7 +30,7 @@ extends MeshInstance3D
 const SHADER: Shader = preload("res://scripts/enemies/host_smoke.gdshader")
 
 ## The smoke's colour at its brightest (the shader darkens it to 78% in the thick of it, never more
-## saturated): pale lilac, hsv about (270 degrees, 0.24, 1.0). DESIGN-TBD (docs/questions/s1.md 2): which purple.
+## saturated): pale lilac, hsv about (270 degrees, 0.24, 1.0). DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1214): which purple.
 const SMOKE_COLOR := Color(0.88, 0.76, 1.0)
 ## The most opaque the smoke may ever be, whatever the resource says (test_cyborg_body checks the
 ## veiled warnings at this opacity). The Compatibility renderer, blending in sRGB, lifts a thin veil

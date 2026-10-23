@@ -783,7 +783,7 @@ core task; S1 and S2 run alongside it.
 
 | ID | Task | Needs | Size | Tier |
 |---|---|---|---|---|
-| S1 | **The host cyborg stands out:** purple smoke rising off a host (or a purple glow), cheap enough for phones and the Compatibility renderer (GDD §9.7, Origin). | – | S | T2 |
+| S1 | **Done.** **The host cyborg stands out:** purple smoke rising off a host (or a purple glow), cheap enough for phones and the Compatibility renderer (GDD §9.7, Origin). | – | S | T2 |
 | S2 | **Done.** **The Terminal's intro, fixes** (task F2k's cinematic): no walking through the grey block on the way to the sign, a longer electrical zap for the sign's sparks (or none), a hands-and-knees crawl up the rubble, a floor with the track bed under the landing inside. | – | M | T2 |
 | S3 | **Two runner bugs:** the armor's wait starts on any hit and brings it back whole (GDD §4, Free armor); coming off a wall on The Hush's extended wall runs moves one lane, as everywhere else. **Core** (damage rules, player). | – | M | T1 |
 

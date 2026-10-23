@@ -135,7 +135,7 @@ func build(p_variant: StringName, p_host: bool = false, p_upper_body_only: bool 
 		for joint: int in LEG_JOINTS:
 			parts[joint].visible = false
 	elif host:
-		# DESIGN-TBD (docs/questions/s1.md 3): the Dead Zone intro's host (a CineActorNode body) smokes too.
+		# DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1215): the Dead Zone intro's host (a CineActorNode body) smokes too.
 		smoke = HostSmoke.new()
 		smoke.build(visual_seed)
 		rig.joint(&"chest").add_child(smoke)
