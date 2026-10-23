@@ -157,9 +157,11 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
 - **Sounds** (`tools/asset_gen/sfx_bank_hunter.gd`, `tools/godot.sh sfx --only=hunter_whine,...`): `hunter_whine`
   (everyone hears it: it comes from behind), `hunter_scrape` (as long as `warning_seconds`, read from its data; no pitch
   variation), `hunter_slash` (one swish a cut), `hunter_give_up`, `hunter_death`.
-- **Review** (`tools/showcase/hunter_showcase.tscn`): `--scenario=model` (three of it: calm, warning, cutting) or the
-  default chase on Specimen Vault's look (it arrives, a flurry dodged into the walkway's lane, then the bait), with
-  `--camera=game|side|behind`, `--stay`, `--mortal`, `--lanes`, `--skin`, `--reduced-flashing`.
+- **Review** (`tools/showcase/hunter_showcase.tscn`): `--scenario=model` (three of it: calm, warning, cutting),
+  `--scenario=fences` (task S2's review: it rises over two full fences in its lane, crosses behind the runner round a
+  crate, rises over a full fence on their other side and goes round a gapped one) or the default chase on Specimen
+  Vault's look (it arrives, a flurry dodged into the walkway's lane, then the bait), with `--camera=game|side|behind`,
+  `--stay`, `--mortal`, `--lanes`, `--skin`, `--reduced-flashing`.
 - **Tests.** `test_hunter` (medium) and `test_hunter_baits` (slow: the bait at every lead Specimen Vault's builds give
   it, every start lane, both ways round, its flurries on, 194 of 194 takes; and the step-out window, 0.00 to 0.90 s)
   (`docs/architecture/tests-features.md`), `LayoutChecks.check_hunters` through every suite that checks Specimen Vault's

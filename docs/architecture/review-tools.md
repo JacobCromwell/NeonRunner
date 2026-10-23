@@ -111,7 +111,8 @@ posed (`--scenario=model --pose=walk|sleep|wake|bite|wounded`, `--angle=D` fixed
 canister) or a scripted encounter in a hand-made maze block (MazeKit) on the Terminal's skin: it wakes, comes at the
 runner, who dashes through it head-on (`--dash=M` metres before it), turns and bites at a closed wall (god mode), then
 the runner dashes on (`--high`, `--side`, `--lanes=N`, `--skin=`, `--reduced-flashing`), `hunter_showcase` (task S2):
-the Hunter calm, warning and cutting side by side (`--scenario=model`) or a scripted chase on Specimen Vault's look: it
+the Hunter calm, warning and cutting side by side (`--scenario=model`), rising over fences and crossing behind the
+runner (`--scenario=fences`) or a scripted chase on Specimen Vault's look: it
 arrives, comes up beside the runner, a flurry dodged into a falling gantryway's lane, then the bait (`--camera=game|side|
 behind`, `--stay`, `--mortal`, `--lanes=N`, `--skin=`, `--reduced-flashing`; `tools/measure/hunters.gd` lists every
 build's Hunters and their baits, `tools/measure/hunter_chases.gd` plays their chases), the Golden Zone's statue
