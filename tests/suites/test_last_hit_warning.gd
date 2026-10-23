@@ -26,10 +26,11 @@ const ATTACK_WARNINGS: Array[StringName] = [
 	&"bomb_whistle", &"tower_crack", &"takeover_whine", &"gc_whine", &"gc_grind", &"gc_hatch", &"gc_whistle",
 	&"cogs_aim", &"cogs_charge", &"guppy_rumble", &"guppy_floor_warn", &"wave_swell", &"swarm_chitter",
 	&"swarm_wave", &"host_roar", &"sleep_taker_shriek", &"sleep_taker_whisper", &"sleep_taker_inhale",
-	&"house_cherry", &"house_lightning", &"house_bar",
+	&"house_cherry", &"house_lightning", &"house_bar", &"hunter_scrape",
 ]
-## Sounds with a warning's name that aren't one (the Buzz Overdrive's charge is the attack itself).
-const NOT_WARNINGS: Array[StringName] = [&"buzz_charge"]
+## Sounds with a warning's name that aren't one (the Buzz Overdrive's charge is the attack itself; the Hunter's whine is its
+## arrival, its flurry's warning the scrape).
+const NOT_WARNINGS: Array[StringName] = [&"buzz_charge", &"hunter_whine"]
 ## What makes a library sound look like a warning by its name: a new one has to join ATTACK_WARNINGS (or NOT_WARNINGS).
 const WARNING_NAMES: String = "warn|charge|windup|whine|chitter|swell|grind"
 ## Two-tone sounds the player can hear in a fight, which the siren must not be taken for: The House's jackpot (880

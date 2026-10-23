@@ -12,7 +12,8 @@ extends TestSuite
 ##   fence generators among them), but none of the other earlier enemies (KEEPS, LEAVES_OUT);
 ## - every build at 3, 5 and 6 lanes, on the levels' own seeds and OTHER_SEEDS, as the campaign configures it: no warnings,
 ##   the campaign's fairness checks (LayoutChecks.check_layout and check_rules), the same level on a second build, and the
-##   Ice Lab's rules: no enemy but cyborgs, window cyborgs, Octodogs, heli drones and fence generators, no host among them;
+##   Ice Lab's rules: no enemy but cyborgs, window cyborgs, Octodogs, heli drones and fence generators, and the zone's own
+##   new enemies where the level lists them (the Hunter, task S2: Specimen Vault), no host among them;
 ##   no dash walls, floor cuts, debris maze or arches' stumps; wall running on and doodads that push; the usual obstacles
 ##   (holes, fences, signs, ceilings and their pads, the zone doodads); every feature of the level, but the ones sprinkled
 ##   in (the ceiling scenarios, LayoutChecks.occasional).
@@ -40,8 +41,11 @@ const NAMES: Array[String] = ["Frost Foundry", "Relay Station", "Specimen Vault"
 const OTHER_SEEDS: Array[int] = [8801, 8802, 8803]
 ## The enemy types a build may hold (GDD §5, Zone 9: "cyborg gangsters, Octodogs and heli drones"): the cyborgs, the window
 ## cyborgs (GDD §9.2: cyborgs in the building windows; the task's call, docs/questions/q1.md), the Octodogs, the heli
-## drones, and the fence generators, which are part of the electric fences (GDD §9.1), one of the usual obstacles.
+## drones, and the fence generators, which are part of the electric fences (GDD §9.1), one of the usual obstacles; and the
+## zone's own new enemies where their levels list them (GDD §5, Zone 9, the owner, October 23, 2026: the Hunter, §9.17,
+## from Specimen Vault; task S2).
 const ENEMY_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "octodog", "drone", "generator"]
+const OWN_ENEMIES: PackedStringArray = ["hunter"]
 ## The features introduced before the Ice Lab that every one of its levels keeps (GDD §5, Zone 9, proposed: "the usual
 ## obstacles stay (gaps, electric fences, signs, ceilings and pads, doodads)", wall running and ceilings as in other zones;
 ## anything introduced earlier keeps appearing later): its enemies and every mechanic and obstacle. DESIGN-TBD
@@ -54,9 +58,9 @@ const KEEPS: PackedStringArray = ["cyborg", "ceilings", "pulsing", "window_cybor
 ## walls"), and the Terminal's debris maze, its doodads that stop the runner and its centipedes' home.
 const LEAVES_OUT: PackedStringArray = ["hover_truck", "screech", "screech_vents", "barnacle_turret", "buzz_overdrive", "dash_wall",
 	"tithe_collector", "enforcer_truck", "host", "debris_maze", "centipede"]
-## The Ice Lab's own mechanics (tasks Q3, Q4 and Q5), none of them a later zone's though one stands them again: the Golden
-## Zone's teleporters, fixed and blinking (the owner, October 22, 2026, task Q6).
-const OWN: PackedStringArray = ["gantryway", "teleporter", "teleporter_blinking", "octodog_jar"]
+## The Ice Lab's own mechanics (tasks Q3, Q4 and Q5) and enemies (task S2's Hunter), none of them a later zone's though one
+## stands them again: the Golden Zone's teleporters, fixed and blinking (the owner, October 22, 2026, task Q6).
+const OWN: PackedStringArray = ["gantryway", "teleporter", "teleporter_blinking", "octodog_jar", "hunter"]
 
 
 var campaign: Campaign
@@ -229,10 +233,11 @@ func _test_levels() -> void:
 				for e: Dictionary in layout.enemies:
 					var type: String = String(e["type"])
 					var host: bool = bool((e.get("params", {}) as Dictionary).get("host", false))
-					if host or not ENEMY_TYPES.has(type):
+					var own: bool = OWN_ENEMIES.has(type) and config.has_feature(type)
+					if host or not (ENEMY_TYPES.has(type) or own):
 						others.append("%s%s" % [type, " (a host)" if host else ""])
 					enemies[type] = int(enemies.get(type, 0)) + 1
-				check(others.is_empty(), "no enemy but cyborgs, window cyborgs, Octodogs, heli drones and fence generators (%s) %s"
+				check(others.is_empty(), "no enemy but cyborgs, window cyborgs, Octodogs, heli drones, fence generators and, where the level lists them, the zone's own (%s) %s"
 					% [others, tag])
 				check(layout.dash_walls.is_empty() and layout.cuts.is_empty() and layout.maze.is_empty(),
 					"no dash walls, floor cuts or debris maze %s" % tag)
