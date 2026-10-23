@@ -450,6 +450,7 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   1201-1206 (1201, 1202 and 1206 in `docs/OPEN_QUESTIONS.md`).
 
 ## October 23, 2026 (the owner's batch)
+
 - [x] **The Terminal's intro, fixes** (task S2): the runner walks through a big grey block on the way to the sign (move
   the block or the path so they don't pass through a solid object); the sign's spark sound is poor (remove it, or a
   longer electrical zap); the rubble climb bends the runner's back about 90 degrees backwards (crawl up on hands and
