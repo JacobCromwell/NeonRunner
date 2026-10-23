@@ -373,7 +373,8 @@ static func openings_of(w: Dictionary, speed: float, t: WallRunGapTuning = null)
 		out.append(open)
 	for side: int in sides_of(w):
 		for p: Vector2 in platforms_of(w):
-			out.append({"side": side, "start": p.x, "end": p.x + tt.platform_notch_seconds * speed, LevelLayout.SETS_DOWN: true})
+			out.append({"side": side, "start": p.x, "end": p.x + tt.platform_notch_seconds * speed,
+				LevelLayout.SETS_DOWN: true})
 	return out
 
 

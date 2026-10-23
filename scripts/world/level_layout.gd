@@ -96,9 +96,10 @@ var wall_fences: Array[Dictionary] = []
 ## `side` (-1 left, 1 right) has no wall-running surface from track distance `start` to `end`. The
 ## track builder leaves the wall out there and marks its edges (ZoneSkin.wall_gap), a runner can't
 ## get onto the wall there, and one on it drops off at the gap (Player.wall_supported). Sorted by
-## start; both walls may have one over the same stretch. An extended wall run's notch carries SETS_DOWN: true. In a level whose walls are a row of narrow arches (task O1,
-## the Terminal: WallGapTuning's Arches group) they are the open space between the arches, from before the track's
-## first chunk to past its run-out, so the arches are exactly the walls' solid pieces (wall_solid_pieces).
+## start; both walls may have one over the same stretch; an extended wall run's notch carries SETS_DOWN: true. In a
+## level whose walls are a row of narrow arches (task O1, the Terminal: WallGapTuning's Arches group) they are the open
+## space between the arches, from before the track's first chunk to past its run-out, so the arches are exactly the
+## walls' solid pieces (wall_solid_pieces).
 var wall_gaps: Array[Dictionary] = []
 ## Whether a runner can step onto the side walls (LevelConfig.wall_running, which the generator copies here): false in a
 ## level whose walls are a boundary everywhere (task O1; GDD §5, Zone 8: the Terminal has no wall running). The player
