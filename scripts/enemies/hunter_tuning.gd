@@ -16,9 +16,10 @@ extends EnemyTuning
 ## whatever happens meanwhile (a teleport, a ceiling, a wait behind the runner), then gives up.
 @export_range(5.0, 60.0, 0.5, "suffix:s") var chase_seconds: float = 25.0
 ## DESIGN-TBD: where it comes in from behind as it arrives (its middle's gap behind the runner, plain metres), and how fast
-## it closes in (metres a second faster than the runner, at most; it eases in over the last few metres, gap_rate).
+## it closes in (metres a second faster than the runner, at most; it eases in over the last few metres, gap_rate; 14 before
+## task S2c: the owner, "it should attack 2 times more often").
 @export_range(10.0, 80.0, 1.0, "suffix:m") var arrive_gap: float = 30.0
-@export_range(2.0, 30.0, 0.5, "suffix:m/s") var approach_speed: float = 14.0
+@export_range(2.0, 30.0, 0.5, "suffix:m/s") var approach_speed: float = 16.0
 ## How fast its gap eases toward the one it wants (per second).
 @export_range(1.0, 20.0, 0.5) var gap_rate: float = 6.0
 ## DESIGN-TBD: alongside, its middle this far ahead of the runner's (metres): its front a little ahead of them, so the chase
@@ -36,9 +37,10 @@ extends EnemyTuning
 ## DESIGN-TBD (GDD §9.17, proposed: "when the runner steps away it follows into the lane they left, a moment later"): it
 ## takes the lane beside the runner on its side this long after they change lanes (a log on the level clock, as the
 ## Enforcer Truck's 0.8 s), so a runner who steps away from it under a falling gantryway leaves it in the walkway's lane.
-@export_range(0.05, 1.0, 0.01, "suffix:s") var follow_delay_seconds: float = 0.25
-## DESIGN-TBD: how long its own lane change takes (the runner's takes 0.14 s).
-@export_range(0.1, 1.0, 0.01, "suffix:s") var switch_seconds: float = 0.25
+## 0.25 s before task S2c (settled beside them sooner after each dodge, for its next flurry).
+@export_range(0.05, 1.0, 0.01, "suffix:s") var follow_delay_seconds: float = 0.15
+## DESIGN-TBD: how long its own lane change takes (the runner's takes 0.14 s; 0.25 s before task S2c).
+@export_range(0.1, 1.0, 0.01, "suffix:s") var switch_seconds: float = 0.2
 ## DESIGN-TBD (task S2's review: whenever the runner steps out from under a falling walkway and lives, it's under the
 ## walkway as it lands): a runner who steps out of a lane a falling walkway is coming down on, it follows into that lane at
 ## once (no follow_delay_seconds), its lane change this quick.
@@ -67,11 +69,12 @@ extends EnemyTuning
 @export_range(0.3, 3.0, 0.05, "suffix:s") var make_room_seconds: float = 1.2
 @export_range(0.0, 3.0, 0.05, "suffix:s") var room_seconds: float = 0.4
 ## DESIGN-TBD: once it has dropped out of the runner's way behind the camera (its lane shut with no way round or across,
-## by the edge, or between them and its bait as its pillar nears), it comes up beside them again no sooner than this.
-@export_range(0.0, 6.0, 0.1, "suffix:s") var regain_seconds: float = 1.2
-## DESIGN-TBD: where it waits out of their way (its middle's gap behind the runner: behind the chase camera), and how fast
-## it drops back (metres a second slower than the runner, at most).
-@export_range(4.0, 30.0, 0.5, "suffix:m") var yield_gap: float = 9.0
+## by the edge, or between them and its bait as its pillar nears), it comes up beside them again no sooner than this (1.2 s
+## before task S2c).
+@export_range(0.0, 6.0, 0.1, "suffix:s") var regain_seconds: float = 0.5
+## DESIGN-TBD: where it waits out of their way (its middle's gap behind the runner: just behind the chase camera, past
+## Hunter.VIEW_GAP; 9 m before task S2c), and how fast it drops back (metres a second slower than the runner, at most).
+@export_range(4.0, 30.0, 0.5, "suffix:m") var yield_gap: float = 8.0
 @export_range(2.0, 40.0, 0.5, "suffix:m/s") var drop_speed: float = 16.0
 
 @export_group("Slashes")
@@ -83,11 +86,13 @@ extends EnemyTuning
 @export_range(1, 8) var cuts: int = 4
 ## Seconds its blades take to come back down after a flurry.
 @export_range(0.1, 1.5, 0.05, "suffix:s") var recover_seconds: float = 0.4
-## DESIGN-TBD (GDD §9.17, the owner: "slashing rapidly"): its first flurry's warning starts this long after it has come up
-## beside the runner, and each later one a seeded interval from the last one's warning.
-@export_range(0.3, 6.0, 0.1, "suffix:s") var first_slash_seconds: float = 1.0
+## DESIGN-TBD (GDD §9.17, the owner: "slashing rapidly"; task S2c, the owner: "it should attack 2 times more often"): its
+## first flurry's warning starts this long after it has come up beside the runner (1.0 s before task S2c), and each later
+## one a seeded interval from the last one's warning (1.8 to 2.3 s before; a flurry's warning, cuts and recovery take
+## 1.75 s, and it follows a runner who stepped away only once its blades are down).
+@export_range(0.3, 6.0, 0.1, "suffix:s") var first_slash_seconds: float = 0.4
 @export_range(1.0, 8.0, 0.1, "suffix:s") var slash_interval_min: float = 1.8
-@export_range(1.0, 8.0, 0.1, "suffix:s") var slash_interval_max: float = 2.3
+@export_range(1.0, 8.0, 0.1, "suffix:s") var slash_interval_max: float = 2.0
 ## A flurry starts only when the lane on the runner's other side is open to step into (no hole, fence, doodad, floor cut,
 ## floor enemy or solid side) from this many seconds of run after its warning starts until its last cut.
 @export_range(0.0, 1.0, 0.05, "suffix:s") var escape_reaction_seconds: float = 0.3
@@ -97,8 +102,9 @@ extends EnemyTuning
 @export_range(0.8, 4.0, 0.1, "suffix:m") var slash_depth: float = 2.2
 @export_range(0.05, 0.6, 0.01, "suffix:m") var side_margin: float = 0.25
 ## DESIGN-TBD: no flurry from this many seconds of run before a standing gantryway's pillar (in any lane) until its calm
-## stretch is over: the runner lines up the bait and steps out under no cuts.
-@export_range(0.0, 6.0, 0.1, "suffix:s") var bait_hold_seconds: float = 2.5
+## stretch is over: the runner lines up the bait and steps out under no cuts (2.5 s before task S2c; test_hunter_baits'
+## runner, who lines up a lane at a time from 5 s before, still lands its baits).
+@export_range(0.0, 6.0, 0.1, "suffix:s") var bait_hold_seconds: float = 2.0
 ## DESIGN-TBD (task S2's review, its default): riding between the runner and its bait's walkway lane two lanes or more off
 ## (a runner by the edge on the wrong side), it stays beside them, never slashing them further from that lane, until the
 ## pillar is this many seconds of run ahead; then it crosses to their other side or drops back, so they can cross to it.
