@@ -20,14 +20,13 @@ extends RefCounted
 ##   drops the pattern's cyborgs that don't become Heavy Cyborgs.)
 ## - After the zone doodads (after_doodads), once everything that stands on the floor is placed (nothing after them
 ##   adds a gap, a fence or a doodad in its levels; the gap density pass runs in City 1 only): every Heavy Cyborg that
-##   no longer fits (a cyborg a later rule planted beside it) is given back as a plain cyborg (_give_back); where none
-##   is left, the first of the level's own plain cyborgs that fits becomes one (_last_resort, saving a build). A build
-##   with none at all is built again with picks of its pattern forced elsewhere (LevelConfig.guarantee_features), as for
-##   any feature.
+##   no longer fits (a cyborg a later rule planted beside it) is given back as a plain cyborg (_give_back). Nothing
+##   becomes one there: what the danger density pass did would decide it, and a build with the pass on and off must
+##   have the same Heavy Cyborgs. A build with none at all is built again with picks of its pattern forced elsewhere
+##   (LevelConfig.guarantee_features), as for any feature.
 ## A Heavy Cyborg fits where (fits):
 ## - it stands on the floor where a plain cyborg stood (not a host, no rule's mark in its params: a cyborg planted in
-##   a charge's path, a Buzz Overdrive's company, one planted under a falling gantryway are their rules' own; the last
-##   resort takes none the danger density pass added, its own small threats of the types its tuning lists);
+##   a charge's path, a Buzz Overdrive's company, one planted under a falling gantryway are their rules' own);
 ## - it keeps the cyborgs' margin from every obstacle (CyborgRules: their rules and its walk keep it), the zone
 ##   doodads' included;
 ## - its stream's zone (stream_zone: keep_clear_seconds of run before it) holds nothing its stream is held for, in any
@@ -43,9 +42,7 @@ extends RefCounted
 ##   engages when it does, and its burst's place in the cyborgs' airspace and the crossfire rule could hold the stream's
 ##   start through the whole of its window;
 ## - at least spacing_seconds of run from every other Heavy Cyborg;
-## - never the level's last plain cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions), nor,
-##   in the last resort, the last of the level's own floor cyborgs before the danger density pass's first (the pass,
-##   which comes after the rules, adds its own only past the level's first).
+## - never the level's last plain cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions).
 ## A Heavy Cyborg keeps a cyborg's keep-out (keep_out: from two seconds of run before it, its stream's zone, to its
 ## margin after it) and its tuning's floor reach. It is never a panic variant nor a host.
 ## DESIGN-TBD (docs/questions/s1.md): its pattern's weight, the top-up's share, the spacing, the stream's zone and
@@ -141,7 +138,7 @@ static func pattern_cyborgs(gen: LevelGenerator) -> Array[Dictionary]:
 
 
 ## After the zone doodads: every Heavy Cyborg that no longer fits (or stands nearer the one before than the spacing) is
-## given back as a plain cyborg; where none is left, the last resort (see the header).
+## given back as a plain cyborg (see the header).
 static func after_doodads(gen: LevelGenerator) -> void:
 	if not gen.config.has_feature(TYPE):
 		return
@@ -162,39 +159,6 @@ static func after_doodads(gen: LevelGenerator) -> void:
 			placed.append(at)
 		else:
 			_give_back(e)
-	if placed.is_empty():
-		_last_resort(gen, t, spans, taken)
-
-
-## Where none is left after the zone doodads: the first of the level's own plain cyborgs from the feature's start on
-## that fits becomes one (never the last plain cyborg, nor the last own floor cyborg before the danger density pass's
-## first, nor one the pass added), which saves a build of the guarantee.
-static func _last_resort(gen: LevelGenerator, t: HeavyCyborgTuning, spans: Array[Vector2],
-		taken: Array[Vector2]) -> void:
-	var from: float = gen.feature_start(TYPE)
-	# The danger density pass's own cyborgs are none of these: it adds them only past the level's first.
-	var added: Array = gen.danger_density_result.get("added_enemies", [])
-	var added_first: float = INF
-	for e: Variant in added:
-		if String((e as Dictionary).get("type", "")) == CYBORG:
-			added_first = minf(added_first, float((e as Dictionary)["at"]))
-	var own: Array[Dictionary] = []
-	var before_added: int = 0
-	var left: int = 0
-	for e: Dictionary in gen.layout.enemies:
-		if String(e.get("type", "")) != CYBORG or _holds(added, e):
-			continue
-		own.append(e)
-		before_added += 1 if float(e["at"]) < added_first and _counts_first(e) else 0
-		left += 1 if is_plain_cyborg(e) else 0
-	own.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
-	for e: Dictionary in own:
-		var at: float = float(e["at"])
-		var first_kept: bool = at < added_first and _counts_first(e) and before_added <= 1
-		if at >= from - 0.001 and is_plain_cyborg(e) and left > 1 and not first_kept and fits(gen, e, t, spans, taken):
-			var placed: Array[float] = []
-			_take(e, placed)
-			return
 
 
 ## True if `at` is at least `spacing` from every one of `placed`.
@@ -217,12 +181,6 @@ static func _take(e: Dictionary, placed: Array[float]) -> void:
 static func _give_back(e: Dictionary) -> void:
 	e["type"] = CYBORG
 	e["params"] = {"panic": false}
-
-
-## True if cyborg entry `e` counts as the level's first of its kind for the danger density pass (DangerDensity: a floor
-## cyborg that isn't a host).
-static func _counts_first(e: Dictionary) -> bool:
-	return int(e.get("side", 0)) == 0 and not bool((e.get("params", {}) as Dictionary).get("host", false))
 
 
 ## True if `list` holds `item` itself (not an equal copy).
