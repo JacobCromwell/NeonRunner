@@ -41,11 +41,11 @@ extends Enemy
 ##   one hit: armor or the shield takes the first contact and the invulnerability window covers the rest. No flurry in the
 ##   level's calm start, over a gantryway's run-up and calm stretch (the bait stays clean), a teleporter's calm stretch in
 ##   the runner's lane, a wall-run gap's crossing or a fenced ceiling's pick, while another enemy's small attack is on at
-##   them, one whose dodge would take them two lanes past the next bait's walkway lane, or one it would be risen over a
-##   fence through as it sweeps and cuts. A runner who takes a pad, steps onto a wall or teleports during one calls it
-##   off. It holds its lane through a warning and its cuts, then follows; meanwhile it looks ahead in its lane only as
-##   far as they last (ATTACK_STEER_MARGIN more, task S2c), and what shuts its lane within that (it steers, crosses or
-##   drops back) calls them off.
+##   them, one whose dodge would take them two lanes past the next bait's walkway lane as its pillar nears, or one it
+##   would be risen over a fence through as it sweeps and cuts. A runner who takes a pad, steps onto a wall or teleports
+##   during one calls it off. It holds its lane through a warning and its cuts, then follows; meanwhile it looks ahead in
+##   its lane only as far as they last (ATTACK_STEER_MARGIN more, task S2c), and what shuts its lane within that (it
+##   steers, crosses or drops back) calls them off.
 ## - A runner on a ceiling or a wall it waits below, beside their lane, never cutting.
 ## - A teleport leaves it behind (follows_runner keeps it in play through EnemyDirector.runner_teleported): it catches up
 ##   from where the jump left it (no further back than catch_up_gap_max), its time running all along.
@@ -60,10 +60,11 @@ extends Enemy
 ## up on the runner's far side from the next one's walkway lane, so they reach that lane stepping away from it, where they
 ## could then step out of it away from it onto open floor, else on the side away from the push (_bait_side); riding between
 ## them and that lane two lanes or more off (a runner by the edge on the wrong side), it stays beside them, its flurries
-## never carrying them further from that lane, until the pillar is bait_cross_seconds of run ahead; then it crosses to
-## their other side, or, with no lane there, drops back or holds back unseen until they're past (_blocks_bait), leaving
-## them a window to cross; and over a bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's
-## lane, one lane further out, so a runner it followed past that lane can step back in (_run_up_bait).
+## never carrying them further from that lane once the pillar is within bait_cross_seconds and a flurry's length of run
+## (task S2c), until the pillar is bait_cross_seconds of run ahead; then it crosses to their other side, or, with no
+## lane there, drops back or holds back unseen until they're past (_blocks_bait), leaving them a window to cross; and over
+## a bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's lane, one lane further out, so a
+## runner it followed past that lane can step back in (_run_up_bait).
 
 enum State { WAITING, APPROACH, ALONGSIDE, YIELD, LEAVING, DEAD, SWITCH }
 enum Slash { IDLE, WARNING, FLURRY, RECOVER }
@@ -809,9 +810,10 @@ func _bait_side(b: Dictionary, r: int) -> int:
 ## (two lanes or more from them on that side, so they can't reach it stepping away from it) once that bait is near and
 ## can still be lined up: its pillar within bait_cross_seconds of run and further than its run-up (bait_hold_seconds),
 ## and the runner then able to step out of the walkway's lane on that side (away from it, once it has come up on their
-## other side): the push side, or the other where it's open (_out_open). Before that it rides there, beside them (its
-## flurries never carry them further from that lane: may_slash); then it lets them past (task S2's review: _alongside
-## crosses to their other side or drops back, _approach holds back, _pick_side takes the other side).
+## other side): the push side, or the other where it's open (_out_open). Before that it rides there, beside them (from a
+## flurry's length before, its flurries never carry them further from that lane: may_slash); then it lets them past
+## (task S2's review: _alongside crosses to their other side or drops back, _approach holds back, _pick_side takes the
+## other side).
 func _blocks_bait(s: int, r: int) -> bool:
 	if s == 0:
 		return false
@@ -1262,9 +1264,9 @@ func _update_slash(delta: float) -> void:
 ## cut (lane_open: a trap pad there too); not in the level's calm start, a gantryway's run-up or calm stretch, a
 ## teleporter's calm stretch in their lane, a wall-run gap's crossing or a fenced ceiling's pick (where they read which pad
 ## is the trap: LevelLayout.fenced_pick_between, as a heli drone's barrage); not while another enemy's small attack is on
-## at them (_small_attack_on); never one whose dodge would take them two lanes or more past the next bait's walkway lane;
-## never one it would be risen over a fence through while its sweep shows and its cuts are live (_lifted_between); and
-## over before it gives up.
+## at them (_small_attack_on); never one whose dodge would take them two lanes or more past the next bait's walkway lane
+## as its pillar nears (bait_cross_seconds and a flurry's length of run); never one it would be risen over a fence
+## through while its sweep shows and its cuts are live (_lifted_between); and over before it gives up.
 func may_slash() -> bool:
 	return slash_problem() == ""
 
@@ -1296,10 +1298,12 @@ func slash_problem() -> String:
 		return "chase ending"
 	if world.config != null and p.distance < world.config.start_clear_distance:
 		return "calm start"
-	# Once a bait is planned in its chase, a flurry never carries the runner two lanes or more past its walkway's lane: it
-	# would follow and ride between them and it (task S2's review).
+	# Once a bait's pillar nears, a flurry never carries the runner two lanes or more past its walkway's lane: it would
+	# follow and ride between them and it (task S2's review). Near: within bait_cross_seconds of run and a flurry's length
+	# (task S2c: before that it slashes as ever, and it lets them past to cross back from bait_cross_seconds on).
 	var bait: Dictionary = _next_bait()
-	if not bait.is_empty() and (f - int(bait.get("lane", f))) * -side >= 2:
+	var bait_near: float = (tuning.bait_cross_seconds + tuning.attack_seconds()) * maxf(p.speed, _run_speed)
+	if not bait.is_empty() and (f - int(bait.get("lane", f))) * -side >= 2 and float(bait["at"]) - p.distance <= bait_near:
 		return "bait lane"
 	var v: float = maxf(p.speed, 1.0)
 	var to: float = p.distance + tuning.attack_seconds() * v + 2.0
