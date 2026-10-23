@@ -64,6 +64,42 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
     crack; the Brute's dim side screens; the Golden Zone's medallion with the cult's emblem (faded out
     below about 24 pixels, as the skins do); and pinstripes. `CyborgPoses` gives every look its
     posture (hunched, a shambling limp, twitches and a tremor added after the blend).
+    **A host's look** (GDD §9.7; tasks P2 and S1): the glitching purple screen and the purple veins above, a
+    **purple glow on its body** and **pale smoke rising off it** (owner, October 23, 2026), so a host stands out of a
+    crowd of cyborgs at running distance. The two are separate because of one fact: the run camera shows everything
+    further down a host's lane (a cyborg charging its cannon, a fence) inside the host's column on screen, so any
+    smoke is a veil over exactly what the player must read, and a saturated violet one turns a red charge-up pink,
+    the fences' colour, from an opacity of about 0.1 up (a fence it turns host purple). So the **body glow carries
+    the read** and the smoke stays thin and pale:
+    - **The body glow** is `cyborg_body.gdshader`'s `host_rim` (1 on a host, set by `CyborgSuit.new_material`): a
+      fresnel rim in the host purple (`rim_energy`, `rim_power`) added to the plain pieces' emission, no extra draw
+      call, the same on every renderer, steady (nothing for Reduced flashing), out when the host is defeated
+      (`glow_boost`). It lights only the host's own surfaces, so it never tints what stands behind it.
+    - **The smoke** (`HostSmoke`, `host_smoke.gd` and `host_smoke.gdshader`; `CyborgBody.smoke`, only on a floor
+      host, not a window cyborg) is one `MeshInstance3D` of three quads on the host's chest joint, **one draw call
+      and six triangles** per host: the mesh is shared, each host has its own material (noise offset, fade). Each quad
+      has all six vertices at its base; the vertex stage spreads it into a column that turns to face the camera
+      about the upright axis (like the Dead Zone's `dead_smoke.gdshader`), widening as it rises, and collapses a
+      quad with no opacity left to nothing (so it is never shaded); the fragment stage draws warped value-noise
+      billows drifting up: no texture, no particles, no GDScript per frame, unshaded and alpha-blended (a thin veil
+      lifted by `COMPAT_LIFT` on the Compatibility renderer, which blends in sRGB), the same in The Hush's dark.
+      Its colour is `SMOKE_COLOR`, a pale lilac (the host purple lightened towards white): the same hue family, but
+      so little saturated that a red charge-up seen through it, the Bad Dream's red telegraph and the charge orb as
+      drawn all stay at least 0.3 from fence pink on the hue and saturation wheel, and a fence stays at least 0.3
+      from the smoke and from host purple, at every opacity up to `MAX_STRENGTH` (0.4) on both renderers' blending.
+      `test_cyborg_body`'s veil test blends them numerically and fails the first version's saturated violet. The
+      opacity is clamped to `MAX_STRENGTH` whatever the resource says, the smoke is gone for a host within a stomp's
+      approach of the runner (`near_fade`: gone closer than 12 m from the camera, full beyond 22 m: the camera is
+      7.5 m behind the runner, so gone within 4.5 m of the runner, full from 14.5 m ahead) and thin above the head.
+      It only drifts: the climb is capped at 1 m/s (`MAX_RISE_SPEED`), where no billow passes a point more than about
+      1.3 times a second, Reduced flashing slows it by 40% more, and `test_cyborg_body` pins every `TIME` in it.
+      It has no hitbox and no collision; `clear()` fades it over 0.3 s when the host dies, then hides it; its
+      culling box follows the tuned size.
+    - **Numbers:** `CyborgTuning`'s "Host look" group (`host_glow_energy`, `host_smoke_*`), applied by
+      `CyborgBody.apply_host_tuning` from `Cyborg._build`; an opacity of 0 turns the smoke off, a glow of 0 the glow.
+    The Dead Zone intro's crouched host (a `CineActorNode` body) has both too. Review frames: the enemy showcase's
+    `hosts`, `hosts_far`, `veil2` (a charging cyborg behind a host) and `stomp` (a host 2 m ahead, a fence behind it)
+    views, on both renderers. DESIGN-TBD: `docs/OPEN_QUESTIONS_DEFERRED.md` items 1213-1215.
     `test_cyborg_body` runs every check over every look: the hitboxes, budgets and size, the weapons,
     and the colour rules: nothing on a cyborg glows but the cold white face and screens, the red
     charge-up and a host's purple; nothing is copper, purple only on hosts, no hazard or "safe" colour

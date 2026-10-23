@@ -7,8 +7,6 @@ request that is now in the done file.
 
 ## October 23, 2026
 
-- [ ] **The host cyborg, easier to tell apart** (task S1): give the host of the Cyborg's Bad Dream a purple smoke coming
-  off it (ideal), or a purple glow, without hurting performance much, so the player can pick that cyborg out more easily.
 - [ ] **Armor comes back after any hit** (task S3, a bug): the armor regenerates only once it is at 0. Its wait should
   start when a hit is taken: armor of 3 knocked to 2 starts the timer, and at its end the armor is back to 3.
 - [ ] **The Hush's chasms: letting go of the wall moves two lanes** (task S3, a bug): on The Hush's long extended wall

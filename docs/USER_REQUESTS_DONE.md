@@ -460,3 +460,9 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   they came); a 1.0 s electrical zap, at most one every 0.7 s; a hands-and-knees crawl up the rubble (the bent back was a
   left-arm mix-up in the pose); the floor under the landing was built but freed a moment before the cut inside, now kept.
   Questions in items 1207-1212 (all deferred).
+- [x] **The host cyborg, easier to tell apart** (task S1): give the host of the Cyborg's Bad Dream a purple smoke coming
+  off it (ideal), or a purple glow, without hurting performance much, so the player can pick that cyborg out more easily.
+  DONE (S1): a host glows purple around its body (a rim glow in its own material: no extra draw call) and pale lilac
+  smoke rises off it (one draw call), fading out as the runner closes in for a stomp. The smoke is kept faint because,
+  denser, it recoloured the warnings behind a host (a red charge read as a fence's pink); the glow carries the read.
+  Questions in items 1213-1215 (all deferred; 1213 asks whether the smoke should be denser at that cost).
