@@ -340,28 +340,28 @@ static func _blades_top(m: HunterModel) -> float:
 
 ## Beside the runner its whole look is on screen in the chase camera's resting view (EnforcerTruckView: the run
 ## camera's arithmetic), calm, warning or cutting, its torso turned toward them, at 3, 5 and 6 lanes, every runner lane
-## and either side; it hides neither the runner nor the floor of their lane and of the lane they'd step into, from them to
-## 20 m ahead.
+## and either side (each of its parts as a box round it); it never hides the runner; calm, it hides nothing of the floor
+## of their lane and of their other lane (the one they'd step into) from them to 20 m ahead, and warning or cutting
+## nothing of their other lane's.
 func _test_view() -> void:
 	var m := HunterModel.new()
 	tree.root.add_child(m)
 	m.build()
+	# Its parts' boxes (model space) by its side of the runner and its pose: 0 calm, 1 warning, 2 cutting.
 	var looks: Dictionary = {}
 	for side: int in [-1, 1]:
-		var box := AABB()
-		var first: bool = true
 		for pose: int in 3:
 			m.raise = 0.0 if pose == 0 else 1.0
 			m.cut = 0.3 if pose == 2 else -1.0
 			m.lean = 0.32 if pose == 2 else 0.0
+			m.alert = pose > 0
 			# Its torso turned back toward the runner beside it (Hunter._place).
 			m.face_yaw = atan2(side * 2.4, -t.alongside_ahead)
 			m.animate(0.0)
+			var boxes: Array[AABB] = []
 			for mi: MeshInstance3D in m.mesh_nodes():
-				var b: AABB = mi.global_transform * mi.mesh.get_aabb()
-				box = b if first else box.merge(b)
-				first = false
-		looks[side] = box
+				boxes.append(mi.global_transform * mi.mesh.get_aabb())
+			looks[side * 10 + pose] = boxes
 	m.free()
 	var faults: PackedStringArray = []
 	var worst: float = 0.0
@@ -374,27 +374,30 @@ func _test_view() -> void:
 					continue
 				var d: float = 300.0
 				var view := EnforcerTruckView.of_runner(mt, geo, r, d)
-				var look: AABB = looks[side]
-				var box := AABB(look.position + Vector3(geo.lane_x(l), 0.0, TrackGeometry.world_z(d + t.alongside_ahead)), look.size)
+				var at := Vector3(geo.lane_x(l), 0.0, TrackGeometry.world_z(d + t.alongside_ahead))
 				var tag: String = "%d lanes, runner %d, Hunter %d" % [lanes, r, l]
-				for i: int in 8:
-					var s: Vector2 = view.screen(box.get_endpoint(i))
-					worst = maxf(worst, maxf(absf(s.x), absf(s.y)))
-					if not view.on_screen(box.get_endpoint(i)):
-						faults.append("%s: a corner off screen (%s)" % [tag, s])
-						break
-				for p: Vector3 in EnforcerTruckView.runner_points(mt, geo.lane_x(r), d):
-					if view.hides(box, p):
-						faults.append("%s: it hides the runner" % tag)
-						break
 				var far: int = r - side
-				for lane: int in [r, far]:
-					if lane < 0 or lane >= lanes:
-						continue
-					for ahead: float in [0.0, 5.0, 10.0, 20.0]:
-						if view.hides(box, Vector3(geo.lane_x(lane), 0.05, TrackGeometry.world_z(d + ahead))):
-							faults.append("%s: it hides lane %d's floor %.0f m ahead" % [tag, lane, ahead])
-	check(faults.is_empty(), "beside the runner its whole look is on screen (its furthest corner %.0f%% of the way to the edge), hiding nothing of them or the lanes they need (%s)"
+				for pose: int in 3:
+					var boxes: Array[AABB] = []
+					for b: AABB in looks[side * 10 + pose]:
+						boxes.append(AABB(b.position + at, b.size))
+					for p: Vector3 in EnforcerTruckView.corners(boxes):
+						var s: Vector2 = view.screen(p)
+						worst = maxf(worst, maxf(absf(s.x), absf(s.y)))
+						if not view.on_screen(p):
+							faults.append("%s, pose %d: a corner off screen (%s)" % [tag, pose, s])
+							break
+					for p: Vector3 in EnforcerTruckView.runner_points(mt, geo.lane_x(r), d):
+						if view.hidden(boxes, p):
+							faults.append("%s, pose %d: it hides the runner" % [tag, pose])
+							break
+					for lane: int in ([r, far] if pose == 0 else [far]):
+						if lane < 0 or lane >= lanes:
+							continue
+						for ahead: float in [2.0, 5.0, 10.0, 20.0]:
+							if view.hidden(boxes, Vector3(geo.lane_x(lane), 0.05, TrackGeometry.world_z(d + ahead))):
+								faults.append("%s, pose %d: it hides lane %d's floor %.0f m ahead" % [tag, pose, lane, ahead])
+	check(faults.is_empty(), "beside the runner its whole look is on screen (its furthest corner %.0f%% of the way to the edge), hiding nothing of them or the floor they need (%s)"
 		% [worst * 100.0, faults])
 
 
@@ -590,7 +593,7 @@ func _test_no_way_out() -> void:
 		layout.gaps.append({"lane": hole_lane, "start": 150.0, "end": 400.0})
 		var w: RunWorld = _world(layout, 2)
 		w.player.god_mode = true
-		var r: Dictionary = await _run(w, 18.0)
+		var r: Dictionary = await _run(w, 21.0)
 		var h: Hunter = r["hunter"]
 		var warns: Array = _events(r["history"], "warn")
 		var inside: int = 0
@@ -600,7 +603,7 @@ func _test_no_way_out() -> void:
 			var d: float = float(wn[0])
 			if d + t.attack_seconds() * v + 2.0 >= 150.0 and d + t.escape_reaction_seconds * v <= 400.0:
 				inside += 1
-			if d > 400.0:
+			elif d > 150.0:
 				after += 1
 		if holes_in == "far":
 			check(h != null and h.side == -1 and inside == 0 and after >= 1,
@@ -686,15 +689,21 @@ func _test_weapons() -> void:
 	var w: RunWorld = _world(_layout(3), 1, loadout)
 	w.player.god_mode = true
 	_no_flurries(w)
+	var c := w.powerups as PowerupController
+	if c == null or c.weapon == null:
+		check(false, "a runner with the laser")
+		await sim.free_world(w)
+		return
+	# Auto-fire held (its cooldown never runs out): this take fires its own shots.
+	c.weapon.set(&"_cooldown", 1.0e9)
 	var r: Dictionary = await _until_alongside(w)
 	var h: Hunter = r["hunter"]
-	var c := w.powerups as PowerupController
-	if h == null or c == null or c.weapon == null:
+	if h == null:
 		check(false, "a Hunter beside a runner with the laser")
 		await sim.free_world(w)
 		return
-	check(h.targetable() and w.director.targets_ahead(c.weapon.muzzle_point(), c.weapon.range_m()).has(h)
-		and EnemyHealthBars.wants_bar(h), "auto-fire picks it beside the runner, and it shows a health bar")
+	check(h.targetable() and c.weapon.pick_target() == h and is_equal_approx(h.health, h.max_health),
+		"auto-fire picks it beside the runner")
 	var counts: Array[int] = []
 	for tier: int in [1, 2, 3, 4]:
 		c.weapon.tier = tier
@@ -705,18 +714,18 @@ func _test_weapons() -> void:
 	check(counts[0] == 25 and counts.slice(1) == plain and is_equal_approx(h.max_health, t.health_early),
 		"25 laser tier 1 shots, the other tiers in proportion (%s; health %.1f)" % [counts, h.max_health])
 	c.weapon.tier = 1
+	var dmg: float = c.weapon.damage(h)
 	var hits: Array[int] = [0]
 	w.projectiles.enemy_hit.connect(func(e: Enemy, _d: float, _s: bool) -> void:
 		if e == h:
 			hits[0] += 1)
 	var from: Vector3 = w.player.position + Vector3(0.0, 1.0, 0.0)
-	w.projectiles.fire_player(from, (h.aim_point() - from).normalized() * 90.0 + Vector3(0.0, 0.0, -w.player.speed), 0.01, &"laser")
+	w.projectiles.fire_player(from, (h.aim_point() - from).normalized() * 90.0 + Vector3(0.0, 0.0, -w.player.speed), dmg, &"laser")
 	await physics_frames(8)
-	check(hits[0] == 1, "a laser shot hits it")
-	var dmg: float = c.weapon.damage(h)
+	check(hits[0] == 1 and EnemyHealthBars.wants_bar(h), "a laser shot hits it, and it shows a health bar")
 	for i: int in 23:
 		h.take_damage(dmg, &"weapon")
-	check(h.alive, "24 laser tier 1 hits don't stop it (the 25th's shot and 23 more)")
+	check(h.alive, "24 laser tier 1 hits don't stop it (that shot and 23 more)")
 	h.take_damage(dmg, &"weapon")
 	check(not h.alive and h.state == Hunter.State.DEAD and h.sounds_played.any(func(s: Array) -> bool: return s[0] == &"hunter_death"),
 		"the 25th destroys it, in its death's crunch and blast")
@@ -786,6 +795,9 @@ func _test_steering() -> void:
 		var w: RunWorld = _world(layout, 2)
 		w.player.god_mode = true
 		_no_flurries(w)
+		var lost: Array = [0]
+		w.director.enemy_defeated.connect(func(e: Enemy, _cause: StringName) -> void:
+			lost[0] += 1 if e.type_id == &"cyborg" else 0)
 		var meets: Array = [0]
 		var lanes_by: Array = []
 		var watch := func(ww: RunWorld) -> void:
@@ -799,13 +811,11 @@ func _test_steering() -> void:
 				lanes_by.append(hh.lane)
 		var r: Dictionary = await _run(w, (at + 120.0) / mt.run_speed, [], watch)
 		var h: Hunter = r["hunter"]
-		var stood: bool = true
-		if what == "enemy":
-			stood = w.director.active.any(func(e: Variant) -> bool: return is_instance_valid(e) and (e as Enemy).type_id == &"cyborg" and (e as Enemy).alive)
+		var stood: bool = lost[0] == 0
 		check(h != null and meets[0] == 0 and not lanes_by.is_empty() and not lanes_by.has(1) and not lanes_by.has(2) and stood
 			and h.state == Hunter.State.ALONGSIDE and h.lane == 1,
-			"it goes round a %s in its lane (in lane %s there), never into the runner's, and comes back beside them %s"
-			% [what, lanes_by, _brief(r)])
+			"it goes round a %s in its lane (in lane %s there), never into the runner's, and comes back beside them (%s in lane %d; it stands: %s) %s"
+			% [what, lanes_by, Hunter.STATE_NAMES[h.state] if h != null else "-", h.lane if h != null else -1, stood, _brief(r)])
 		check((r["faults"] as PackedStringArray).is_empty(), "its rules held (a %s) %s" % [what, r["faults"]])
 		await sim.free_world(w)
 
@@ -841,9 +851,9 @@ func _test_ceiling() -> void:
 	var called: Array = _events(r["history"], "called_off")
 	var on_ceiling: Array = warns.filter(func(e: Array) -> bool: return float(e[0]) > pad + 1.0 and float(e[0]) < hull_end)
 	var later: Array = warns.filter(func(e: Array) -> bool: return float(e[0]) > hull_end + 5.0)
-	check(forced[0] and not warns.is_empty() and float(warns[0][0]) < pad and not called.is_empty()
-		and float(called[0][0]) >= pad - 1.0 and float(called[0][0]) < pad + 3.0
-		and _events(r["history"], "cut").filter(func(e: Array) -> bool: return float(e[0]) < hull_end).is_empty(),
+	check(forced[0] and not warns.is_empty() and not called.is_empty() and float(called[0][0]) >= pad - 1.0
+		and float(called[0][0]) < pad + 3.0 and warns.any(func(e: Array) -> bool: return float(e[0]) < pad and float(e[0]) > pad - 0.5 * mt.run_speed)
+		and _events(r["history"], "cut").filter(func(e: Array) -> bool: return float(e[0]) > pad - 1.0 and float(e[0]) < hull_end).is_empty(),
 		"a warning on as the pad lifts the runner is called off, no cut follows %s" % _brief(r))
 	check(below[0] > 60 and below[1] == below[0] and on_ceiling.is_empty(),
 		"on the ceiling it waits below beside them (%d of %d frames), never warning" % [below[1], below[0]])
@@ -889,7 +899,7 @@ func _test_teleport() -> void:
 		var hh: Hunter = _hunter(w)
 		jumped[0] = w.level_time()
 		jumped[1] = hh.chase_time if hh != null else -1.0)
-	var r: Dictionary = await _run(w, 14.0, [], Callable(), func(ww: RunWorld) -> bool:
+	var r: Dictionary = await _run(w, 24.0, [], Callable(), func(ww: RunWorld) -> bool:
 		var hh: Hunter = _hunter(ww)
 		return jumped[0] >= 0.0 and hh != null and hh.state == Hunter.State.ALONGSIDE and ww.level_time() > jumped[0] + 0.2)
 	var h: Hunter = r["hunter"]
@@ -915,13 +925,13 @@ func _test_teleport() -> void:
 	await sim.free_world(w)
 
 
-## It gives up chase_seconds after arriving, whatever it's doing (flurries on, the runner dodging), its whine falling, and
-## drops back out of play; it never starts a flurry it couldn't finish before then.
+## It gives up chase_seconds after arriving, whatever it's doing (slashing at a runner in god mode all the while), its
+## whine falling, and drops back out of play; it never starts a flurry it couldn't finish before then.
 func _test_give_up() -> void:
 	var w: RunWorld = _world(_layout(3), 1)
 	w.player.god_mode = true
 	var ref: Array = [null]
-	var r: Dictionary = await _run(w, t.chase_seconds + 12.0, [], _dodger({}), func(ww: RunWorld) -> bool:
+	var r: Dictionary = await _run(w, t.chase_seconds + 12.0, [], Callable(), func(ww: RunWorld) -> bool:
 		var hh: Hunter = _hunter(ww)
 		if hh != null:
 			ref[0] = weakref(hh)

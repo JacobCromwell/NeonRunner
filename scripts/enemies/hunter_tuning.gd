@@ -87,9 +87,9 @@ extends EnemyTuning
 ## whole jump, under any ceiling rider, whose body comes down to about 3.1 m mid-jump) and length along the track.
 @export_range(2.0, 3.0, 0.05, "suffix:m") var blocker_height: float = 2.95
 @export_range(1.0, 3.0, 0.05, "suffix:m") var blocker_length: float = 2.0
-## Its body's harmless box (a dash passes through it, claws and stomps do nothing): what a falling gantryway's crush and
-## the weapons see (Hunter.aim_point, hit_radius), a little smaller than its look.
-@export var hitbox_size: Vector3 = Vector3(1.2, 2.0, 1.3)
+## Its body's harmless box over its disc (a dash passes through it, claws and stomps do nothing), a little smaller than its
+## look. A falling gantryway's crush and the weapons see its chest and reach instead (Hunter.aim_point, hit_radius).
+@export var hitbox_size: Vector3 = Vector3(1.2, 1.4, 1.3)
 ## How high its disc's underside hovers over the floor (it hovers over gaps and holes alike).
 @export_range(0.2, 1.0, 0.01, "suffix:m") var hover_height: float = 0.38
 
