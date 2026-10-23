@@ -15,26 +15,31 @@ extends Enemy
 ## The rest is GDD §9.17's proposal and task S2's placeholders (DESIGN-TBD, docs/questions/s2.md):
 ## - Arrival: where its entry's `at` says (the runner's distance; hunter_rules.gd plans it so a falling gantryway comes
 ##   during its chase), its hover whine rises and it comes up from arrive_gap behind into a lane beside the runner's, its
-##   middle alongside_ahead ahead of theirs (its front level with them, on screen, its torso turned back toward them).
+##   middle alongside_ahead ahead of theirs (its front level with them, on screen, its torso turned back toward them). A
+##   runner who steps into its way as it comes up keeps it MIN_GAP_IN_LANE behind them (_crossing_runner).
 ## - Alongside it keeps to the side it came up on (`side`): it takes the lane beside the runner's on that side
 ##   follow_delay_seconds after they change lanes (a log on the level clock), so a runner who steps away leaves it in the
-##   lane they just left (the bait: a pillar dashed in their lane, a step away, and the walkway lands on it). It never
-##   takes the runner's lane, and its body is safe but solid: a lane blocker bumps a lane change into it back (as the hover
-##   truck's sides) and its body's hitbox is harmless (Hazard.harmless): only the blades hurt.
+##   lane they just left (the bait: a pillar dashed in their lane, a step away, and the walkway lands on it; out from
+##   under a falling walkway it follows at once, in walkway_switch_seconds). It never takes the runner's lane, and its body
+##   is safe but solid: a lane blocker bumps a lane change into it back (as the hover truck's sides) and its body's hitbox
+##   is harmless (Hazard.harmless): only the blades hurt.
 ## - It steers: what stands in its lane ahead (a doodad, a gantryway's pillar, a live fence, a teleporter's pad, a ramp, a
 ##   standing dash wall, another enemy on the floor) it goes round in the lane further out, or, with none, it makes room.
 ##   Holes, gaps and floor cuts it hovers over.
 ## - It never takes the runner's way out: where their lane holds what they must leave it for (a doodad, a floor enemy, a
-##   walkway falling on it, another enemy's lane attack, a wall-run gap) within make_room_seconds and the lane on their
-##   other side isn't open, it makes room: it drops back behind the camera and comes up again once it may (regain_seconds).
+##   walkway falling on it, another enemy's lane attack or small attack: a cyborg-type gun's burst, an enemy shot; a
+##   wall-run gap) within make_room_seconds and the lane on their other side isn't open, it makes room: it drops back
+##   behind the camera and comes up again once it may (regain_seconds).
 ## - The flurry: alongside and settled, the runner on the floor with the lane on their other side open to step into until
 ##   its last cut (the dodge: one lane away, never a jump), its warning (warning_seconds): both blades raised, a steel
 ##   scrape (hunter_scrape) and a red mark on the runner's lane; then flurry_seconds of quick cuts into that lane (its
-##   attack hitbox over the lane, from the floor to over a jump, under any ceiling rider; hunter_slash). One flurry is one
-##   hit: armor or the shield takes the first contact and the invulnerability window covers the rest. No flurry in the
+##   attack hitbox over the lane, from the floor to over a jump, under any ceiling rider; hunter_slash), drawn as far as
+##   it reaches: a see-through red sweep of its blades over the lane and a lunge toward it (_build_trail). One flurry is
+##   one hit: armor or the shield takes the first contact and the invulnerability window covers the rest. No flurry in the
 ##   level's calm start, over a gantryway's run-up and calm stretch (the bait stays clean), a teleporter's calm stretch in
-##   the runner's lane or a wall-run gap's crossing. A runner who takes a pad, steps onto a wall or teleports during one
-##   calls it off. It holds its lane through a warning and its cuts, then follows.
+##   the runner's lane, a wall-run gap's crossing or a fenced ceiling's pick, while another enemy's small attack is on at
+##   them, or one whose dodge would take them two lanes past the next bait's walkway lane. A runner who takes a pad, steps
+##   onto a wall or teleports during one calls it off. It holds its lane through a warning and its cuts, then follows.
 ## - A runner on a ceiling or a wall it waits below, beside their lane, never cutting.
 ## - A teleport leaves it behind (follows_runner keeps it in play through EnemyDirector.runner_teleported): it catches up
 ##   from where the jump left it (no further back than catch_up_gap_max), its time running all along.
@@ -47,9 +52,10 @@ extends Enemy
 ## gantryways its rules planned in its chase (its pillar's front, its walkway's lane, its pillar's push side, where its
 ## rules keep the floor clear for a step out). The bait shapes how it rides (task S2's placeholder, DESIGN-TBD): it comes
 ## up on the runner's far side from the next one's walkway lane, so they reach that lane stepping away from it, where they
-## could then step out of it away from it onto open floor, else on the side away from the push (_bait_side); and over a
-## bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's lane, one lane further out, so a
-## runner it followed past that lane can step back in (_run_up_bait).
+## could then step out of it away from it onto open floor, else on the side away from the push (_bait_side); it never
+## rides between them and that lane two lanes or more off, dropping back or holding back unseen until they're past
+## (_blocks_bait); and over a bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's lane, one
+## lane further out, so a runner it followed past that lane can step back in (_run_up_bait).
 
 enum State { WAITING, APPROACH, ALONGSIDE, YIELD, LEAVING, DEAD }
 enum Slash { IDLE, WARNING, FLURRY, RECOVER }

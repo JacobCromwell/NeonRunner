@@ -175,10 +175,12 @@ static func hunter_lane_window(gen: LevelGenerator, t: HunterTuning, front: floa
 
 ## Task S2's hook in the gantryways' rules (GantrywayRules.wanted): where the level introduces the Hunter (it gives the
 ## feature a start), the stretch its first chase takes its bait in: intro_bait_min_seconds to intro_bait_max_seconds of
-## run past the feature's start, so the first Hunter arrives about as the feature starts (a calm arrival found before the
-## bait) and shows its flurry before the bait; where no gantryway fits there, anywhere a Hunter arriving as the feature
-## starts could still take one (bait_after_seconds to chase_seconds less bait_before_seconds past the start). None in a
-## level without the feature, without its start, or whose data allows no Hunter.
+## run past the feature's start, so the first Hunter arrives about as the feature starts (a calm arrival found before
+## the bait), with time to show a flurry before the bait where the runner's lane allows one (Hunter.may_slash never
+## starts one that would carry them two lanes past the bait's walkway lane); where no gantryway fits there, anywhere a
+## Hunter arriving as the feature starts could still take one (bait_after_seconds to chase_seconds less
+## bait_before_seconds past the start). None in a level without the feature, without its start, or whose data allows no
+## Hunter.
 static func gantryway_wanted(gen: LevelGenerator) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var t: HunterTuning = tuning()
