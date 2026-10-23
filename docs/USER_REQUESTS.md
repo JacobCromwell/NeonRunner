@@ -12,3 +12,7 @@ request that is now in the done file.
   anti-grav pad (the owner's sketch: a centipede in the maze, then a room with the pad, then four rows of debris with
   the ceiling landing past them; copied in `docs/questions/o5.md`). Built on task O5's branch; open questions in
   `docs/questions/o5.md`.
+- [ ] **The Terminal, second round** (task O5): Last Stop to about 12 centipedes; centipedes not always separated from
+  the player; an ambush centipede hidden in the debris that bursts out when the runner gets close, two in Last Stop's
+  last half; more gaps to jump between maze sections. Built on task O5's branch; open questions 7-11 in
+  `docs/questions/o5.md`.

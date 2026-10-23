@@ -2,7 +2,8 @@ extends TestSuite
 ## Where the Cybernetic Centipede waits, and the proof that every maze stays escapable past it (task O3; GDD §9.15: it
 ## "haunts the debris maze, waiting in the open sections between the debris", "trapped behind debris", "in the only way
 ## through", and "the player is strongly encouraged to run from it"). Its behaviour on its own is test_centipede's.
-## - Its rules (centipede_rules.gd) over the Terminal's levels at 3, 5 and 6 lanes, each level's own seed and others: no
+## - Its rules (centipede_rules.gd) over the Terminal's levels at 3, 5 and 6 lanes (each level's own seed with all its
+##   ambushes at 5 and 6 lanes, one at least at 3, task O5), each level's own seed and others: no
 ##   warnings, every build passing LayoutChecks.check_layout (check_centipedes: each in the maze block it names from the
 ##   feature's start, in an open cell, placed as walled in exactly when its cell is, at most two a block and spaced, its
 ##   block escapable past them), the same placements every attempt, centipedes in every build, GDD §9.15's three places
@@ -84,6 +85,15 @@ func _test_generator() -> void:
 				LayoutChecks.check_layout(self, layout, config, tag)
 				builds += 1
 				var mine: Array[Dictionary] = _centipedes(layout)
+				# Task O5: each level's own seed holds its ambushes, all in its last stretch (DebrisMazeTuning).
+				var mt: DebrisMazeTuning = DebrisMaze.tuning_for(config)
+				var ambushes: int = 0
+				for e: Dictionary in mine:
+					ambushes += 1 if CentipedeRulesScript.is_ambush(e) else 0
+				# At 3 lanes there's little room to hide one off the way: one at the least.
+				if k == 0:
+					check(ambushes == mt.ambush_count if lanes >= 5 else ambushes >= mini(mt.ambush_count, 1),
+						"the level's own seed holds its %d ambushes (%d) %s" % [mt.ambush_count, ambushes, tag])
 				if k == 0:
 					var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 					check(JSON.stringify(_centipedes(again)) == JSON.stringify(mine), "the same centipedes every attempt " + tag)

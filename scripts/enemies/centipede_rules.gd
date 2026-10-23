@@ -28,8 +28,8 @@ extends RefCounted
 ## walled in (the owner: they "should not be always separated from the player").
 ## Ambushes (DebrisMazeTuning.ambush_count; the owner, October 22, 2026: "resting inside of one of the debris doodads ...
 ## when you get close to it, the debris shatters and the centipede is released"; two in Last Stop's last half): placed
-## first, one a block, each hidden in a divider (_place_ambushes), situation "ambush", params.ambush {room, lane, peek};
-## its block holds no other centipede.
+## first, one a block, each hidden in a divider (_place_ambushes), situation "ambush", params.ambush {room, lane, peek,
+## from, to}; the others placed in its block after it keep the block escapable with it.
 
 const FEATURE: String = "centipede"
 
@@ -73,12 +73,12 @@ static func apply(gen: LevelGenerator) -> void:
 	var start: float = gen.feature_start(FEATURE)
 	var scale: float = count_scale(gen.config)
 	var most: int = max_per_block(gen.config)
-	# The ambushes first (from a stream of their own): their blocks hold no other centipede.
-	var ambushed: Array[int] = _place_ambushes(gen, t, start)
+	# The ambushes first (from a stream of their own); the others in their blocks keep them escapable with it.
+	var ambushed: Dictionary = _place_ambushes(gen, t, start)
 	var placed: int = 0
 	for i: int in lay.maze.size():
 		var b: Dictionary = lay.maze[i]
-		if float(b["end"]) <= start or ambushed.has(i):
+		if float(b["end"]) <= start:
 			continue
 		var d: float = gen.difficulty_at(float(b["start"]) / maxf(lay.length, 1.0))
 		var intro: bool = placed == 0
@@ -88,25 +88,25 @@ static func apply(gen: LevelGenerator) -> void:
 			if not intro and rng.randf() < t.second_share(d):
 				want = 2
 		want = _scaled(want, scale, rng)
-		want = mini(want, most)
+		want = mini(want, most - (ambushed.get(i, []) as Array).size())
 		if want > 0:
-			placed += _place_block(gen, t, rng, i, start, want, intro)
+			placed += _place_block(gen, t, rng, i, start, want, intro, false, ambushed.get(i, []))
 	if placed > 0:
 		return
 	# Every level that has the feature has its centipedes: the first block where any spot fits gets one.
 	for i: int in lay.maze.size():
-		if float((lay.maze[i] as Dictionary)["end"]) > start and not ambushed.has(i) \
-				and _place_block(gen, t, rng, i, start, 1, false, true) > 0:
+		if float((lay.maze[i] as Dictionary)["end"]) > start \
+				and _place_block(gen, t, rng, i, start, 1, false, true, ambushed.get(i, [])) > 0:
 			return
 
 
 ## The level's ambush centipedes (DebrisMazeTuning.ambush_count, from ambush_from of the level and the feature's start
 ## on; task O5): one in each of that many blocks, spread evenly over the blocks there (the others tried in turn where one
-## has no spot), each hidden in a divider (ambush_candidates) where its block stays escapable with it alone
+## has no spot), each hidden in a divider (ambush_candidates) where its block stays escapable with it
 ## (CentipedeEscape: it breaks out as the runner comes within ambush_distance, the debris it lay in open from the start).
-## Returns the blocks that took one.
-static func _place_ambushes(gen: LevelGenerator, t: CentipedeTuning, start: float) -> Array[int]:
-	var out: Array[int] = []
+## Returns the blocks that took one: block index -> [its spot].
+static func _place_ambushes(gen: LevelGenerator, t: CentipedeTuning, start: float) -> Dictionary:
+	var out: Dictionary = {}
 	var lay: LevelLayout = gen.layout
 	var mt: DebrisMazeTuning = DebrisMaze.tuning_for(gen.config)
 	if mt.ambush_count <= 0:
@@ -137,18 +137,18 @@ static func _place_ambushes(gen: LevelGenerator, t: CentipedeTuning, start: floa
 		_shuffle(spots, rng)
 		for j: int in mini(spots.size(), OPEN_TRIES):
 			var c: Dictionary = spots[j]
-			var entry: Dictionary = _ambush_entry(i, c)
+			var entry: Dictionary = ambush_entry(i, c)
 			if not gen.zones.enemy_clear(lay, entry):
 				continue
 			if bool(ctx.find([c])["ok"]):
 				gen.add_enemy(FEATURE, float(entry["at"]), int(entry["lane"]), 0, entry["params"])
-				out.append(i)
+				out[i] = [c]
 				break
 	return out
 
 
-## Every spot block `index` of `layout` offers an ambush (see _place_ambushes): in each divider of each room (but an
-## escape block's pad room, which has none), its head at a random place between HEAD_MARGIN past the room's start and
+## Every spot block `index` of `layout` offers an ambush (see _place_ambushes): OPEN_SPOTS in each divider of each room
+## (but an escape block's pad room, which has none), each its head at a random place between HEAD_MARGIN past the room's start and
 ## its body's length and TAIL_MARGIN before its end, from track distance `start` on; its body pokes out on a side whose
 ## lane is open beside the divider (`peek`: -1 or 1). Each {lane, at, room, ambush: true, peek, host (the divider's
 ## pieces its body lies in: ambush_host)}, a spot CentipedeEscape takes as an ambush.
@@ -166,10 +166,11 @@ static func ambush_candidates(layout: LevelLayout, tuning: MovementTuning, index
 			continue
 		for lane: Variant in room["dividers"]:
 			var l: int = int(lane)
-			var at: float = rng.randf_range(lo, hi)
-			var peek: int = 1 if l == 0 else (-1 if l == lanes - 1 else (1 if rng.randf() < 0.5 else -1))
-			out.append({"lane": l, "at": at, "room": r, "ambush": true, "peek": peek,
-				"host": ambush_host(layout, index, r, l, at)})
+			for k: int in OPEN_SPOTS:
+				var at: float = rng.randf_range(lo, hi)
+				var peek: int = 1 if l == 0 else (-1 if l == lanes - 1 else (1 if rng.randf() < 0.5 else -1))
+				out.append({"lane": l, "at": at, "room": r, "ambush": true, "peek": peek,
+					"host": ambush_host(layout, index, r, l, at)})
 	return out
 
 
@@ -188,7 +189,7 @@ static func ambush_host(layout: LevelLayout, index: int, room: int, lane: int, a
 
 ## An ambush spot's layout entry: params {block, situation "ambush", ambush {room, lane, peek, from, to (the stretch of
 ## its divider it lies in: ambush_host)}, floor_span}.
-static func _ambush_entry(index: int, c: Dictionary) -> Dictionary:
+static func ambush_entry(index: int, c: Dictionary) -> Dictionary:
 	var at: float = float(c["at"])
 	return {"type": FEATURE, "at": at, "lane": int(c["lane"]), "side": 0, "params": {"block": index,
 		"situation": AMBUSH, "ambush": {"room": int(c["room"]), "lane": int(c["lane"]), "peek": int(c["peek"]),
@@ -197,13 +198,15 @@ static func _ambush_entry(index: int, c: Dictionary) -> Dictionary:
 
 
 ## The escape proof's spot (CentipedeEscape) for centipede entry `e` of `layout`: {lane, at}, and an ambush's
-## {ambush: true, host (its debris: ambush_host)} too.
+## {ambush: true, room, peek, host (its debris: ambush_host)} too (ambush_entry makes its entry again from it).
 static func spot_of(layout: LevelLayout, e: Dictionary) -> Dictionary:
 	var out: Dictionary = {"lane": int(e["lane"]), "at": float(e["at"])}
 	if is_ambush(e):
 		var params: Dictionary = e["params"]
 		var hide: Dictionary = params.get("ambush", {})
 		out["ambush"] = true
+		out["room"] = int(hide.get("room", -1))
+		out["peek"] = int(hide.get("peek", 1))
 		out["host"] = ambush_host(layout, int(params.get("block", -1)), int(hide.get("room", -1)), int(e["lane"]),
 			float(e["at"]))
 	return out
@@ -240,9 +243,10 @@ static func _scaled(want: int, scale: float, rng: RandomNumberGenerator) -> int:
 
 ## Places up to `want` centipedes in block `index` (see the header): the first in an ordinary cell if it's the level's
 ## introduction (`intro`), each in a place drawn by the weights and then the others, every one only where the block stays
-## escapable; with `any`, every place in turn whatever the weights. Returns how many it placed.
+## escapable (with the block's `ambushes` too: their spots, kept min_spacing from); with `any`, every place in turn
+## whatever the weights. Returns how many it placed.
 static func _place_block(gen: LevelGenerator, t: CentipedeTuning, rng: RandomNumberGenerator, index: int, start: float,
-		want: int, intro: bool, any: bool = false) -> int:
+		want: int, intro: bool, any: bool = false, ambushes: Array = []) -> int:
 	var lay: LevelLayout = gen.layout
 	var ctx: CentipedeEscape.Context = CentipedeEscape.context(lay, gen.tuning, index)
 	var candidates: Array[Dictionary] = candidates_for(gen, ctx, start, rng)
@@ -255,7 +259,7 @@ static func _place_block(gen: LevelGenerator, t: CentipedeTuning, rng: RandomNum
 		for situation: String in order:
 			var pool: Array[Dictionary] = []
 			for c: Dictionary in candidates:
-				if String(c["situation"]) == situation and _spaced(c, chosen, t):
+				if String(c["situation"]) == situation and _spaced(c, chosen, t) and _spaced(c, ambushes, t):
 					pool.append(c)
 			_shuffle(pool, rng)
 			for j: int in mini(pool.size(), TRIES if situation == "trapped" else OPEN_TRIES):
@@ -263,7 +267,8 @@ static func _place_block(gen: LevelGenerator, t: CentipedeTuning, rng: RandomNum
 				var entry: Dictionary = _entry(index, c)
 				if not gen.zones.enemy_clear(lay, entry):
 					continue
-				var spots: Array = chosen.duplicate()
+				var spots: Array = ambushes.duplicate()
+				spots.append_array(chosen)
 				spots.append(c)
 				if bool(ctx.find(spots)["ok"]):
 					chosen.append(c)
@@ -361,7 +366,7 @@ static func _entry(index: int, c: Dictionary) -> Dictionary:
 		"floor_span": Vector2(at - FLOOR_BEFORE, at + Centipede.BODY_LENGTH + FLOOR_AFTER)}}
 
 
-static func _spaced(c: Dictionary, chosen: Array[Dictionary], t: CentipedeTuning) -> bool:
+static func _spaced(c: Dictionary, chosen: Array, t: CentipedeTuning) -> bool:
 	for o: Dictionary in chosen:
 		if absf(float(o["at"]) - float(c["at"])) < t.min_spacing:
 			return false

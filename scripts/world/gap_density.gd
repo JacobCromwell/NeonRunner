@@ -219,10 +219,19 @@ static func _available(gen: LevelGenerator, span: Vector2, ignore: Dictionary,
 	return out
 
 
-## The lanes where a new row of holes over `span` keeps the margin from everything (_available, nothing ignored): every
-## lane where a row across the track there is a fair jump (DebrisMaze.place_gaps, task O5).
-static func clear_lanes(gen: LevelGenerator, span: Vector2) -> Array[int]:
-	return _available(gen, span, {})
+## Everything a new row of holes across every lane keeps the margin (margin()) from, in any lane (_lane_busy for each,
+## nothing ignored): a span that keeps that margin from all of them is clear in every lane, as _available finds it
+## (DebrisMaze.place_gaps, task O5, reads it once for the whole level).
+static func busy_everywhere(gen: LevelGenerator) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for lane: int in gen.layout.lane_count:
+		out.append_array(_lane_busy(gen, lane, {}))
+	return out
+
+
+## The margin a new row keeps from everything (_margin: the level's hard spacing at its speed).
+static func margin(gen: LevelGenerator) -> float:
+	return _margin(gen)
 
 
 static func _candidates(gen: LevelGenerator, length: float) -> Array[Vector2]:

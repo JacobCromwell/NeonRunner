@@ -661,6 +661,15 @@ Damage and interactions, "Where doodads stop the runner".
   maze's own way up to the pad room its record's breaks, the whole block finishable without the pad (waits and all), its
   pad and ceiling where the record says (the maze ceiling's rules besides), and each level with `escape_blocks` has one
   or more. DESIGN-TBD (`docs/questions/o5.md`).
+- **Rows of holes between blocks** (task O5; the owner, October 22, 2026: "add some more gaps to jump over in the
+  sections in between maze portions"). `DebrisMaze.place_gaps` (from `LevelGenerator.generate` right after the wider
+  gaps, before the fill pass and the doodads, which keep their spacing from it; report `maze_gap_result`): in each
+  stretch from one block's keep-out to the next block's run-in, `gap_rows` rows across every lane, `gap_jump_share` of a
+  full jump long (at most `max_gap_jump_fraction`), each where it fits nearest its even step (`_nearest_fit`) with
+  `GapDensity.margin` (the level's hard spacing) clear of everything any lane holds (`GapDensity.busy_everywhere`, read
+  once a level). Rubble Line 1 a stretch (about 3 more rows a level: most of its stretches are short or hold a wider
+  gap), Last Stop 2 (6 more). City 1's GapDensity pass found no room in the Terminal (its doodads fill the normal track,
+  and it at most doubles the two wider gaps), so this goes in before them. DESIGN-TBD (`docs/questions/o5.md` 10).
 - **For what lives in it (task O3's centipedes, `enemy-centipede.md`).** `LevelLayout.maze` holds each block's record ({entry, start, end,
   exit, walls [{start, end, size, open}], rooms [{start, end, dividers}], breaks}); its debris are `LevelLayout.doodads`
   entries marked `maze` (the block), `part` ("wall" or "divider") and `index` (`LevelLayout.is_maze_debris`), its

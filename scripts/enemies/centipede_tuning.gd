@@ -92,7 +92,7 @@ extends EnemyTuning
 ## barely see its body, and when you get close to it, the debris shatters and the centipede is released") hides in a
 ## divider of the maze, a sliver of its body showing beside it; it breaks out once the runner, on the floor in its block,
 ## is this close along the track (metres at the reference speed), or as soon as a dash smashes debris it lies in.
-@export_range(4.0, 40.0, 0.5, "suffix:m") var ambush_distance: float = 16.0
+@export_range(4.0, 40.0, 0.5, "suffix:m") var ambush_distance: float = 8.0
 ## How far its body pokes out beside the debris it hides in (metres): enough to be glimpsed.
 @export_range(0.0, 0.6, 0.05, "suffix:m") var ambush_showing: float = 0.25
 

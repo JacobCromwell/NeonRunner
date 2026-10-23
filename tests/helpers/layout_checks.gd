@@ -349,9 +349,6 @@ static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: Leve
 		var x: String = "(maze block %d at %.0f, %d centipedes) %s" % [i, float(layout.maze[i]["start"]), list.size(), tag]
 		var most: int = CentipedeRulesScript.max_per_block(config)
 		suite.check(list.size() <= most, "at most %d centipedes a block %s" % [most, x])
-		for e: Dictionary in list:
-			suite.check(not CentipedeRulesScript.is_ambush(e) or list.size() == 1,
-				"an ambush's block holds no other centipede %s" % x)
 		var spots: Array = []
 		for e: Dictionary in list:
 			for o: Dictionary in spots:

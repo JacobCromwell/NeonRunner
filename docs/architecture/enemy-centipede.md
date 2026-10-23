@@ -22,9 +22,33 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   pad and landing zone (`CeilingZones.enemy_clear`). Its entry: {type, at (the head), lane, side 0, params {block,
   situation, floor_span}}. How many is each level's (task O5; the owner, October 22, 2026: Rubble Line about 20 to 30%
   more, Last Stop about double): its maze tuning's `centipede_scale` (1.35, 2.3) multiplies each block's drawn count, the
-  fraction drawn (`_scaled`; none at 1), and the most a block holds (`max_per_block(config)`: 3, 5). At 5 lanes over 12
-  seeds about 6.75 to 8.4 a level in Rubble Line and 4.4 to 8.8 in Last Stop. An escape block's pad room
-  (`DebrisMaze.is_escape`) takes none.
+  fraction drawn (`_scaled`; none at 1), and the most a block holds (`max_per_block(config)`). Second round (the owner,
+  October 22, 2026: Last Stop to 12, and "not always separated from the player"): scales 1.45 and 3.25, the place
+  weights 0.65, 0.3 and 0.05 (near, way, trapped), and each open cell offering `OPEN_SPOTS` spots tried `OPEN_TRIES` at a
+  time; at 5 lanes over 12 seeds Rubble Line about 8.7 a level (6.75 at first), Last Stop about 11 plus its two ambushes
+  (4.4 at first), walled-in ones about 60% and 70% (73% at first: most open spots fail the proof). An escape block's
+  pad room (`DebrisMaze.is_escape`) takes none.
+- **Ambushes** (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can barely
+  see its body, and when you get close to it, the debris shatters and the centipede is released", two in Last Stop's
+  last half). `DebrisMazeTuning.ambush_count` and `ambush_from`; `_place_ambushes` runs first, one a block from
+  `ambush_from` of the level on (spread, the others tried in turn), each hidden in a divider (`ambush_candidates`:
+  `OPEN_SPOTS` a divider, its body on the side of an open lane, `peek`), its debris (`ambush_host`: the divider's pieces
+  from `AMBUSH_HOST_BEFORE` before its head to `AMBUSH_HOST_AFTER` past its tail) its "host"; the others of its block are
+  placed after it, keeping it in their proof. Entry: situation "ambush", params.ambush {room, lane, peek, from, to};
+  `spot_of(layout, e)` is the proof's spot for any entry. `Centipede`: `ambush`, `hidden`, `host`; hidden, it lies set to
+  its side so `ambush_showing` of its body pokes out past the debris, lenses dark; it breaks out (`_breaks_out`,
+  `_break_out`) once the runner is on the floor in its block within `ambush_distance_at(pace)` (8 m at the reference
+  speed) or debris of it is smashed: its host's pieces are smashed (`DashBreakable.smash(&"ambush")`, the run's rubble,
+  `doodad_smash`), the maze refreshes (its neighbours' sections too), and it wakes as any other. The proof
+  (`CentipedeEscape`): an ambush spot wakes by distance alone (`_wake_dist`), its host is open for every centipede of
+  the block from the start (`hosts`), and the sections its shattering joins are joined from the start (`_host_joins`).
+  The wake check has `EPS` of tolerance at the wake distance's edge (it could count a wake a stretch late: found with
+  the ambush). `CentipedeBot` opens the ambushes' hosts in its own grid, leaves a hidden one's head in debris alone, and
+  skips its bound while the runner dashes (a dash passes through the bite, as the proof takes it). Tests:
+  `test_centipede` (`_test_ambush`: hidden, the sliver showing, out at its distance with the crunch then the hiss,
+  chasing; out at once when its debris is smashed), `test_centipede_maze` (each level's own seed holds its ambushes at 5
+  and 6 lanes, one at least at 3), `LayoutChecks.check_centipedes` (in a divider of its room, from `ambush_from` on, no
+  more than the count). DESIGN-TBD (`docs/questions/o5.md` 7-9).
 - **The proof** (`CentipedeEscape.find`; `LayoutChecks.check_centipedes` runs it again on every built level). Escapable:
   from the block's run-in (any lane) to `leave_margin` past its last wall, a way on the Player's moves (MazeRoute's
   model: lining up while running, stops at debris, the dash from a stop when it's ready, waiting for it otherwise; the

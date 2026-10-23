@@ -147,6 +147,9 @@ func run() -> void:
 
 ## A centipede's layout entry at `spot` ({lane, at}) in block `index`, as the rules make one.
 func _entry(index: int, spot: Dictionary) -> Dictionary:
+	# A level's own ambush (task O5) stays one: hidden in its debris until it breaks out.
+	if bool(spot.get("ambush", false)):
+		return RulesScript.ambush_entry(index, spot)
 	var at: float = float(spot["at"])
 	return {"type": RulesScript.FEATURE, "at": at, "lane": int(spot["lane"]), "side": 0, "seed": 7, "params": {
 		"block": index, "situation": "fuzz",

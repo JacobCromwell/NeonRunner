@@ -83,8 +83,7 @@ extends Resource
 ## the centipede's numbers say.
 @export_range(0.5, 4.0, 0.05) var centipede_scale: float = 1.0
 ## Ambush centipedes this level's maze holds (task O5; the owner, October 22, 2026: two in Last Stop, in its last half):
-## each hides inside a divider of a block from ambush_from of the level on (one a block, the block holding no other
-## centipede) and breaks out as the runner comes near (CentipedeTuning.ambush_distance). Counted apart from
+## each hides inside a divider of a block from ambush_from of the level on (one a block) and breaks out as the runner comes near (CentipedeTuning.ambush_distance). Counted apart from
 ## centipede_scale's.
 @export_range(0, 6) var ambush_count: int = 0
 ## Where in the level (a share of its length) the first block an ambush may hide in starts at the earliest.

@@ -91,8 +91,9 @@ const ESCAPE_SLACK: float = 1.0
 const ESCAPE_PAD_EARLY: float = 0.1
 ## Metres an escape block's ceiling reaches past its barrier's back, beyond the body's depth.
 const ESCAPE_HULL_PAST: float = 1.0
-## Metres a row of holes between blocks slides per try from where it would stand until it fits (place_gaps).
-const GAP_SLIDE: float = 1.0
+## Metres a row of holes between blocks keeps beyond its margin from what's in the way (place_gaps): its edges never
+## touch the margin's.
+const GAP_EPSILON: float = 0.01
 ## Seconds of run on top of a wider gap's zone kept free between two blocks (place, gap_room).
 const GAP_ROOM_MARGIN: float = 0.25
 ## How far before a wall's front and past its back links() looks for what a smashed piece of it opens onto (metres):
@@ -273,10 +274,10 @@ static func _owe_escape(escapes: Array[int], k: int, count: int, escape: bool) -
 
 ## Rows of holes to jump in the normal track between blocks (DebrisMazeTuning.gap_rows; task O5, the owner, October 22,
 ## 2026: "add some more gaps to jump over in the sections in between maze portions"): in each stretch from one block's
-## keep-out (keep_out) to the next block's run-in, gap_rows rows at even steps along it, each slid nearer and further from
-## its step (GAP_SLIDE metres a try) until it fits. A row covers every lane, gap_jump_share of a full jump long (never
+## keep-out (keep_out) to the next block's run-in, gap_rows rows at even steps along it, each where it fits nearest its
+## step (_nearest_fit). A row covers every lane, gap_jump_share of a full jump long (never
 ## more than LevelConfig.max_gap_jump_fraction), with the margin the level's other added rows keep from everything in
-## every lane (GapDensity.clear_lanes: the level's hard spacing at its speed, around enemies, ceilings, pads, holes, the
+## every lane (GapDensity.busy_everywhere and margin: the level's hard spacing at its speed, around enemies, ceilings, pads, holes, the
 ## wider gaps' zones and the maze's own keep-outs), so its take-off and landing are clear floor. It runs after the wider
 ## gaps and before the fill pass and the doodads (LevelGenerator.generate), which keep their spacing from it. Returns
 ## {target, rows, constraints} (LevelGenerator.maze_gap_result); {} without the feature or rows asked. DESIGN-TBD
@@ -288,30 +289,52 @@ static func place_gaps(gen: LevelGenerator) -> Dictionary:
 		return {}
 	var report: Dictionary = {"target": 0, "rows": 0, "constraints": []}
 	var length: float = minf(t.gap_jump_share, gen.config.max_gap_jump_fraction) * gen.jump_distance
+	var margin: float = GapDensity.margin(gen)
+	# What every lane keeps the margin from, read once (the rows added here join it).
+	var busy: Array[Vector2] = GapDensity.busy_everywhere(gen)
+	var lo: float = gen.config.start_clear_distance
+	var hi: float = lay.length - gen.config.end_clear_distance
 	for i: int in range(1, lay.maze.size()):
-		var from: float = keep_out(gen, lay.maze[i - 1], t).y
-		var to: float = float(lay.maze[i]["entry"])
+		var from: float = maxf(keep_out(gen, lay.maze[i - 1], t).y, lo)
+		var to: float = minf(float(lay.maze[i]["entry"]), hi)
 		for k: int in t.gap_rows:
 			report["target"] = int(report["target"]) + 1
 			var want: float = from + (to - from) * (k + 1) / (t.gap_rows + 1) - length * 0.5
-			var placed: bool = false
-			for j: int in int((to - from) / GAP_SLIDE) + 1:
-				for dir: int in [1, -1]:
-					var at: float = want + dir * j * GAP_SLIDE
-					if at < from or at + length > to:
-						continue
-					if GapDensity.clear_lanes(gen, Vector2(at, at + length)).size() == lay.lane_count:
-						for lane: int in lay.lane_count:
-							lay.gaps.append({"lane": lane, "start": at, "end": at + length})
-						placed = true
-						break
-				if placed:
-					break
-			if placed:
-				report["rows"] = int(report["rows"]) + 1
-			else:
+			var at: float = _nearest_fit(busy, margin, length, from, to, want)
+			if is_nan(at):
 				(report["constraints"] as Array).append("between blocks %d and %d: no room for row %d" % [i - 1, i, k])
+				continue
+			for lane: int in lay.lane_count:
+				lay.gaps.append({"lane": lane, "start": at, "end": at + length})
+			busy.append(Vector2(at, at + length))
+			report["rows"] = int(report["rows"]) + 1
 	return report
+
+
+## Where a row `length` long that keeps `margin` from every span of `busy` starts, inside [from, to] and as near `want`
+## as it can (place_gaps), or NAN where none fits.
+static func _nearest_fit(busy: Array[Vector2], margin: float, length: float, from: float, to: float,
+		want: float) -> float:
+	# The starts a span forbids: from its start less the margin and the row's length to its end and the margin (open).
+	var blocked: Array[Vector2] = []
+	for b: Vector2 in busy:
+		blocked.append(Vector2(b.x - margin - length, b.y + margin))
+	blocked.sort_custom(func(a: Vector2, c: Vector2) -> bool: return a.x < c.x)
+	var best: float = NAN
+	var cursor: float = from
+	for k: int in blocked.size() + 1:
+		var stop: float = to - length
+		if k < blocked.size():
+			stop = minf(stop, blocked[k].x - GAP_EPSILON)
+		if stop >= cursor:
+			var at: float = clampf(want, cursor, stop)
+			if is_nan(best) or absf(at - want) < absf(best - want):
+				best = at
+		if k < blocked.size():
+			cursor = maxf(cursor, blocked[k].y + GAP_EPSILON)
+		if cursor > to - length:
+			break
+	return best
 
 
 # --- A block's plan ------------------------------------------------------------------------------

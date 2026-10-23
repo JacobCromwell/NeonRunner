@@ -15,7 +15,8 @@ extends RefCounted
 ## its own (independent of CentipedeMaze's grid: the head's footprint against each piece of debris on a fine grid,
 ## diagonal steps and all, every smash of the way open from the start), that at every frame after a centipede woke the
 ## runner was further along open floor from its spot than it could have run since (CentipedeEscape.run_reach) and its
-## bite (CentipedeTuning.bite_reach and the runner's half depth): the proof's bound, on the real run.
+## bite (CentipedeTuning.bite_reach and the runner's half depth), but while dashing (a dash passes through its bite): the
+## proof's bound, on the real run.
 ##   var bot := CentipedeBot.new(sim, level_tuning)
 ##   var r: Dictionary = await bot.run(layout, index, CentipedeEscape.find(layout, level_tuning, index, spots))
 ## result: {alive, cause, reached (past the block's last wall and leave_margin), seconds (from the run-in), dashes,
@@ -158,7 +159,8 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 			if head.y < float(b["entry"]) or head.y > float(b["exit"]):
 				result["outside"] = int(result["outside"]) + 1
 			# The proof's bound with the field of its own (see the header).
-			if float(s["wake"]) < INF and p.distance <= leave:
+			# A dash passes through its bite (DamageRules: the dash's pass, a wound), as the proof takes it.
+			if float(s["wake"]) < INF and p.distance <= leave and not p.dashing:
 				var key: String = "%.3f|%.3f" % [(s["spot"] as Vector2).x, (s["spot"] as Vector2).y]
 				if not fields.has(key):
 					fields[key] = _field(grid, s["spot"])
