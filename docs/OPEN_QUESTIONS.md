@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**1207** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, the Terminal's O1–O4 and F2k, the Ice Lab's Q1–Q6, and the Terminal's O5, so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**1208** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, the Terminal's O1–O4 and F2k, the Ice Lab's Q1–Q6, and the Terminal's O5, so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -35,10 +35,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
 | 1061 | The Terminal pays about half of what its neighbours do, yet the Heavy missile (line 15,800) now first fits at Terminal 1, a level earlier than the Golden Zone it was placed for, so Golden 1 gets easier for buyers. Raise the missile's price (8,000 puts it back), or let the Terminal pay like its neighbours? |
 | 1072 | A bot taking the quickest way through Rubble Line's maze finishes in 140 to 159 s (4 to 23 s of it waiting for the dash) on 138 s of track, so a run can outlast the level by up to 21 s. Are 1 or 2 breaks a block right, or should they scale with depth, difficulty or lane count? |
-| 1195 | The Terminal's escape section: a runner who misses its pad waits for a second dash to break the barrier (never stuck). Right cost, or an unbreakable barrier with a second pad? |
-| 1201 | Last Stop's "12" centipedes: about 11 regular plus the 2 ambushes as built. Should 12 include the ambushes? |
-| 1202 | Centipedes are still walled in about 60-70% of the time: the escape guarantee (a safe way out with the dash at its slowest) turns most open spots down. Relax it, or keep it? |
-| 1206 | Endless mode and the weekly week copy Last Stop's numbers: endless's Terminal now has 84-110 centipedes, 68 rows of holes, 2 ambushes and 1 escape. Keep, or their own numbers? |
 
 ## The items in full
 
@@ -148,37 +144,3 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    quickest way with that dash (test_debris_maze) runs Rubble Line's 138 s of track in 140, 151 and 159 s at 3, 5 and 6
    lanes (4, 15 and 23 s of it waiting for the dash), and Last Stop's 143 s in about 141 s (its dashes make up for its
    stops). Should blocks need more breaks further into a level, or with the difficulty, or fewer at 6 lanes?
-
-**The Terminal: more centipedes, the pad escape, ambushes and gaps** (task O5 of the Terminal workstream, the owner's requests of October 22, 2026; from `docs/questions/o5.md`; GDD §5, Zone 8 and §9.15)
-1195. **A runner who misses the escape's pad isn't stuck for good.** ("A section of maze that will make it so the
-   player needs to escape using the anti-grav pad.") Placeholder: the barrier past the pad's room is debris like the
-   rest of the maze, only too deep for one dash: five large pieces in every lane (32.7 m) at the Terminal's 24.6 m/s,
-   where one dash smashes up to four (`escape_pieces` 5; the code never takes fewer than one dash's smashes plus one,
-   `DebrisMaze.escape_pieces`). A runner who misses the pad stops at the barrier and needs a second dash, waiting up to
-   8 s for it, with any centipede that's awake coming for them. An unbreakable barrier would leave them with no way on
-   (the runner can't turn back). Is a long wait and a second dash the right cost of missing the pad, or should the
-   barrier be something else (a solid train car that can't be broken, with a second pad as a fallback)?
-   The owner's sketch of the escape section (read bottom to top, the runner's way; `*` debris, `A` the anti-grav pad,
-   `O` the ceiling landing, `.` open space, `C` a centipede): `|..O..|` over four rows `|*****|`, then `|..A..|`,
-   `|.****|`, two rows `|*****|`, `|.....|`, `|*****|`, `|**C**|`, `|.....|`, `|*****|`.
-
-1201. **Last Stop's count: is "12" with the ambushes or without?** ("The second level has about 8.8 centipedes ...
-   should be increased to 12.") Placeholder: `centipede_scale` 3.25 (the most a block holds: 7): about 11 regular
-   centipedes a level at 5 lanes over 12 seeds (8 to 15), plus the two ambushes, about 13 in all. Rubble Line's scale is
-   1.45 (8.8 a level against 6.75 at first). Lower Last Stop's to about 2.8 if "12" counts the ambushes.
-
-1202. **Centipedes still mostly walled in: relax the escape guarantee?** ("The centipedes should not be always separated
-   from the player.") Placeholder: the place weights favour the open cells (`near_weight` 0.65, `way_weight` 0.3,
-   `trapped_weight` 0.05, from 0.45, 0.3, 0.25) and each open cell offers several spots (`OPEN_SPOTS` 4, `OPEN_TRIES` 8):
-   walled-in ones fall from about 73% to about 60% in Rubble Line and 70% in Last Stop (5 lanes). Most open spots fail
-   the escape proof: every block keeps a way out that never comes within a woken centipede's reach with the dash at its
-   slowest recharge (8 s), and the open cells joined to the runner's part of the maze are few (half the blocks have
-   none). Going further means relaxing that guarantee, for example counting a dash through a centipede (which wounds it)
-   as a way past, or taking the dash as ready at a block's start, so some blocks could only be survived with the dash
-   spent on a centipede. Relax it, or keep it?
-
-1206. **Endless mode and the weekly week in the Terminal.** Both copy Last Stop's maze tuning, so they inherit every
-   change: endless mode's 20-minute Terminal run goes from about 26-30 centipedes to 84-110, with 68 rows of holes across
-   every lane, 2 ambushes and 1 escape section (the ambushes and escapes counted for the whole run, not per stretch).
-   Is that the endless Terminal wanted, or should endless and the weekly week keep their own numbers (fewer centipedes,
-   ambushes and escapes spread through the run)?

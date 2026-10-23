@@ -20,5 +20,6 @@ ceiling_share = 0.35
 escape_blocks = 1
 escape_from = 0.55
 escape_pieces = 5
-centipede_scale = 1.45
+centipede_scale = 1.15
 gap_rows = 1
+free_centipedes = 2

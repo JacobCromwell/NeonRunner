@@ -448,3 +448,11 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   from about 73% to 60-70%, as far as the escape guarantee allows); ambushes hidden in dividers, breaking out at about
   11 m; rows of holes across every lane between maze blocks (Rubble Line about 3 more, Last Stop 6). Questions in items
   1201-1206 (1201, 1202 and 1206 in `docs/OPEN_QUESTIONS.md`).
+
+## October 23, 2026
+
+- [x] **The Terminal: the owner's answers to items 1195, 1201, 1202 and 1206** (task O6): yes to the escape's second
+  dash, 11 regular plus 2 ambushes, endless and weekly as built; and relax the escape guarantee, then (asked again) drop
+  it for some centipedes.
+  DONE (O6): free centipedes, 2 in Rubble Line and 3 in Last Stop, with no escape proof, out where the runner goes;
+  walled-in ones down to about 43%. Answers recorded in GDD §5 Zone 8 and §9.15; item 1207 deferred.
