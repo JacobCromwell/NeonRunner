@@ -322,16 +322,21 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 			from = float(spot["front"]) + spacing
 	# Task S2: where another feature's rules want a gantryway (wanted(): the Hunter's introduction, which comes only where
 	# one falls in its chase), the best fair spot in that stretch, nearest its middle, both lanes beside it clear if it
-	# can (else the one its pillar pushes into), unless one hangs there already: first of the rest. A level whose features
-	# want none is built as before.
+	# can (else the one its pillar pushes into), unless one hangs there already: first of the rest. Among them, first one
+	# the wanting features can take (wanted_taker: the Hunter's bait, its lane beside the walkway clear; task S2c), else
+	# any. A level whose features want none is built as before.
 	for want: Vector2 in wanted(gen):
 		var a: float = maxf(want.x, from)
 		var b: float = minf(want.y, plan.hi)
 		if fronts.size() >= count or b < a or _any_between(fronts, a, b):
 			continue
-		var wanted_spot: Dictionary = _best(plan, a, b, (a + b) * 0.5, fronts, spacing, true, false)
-		if wanted_spot.is_empty():
-			wanted_spot = _best(plan, a, b, (a + b) * 0.5, fronts, spacing, false, false)
+		var wanted_spot: Dictionary = {}
+		for accept: Callable in [wanted_taker(gen), Callable()]:
+			wanted_spot = _best(plan, a, b, (a + b) * 0.5, fronts, spacing, true, false, false, false, PLANT_TRIES, accept)
+			if wanted_spot.is_empty():
+				wanted_spot = _best(plan, a, b, (a + b) * 0.5, fronts, spacing, false, false, false, false, PLANT_TRIES, accept)
+			if not wanted_spot.is_empty():
+				break
 		if not wanted_spot.is_empty():
 			_place(gen, plan, wanted_spot, fronts)
 	var left: int = count - fronts.size()
@@ -373,6 +378,25 @@ static func wanted(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
+## Which gantryway spots (lane, side, front) every feature that wants gantryways (wanted()) can take, as a callable
+## returning bool (task S2c: `static func gantryway_taker(gen: LevelGenerator) -> Callable` on a feature's rules script,
+## the Hunter's: its bait lane clear), on the layout as it stands now; one taking every spot where none says.
+static func wanted_taker(gen: LevelGenerator) -> Callable:
+	var takers: Array[Callable] = []
+	for feature: String in gen.config.features:
+		var path: String = LevelGenerator.RULES_DIR.path_join("%s_rules.gd" % feature)
+		if feature == FEATURE or not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("gantryway_taker"):
+			takers.append(script.call("gantryway_taker", gen))
+	return func(lane: int, side: int, front: float) -> bool:
+		for taker: Callable in takers:
+			if not bool(taker.call(lane, side, front)):
+				return false
+		return true
+
+
 ## True if a front of `fronts` lies in [a, b].
 static func _any_between(fronts: Array[float], a: float, b: float) -> bool:
 	for f: float in fronts:
@@ -382,11 +406,12 @@ static func _any_between(fronts: Array[float], a: float, b: float) -> bool:
 
 
 ## The best spot in fronts [a, b] (the grid's), as {lane, side, front, cost, both}: one that fits (Plan.fits; both lanes
-## beside it clear over the calm stretch with `both`), taking out the fewest plain pieces, then nearest `want` (the
-## earliest with `earliest`); among the best PLANT_TRIES of those, the first where a cyborg can be planted under its
-## walkway (plant_for). {} if none fits.
+## beside it clear over the calm stretch with `both`) and that `accept` (lane, side, front) takes where given, taking out
+## the fewest plain pieces, then nearest `want` (the earliest with `earliest`); among the best PLANT_TRIES of those, the
+## first where a cyborg can be planted under its walkway (plant_for). {} if none fits.
 static func _best(plan: Plan, a: float, b: float, want: float, fronts: Array[float], spacing: float, both: bool,
-		earliest: bool, first_come: bool = false, need_plant: bool = false, tries: int = PLANT_TRIES) -> Dictionary:
+		earliest: bool, first_come: bool = false, need_plant: bool = false, tries: int = PLANT_TRIES,
+		accept: Callable = Callable()) -> Dictionary:
 	var n: int = plan.size()
 	var first: int = maxi(ceili((a - plan.lo) / plan.step - 0.0001), 0)
 	var last: int = mini(floori((b - plan.lo) / plan.step + 0.0001), n - 1)
@@ -400,6 +425,8 @@ static func _best(plan: Plan, a: float, b: float, want: float, fronts: Array[flo
 				if hard[i] > 0 or not plan.fits(lane, side, i, both, fronts, spacing):
 					continue
 				var f: float = plan.front_at(i)
+				if accept.is_valid() and not bool(accept.call(lane, side, f)):
+					continue
 				var c: int = plan.cost(lane, side, i, both)
 				var off: float = f - a if earliest else absf(f - want)
 				var item: Array = [c, off, _tie(plan, lane, side, i), i, lane, side]

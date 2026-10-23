@@ -78,7 +78,16 @@ static func apply(gen: LevelGenerator) -> void:
 	var rng: RandomNumberGenerator = gen.rng_for(TYPE)
 	var baits: Array[Dictionary] = bait_points(gen, t)
 	var chases: Array[Vector2] = []
-	if _pass(gen, t, rng, baits, busy_stretches(gen, true), chases, true) == 0:
+	var intro: Dictionary = intro_bait(gen, t, baits)
+	var introduced: Dictionary = {}
+	if not intro.is_empty():
+		# DESIGN-TBD (task S2c, docs/questions/s2.md): the level's introduction of it takes the first bait a Hunter arriving
+		# from the feature's start can take, calm where it can, else arriving where only other set pieces' stretches are
+		# (never during another attack), so it comes on time; the rest as ever.
+		if _pass(gen, t, rng, baits, busy_stretches(gen, true), chases, true, intro) > 0 \
+				or _pass(gen, t, rng, baits, busy_stretches(gen, false), chases, false, intro) > 0:
+			introduced = intro
+	if _pass(gen, t, rng, baits, busy_stretches(gen, true), chases, true, {}, introduced) == 0 and chases.is_empty():
 		# DESIGN-TBD (docs/questions/s2.md): a level with no calm arrival for any bait still gets one, arriving where only
 		# other set pieces' stretches are (never during another attack), with no calm stretch of its own.
 		_pass(gen, t, rng, baits, busy_stretches(gen, false), chases, false)
@@ -86,17 +95,19 @@ static func apply(gen: LevelGenerator) -> void:
 		print("hunters: %d of %d gantryways can be baits" % [baits.size(), gen.layout.gantryways.size()])
 
 
-## One pass of apply(): a Hunter for each bait in turn, the earliest first, where one may arrive (arrival_problem against
-## `busy`; with `calm`, its calm arrival kept), up to per_level_max with `chases` (those placed before). Returns how many
-## it placed.
+## One pass of apply(): a Hunter for each bait in turn, the earliest first (with `only`, that bait alone; `skip`, one that
+## has its Hunter already), where one may arrive (arrival_problem against `busy`; with `calm`, its calm arrival kept), up to
+## per_level_max with `chases` (those placed before). Returns how many it placed.
 static func _pass(gen: LevelGenerator, t: HunterTuning, rng: RandomNumberGenerator, baits: Array[Dictionary],
-		busy: Array[Vector2], chases: Array[Vector2], calm: bool) -> int:
+		busy: Array[Vector2], chases: Array[Vector2], calm: bool, only: Dictionary = {}, skip: Dictionary = {}) -> int:
 	var start: float = earliest(gen)
 	var intro: bool = gen.config.feature_starts.has(TYPE)
 	var count: int = 0
 	for b: Dictionary in baits:
 		if chases.size() >= t.per_level_max:
 			break
+		if (not only.is_empty() and b != only) or (not skip.is_empty() and b == skip):
+			continue
 		var why: Dictionary = {}
 		for at: float in _arrival_order(gen, t, rng, b, start, intro and chases.is_empty()):
 			var problem: String = arrival_problem(gen, t, at, start, busy, chases)
@@ -112,6 +123,18 @@ static func _pass(gen: LevelGenerator, t: HunterTuning, rng: RandomNumberGenerat
 			print("hunters: no %sarrival for the bait at %.0f m (%.2f): %s" % ["calm " if calm else "", float(b["at"]),
 				float(b["at"]) / gen.layout.length, why])
 	return count
+
+
+## The introduction's bait (where the level gives the feature a start): the first of `baits` a Hunter arriving from the
+## feature's start on can take in its chase (in_chase); {} for none or no start.
+static func intro_bait(gen: LevelGenerator, t: HunterTuning, baits: Array[Dictionary]) -> Dictionary:
+	if not gen.config.feature_starts.has(TYPE):
+		return {}
+	var start: float = earliest(gen)
+	for b: Dictionary in baits:
+		if float(b["at"]) >= start + t.bait_after_seconds * gen.speed - 0.001:
+			return b
+	return {}
 
 
 ## Where a Hunter may arrive first: past the run-up and the feature's start.
@@ -190,6 +213,49 @@ static func gantryway_wanted(gen: LevelGenerator) -> Array[Vector2]:
 	out.append(Vector2(start + minf(t.intro_bait_min_seconds, t.intro_bait_max_seconds) * gen.speed,
 		start + maxf(t.intro_bait_min_seconds, t.intro_bait_max_seconds) * gen.speed))
 	out.append(Vector2(start + t.bait_after_seconds * gen.speed, start + (t.chase_seconds - t.bait_before_seconds) * gen.speed))
+	return out
+
+
+## Task S2c's hook in the gantryways' rules (GantrywayRules.wanted_taker): which gantryway spots (lane, side, front) can be
+## baits (bait_points: the Hunter lane, away from the push, clear over its window), so the introduction's gantryway
+## hangs where its Hunter can take it where it can. What stands in each lane is gathered once, on the layout as it is.
+static func gantryway_taker(gen: LevelGenerator) -> Callable:
+	var t: HunterTuning = tuning()
+	var lanes: int = gen.layout.lane_count
+	var shut: Array = []
+	for l: int in lanes:
+		shut.append(_lane_shut_spans(gen, l, GantrywayRules.powered_fences(gen)))
+	return func(lane: int, side: int, front: float) -> bool:
+		var hl: int = lane - side
+		if hl < 0 or hl >= lanes:
+			return false
+		var window: Vector2 = hunter_lane_window(gen, t, front)
+		for span: Vector2 in shut[hl]:
+			if span.x <= window.y and span.y >= window.x:
+				return false
+		return true
+
+
+## The stretches of lane `l` that shut a bait's Hunter lane (_hunter_lane_blocked's, as spans along the track).
+static func _lane_shut_spans(gen: LevelGenerator, l: int, powered: Array[Dictionary]) -> Array[Vector2]:
+	var lay: LevelLayout = gen.layout
+	var out: Array[Vector2] = []
+	var half: float = gen.tuning.fence_depth * 0.5 + 0.4
+	for d: Dictionary in lay.doodads:
+		if int(d["lane"]) == l:
+			out.append(LevelLayout.doodad_extent(d))
+	for f: Dictionary in lay.fences:
+		if int(f["lane"]) == l and (bool(f.get("pulsing", false)) or powered.has(f)):
+			out.append(Vector2(float(f["at"]) - half, float(f["at"]) + half))
+	for tp: Dictionary in lay.teleporters:
+		if int(tp["lane"]) == l:
+			out.append(Vector2(float(tp["at"]) - 0.5, float(tp["end"]) + 0.5))
+	for r: Dictionary in lay.ramps:
+		if lay.outer_lane(int(r["side"])) == l:
+			out.append(Vector2(float(r["at"]), float(r["at"]) + gen.tuning.ramp_length))
+	for e: Dictionary in lay.enemies:
+		if LevelGenerator.enemy_uses_floor(e) and _enemy_lane(lay, e) == l:
+			out.append(body_span(gen, e))
 	return out
 
 
@@ -479,7 +545,23 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 			if hl < 0 or hl >= lay.lane_count or _hunter_lane_blocked(gen, hl, window, [], fences) or not fences.is_empty():
 				out.append("%s: its bait at %.1f m has something in its lane %d (%.1f-%.1f m)" % [tag, float(bait["at"]), hl,
 					window.x, window.y])
-	if calm_ones > 0 and calm_ones < hunters.size():
-		out.append("%d of %d Hunters arrive calm: a level's Hunters arrive calm, or (with no calm arrival for any bait) none"
-			% [calm_ones, hunters.size()])
+	# The introduction (the first, where the level gives the feature a start) may arrive not calm, where no arrival for its
+	# bait was (apply()); the rest arrive calm, or (with no calm arrival for any bait) none.
+	var first: Dictionary = hunters[0].get("params", {})
+	var intro_free: bool = gen.config.feature_starts.has(TYPE) and first.get(CALM) == null \
+			and not (first.get(BAITS, []) as Array).is_empty()
+	if intro_free:
+		var bait: Dictionary = (first[BAITS] as Array)[0]
+		var o: float = t.bait_after_seconds
+		while o <= t.chase_seconds - t.bait_before_seconds + 0.001:
+			var at2: float = float(bait["at"]) - o * gen.speed
+			if at2 >= start - 0.001 and arrival_problem(gen, t, at2, start, busy_calm, []) == "":
+				out.append("the introduction arrives not calm though its bait at %.1f m had a calm arrival at %.1f m" % [
+					float(bait["at"]), at2])
+				break
+			o += OFFSET_STEP
+	var counted: int = hunters.size() - (1 if intro_free else 0)
+	if calm_ones > 0 and calm_ones < counted:
+		out.append(("%d of %d Hunters arrive calm: a level's Hunters arrive calm (but for an introduction with no calm "
+			+ "arrival), or (with no calm arrival for any bait) none") % [calm_ones, hunters.size()])
 	return out

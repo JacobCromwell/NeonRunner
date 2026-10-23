@@ -35,9 +35,10 @@ extends TestSuite
 ##   - a teleport leaves it behind: it catches up, its time running on; one whose arrival a teleport skips never comes;
 ##   - it gives up chase_seconds after arriving, whatever it's doing, its whine falling, and leaves play;
 ##   - it never waits its turn nor holds anyone else's: a big attack of another enemy's on doesn't stop its flurries.
-## - Placement (hunter_rules.gd) on Specimen Vault at 3, 5 and 6 lanes: at least one, after its feature's start, each with a
-##   falling gantryway in its chase whose Hunter lane is clear, never two at once, each arriving calm (no other attack
-##   planned there); the same every build; none where the level doesn't list it.
+## - Placement (hunter_rules.gd) on Specimen Vault at 3, 5 and 6 lanes: at least one, after its feature's start, the first
+##   within test_campaign's reach of that start (its introduction), each with a falling gantryway in its chase whose Hunter
+##   lane is clear, never two at once, each arriving calm (no other attack planned there) but an introduction whose bait had
+##   no calm arrival (clear of every attack all the same); the same every build; none where the level doesn't list it.
 ## - Its warning mark and Reduced flashing; the sweep of its cuts (its cuts' box always inside what's drawn, CLAUDE.md
 ##   principle 4) and its lunge; its warm-up look (no physics object); its data (the hint, its sounds).
 
@@ -50,6 +51,8 @@ const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const LANE_COUNTS: Array[int] = [3, 5, 6]
 ## The Ice Lab's run speed (data/zones/ice_lab.tres): where it appears.
 const SPEED: float = 24.8
+## test_campaign's INTRODUCTION_REACH: a feature's first comes within this many metres of its start (at the level's pace).
+const INTRODUCTION_REACH: float = 210.0
 ## Where the hand-built tracks' Hunter arrives (metres): past the level's calm start.
 const ARRIVE: float = 70.0
 ## The reaction the suites give a runner to see something and start to act (test_gantryways' REACTION).
@@ -1928,6 +1931,11 @@ func _test_placement() -> void:
 				% [at, start, in_chase, tag])
 			check(at >= prev_end, "never two at once: the Hunter at %.0f m comes after the last one's chase and its spacing %s" % [at, tag])
 			prev_end = HunterRules.chase_span(gen, t, at).y + t.spacing_seconds * v
+		# Its introduction comes right after its start (test_campaign's INTRODUCTION_REACH, 210 m at the reference pace).
+		if not hunters.is_empty():
+			check(float(hunters[0]["at"]) <= start + INTRODUCTION_REACH * gen.pace,
+				"its introduction arrives %.0f m past its start (at most %.0f) %s" % [float(hunters[0]["at"]) - start,
+				INTRODUCTION_REACH * gen.pace, tag])
 		# The same every build.
 		var again: LevelLayout = LevelGenerator.new().generate(config, tuning, LevelGenerator.load_for(config))
 		check(HunterRules.hunters_in(again) == hunters and again.gantryways.size() == gen.layout.gantryways.size(),
