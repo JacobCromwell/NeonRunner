@@ -195,7 +195,9 @@ func _test_generator() -> void:
 	print("  teleporters in the Ice Lab's own builds: %d, %d with two output pads, %d blinking" % [stood, two, blinking])
 	# Task Q4's review: builds where a teleporter stood in a fenced ceiling's pick (an introduction's approach, a whole
 	# teleporter, a landing reaching a pick's run-up) before the rules kept off picks; check_teleporters names any.
-	for repro: Array in [["ice_lab/2", 3, 7005], ["ice_lab/3", 5, 7008], ["ice_lab/2", 5, 7007]]:
+	# Specimen Vault at 5 lanes on seed 7009 since task S1's Heavy Cyborg moved its picks (7008 has no fenced ceiling's
+	# pick now).
+	for repro: Array in [["ice_lab/2", 3, 7005], ["ice_lab/3", 5, 7009], ["ice_lab/2", 5, 7007]]:
 		var config: LevelConfig = campaign.configure(campaign.step(String(repro[0])), int(repro[1]))
 		config.level_seed = int(repro[2])
 		var gen := LevelGenerator.new()

@@ -42,11 +42,12 @@ const LANES: Array[int] = [3, 5, 6]
 const CORPORATE_2_CHASE_LANES: Array[int] = [3]
 ## Builds, as {id, lanes, seed}, where the pass's first three ways give the level no wider gap and its last way
 ## (WideGapPlacement._add_clearing, task K5) places its one: a new row, the holes and plain fences in its way taken
-## out. The Golden Palace at 5 lanes on seed 9019 (5 pieces taken out; one of the two such builds among seeds
-## 9000-9029 of Corporate 2, the Dead Zone and the Golden Zone at 3, 5 and 6 lanes since task J2's wall-run gaps, with
-## the Golden Palace at 3 lanes on seed 9010, 2 pieces; Golden 2 at 6 lanes on seed 9018, task I4's case, no longer
-## needs it). Each must still need the last way, else re-pin the case.
-const LAST_RESORT_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 5, "seed": 9019}]
+## out. The Golden Palace at 6 lanes on seed 9016 (5 pieces taken out; the first such build among seeds 9000-9029
+## of the Golden Zone's levels at 3, 5 and 6 lanes since task S1's Heavy Cyborg moved their picks, with Golden 1 at 6
+## lanes on seed 9001, 5 pieces). The Palace at 5 lanes on seed 9019, the case since task J2's wall-run gaps, and at 3
+## lanes on seed 9010 no longer need it, nor does Golden 2 at 6 lanes on seed 9018 (task I4's case). Each must still
+## need the last way, else re-pin the case.
+const LAST_RESORT_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 6, "seed": 9016}]
 ## Metres between the fences of the plain stretch _test_last_resort_fences lays: less than a wider gap's zone, so
 ## every spot has one in its way.
 const FENCE_STEP: float = 15.0

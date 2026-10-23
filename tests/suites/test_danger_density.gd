@@ -85,13 +85,14 @@ const WALL_RUN_GAP_ROOM: Dictionary = {"late": {3: 0.04}}
 ## (docs/questions/q6.md item 11): which request gives way at 3 lanes (as with the wall-run gaps, item 874).
 const TELEPORTER_ROOM: Dictionary = {"late": {3: 0.05}}
 ## Task S1 (GDD §9.16, the owner, October 23, 2026: the Heavy Cyborg in all three of the Golden Zone's levels): Sentinel
-## Row's and the Golden Palace's Heavy Cyborgs stand in their pattern's places and some of the cyborgs', and this pass
-## twins no Heavy Cyborg (it adds only the types its tuning lists, whose rules it applies itself) and keeps its rows off
-## a stream's zone. At 3 lanes, with the fewest places, the final band then lands at about x1.22 for enemies over this
-## sample (x1.24 built without its teleporters, against about x1.29 before the Heavy Cyborg): its floor is this much
-## lower there, with its teleporters and without them. By band, then lane count. DESIGN-TBD (docs/questions/s1.md item
-## 13): which request gives way at 3 lanes.
-const HEAVY_CYBORG_ROOM: Dictionary = {"late": {3: 0.03}}
+## Row's and the Golden Palace's Heavy Cyborgs stand in their pattern's places and some of the cyborgs', each with two
+## seconds of clear floor before it that the pass's rows keep off (as off any big attack's window), and the pass adds no
+## cyborg or window cyborg within a second of run of one (HeavyCyborgRules.rival_may_stand). The final band then lands
+## at about x1.21 for enemies over this sample at 3 lanes, with the fewest places (x1.23 built without its teleporters,
+## against about x1.29 before the Heavy Cyborg), x1.28 at 5 lanes and x1.28 at 6: its floor is this much lower there,
+## with its teleporters and without them. By band, then lane count. DESIGN-TBD (docs/questions/s1.md item 13): which
+## request gives way.
+const HEAVY_CYBORG_ROOM: Dictionary = {"late": {3: 0.04, 5: 0.02, 6: 0.03}}
 const TELEPORTER_FEATURES: Array[String] = ["teleporter", "teleporter_blinking"]
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
 ## final ones' and above the first band and below the last (less WALL_RUN_GAP_ROOM), at every lane count, for
