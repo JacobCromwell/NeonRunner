@@ -1013,7 +1013,7 @@ func _end_flurry() -> void:
 
 
 ## A warning or a flurry on is called off (the runner left the floor or teleported; it makes room, steers or gives up):
-## its blades go down, its mark goes.
+## its blades go down, its mark and its sweep go.
 func _call_off_slash() -> void:
 	if slash != Slash.WARNING and slash != Slash.FLURRY:
 		return
@@ -1021,6 +1021,7 @@ func _call_off_slash() -> void:
 	slash = Slash.RECOVER
 	_slash_t = 0.0
 	_mark.visible = false
+	_trail.visible = false
 	_note(&"called_off")
 
 
@@ -1204,6 +1205,7 @@ func _on_defeated(cause: StringName) -> void:
 	_slash_box.set_enabled(false)
 	_set_blocker(false)
 	_mark.visible = false
+	_trail.visible = false
 	_note(StringName("defeat:" + String(cause)))
 	var at: Vector3 = aim_point()
 	_sfx_at(&"hunter_death")
