@@ -68,3 +68,12 @@ static func _piece(layout: LevelLayout, tuning: MovementTuning, part: String, in
 static func centipede(at: float, lane: int, situation: String = "near") -> Dictionary:
 	return {"type": "centipede", "at": at, "lane": lane, "side": 0, "seed": 7, "params": {"block": 0,
 		"situation": situation, "floor_span": Vector2(at - 2.0, at + Centipede.BODY_LENGTH + 1.0)}}
+
+
+## An ambush's layout entry (task O5, as centipede_rules.gd places one): its head at `at` in divider lane `lane` of room
+## `room`, its body poking out toward `peek` (-1 or 1).
+static func ambush(at: float, lane: int, room: int, peek: int) -> Dictionary:
+	var e: Dictionary = centipede(at, lane, "ambush")
+	e["params"]["ambush"] = {"room": room, "lane": lane, "peek": peek, "from": at - 1.0,
+		"to": at + Centipede.BODY_LENGTH + 0.3}
+	return e

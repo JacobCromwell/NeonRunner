@@ -431,3 +431,20 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   DONE (Q6): Gilded Canals, Sentinel Row and the Golden Palace each stand 3 teleporters, 1 blinking, in the teleporter's
   own look, with no introduction (the hints remind); gantryways and Octodog jars stay in the Ice Lab. Questions in items
   1184-1194 (all deferred).
+
+## October 22, 2026
+
+- [x] **The Terminal: more centipedes, and a maze section escaped by the anti-grav pad** (task O5): Rubble Line about
+  20 to 30% more Cybernetic Centipedes, Last Stop about double; and a section of maze the player escapes by the
+  anti-grav pad (the owner's sketch: a centipede in the maze, then a room with the pad, then four rows of debris with
+  the ceiling landing past them).
+  DONE (O5): per-level `centipede_scale`; an escape block in each Terminal level (a pad room, then a barrier more than
+  one dash deep under a one-lane ceiling from the pad; a missed pad costs a second dash and the wait). Questions in
+  items 1195-1200 (1195 in `docs/OPEN_QUESTIONS.md`).
+- [x] **The Terminal, second round** (task O5): Last Stop to about 12 centipedes; centipedes not always separated from
+  the player; an ambush centipede hidden in the debris that bursts out when the runner gets close, two in Last Stop's
+  last half; more gaps to jump between maze sections.
+  DONE (O5): Last Stop about 11 regular plus 2 ambushes; place weights and more spots for the open cells (walled-in
+  from about 73% to 60-70%, as far as the escape guarantee allows); ambushes hidden in dividers, breaking out at about
+  11 m; rows of holes across every lane between maze blocks (Rubble Line about 3 more, Last Stop 6). Questions in items
+  1201-1206 (1201, 1202 and 1206 in `docs/OPEN_QUESTIONS.md`).

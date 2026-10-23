@@ -33,6 +33,14 @@ extends Enemy
 ##    legs folding and its lenses dimming, and stays so). So it does when it has fallen give_up_distance behind along its
 ##    way, or when the runner is out past its block's last wall into the breather (leave_margin): it never leaves its
 ##    block's stretch. Given up, or asleep as the runner passes, it leaves play behind them (should_retire).
+## An ambush (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can barely see
+## its body, and when you get close to it, the debris shatters and the centipede is released"; params.ambush, placed by
+## centipede_rules.gd in a divider of the maze) lies inside the divider's debris, set to one side so a sliver of its body
+## shows beside it (CentipedeTuning.ambush_showing), its legs folded and its lenses glowing as any sleeping one's (the
+## glint that gives it away). Once the runner is on the floor in its block within
+## ambush_distance along the track, or a dash smashes debris it lies in, the debris it lies in shatters (rubble and the
+## smash's crunch) and it wakes as any other (its warning, then wake_time still), then keeps to every rule above.
+## DESIGN-TBD (item 1203 in docs/OPEN_QUESTIONS*.md): its look while hidden, how close it breaks out.
 ## It isn't a big attack (the Terminal has no other enemy to take turns with: is_major_attack_active). Its look:
 ## CentipedeModel.
 
@@ -92,8 +100,14 @@ const GLOW := Color(0.35, 1.0, 0.3)
 
 var state: State = State.SLEEP
 var jaw: Jaw = Jaw.CLOSED
-## Where the generator put it (centipede_rules.gd): "near", "way" or "trapped" ("" for one placed by hand).
+## Where the generator put it (centipede_rules.gd): "near", "way", "trapped" or "ambush" ("" for one placed by hand).
 var situation: String = ""
+## True for an ambush (params.ambush: hidden in debris until it breaks out; see the header).
+var ambush: bool = false
+## True while an ambush still lies hidden.
+var hidden: bool = false
+## An ambush's debris (the layout's entries for the divider's pieces it lies in), shattered as it breaks out.
+var host: Array[Dictionary] = []
 ## Its maze block (the index in LevelLayout.maze), or -1 outside any.
 var block_index: int = -1
 ## True once a dash has wounded it.
@@ -124,6 +138,7 @@ var _heading: float = PI
 var _speed: float = 0.0
 var _chase_v: float = 15.0
 var _wake_d: float = 30.0
+var _ambush_d: float = 16.0
 var _give_up_d: float = 45.0
 var _state_time: float = 0.0
 var _jaw_time: float = 0.0
@@ -171,6 +186,21 @@ func _build() -> void:
 	_give_up_d = _t.give_up_distance_at(world.tuning.pace())
 	_head = Vector2(world.geo.lane_x(lane), at)
 	_heading = PI
+	var hide: Dictionary = params.get("ambush", {})
+	if not hide.is_empty() and block_index >= 0:
+		ambush = true
+		hidden = true
+		_ambush_d = _t.ambush_distance_at(world.tuning.pace())
+		var widest: float = 0.0
+		for d: Dictionary in world.layout.doodads:
+			if LevelLayout.is_maze_debris(d) and int(d["maze"]) == block_index and String(d["part"]) == "divider" \
+					and int(d["index"]) == int(hide["room"]) and int(d["lane"]) == lane \
+					and float(d["start"]) < float(hide["to"]) and float(d["end"]) > float(hide["from"]):
+				host.append(d)
+				widest = maxf(widest, world.tuning.doodad_size(StringName(d["size"])).x)
+		# Set to the side of an open lane, so its body's edge pokes out past the debris's side by ambush_showing.
+		var shift: float = maxf(widest * 0.5 + _t.ambush_showing - BODY_HIT.x * 0.5, 0.0)
+		_head.x += float(signi(int(hide.get("peek", 1)))) * shift
 	# Its body lies behind its head in its lane.
 	for i: int in int(ceil(BODY_LENGTH / TRAIL_STEP)) + 2:
 		_trail.append(Vector2(_head.x, at + i * TRAIL_STEP))
@@ -209,7 +239,9 @@ func _tick(delta: float) -> void:
 		_refresh_sections()
 	match state:
 		State.SLEEP:
-			if _should_wake(p):
+			if hidden and _breaks_out(p):
+				_break_out()
+			elif not hidden and _should_wake(p):
 				_wake(_t.wake_time)
 		State.WAKE:
 			if _state_time >= _stun_for:
@@ -250,6 +282,46 @@ func _should_wake(p: Player) -> bool:
 	if absf(p.distance - _head.y) > _wake_d:
 		return false
 	return _wakers.has(_runner_section(p))
+
+
+## True if a hidden ambush breaks out now (see the header): the runner on the floor in its block within ambush_distance,
+## or debris it lies in smashed (a dash).
+func _breaks_out(p: Player) -> bool:
+	for d: Dictionary in host:
+		if bool(d.get("smashed", false)):
+			return true
+	if not p.alive or p.surface != Player.Surface.FLOOR or _block.is_empty():
+		return false
+	if p.distance < float(_block["entry"]) or p.distance > float(_block["exit"]):
+		return false
+	return absf(p.distance - _head.y) <= _ambush_d
+
+
+## An ambush breaks out: the debris it lies in shatters (its pieces fly as a dash's would, with the smash's crunch), the
+## maze opens there (for it and the other centipedes: CentipedeMaze.refresh), and it wakes as any other.
+func _break_out() -> void:
+	hidden = false
+	var nodes: Dictionary = {}
+	if world.track != null:
+		for n: Node in world.track.find_children("*", "DashBreakable", true, false):
+			var b := n as DashBreakable
+			for d: Dictionary in host:
+				if is_same(b.entry, d):
+					nodes[d] = b
+	for d: Dictionary in host:
+		if bool(d.get("smashed", false)):
+			continue
+		var b: DashBreakable = nodes.get(d, null)
+		if b != null and b.smash(&"ambush"):
+			if world.effects != null:
+				world.effects.rubble(b.world_box(), b.debris_colors, Vector3.ZERO, int(d.get("seed", 0)))
+		else:
+			d["smashed"] = true
+			d["broken_by"] = "ambush"
+	_play(&"doodad_smash")
+	if _maze != null and _maze.refresh():
+		_refresh_sections()
+	_wake(_t.wake_time)
 
 
 ## Wakes it (the warning: the hiss and the legs' clatter, its rearing up), to move `still` seconds later.

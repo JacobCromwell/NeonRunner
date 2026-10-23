@@ -15,7 +15,8 @@ extends RefCounted
 ## its own (independent of CentipedeMaze's grid: the head's footprint against each piece of debris on a fine grid,
 ## diagonal steps and all, every smash of the way open from the start), that at every frame after a centipede woke the
 ## runner was further along open floor from its spot than it could have run since (CentipedeEscape.run_reach) and its
-## bite (CentipedeTuning.bite_reach and the runner's half depth): the proof's bound, on the real run.
+## bite (CentipedeTuning.bite_reach and the runner's half depth), but while dashing (a dash passes through its bite): the
+## proof's bound, on the real run.
 ##   var bot := CentipedeBot.new(sim, level_tuning)
 ##   var r: Dictionary = await bot.run(layout, index, CentipedeEscape.find(layout, level_tuning, index, spots))
 ## result: {alive, cause, reached (past the block's last wall and leave_margin), seconds (from the run-in), dashes,
@@ -24,8 +25,9 @@ extends RefCounted
 ## starts there, so none may), margin (the least, metres, by which the runner was out of an awake centipede's bound:
 ## negative if ever within it), early (moved before its wake and wake_time), fast (the most a step went over its chase
 ## speed, metres), in_debris (frames its head touched debris), outside (frames its head was out of its block's
-## stretch)}.
+## stretch), ceiling (true if the runner rode a ceiling on the way: an escape block's pad, task O5)}.
 
+const RulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 ## Metres a step of the independent field's grid, across the track and along it.
 const CELL: float = 0.3
 ## Integer costs of a step along the grid's axes and diagonally (an octile metric), and the most it overstates a straight
@@ -58,7 +60,7 @@ func _init(p_sim: RunSim, p_tuning: MovementTuning) -> void:
 func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 	var result := {"alive": false, "cause": "", "reached": false, "seconds": 0.0, "dashes": 0, "moves_left": 0,
 		"blocked": 0, "bites": 0, "woke": 0, "before_run_in": 0, "margin": INF, "early": 0, "fast": 0.0, "in_debris": 0,
-		"outside": 0, "trace": [], "events": []}
+		"outside": 0, "ceiling": false, "trace": [], "events": []}
 	var copy: LevelLayout = layout.copy()
 	var b: Dictionary = copy.maze[index]
 	var entry: float = float(b["entry"])
@@ -121,6 +123,8 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 					pressed = m
 		await sim.tree.physics_frame
 		cooldown -= dt
+		if p.surface == Player.Surface.CEILING:
+			result["ceiling"] = true
 		var now: float = world.level_time() - start_t
 		# What the runner's dashes smashed is open to the centipedes too (they read it the same way).
 		maze.refresh()
@@ -149,12 +153,14 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 			if step > 0.0001 and (float(s["wake"]) == INF or now < float(s["wake"]) + t.wake_time - dt * 0.5):
 				result["early"] = int(result["early"]) + 1
 			s["prev"] = head
-			if not maze.clear_at(head.x, head.y):
+			# A hidden ambush lies in its debris until it breaks out.
+			if not c.hidden and not maze.clear_at(head.x, head.y):
 				result["in_debris"] = int(result["in_debris"]) + 1
 			if head.y < float(b["entry"]) or head.y > float(b["exit"]):
 				result["outside"] = int(result["outside"]) + 1
 			# The proof's bound with the field of its own (see the header).
-			if float(s["wake"]) < INF and p.distance <= leave:
+			# A dash passes through its bite (DamageRules: the dash's pass, a wound), as the proof takes it.
+			if float(s["wake"]) < INF and p.distance <= leave and not p.dashing:
 				var key: String = "%.3f|%.3f" % [(s["spot"] as Vector2).x, (s["spot"] as Vector2).y]
 				if not fields.has(key):
 					fields[key] = _field(grid, s["spot"])
@@ -232,6 +238,12 @@ func _grid(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 	open.resize(nx * nz)
 	open.fill(1)
 	var gone: Dictionary = _smashes(layout, index, way)
+	# An ambush's debris shatters as it breaks out (task O5): open from the start, as the proof takes it.
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "centipede" and RulesScript.is_ambush(e) and int(e["params"]["block"]) == index:
+			var spot: Dictionary = RulesScript.spot_of(layout, e)
+			for d: Dictionary in spot["host"]:
+				gone[_key(d)] = true
 	for d: Dictionary in layout.doodads:
 		if not LevelLayout.is_maze_debris(d) or int(d["maze"]) != index or gone.has(_key(d)):
 			continue

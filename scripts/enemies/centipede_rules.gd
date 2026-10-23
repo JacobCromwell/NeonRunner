@@ -21,11 +21,29 @@ extends RefCounted
 ## the other places. If no block took one, the first block where any spot fits gets one (every Terminal level has its
 ## centipedes). The layout entry: {type "centipede", at (its head's spot), lane, side 0, params {block (its maze block's
 ## index), situation, floor_span}}. DESIGN-TBD (docs/questions/o3.md): how many and where.
+## Each level's maze scales how many (task O5; the owner, October 22, 2026: Rubble Line about 20 to 30% more, Last Stop
+## about double): DebrisMazeTuning.centipede_scale multiplies each block's drawn count (its fraction drawn) and the most a
+## block holds (count_scale, max_per_block). An escape block's pad room (DebrisMaze.is_escape) holds none: its pad is the
+## way out. Spots in open cells ("near", "way") are tried many at a time (OPEN_SPOTS a cell, OPEN_TRIES), so fewer end up
+## walled in (the owner: they "should not be always separated from the player"). DESIGN-TBD (items 1201 and 1202 in
+## docs/OPEN_QUESTIONS*.md): Last Stop's count, and how far the escape guarantee keeps them walled in.
+## Ambushes (DebrisMazeTuning.ambush_count; the owner, October 22, 2026: "resting inside of one of the debris doodads ...
+## when you get close to it, the debris shatters and the centipede is released"; two in Last Stop's last half): placed
+## first, one a block, each hidden in a divider (_place_ambushes), situation "ambush", params.ambush {room, lane, peek,
+## from, to}; the others placed in its block after it keep the block escapable with it. DESIGN-TBD (item 1203 in
+## docs/OPEN_QUESTIONS*.md).
 
 const FEATURE: String = "centipede"
+
 ## The maze is built first: its cells are where a centipede waits.
 const RUN_AFTER: Array[String] = ["debris_maze"]
 const SITUATIONS: Array[String] = ["near", "way", "trapped"]
+## An ambush's situation (task O5: hidden in a divider, _place_ambushes).
+const AMBUSH: String = "ambush"
+## An ambush's debris (ambush_host): the divider's pieces from this far before its head to this far past its tail
+## (metres).
+const AMBUSH_HOST_BEFORE: float = 1.0
+const AMBUSH_HOST_AFTER: float = 0.3
 ## A spot's head waits at least this far past its cell's start (metres), and its body ends at least TAIL_MARGIN before
 ## the cell's end.
 const HEAD_MARGIN: float = 3.0
@@ -34,8 +52,16 @@ const TAIL_MARGIN: float = 1.5
 ## of its head to FLOOR_AFTER past its tail (metres).
 const FLOOR_BEFORE: float = 2.0
 const FLOOR_AFTER: float = 1.0
-## Spots tried in each place for one centipede before the next place is tried.
+## Spots tried in each place for one centipede before the next place is tried: few in a walled-in cell (any spot there
+## keeps the block escapable), many in an open one ("near" or "way", where the proof turns most spots down: task O5, the
+## owner, October 22, 2026: the centipedes "should not be always separated from the player").
 const TRIES: int = 5
+const OPEN_TRIES: int = 8
+## Spots tried for an ambush in a block before the next block (_place_ambushes): there are only a couple of blocks to
+## hide its two in.
+const AMBUSH_TRIES: int = 16
+## Spots each open cell offers (a random lane and place each); a walled-in cell offers one.
+const OPEN_SPOTS: int = 4
 
 
 static func tuning() -> CentipedeTuning:
@@ -50,6 +76,10 @@ static func apply(gen: LevelGenerator) -> void:
 	var t: CentipedeTuning = tuning()
 	var rng: RandomNumberGenerator = gen.rng_for(FEATURE)
 	var start: float = gen.feature_start(FEATURE)
+	var scale: float = count_scale(gen.config)
+	var most: int = max_per_block(gen.config)
+	# The ambushes first (from a stream of their own); the others in their blocks keep them escapable with it.
+	var ambushed: Dictionary = _place_ambushes(gen, t, start)
 	var placed: int = 0
 	for i: int in lay.maze.size():
 		var b: Dictionary = lay.maze[i]
@@ -62,22 +92,166 @@ static func apply(gen: LevelGenerator) -> void:
 			want = 1
 			if not intro and rng.randf() < t.second_share(d):
 				want = 2
-		want = mini(want, t.max_per_block)
+		want = _scaled(want, scale, rng)
+		want = mini(want, most - (ambushed.get(i, []) as Array).size())
 		if want > 0:
-			placed += _place_block(gen, t, rng, i, start, want, intro)
+			placed += _place_block(gen, t, rng, i, start, want, intro, false, ambushed.get(i, []))
 	if placed > 0:
 		return
 	# Every level that has the feature has its centipedes: the first block where any spot fits gets one.
 	for i: int in lay.maze.size():
-		if float((lay.maze[i] as Dictionary)["end"]) > start and _place_block(gen, t, rng, i, start, 1, false, true) > 0:
+		if float((lay.maze[i] as Dictionary)["end"]) > start \
+				and _place_block(gen, t, rng, i, start, 1, false, true, ambushed.get(i, [])) > 0:
 			return
+
+
+## The level's ambush centipedes (DebrisMazeTuning.ambush_count, from ambush_from of the level and the feature's start
+## on; task O5): one in each of that many blocks, spread evenly over the blocks there (the others tried in turn where one
+## has no spot), each hidden in a divider (ambush_candidates) where its block stays escapable with it
+## (CentipedeEscape: it breaks out as the runner comes within ambush_distance, the debris it lay in open from the start).
+## Returns the blocks that took one: block index -> [its spot].
+static func _place_ambushes(gen: LevelGenerator, t: CentipedeTuning, start: float) -> Dictionary:
+	var out: Dictionary = {}
+	var lay: LevelLayout = gen.layout
+	var mt: DebrisMazeTuning = DebrisMaze.tuning_for(gen.config)
+	if mt.ambush_count <= 0:
+		return out
+	var eligible: Array[int] = []
+	for i: int in lay.maze.size():
+		var b: Dictionary = lay.maze[i]
+		if float(b["start"]) >= maxf(start, mt.ambush_from * lay.length):
+			eligible.append(i)
+	if eligible.is_empty():
+		return out
+	var rng: RandomNumberGenerator = gen.rng_for(FEATURE + "_" + AMBUSH)
+	# Spread: the blocks at even steps through the eligible ones first, then the rest in order.
+	var order: Array[int] = []
+	var n: int = mini(mt.ambush_count, eligible.size())
+	for j: int in n:
+		var k: int = 0 if n == 1 else roundi(float(j) * (eligible.size() - 1) / float(n - 1))
+		if not order.has(eligible[k]):
+			order.append(eligible[k])
+	for i: int in eligible:
+		if not order.has(i):
+			order.append(i)
+	for i: int in order:
+		if out.size() >= mt.ambush_count:
+			break
+		var ctx: CentipedeEscape.Context = CentipedeEscape.context(lay, gen.tuning, i)
+		var spots: Array[Dictionary] = ambush_candidates(lay, gen.tuning, i, start, rng)
+		_shuffle(spots, rng)
+		for j: int in mini(spots.size(), AMBUSH_TRIES):
+			var c: Dictionary = spots[j]
+			var entry: Dictionary = ambush_entry(i, c)
+			if not gen.zones.enemy_clear(lay, entry):
+				continue
+			if bool(ctx.find([c])["ok"]):
+				gen.add_enemy(FEATURE, float(entry["at"]), int(entry["lane"]), 0, entry["params"])
+				out[i] = [c]
+				break
+	return out
+
+
+## Every spot block `index` of `layout` offers an ambush (see _place_ambushes): OPEN_SPOTS in each divider of each room
+## (but an escape block's pad room, which has none), each its head at a random place between HEAD_MARGIN past the room's start and
+## its body's length and TAIL_MARGIN before its end, from track distance `start` on; its body pokes out on a side whose
+## lane is open beside the divider (`peek`: -1 or 1). Each {lane, at, room, ambush: true, peek, host (the divider's
+## pieces its body lies in: ambush_host)}, a spot CentipedeEscape takes as an ambush.
+static func ambush_candidates(layout: LevelLayout, tuning: MovementTuning, index: int, start: float,
+		rng: RandomNumberGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var b: Dictionary = layout.maze[index]
+	var rooms: Array = b["rooms"]
+	var lanes: int = layout.lane_count
+	for r: int in rooms.size():
+		var room: Dictionary = rooms[r]
+		var lo: float = maxf(float(room["start"]) + HEAD_MARGIN, start)
+		var hi: float = float(room["end"]) - Centipede.BODY_LENGTH - TAIL_MARGIN
+		if hi < lo:
+			continue
+		for lane: Variant in room["dividers"]:
+			var l: int = int(lane)
+			for k: int in OPEN_SPOTS:
+				var at: float = rng.randf_range(lo, hi)
+				var peek: int = 1 if l == 0 else (-1 if l == lanes - 1 else (1 if rng.randf() < 0.5 else -1))
+				out.append({"lane": l, "at": at, "room": r, "ambush": true, "peek": peek,
+					"host": ambush_host(layout, index, r, l, at)})
+	return out
+
+
+## The pieces of block `index`'s divider in room `room`, lane `lane` an ambush whose head is at `at` lies in: every one
+## from AMBUSH_HOST_BEFORE before its head to AMBUSH_HOST_AFTER past its tail (they shatter as it breaks out).
+static func ambush_host(layout: LevelLayout, index: int, room: int, lane: int, at: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lo: float = at - AMBUSH_HOST_BEFORE
+	var hi: float = at + Centipede.BODY_LENGTH + AMBUSH_HOST_AFTER
+	for d: Dictionary in layout.doodads:
+		if LevelLayout.is_maze_debris(d) and int(d["maze"]) == index and String(d["part"]) == "divider" \
+				and int(d["index"]) == room and int(d["lane"]) == lane and float(d["start"]) < hi and float(d["end"]) > lo:
+			out.append(d)
+	return out
+
+
+## An ambush spot's layout entry: params {block, situation "ambush", ambush {room, lane, peek, from, to (the stretch of
+## its divider it lies in: ambush_host)}, floor_span}.
+static func ambush_entry(index: int, c: Dictionary) -> Dictionary:
+	var at: float = float(c["at"])
+	return {"type": FEATURE, "at": at, "lane": int(c["lane"]), "side": 0, "params": {"block": index,
+		"situation": AMBUSH, "ambush": {"room": int(c["room"]), "lane": int(c["lane"]), "peek": int(c["peek"]),
+			"from": at - AMBUSH_HOST_BEFORE, "to": at + Centipede.BODY_LENGTH + AMBUSH_HOST_AFTER},
+		"floor_span": Vector2(at - FLOOR_BEFORE, at + Centipede.BODY_LENGTH + FLOOR_AFTER)}}
+
+
+## The escape proof's spot (CentipedeEscape) for centipede entry `e` of `layout`: {lane, at}, and an ambush's
+## {ambush: true, room, peek, host (its debris: ambush_host)} too (ambush_entry makes its entry again from it).
+static func spot_of(layout: LevelLayout, e: Dictionary) -> Dictionary:
+	var out: Dictionary = {"lane": int(e["lane"]), "at": float(e["at"])}
+	if is_ambush(e):
+		var params: Dictionary = e["params"]
+		var hide: Dictionary = params.get("ambush", {})
+		out["ambush"] = true
+		out["room"] = int(hide.get("room", -1))
+		out["peek"] = int(hide.get("peek", 1))
+		out["host"] = ambush_host(layout, int(params.get("block", -1)), int(hide.get("room", -1)), int(e["lane"]),
+			float(e["at"]))
+	return out
+
+
+## True if centipede entry `e` (a layout enemy) is an ambush (_place_ambushes).
+static func is_ambush(e: Dictionary) -> bool:
+	return String((e.get("params", {}) as Dictionary).get("situation", "")) == AMBUSH
+
+
+## The level's centipede count scale (DebrisMazeTuning.centipede_scale, its maze's own: task O5).
+static func count_scale(config: LevelConfig) -> float:
+	return DebrisMaze.tuning_for(config).centipede_scale if config != null else 1.0
+
+
+## The most centipedes a block of `config`'s level holds: the tuning's max_per_block, scaled by the level's
+## centipede_scale (rounded up; never fewer than the tuning's).
+static func max_per_block(config: LevelConfig) -> int:
+	var t: CentipedeTuning = tuning()
+	return maxi(t.max_per_block, ceili(t.max_per_block * count_scale(config) - 0.001))
+
+
+## A block's drawn count `want` scaled by `scale` (count_scale): want times scale, its fraction a draw from `rng` (none
+## at a scale of 1, so a level at 1 places as it always has). A block that drew none stays empty.
+static func _scaled(want: int, scale: float, rng: RandomNumberGenerator) -> int:
+	if want <= 0 or is_equal_approx(scale, 1.0):
+		return want
+	var exact: float = want * scale
+	var out: int = floori(exact)
+	if rng.randf() < exact - out:
+		out += 1
+	return maxi(out, 1)
 
 
 ## Places up to `want` centipedes in block `index` (see the header): the first in an ordinary cell if it's the level's
 ## introduction (`intro`), each in a place drawn by the weights and then the others, every one only where the block stays
-## escapable; with `any`, every place in turn whatever the weights. Returns how many it placed.
+## escapable (with the block's `ambushes` too: their spots, kept min_spacing from); with `any`, every place in turn
+## whatever the weights. Returns how many it placed.
 static func _place_block(gen: LevelGenerator, t: CentipedeTuning, rng: RandomNumberGenerator, index: int, start: float,
-		want: int, intro: bool, any: bool = false) -> int:
+		want: int, intro: bool, any: bool = false, ambushes: Array = []) -> int:
 	var lay: LevelLayout = gen.layout
 	var ctx: CentipedeEscape.Context = CentipedeEscape.context(lay, gen.tuning, index)
 	var candidates: Array[Dictionary] = candidates_for(gen, ctx, start, rng)
@@ -90,15 +264,16 @@ static func _place_block(gen: LevelGenerator, t: CentipedeTuning, rng: RandomNum
 		for situation: String in order:
 			var pool: Array[Dictionary] = []
 			for c: Dictionary in candidates:
-				if String(c["situation"]) == situation and _spaced(c, chosen, t):
+				if String(c["situation"]) == situation and _spaced(c, chosen, t) and _spaced(c, ambushes, t):
 					pool.append(c)
 			_shuffle(pool, rng)
-			for j: int in mini(pool.size(), TRIES):
+			for j: int in mini(pool.size(), TRIES if situation == "trapped" else OPEN_TRIES):
 				var c: Dictionary = pool[j]
 				var entry: Dictionary = _entry(index, c)
 				if not gen.zones.enemy_clear(lay, entry):
 					continue
-				var spots: Array = chosen.duplicate()
+				var spots: Array = ambushes.duplicate()
+				spots.append_array(chosen)
 				spots.append(c)
 				if bool(ctx.find(spots)["ok"]):
 					chosen.append(c)
@@ -162,6 +337,9 @@ static func candidates_for(gen: LevelGenerator, ctx: CentipedeEscape.Context, st
 	var way: Array = quickest.get("path", []) if bool(quickest.get("ok", false)) else []
 	var out: Array[Dictionary] = []
 	for r: int in rooms.size():
+		# An escape block's pad room is the way out, not a place to wait (DebrisMaze.is_escape).
+		if DebrisMaze.is_escape(b) and r == rooms.size() - 1:
+			continue
 		var room: Dictionary = rooms[r]
 		var lo: float = maxf(float(room["start"]) + HEAD_MARGIN, start)
 		var hi: float = float(room["end"]) - Centipede.BODY_LENGTH - TAIL_MARGIN
@@ -180,8 +358,9 @@ static func candidates_for(gen: LevelGenerator, ctx: CentipedeEscape.Context, st
 			elif not group.has(run_in):
 				# Joined only to the breather: neither walled in nor on the runner's side of the maze.
 				continue
-			out.append({"lane": rng.randi_range(cell.x, cell.y), "at": rng.randf_range(lo, hi), "room": r, "cell": c,
-				"situation": situation})
+			for k: int in 1 if situation == "trapped" else OPEN_SPOTS:
+				out.append({"lane": rng.randi_range(cell.x, cell.y), "at": rng.randf_range(lo, hi), "room": r, "cell": c,
+					"situation": situation})
 	return out
 
 
@@ -192,7 +371,7 @@ static func _entry(index: int, c: Dictionary) -> Dictionary:
 		"floor_span": Vector2(at - FLOOR_BEFORE, at + Centipede.BODY_LENGTH + FLOOR_AFTER)}}
 
 
-static func _spaced(c: Dictionary, chosen: Array[Dictionary], t: CentipedeTuning) -> bool:
+static func _spaced(c: Dictionary, chosen: Array, t: CentipedeTuning) -> bool:
 	for o: Dictionary in chosen:
 		if absf(float(o["at"]) - float(c["at"])) < t.min_spacing:
 			return false

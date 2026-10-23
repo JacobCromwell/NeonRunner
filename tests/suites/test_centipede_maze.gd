@@ -2,7 +2,8 @@ extends TestSuite
 ## Where the Cybernetic Centipede waits, and the proof that every maze stays escapable past it (task O3; GDD §9.15: it
 ## "haunts the debris maze, waiting in the open sections between the debris", "trapped behind debris", "in the only way
 ## through", and "the player is strongly encouraged to run from it"). Its behaviour on its own is test_centipede's.
-## - Its rules (centipede_rules.gd) over the Terminal's levels at 3, 5 and 6 lanes, each level's own seed and others: no
+## - Its rules (centipede_rules.gd) over the Terminal's levels at 3, 5 and 6 lanes (each level's own seed with all its
+##   ambushes at 5 and 6 lanes, one at least at 3, task O5), each level's own seed and others: no
 ##   warnings, every build passing LayoutChecks.check_layout (check_centipedes: each in the maze block it names from the
 ##   feature's start, in an open cell, placed as walled in exactly when its cell is, at most two a block and spaced, its
 ##   block escapable past them), the same placements every attempt, centipedes in every build, GDD §9.15's three places
@@ -24,11 +25,14 @@ extends TestSuite
 ##   the live centipedes keep what the proof rests on (none wakes before the runner is in the block, none moves before
 ##   its wake and wake_time, nor faster than its chase speed, nor into debris, nor out of its block), and the runner stays
 ##   out of every awake one's bound by a field of the bot's own. (The levels' ways mostly slip past their centipedes
-##   asleep; test_centipede_fuzz runs the other seeds' blocks, and ways that wake them.)
+##   asleep; test_centipede_fuzz runs the other seeds' blocks, and ways that wake them.) Each level's escape block (task
+##   O5), with its centipedes or none, is run too: its way out takes no dash at its barrier and rides its pad's ceiling
+##   over it on physics.
 ## - The first-encounter hint (data/hints/hints.json, trigger enemy:centipede): it says it chases and bites, that the dash
 ##   goes through it and two kill it, and is picked for Rubble Line, not for a level without one.
 
 ## Seeds besides each level's own the generator sweep builds.
+const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 const OTHER_SEEDS: Array[int] = [9311, 9312, 9313]
 const LEVELS: Array[String] = ["terminal/1", "terminal/2"]
 const LANES: Array[int] = [3, 5, 6]
@@ -81,6 +85,15 @@ func _test_generator() -> void:
 				LayoutChecks.check_layout(self, layout, config, tag)
 				builds += 1
 				var mine: Array[Dictionary] = _centipedes(layout)
+				# Task O5: each level's own seed holds its ambushes, all in its last stretch (DebrisMazeTuning).
+				var mt: DebrisMazeTuning = DebrisMaze.tuning_for(config)
+				var ambushes: int = 0
+				for e: Dictionary in mine:
+					ambushes += 1 if CentipedeRulesScript.is_ambush(e) else 0
+				# At 3 lanes there's little room to hide one off the way: one at the least.
+				if k == 0:
+					check(ambushes == mt.ambush_count if lanes >= 5 else ambushes >= mini(mt.ambush_count, 1),
+						"the level's own seed holds its %d ambushes (%d) %s" % [mt.ambush_count, ambushes, tag])
 				if k == 0:
 					var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 					check(JSON.stringify(_centipedes(again)) == JSON.stringify(mine), "the same centipedes every attempt " + tag)
@@ -290,12 +303,18 @@ func _test_bot() -> void:
 				var i: int = int(e["params"]["block"])
 				if not by_block.has(i):
 					by_block[i] = []
-				(by_block[i] as Array).append({"lane": int(e["lane"]), "at": float(e["at"])})
+				(by_block[i] as Array).append(CentipedeRulesScript.spot_of(layout, e))
 			var runs: int = 0
 			var least: float = INF
 			var woke: int = 0
+			var escapes: int = 0
+			# Every escape block too, with its centipedes or none: its way out is its pad (task O5).
+			for i: int in layout.maze.size():
+				if DebrisMaze.is_escape(layout.maze[i]) and not by_block.has(i):
+					by_block[i] = []
 			for i: int in by_block:
 				var tag: String = "(%s lanes=%d block %d, %d centipedes)" % [id, lanes, i, (by_block[i] as Array).size()]
+				var escape: bool = DebrisMaze.is_escape(layout.maze[i])
 				var way: Dictionary = CentipedeEscape.find(layout, mt, i, by_block[i])
 				check(bool(way["ok"]), "the proof finds a way out (%s) %s" % [way["reason"], tag])
 				if not bool(way["ok"]):
@@ -314,7 +333,17 @@ func _test_bot() -> void:
 					% [r["before_run_in"], r["early"], r["fast"], r["in_debris"], r["outside"], tag])
 				check(float(r["margin"]) > 0.0, "the runner stays out of every awake one's bound (%.2f m to spare) %s"
 					% [r["margin"], tag])
-			lines.append("%s at %d lanes: %d blocks run, %d woke, %.1f m to spare at the least" % [id, lanes, runs, woke, least])
+				if escape:
+					escapes += 1
+					var barrier: int = (layout.maze[i]["walls"] as Array).size() - 1
+					var through: bool = false
+					for move: Dictionary in way["moves"]:
+						through = through or (String(move["kind"]) == "dash" and float(move["at"]) >= float(layout.maze[i]["walls"][barrier]["start"]) - 1.0)
+					check(not through and bool(r["ceiling"]),
+						"an escape block's way out is its pad: no dash at its barrier, the runner rides the ceiling over it on physics (dash there %s, rode %s) %s"
+						% [through, r["ceiling"], tag])
+			check(escapes >= 1, "every Terminal level has an escape block (%s lanes=%d)" % [id, lanes])
+			lines.append("%s at %d lanes: %d blocks run (%d escapes), %d woke, %.1f m to spare at the least" % [id, lanes, runs, escapes, woke, least])
 	print("  the bot past live centipedes: %s" % "; ".join(lines))
 
 

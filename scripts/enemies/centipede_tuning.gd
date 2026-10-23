@@ -80,12 +80,23 @@ extends EnemyTuning
 ## The three places GDD §9.15 names, as weights: an ordinary open section near the runner's way ("near"), the section
 ## the block's quickest way crosses ("way": "in the only way through"), a cell walled in by debris ("trapped": "a dash
 ## that opens their debris can release one by accident"). Each placement must still leave the block escapable
-## (CentipedeEscape), or it goes elsewhere.
+## (CentipedeEscape), or it goes elsewhere. Since task O5 (the owner: they "should not be always separated from the
+## player") 0.65, 0.3 and 0.05 in data/enemies/centipede.tres. DESIGN-TBD (item 1202 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.0, 1.0, 0.05) var near_weight: float = 0.45
 @export_range(0.0, 1.0, 0.05) var way_weight: float = 0.3
 @export_range(0.0, 1.0, 0.05) var trapped_weight: float = 0.25
 ## Two in one block wait at least this far apart along the track (metres).
 @export_range(0.0, 80.0, 1.0, "suffix:m") var min_spacing: float = 20.0
+
+@export_group("Ambush")
+## An ambush centipede (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can
+## barely see its body, and when you get close to it, the debris shatters and the centipede is released") hides in a
+## divider of the maze, a sliver of its body showing beside it; it breaks out once the runner, on the floor in its block,
+## is this close along the track (metres at the reference speed), or as soon as a dash smashes debris it lies in.
+@export_range(4.0, 40.0, 0.5, "suffix:m") var ambush_distance: float = 8.0
+## How far its body pokes out beside the debris it hides in (metres, from its body's hitbox: its head shows a little
+## more): enough to be glimpsed. DESIGN-TBD (item 1203 in docs/OPEN_QUESTIONS*.md): both numbers.
+@export_range(0.0, 0.6, 0.05, "suffix:m") var ambush_showing: float = 0.25
 
 
 ## Its top speed (m/s) in a level run at `run_speed`.
@@ -96,6 +107,11 @@ func chase_speed(run_speed: float) -> float:
 ## The waking distance (metres) at `pace` (MovementTuning.pace).
 func wake_distance_at(pace: float) -> float:
 	return wake_distance * pace
+
+
+## An ambush's breaking-out distance (metres) at `pace`.
+func ambush_distance_at(pace: float) -> float:
+	return ambush_distance * pace
 
 
 ## The give-up distance (metres) at `pace`.

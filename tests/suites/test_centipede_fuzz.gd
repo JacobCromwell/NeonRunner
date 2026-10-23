@@ -55,7 +55,7 @@ func run() -> void:
 						var at_block: int = int(e["params"]["block"])
 						if not own.has(at_block):
 							own[at_block] = []
-						(own[at_block] as Array).append({"lane": int(e["lane"]), "at": float(e["at"])})
+						(own[at_block] as Array).append(RulesScript.spot_of(layout, e))
 				for i: int in layout.maze.size():
 					if float(layout.maze[i]["end"]) <= start:
 						continue
@@ -147,6 +147,9 @@ func run() -> void:
 
 ## A centipede's layout entry at `spot` ({lane, at}) in block `index`, as the rules make one.
 func _entry(index: int, spot: Dictionary) -> Dictionary:
+	# A level's own ambush (task O5) stays one: hidden in its debris until it breaks out.
+	if bool(spot.get("ambush", false)):
+		return RulesScript.ambush_entry(index, spot)
 	var at: float = float(spot["at"])
 	return {"type": RulesScript.FEATURE, "at": at, "lane": int(spot["lane"]), "side": 0, "seed": 7, "params": {
 		"block": index, "situation": "fuzz",

@@ -28,6 +28,8 @@ extends TestSuite
 ##   cell releases it (it wakes, with its warning);
 ## - the second dash kills it (the player's kill and its score, its death sound);
 ## - it can't follow onto a ceiling: a runner who takes an anti-grav pad gets away (it gives up, never biting at them).
+## - an ambush (task O5) lies hidden in a divider's debris, a sliver showing, until the runner is within its ambush
+##   distance or a dash smashes that debris; then the debris shatters and it wakes and chases.
 
 ## Lane counts every physics check runs at.
 const LANES: Array[int] = [3, 5, 6]
@@ -61,6 +63,7 @@ func run() -> void:
 		await _test_wake_and_bite(lanes)
 		await _test_head_on(lanes)
 		await _test_trapped(lanes)
+		await _test_ambush(lanes)
 	await _test_second_dash()
 	await _test_ceiling()
 
@@ -573,6 +576,77 @@ func _test_trapped(lanes: int) -> void:
 	check(bool(log["dashed"]) and bool(log["asleep_at_wall"]), "it sleeps while its cell's wall stands, the runner at it " + tag)
 	check(events.has(&"doodad_smash") and bool(log["woke"]) and (log["sounds"] as Array).has(&"centipede_wake"),
 		"a dash that opens its cell releases it: it wakes, with its warning %s: %s" % [tag, events])
+	await sim.free_world(world)
+
+
+# --- An ambush --------------------------------------------------------------------------------------
+
+## An ambush (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can barely see
+## its body, and when you get close to it, the debris shatters and the centipede is released"): hidden in an edge lane's
+## divider, a sliver of its body poking out beside it; it sleeps on while the runner is further than its ambush distance,
+## then the debris it lies in shatters (the smash's crunch, then its wake's warning) and it wakes and chases; and debris
+## of it smashed (a dash) releases it at once.
+func _test_ambush(lanes: int) -> void:
+	var edge: int = lanes - 1
+	var mid: int = lanes / 2
+	var tag: String = "(%d lanes)" % lanes
+	var layout: LevelLayout = MazeKit.block(tuning, lanes, [[mid], [mid]], [[edge]], {"room": 40.0})
+	var room: Dictionary = (layout.maze[0]["rooms"] as Array)[0]
+	var at: float = float(room["start"]) + 15.0
+	layout.enemies.append(MazeKit.ambush(at, edge, 0, -1))
+	var w: Dictionary = _world_of(layout, mid, at)
+	var world: RunWorld = w["world"]
+	var p: Player = world.player
+	p.armor = 1
+	var c: Centipede = await _spawned(world)
+	check(c != null and c.ambush and c.hidden and c.host.size() >= 2, "an ambush spawns hidden in its divider's debris " + tag)
+	if c == null:
+		await sim.free_world(world)
+		return
+	var widest: float = 0.0
+	for d: Dictionary in c.host:
+		widest = maxf(widest, tuning.doodad_size(StringName(d["size"])).x)
+	var lane_x: float = world.geo.lane_x(edge)
+	var showing: float = absf(c.head().x - lane_x) + Centipede.BODY_HIT.x * 0.5 - widest * 0.5
+	check(c.head().x < lane_x and absf(showing - t.ambush_showing) < EPS,
+		"a sliver of its body pokes out toward the open lane (%.2f m past the debris) %s" % [showing, tag])
+	var reach: float = t.ambush_distance_at(world.tuning.pace())
+	var log := {"hidden_far": true, "broke_at": INF, "all_smashed": false, "sounds": [], "chased": false}
+	await _run(world, 8.0, func(_f: int) -> bool:
+		if not is_instance_valid(c):
+			return true
+		var gap: float = absf(p.distance - c.head().y)
+		if c.hidden and gap <= reach - 1.0 and p.distance >= float(layout.maze[0]["entry"]):
+			log["hidden_far"] = false
+		if not c.hidden and float(log["broke_at"]) == INF:
+			log["broke_at"] = gap
+			var smashed: bool = true
+			for d: Dictionary in c.host:
+				smashed = smashed and bool(d.get("smashed", false))
+			log["all_smashed"] = smashed
+			log["sounds"] = c.sounds_played.duplicate()
+		log["chased"] = bool(log["chased"]) or c.state == Centipede.State.CHASE
+		return bool(log["chased"]))
+	check(bool(log["hidden_far"]) and float(log["broke_at"]) <= reach + 1.0 and float(log["broke_at"]) >= reach - 1.0,
+		"it stays hidden until the runner is within its ambush distance (%.1f m; broke out at %.1f m) %s"
+		% [reach, log["broke_at"], tag])
+	check(bool(log["all_smashed"]) and (log["sounds"] as Array) == [&"doodad_smash", &"centipede_wake"],
+		"as it breaks out the debris it lay in shatters, with the smash's crunch, then its wake's warning (%s) %s"
+		% [log["sounds"], tag])
+	check(bool(log["chased"]), "then it chases, as any other " + tag)
+	await sim.free_world(world)
+	# Its debris smashed (a dash) releases it at once, the runner still far off.
+	layout = MazeKit.block(tuning, lanes, [[mid], [mid]], [[edge]], {"room": 40.0})
+	layout.enemies.append(MazeKit.ambush(at, edge, 0, -1))
+	w = _world_of(layout, mid, at)
+	world = w["world"]
+	c = await _spawned(world)
+	if c != null:
+		(c.host[0] as Dictionary)["smashed"] = true
+		await tree.physics_frame
+		await tree.physics_frame
+	check(c != null and not c.hidden and c.state != Centipede.State.SLEEP,
+		"debris it lies in smashed releases it at once " + tag)
 	await sim.free_world(world)
 
 

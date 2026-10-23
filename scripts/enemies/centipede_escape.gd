@@ -12,7 +12,10 @@ extends RefCounted
 ## A runner choosing that way escapes without needing armor.
 ## The way keeps off the block's anti-grav pads (a maze ceiling's: DebrisMaze), as MazeRoute's do: a ride on its ceiling
 ## would get the runner away too (the centipede can't follow), but the way is the floor's, so a runner following it is
-## never lifted off it by surprise.
+## never lifted off it by surprise. An escape block (task O5, DebrisMaze.is_escape) is the exception: its barrier is no
+## way through (more than one dash deep), and its way out is its pad, in the open room before the barrier: the runner
+## lines up in the pad's lane and runs onto it, safe from the moment they reach the barrier's front, lifted well above any
+## bite by then and on a ceiling, where a centipede gives up.
 ## "Whatever it does" rests on what every centipede keeps to (Centipede, which test_centipede checks on physics):
 ## - it waits, still, until the runner is on the floor in its own section of the maze or one joined to it (DebrisMaze
 ##   links, with the runner's own smashes) within its wake distance along the track (CentipedeTuning.wake_distance_at),
@@ -22,6 +25,10 @@ extends RefCounted
 ##   its acceleration;
 ## - its bite reaches no further than CentipedeTuning.bite_reach in front of its head, and a dash passes through it;
 ## - it gives up once the runner is leave_margin past its block's last wall.
+## An ambush (task O5; spot "ambush", hidden in a divider: CentipedeRules._place_ambushes) breaks out once the runner is
+## within its ambush distance along the track anywhere in its block (its wake), and the debris it lay in ("host") counts
+## as open floor from the start, for every centipede of the block, and joins the sections either side of it from the
+## start (_host_joins); then it keeps to all of the above.
 ## So at time t after its wake at t_w it can be nowhere further along open floor from its spot than it can run from a
 ## standstill in t - t_w - wake_time. The runner is safe while their distance from its spot (CentipedeMaze.field: along
 ## the track, a lane change costing nothing, which no real way beats) is more than that and its reach, with the grid's
@@ -83,6 +90,24 @@ static func context(layout: LevelLayout, tuning: MovementTuning, index: int) -> 
 	return Context.new(layout, tuning, index)
 
 
+## The debris an ambush spot lies in (its "host": CentipedeRules.ambush_host), as a set of layout entries, open from the
+## start for the proof (it shatters as the ambush breaks out); {} for any other spot.
+static func host_of(spot: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for d: Variant in spot.get("host", []):
+		out[d] = true
+	return out
+
+
+## A key naming a set of debris pieces (layout entries, as host_of gives them): their lanes and starts, in order.
+static func pieces_key(pieces: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for d: Variant in pieces:
+		parts.append("%d@%.3f" % [int((d as Dictionary)["lane"]), float((d as Dictionary)["start"])])
+	parts.sort()
+	return ",".join(parts)
+
+
 ## The dash's slowest recharge (seconds): its tier I cooldown or an upgrade's, the longest (GDD §8: 8 s).
 static func slowest_recharge() -> float:
 	var pt := load(POWERUPS_PATH) as PowerupTuning
@@ -137,6 +162,7 @@ class Context:
 	var accel: float = 30.0
 	var wake_time: float = 0.6
 	var wake_d: float = 30.0
+	var ambush_d: float = 16.0
 	var reach: float = 3.0
 	var leave_end: float = 0.0
 	## Per stage, its cells (Vector2i(first, last) lanes).
@@ -150,8 +176,14 @@ class Context:
 	var divider_pieces: Dictionary = {}
 	## Per lane, the stretches its anti-grav pads keep the runner's body off (Vector2(start, end) each).
 	var pad_spans: Array = []
-	## Each spot's field (CentipedeMaze.field), by "lane|at".
+	## An escape block's pad (DebrisMaze.is_escape): its lane (-1 for any other block) and track distance.
+	var escape_lane: int = -1
+	var escape_at: float = 0.0
+	## Each spot's field (CentipedeMaze.field), by "lane|at|the debris taken as open" (pieces_key).
 	var _fields: Dictionary = {}
+	## The joins the ambushes' shattered debris makes (Search._host_joins), by pieces_key: the same for every search with
+	## the same ambushes (the rules try many spots beside one).
+	var host_joins: Dictionary = {}
 
 	func _init(p_layout: LevelLayout, p_tuning: MovementTuning, p_index: int) -> void:
 		layout = p_layout
@@ -178,6 +210,7 @@ class Context:
 		accel = t.acceleration
 		wake_time = t.wake_time
 		wake_d = t.wake_distance_at(p_tuning.pace())
+		ambush_d = t.ambush_distance_at(p_tuning.pace())
 		reach = t.bite_reach(CentipedeMaze.HEAD_HALF_LENGTH) + half + 2.0 * CentipedeMaze.BIN + CentipedeEscape.REACH_MARGIN
 		leave_end = float(b["end"]) + t.leave_margin
 		var bl: LevelLayout = maze.block_layout()
@@ -203,6 +236,10 @@ class Context:
 		for key: String in divider_pieces:
 			(divider_pieces[key] as Array).sort_custom(func(a: Dictionary, c: Dictionary) -> bool:
 				return float(a["start"]) < float(c["start"]))
+		var escape: Dictionary = b.get("escape", {})
+		if escape.has("lane"):
+			escape_lane = int(escape["lane"])
+			escape_at = float(escape["at"])
 		for lane: int in lanes:
 			pad_spans.append([])
 		for p: Dictionary in p_layout.pads:
@@ -247,10 +284,14 @@ class Context:
 		return int((stage_sections[stage] as Array)[cell])
 
 	## The field from a spot (cached).
-	func field_of(spot: Dictionary) -> PackedInt32Array:
-		var key: String = "%d|%.3f" % [int(spot["lane"]), float(spot["at"])]
+	## An ambush's (spot "ambush", task O5) is taken with the debris it lies in open (its "host": it shatters as it breaks
+	## out).
+	## With `open` (layout entries: every ambush's debris among the spots searched together), that debris too.
+	func field_of(spot: Dictionary, open: Dictionary = {}) -> PackedInt32Array:
+		var host: Dictionary = CentipedeEscape.host_of(spot) if open.is_empty() else open
+		var key: String = "%d|%.3f|%s" % [int(spot["lane"]), float(spot["at"]), CentipedeEscape.pieces_key(host)]
 		if not _fields.has(key):
-			_fields[key] = maze.field(int(spot["lane"]), float(spot["at"]))
+			_fields[key] = maze.field(int(spot["lane"]), float(spot["at"]), host)
 		return _fields[key]
 
 	## The way out past the centipedes at `spots` ({lane, at} each). `options`: recharge (seconds; default the dash's
@@ -270,6 +311,12 @@ class Search:
 	var spots: Array = []
 	var fields: Array = []
 	var homes: PackedInt32Array = PackedInt32Array()
+	## Per spot, true for an ambush (its "ambush": hidden in debris, which opens as it breaks out).
+	var ambush: Array[bool] = []
+	## The debris every ambush among the spots lies in (layout entries), and the joins its shattering makes between the
+	## block's sections, taken from the start (_host_joins).
+	var hosts: Dictionary = {}
+	var joins0: Dictionary = {}
 	var recharge: float = 8.0
 	var ready0: float = 0.0
 	var forbidden: Dictionary = {}
@@ -282,8 +329,16 @@ class Search:
 		ready0 = float(options.get("entry_ready", CentipedeEscape.entry_ready(recharge)))
 		forbidden = (options.get("forbidden", {}) as Dictionary).duplicate()
 		for spot: Dictionary in spots:
-			fields.append(c.field_of(spot))
-			homes.append(c.section_of(int(spot["lane"]), float(spot["at"])))
+			hosts.merge(CentipedeEscape.host_of(spot))
+		for spot: Dictionary in spots:
+			# With an ambush in the block, every centipede's reach takes its debris as open (it shatters).
+			fields.append(c.field_of(spot, hosts))
+			ambush.append(bool(spot.get("ambush", false)))
+			homes.append(-1 if ambush[-1] else c.section_of(int(spot["lane"]), float(spot["at"])))
+		var key: String = CentipedeEscape.pieces_key(hosts)
+		if not c.host_joins.has(key):
+			c.host_joins[key] = _host_joins()
+		joins0 = c.host_joins[key]
 
 	func solve() -> Dictionary:
 		for attempt: int in CentipedeEscape.RETRIES + 1:
@@ -305,12 +360,44 @@ class Search:
 	## into); the way so far is its parents' (_history).
 	const STEP_KEYS: Array[String] = ["moves", "segs", "smashes", "dash_keys", "dash_t", "path"]
 
+	## The joins between the block's sections once every ambush's debris has shattered (DebrisMaze.links with those pieces
+	## smashed, on a copy of the block): every pair of sections a shattered stretch of a divider meets, taken either way.
+	## Wider than the centipedes' own (they wake for a section joined directly), never narrower.
+	func _host_joins() -> Dictionary:
+		var out: Dictionary = {}
+		if hosts.is_empty():
+			return out
+		var keys: Dictionary = {}
+		for d: Variant in hosts:
+			keys["%d|%.3f" % [int((d as Dictionary)["lane"]), float((d as Dictionary)["start"])]] = true
+		var bl: LevelLayout = c.maze.block_layout()
+		for d: Dictionary in bl.doodads:
+			if keys.has("%d|%.3f" % [int(d["lane"]), float(d["start"])]):
+				d["smashed"] = true
+		var plain: int = c.secs.size()
+		var touched: Dictionary = {}  # a section id -> the plain sections it meets through a shattered piece
+		for k: Dictionary in DebrisMaze.links(bl, c.secs, true):
+			if String(k["kind"]) != "broken":
+				continue
+			for pair: Array in [[int(k["from"]), int(k["to"])], [int(k["to"]), int(k["from"])]]:
+				if not touched.has(pair[0]):
+					touched[pair[0]] = {}
+				(touched[pair[0]] as Dictionary)[pair[1]] = true
+		for hub: Variant in touched:
+			var group: Array = (touched[hub] as Dictionary).keys()
+			group.append(hub)
+			for a: Variant in group:
+				for b2: Variant in group:
+					if int(a) != int(b2) and int(a) < plain and int(b2) < plain:
+						out["%d|%d" % [int(a), int(b2)]] = true
+		return out
+
 	func _start() -> Dictionary:
 		var wakes := PackedFloat64Array()
 		for i: int in spots.size():
 			wakes.append(INF)
 		var out: Dictionary = {"t": 0.0, "z": float(c.b["entry"]), "lane": -1, "cell": 0, "stage": 0, "ready": ready0,
-			"wakes": wakes, "joins": {}, "waits": 0.0, "dashes": 0, "start_lane": -1, "parent": null}
+			"wakes": wakes, "joins": joins0.duplicate(), "waits": 0.0, "dashes": 0, "start_lane": -1, "parent": null}
 		for key: String in STEP_KEYS:
 			out[key] = []
 		(out["path"] as Array).append([0, 0])
@@ -341,10 +428,12 @@ class Search:
 				(out[key] as Array).append_array(y[key])
 		return out
 
-	## The quickest safe label past the last wall, or {}.
+	## The quickest safe label past the last wall (an escape block's: onto its pad), or {}.
 	func _search() -> Dictionary:
 		var current: Array = [_start()]
-		for s: int in c.stages - 1:
+		# An escape block's barrier is no way through: its pad, in the room before it, is (_escape).
+		var through: int = c.stages - 2 if c.escape_lane >= 0 else c.stages - 1
+		for s: int in through:
 			var next: Array = []
 			for l: Dictionary in current:
 				_expand(l, s, next)
@@ -352,6 +441,8 @@ class Search:
 			if current.is_empty():
 				reason = "no safe way past wall %d of %d" % [s, c.walls.size()]
 				return {}
+		if c.escape_lane >= 0:
+			return _escape(current)
 		var best: Dictionary = {}
 		for l: Dictionary in current:
 			if not c.pad_clear(int(l["lane"]), float(l["z"]), maxf(c.leave_end, float(l["z"]))):
@@ -367,6 +458,43 @@ class Search:
 				best = n
 		if best.is_empty():
 			reason = "no safe way out into the breather"
+		return best
+
+	## The quickest safe way from the labels `current` (in an escape block's pad room) onto its pad: lined up in the pad's
+	## lane (a lane switch's run after SWITCH_START, before the pad's stretch), then running on to the pad, never within a
+	## centipede's reach until the runner is at the barrier's front (by then the lift has carried them well above its bite:
+	## DebrisMaze.pad_rise; on the ceiling it gives up). {} if none.
+	func _escape(current: Array) -> Dictionary:
+		var best: Dictionary = {}
+		var stage: int = c.stages - 2
+		var here: Array[int] = [c.stage_section(stage, 0)]
+		var lane: int = c.escape_lane
+		var pad: float = c.escape_at
+		var up: float = float((c.walls[-1] as Dictionary)["start"]) - c.half - CentipedeEscape.BODY_MARGIN
+		var lined_by: float = pad - CentipedeEscape.PAD_MARGIN - c.half - CentipedeEscape.BODY_MARGIN
+		for l: Dictionary in current:
+			var z: float = float(l["z"])
+			var t: float = float(l["t"])
+			var from_lane: int = int(l["lane"])
+			var switches: int = absi(lane - from_lane)
+			var run: float = switches * (c.switch_time + CentipedeEscape.SWITCH_SLACK) * c.v
+			if switches > 0 and z + CentipedeEscape.SWITCH_START + run > lined_by:
+				continue
+			var n: Dictionary = _copy(l)
+			if switches > 0:
+				(n["moves"] as Array).append({"kind": "switch", "at": z + CentipedeEscape.SWITCH_START, "lane": from_lane,
+					"to": lane})
+			var t_up: float = t + (up - z) / c.v
+			if not _check(n, t, t_up, z, up, lane, true, here):
+				continue
+			n["t"] = t_up
+			n["z"] = up
+			n["lane"] = lane
+			if best.is_empty() or float(n["t"]) < float(best["t"]) - CentipedeEscape.EPS \
+					or (absf(float(n["t"]) - float(best["t"])) <= CentipedeEscape.EPS and int(n["dashes"]) < int(best["dashes"])):
+				best = n
+		if best.is_empty():
+			reason = "no safe way onto the escape's pad"
 		return best
 
 	## Every way from label `l` (in stage `s`) through the wall after it into stage s + 1, appended to `out`.
@@ -580,8 +708,12 @@ class Search:
 	## True if a runner in any of `where` (section ids) wakes spot `i`'s centipede (its own section, or one joined to it
 	## without a dash or by label `n`'s smashes) at track distance `z`.
 	func _wakes_at(n: Dictionary, i: int, z: float, where: Array[int]) -> bool:
-		if absf(z - float((spots[i] as Dictionary)["at"])) > c.wake_d:
+		# EPS: _wakes asks exactly at the wake distance's edge, where rounding must not put it outside.
+		if absf(z - float((spots[i] as Dictionary)["at"])) > _wake_dist(i) + CentipedeEscape.EPS:
 			return false
+		# An ambush breaks out for a runner that close, wherever they are in its block.
+		if ambush[i]:
+			return true
 		var home: int = homes[i]
 		if home < 0:
 			return false
@@ -594,6 +726,10 @@ class Search:
 				return true
 		return false
 
+	## How close along the track the runner wakes spot `i`'s centipede: its wake distance, or an ambush's.
+	func _wake_dist(i: int) -> float:
+		return c.ambush_d if ambush[i] else c.wake_d
+
 	## Records on label `n` the wakes the runner sets off from `z0` to `z1` (times `t0` to `t1`) in sections `where`.
 	func _wakes(n: Dictionary, t0: float, t1: float, z0: float, z1: float, where: Array[int]) -> void:
 		var wakes: PackedFloat64Array = n["wakes"]
@@ -603,8 +739,9 @@ class Search:
 				continue
 			# The first moment within its wake distance, if the runner is in a section that wakes it.
 			var at: float = float((spots[i] as Dictionary)["at"])
-			var from_z: float = maxf(z0, at - c.wake_d)
-			if from_z > maxf(z1, z0) + CentipedeEscape.EPS or minf(z0, z1) > at + c.wake_d:
+			var d: float = _wake_dist(i)
+			var from_z: float = maxf(z0, at - d)
+			if from_z > maxf(z1, z0) + CentipedeEscape.EPS or minf(z0, z1) > at + d:
 				continue
 			if not _wakes_at(n, i, clampf(from_z, minf(z0, z1), maxf(z0, z1)), where):
 				continue
@@ -659,7 +796,9 @@ class Search:
 			extra[e] = true
 		var use: Array = []
 		for spot: Dictionary in spots:
-			use.append(c.maze.field(int(spot["lane"]), float(spot["at"]), extra))
+			var open: Dictionary = extra.duplicate()
+			open.merge(hosts)
+			use.append(c.maze.field(int(spot["lane"]), float(spot["at"]), open))
 		var wakes := PackedFloat64Array()
 		for i: int in spots.size():
 			wakes.append(INF)
