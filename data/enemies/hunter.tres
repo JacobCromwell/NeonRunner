@@ -22,6 +22,7 @@ leave_speed = 9.0
 gone_gap = 40.0
 follow_delay_seconds = 0.25
 switch_seconds = 0.25
+walkway_switch_seconds = 0.12
 steer_ahead_seconds = 0.6
 make_room_seconds = 1.2
 regain_seconds = 1.2

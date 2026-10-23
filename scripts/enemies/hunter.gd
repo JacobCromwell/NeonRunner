@@ -99,6 +99,9 @@ var _x: float = 0.0
 var _switch_from: float = 0.0
 var _switch_to: float = 0.0
 var _switch_t: float = 1.0
+## How long the lane change under way takes (switch_seconds, or walkway_switch_seconds following the runner out from
+## under a falling walkway).
+var _switch_seconds: float = 0.25
 ## The runner's lane changes, [level time, lane] (their floor lane, or the outer lane under the wall they run on), oldest
 ## first: it follows the one follow_delay_seconds old.
 var _lane_log: Array = []
@@ -270,13 +273,15 @@ func _approach(delta: float) -> void:
 	var n: int = world.geo.lane_count
 	var r: int = runner_lane()
 	var want: int = r + side
-	if want < 0 or want >= n or (gap > VIEW_GAP and not _lane_clear_ahead(want, true)):
+	if want < 0 or want >= n or (gap > VIEW_GAP and not _lane_clear_ahead(want, true)) or _blocks_bait(side, r):
 		var s: int = _pick_side(false)
 		if s != 0:
 			side = s
 			want = r + side
-	if want < 0 or want >= n:
-		_ease_gap(maxf(VIEW_GAP + 1.0, gap), tuning.approach_speed, delta)
+	if want < 0 or want >= n or _blocks_bait(side, r):
+		# No lane beside the runner to come up into, or only one between them and its bait's walkway lane (it lets them past
+		# first, _blocks_bait): it holds back unseen, just behind the camera.
+		_ease_gap(maxf(VIEW_GAP + 1.0, minf(gap, tuning.yield_gap)), tuning.approach_speed, delta)
 		return
 	if gap > VIEW_GAP:
 		# Unseen: it lines up at once.
@@ -301,7 +306,14 @@ func _alongside(delta: float) -> void:
 	var n: int = world.geo.lane_count
 	var r: int = runner_lane()
 	var off_floor: bool = p.surface != Player.Surface.FLOOR
+	var idle: bool = slash != Slash.WARNING and slash != Slash.FLURRY
+	if not off_floor and idle and _blocks_bait(side, r):
+		# It rides between the runner and its bait's walkway lane: it drops back out of their way, and comes up on their
+		# other side once they're past (_pick_side).
+		_start_yield(&"bait")
+		return
 	var want: int = _follow_lane() + side
+	var quick: bool = false
 	if off_floor:
 		# Waits below, beside their lane, on whichever side has a lane (it may cross under them: they're off the floor).
 		want = r + side
@@ -314,7 +326,13 @@ func _alongside(delta: float) -> void:
 	if want == r and not off_floor:
 		# Never into the runner's lane: it stays where it is (they came across before it followed).
 		want = target_lane if target_lane != r else r + side
-	if not off_floor and slash != Slash.WARNING and slash != Slash.FLURRY:
+	if not off_floor and idle:
+		var beside: int = r + side
+		if beside != want and beside >= 0 and beside < n and _walkway_falling_on(beside, world.player_distance() - gap):
+			# The runner has stepped out from under a falling walkway: it follows them at once, quickly, into the lane they
+			# left, the walkway's (the bait: whenever they step out and live, it's under the walkway as it lands).
+			want = beside
+			quick = true
 		var run_up: Dictionary = _run_up_bait()
 		if not run_up.is_empty() and want == int(run_up["lane"]) and want != r:
 			# Over a bait's run-up it keeps out of the walkway's lane (the runner's way to its pillar): one lane further out.
@@ -345,7 +363,7 @@ func _alongside(delta: float) -> void:
 		return
 	if steer != target_lane and (slash == Slash.WARNING or slash == Slash.FLURRY):
 		_call_off_slash()
-	_set_target(steer)
+	_set_target(steer, quick and steer == want)
 	var least: float = -INF
 	if lane == r and not off_floor:
 		least = MIN_GAP_IN_LANE
@@ -445,14 +463,16 @@ func _follow_lane() -> int:
 	return want if found else runner_lane()
 
 
-## Heads for lane `l` over switch_seconds (from wherever it is: a switch under way turns round).
-func _set_target(l: int) -> void:
+## Heads for lane `l` over switch_seconds, or walkway_switch_seconds with `quick` (from wherever it is: a switch under way
+## turns round).
+func _set_target(l: int, quick: bool = false) -> void:
 	if l == target_lane:
 		return
 	target_lane = l
 	_switch_from = _x
 	_switch_to = world.geo.lane_x(l)
 	_switch_t = 0.0
+	_switch_seconds = tuning.walkway_switch_seconds if quick else tuning.switch_seconds
 
 
 ## In lane `l` at once (out of view).
@@ -467,7 +487,7 @@ func _snap_lane(l: int) -> void:
 
 func _update_lane(delta: float) -> void:
 	if _switch_t < 1.0:
-		_switch_t = minf(1.0, _switch_t + delta / maxf(tuning.switch_seconds, 0.01))
+		_switch_t = minf(1.0, _switch_t + delta / maxf(_switch_seconds, 0.01))
 		_x = lerpf(_switch_from, _switch_to, smoothstep(0.0, 1.0, _switch_t))
 	lane = world.geo.lane_at(_x)
 
@@ -480,17 +500,18 @@ func _ease_gap(want: float, top: float, delta: float) -> void:
 
 
 ## The side it comes up on beside the runner (-1 left, 1 right; 0: none has room now): one whose lane is on the track and
-## clear ahead (where it comes into view), the side the next planned bait asks for first where that bait comes in its chase
-## (_bait_side: the runner can reach the walkway's lane stepping away from it, then step out from under the walkway away
-## from it), else the side toward the nearer edge (the runner keeps the most lanes on their other side), else seeded.
-## `arriving`: it's far behind (its lane's clearness counts where it will come into view).
+## clear ahead (where it comes into view) and doesn't stand between them and the next planned bait's walkway lane
+## (_blocks_bait), the side that bait asks for first where it comes in its chase (_bait_side: the runner can reach the
+## walkway's lane stepping away from it, then step out from under the walkway away from it), else the side toward the
+## nearer edge (the runner keeps the most lanes on their other side), else seeded. `arriving`: it's far behind (its lane's
+## clearness counts where it will come into view).
 func _pick_side(arriving: bool) -> int:
 	var n: int = world.geo.lane_count
 	var r: int = runner_lane()
 	var options: Array[int] = []
 	for s: int in [-1, 1]:
 		var l: int = r + s
-		if l >= 0 and l < n and (arriving or _lane_clear_ahead(l, true)):
+		if l >= 0 and l < n and (arriving or _lane_clear_ahead(l, true)) and not _blocks_bait(s, r):
 			options.append(s)
 	if options.is_empty():
 		return 0
@@ -522,6 +543,23 @@ func _bait_side(b: Dictionary, r: int) -> int:
 	if -far == s or _out_open(b, -far):
 		return far
 	return -s
+
+
+## True if riding on side `s` of a runner in lane `r` would stand between them and the next planned bait's walkway lane
+## (two lanes or more from them on that side, so they can't reach it stepping away from it) while that bait can still be
+## lined up: its pillar further ahead than its run-up (bait_hold_seconds of run), and the runner then able to step out of
+## the walkway's lane on that side (away from it, once it has come up on their other side): the push side, or the other
+## where it's open (_out_open). It lets them past first (task S2's review: _approach holds back, _alongside drops back).
+func _blocks_bait(s: int, r: int) -> bool:
+	if s == 0:
+		return false
+	var b: Dictionary = _next_bait()
+	if b.is_empty() or (int(b.get("lane", r)) - r) * s < 2:
+		return false
+	var v: float = maxf(world.player.speed, _run_speed)
+	if float(b.get("at", -INF)) - world.player_distance() < tuning.bait_hold_seconds * v:
+		return false
+	return s == int(b.get("side", 0)) or _out_open(b, s)
 
 
 ## True if a runner who dashes bait `b`'s pillar can step out of its walkway's lane to side `out` onto open floor until
@@ -724,6 +762,9 @@ func _needs_leaving(r: int, from: float, to: float, v: float) -> Vector2:
 	var at: float = _first_doodad_in(r, from, to)
 	if at < INF:
 		out = Vector2(maxf(from, at - lead), at + 2.0)
+	if _small_attack_on(r):
+		# A small attack at them too (task S2's review: its body must never take away a dodge from any other attack).
+		out = Vector2(from, maxf(out.y, to))
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e) or not e.alive or e == self:
 			continue
@@ -742,6 +783,33 @@ func _needs_leaving(r: int, from: float, to: float, v: float) -> Vector2:
 	return out
 
 
+## True if a small attack is on at a runner in lane `r` that they may dodge one lane over (task S2's review): a cyborg-type
+## gun (CyborgGun: a floor or window cyborg's, or any enemy's built on it, as a `gun`) charging or firing at them, or an
+## enemy's shot on its way to their lane within make_room_seconds.
+func _small_attack_on(r: int) -> bool:
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or not e.alive or e == self:
+			continue
+		var g: Variant = e.get(&"gun")
+		if g is CyborgGun and (g as CyborgGun).is_attacking():
+			return true
+	var p: Player = world.player
+	var v: float = maxf(p.speed, _run_speed)
+	var x: float = world.geo.lane_x(r)
+	for shot: Projectile in world.projectiles.live_shots():
+		if shot.friendly or not shot.in_use:
+			continue
+		# How long until it's level with the runner (it flies at them as they run on), and where across the track then.
+		var ahead: float = p.position.z - shot.position.z
+		var closing: float = shot.velocity.z + v
+		if ahead < -1.0 or closing <= 0.1:
+			continue
+		var t: float = maxf(ahead, 0.0) / closing
+		if t <= tuning.make_room_seconds and absf(shot.position.x + shot.velocity.x * t - x) <= world.geo.lane_width * 0.5 + 0.3:
+			return true
+	return false
+
+
 ## The front of the first standing doodad in lane `l` reaching into [from, to] (INF: none).
 func _first_doodad_in(l: int, from: float, to: float) -> float:
 	var spans: Array = _lane_doodads[l]
@@ -758,12 +826,12 @@ func _first_doodad_in(l: int, from: float, to: float) -> float:
 
 
 ## True if a runner can step into lane `l` and stay there from track distance `from` to `to`: no hole, live fence, floor
-## cut, doodad, floor enemy or solid side (a hover truck's, another's lane blocker). With `strict` (a flurry's escape) a
-## doodad's or a calm stretch's stretch counts whether or not it's smashed (LevelLayout.doodad_between: the same on every
-## attempt); without, only what stands.
+## cut, doodad, floor enemy, solid side (a hover truck's, another's lane blocker) or trap pad (one lifting them onto a
+## fenced ceiling's fence: _trap_pad_in). With `strict` (a flurry's escape) a doodad's or a calm stretch's stretch counts
+## whether or not it's smashed (LevelLayout.doodad_between: the same on every attempt); without, only what stands.
 func lane_open(l: int, from: float, to: float, strict: bool) -> bool:
 	var lay: LevelLayout = world.layout
-	if lay.gapped_between(l, from, to) or lay.cut_between(from, to, l):
+	if lay.gapped_between(l, from, to) or lay.cut_between(from, to, l) or _trap_pad_in(l, from, to):
 		return false
 	if strict:
 		if lay.doodad_between(from, to, l):
@@ -780,6 +848,26 @@ func lane_open(l: int, from: float, to: float, strict: bool) -> bool:
 	if _floor_enemy_in(l, from - 3.0, to + 3.0, false):
 		return false
 	return not _solid_side_in(l, from, to)
+
+
+## True if a pad in lane `l` from `from` to `to` lifts a runner onto a fenced ceiling's fence (task S2's review): a fenced
+## ceiling's trap pad (its "fenced" mark "unsafe", fenced_ceiling_rules.gd), or any pad under a ceiling with a fence in
+## that lane before its end.
+func _trap_pad_in(l: int, from: float, to: float) -> bool:
+	var lay: LevelLayout = world.layout
+	for pad: Dictionary in lay.pads:
+		var at: float = float(pad.get("at", -INF))
+		if int(pad.get("lane", -1)) != l or at + world.tuning.pad_length < from or at > to:
+			continue
+		if String(pad.get("fenced", "")) == "unsafe":
+			return true
+		var h: Dictionary = lay.hull_at(at + world.tuning.pad_length, l)
+		if h.is_empty():
+			continue
+		for cf: Dictionary in lay.ceiling_fences:
+			if int(cf.get("lane", -1)) == l and float(cf.get("at", -INF)) >= at and float(cf.get("at", INF)) <= float(h["end"]):
+				return true
+	return false
 
 
 ## A lane blocker (another's solid side) in lane `l` between `from` and `to`, its own left out.
@@ -823,8 +911,11 @@ func _update_slash(delta: float) -> void:
 
 ## True if a flurry may begin now (the class doc): alongside and settled beside the runner, on the floor in their lane's
 ## middle, with the lane on their other side open to step into from escape_reaction_seconds after its warning to its last
-## cut; not in the level's calm start, a gantryway's run-up or calm stretch, a teleporter's calm stretch in their lane or a
-## wall-run gap's crossing; and over before it gives up.
+## cut (lane_open: a trap pad there too); not in the level's calm start, a gantryway's run-up or calm stretch, a
+## teleporter's calm stretch in their lane, a wall-run gap's crossing or a fenced ceiling's pick (where they read which pad
+## is the trap: LevelLayout.fenced_pick_between, as a heli drone's barrage); not while another enemy's small attack is on
+## at them (_small_attack_on); never one whose dodge would take them two lanes or more past the next bait's walkway lane;
+## and over before it gives up.
 func may_slash() -> bool:
 	var p: Player = world.player
 	if not p.alive or not p.running or p.surface != Player.Surface.FLOOR or p.in_pit:
@@ -842,10 +933,18 @@ func may_slash() -> bool:
 		return false
 	if world.config != null and p.distance < world.config.start_clear_distance:
 		return false
+	# Once a bait is planned in its chase, a flurry never carries the runner two lanes or more past its walkway's lane: it
+	# would follow and ride between them and it (task S2's review).
+	var bait: Dictionary = _next_bait()
+	if not bait.is_empty() and (f - int(bait.get("lane", f))) * -side >= 2:
+		return false
 	var v: float = maxf(p.speed, 1.0)
 	var to: float = p.distance + tuning.attack_seconds() * v + 2.0
 	if _bait_near(p.distance - 1.0, to) or world.layout.teleporter_between(p.distance - 1.0, to, r) \
-			or world.layout.wall_run_between(p.distance - 1.0, to):
+			or world.layout.wall_run_between(p.distance - 1.0, to) or world.layout.fenced_pick_between(p.distance - 1.0, to):
+		return false
+	# Not while another enemy's small attack is on at them (a cyborg's burst: its dodge and the flurry's are one move).
+	if _small_attack_on(r) or _small_attack_on(f):
 		return false
 	return lane_open(f, p.distance + tuning.escape_reaction_seconds * v, to, true)
 

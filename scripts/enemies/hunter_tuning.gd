@@ -39,6 +39,10 @@ extends EnemyTuning
 @export_range(0.05, 1.0, 0.01, "suffix:s") var follow_delay_seconds: float = 0.25
 ## DESIGN-TBD: how long its own lane change takes (the runner's takes 0.14 s).
 @export_range(0.1, 1.0, 0.01, "suffix:s") var switch_seconds: float = 0.25
+## DESIGN-TBD (task S2's review: whenever the runner steps out from under a falling walkway and lives, it's under the
+## walkway as it lands): a runner who steps out of a lane a falling walkway is coming down on, it follows into that lane at
+## once (no follow_delay_seconds), its lane change this quick.
+@export_range(0.05, 0.5, 0.01, "suffix:s") var walkway_switch_seconds: float = 0.12
 ## DESIGN-TBD: how far ahead it looks in its lane for what it must go round (a doodad, a gantryway's pillar, a fence, a
 ## teleporter's pad, a ramp, another enemy on the floor): seconds of run past its front.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var steer_ahead_seconds: float = 0.6
