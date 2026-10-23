@@ -69,6 +69,14 @@ func charge_sound_point() -> Vector3:
 	return ear + away.normalized() * heavy.windup_heard_within
 
 
+## Every round after the first reaches the runner later_round_warning_share of min_warning_time after it leaves the
+## gatling at the least, so a runner zigzagging back into the line sees each one coming: its stream lasts a couple of
+## seconds as the runner closes in, so its last rounds fly far shorter than its first, and a stream that would end too
+## close waits (_burst_fair) as a cyborg's burst does for its first bolt.
+func min_flight_time(k: int) -> float:
+	return tuning.min_warning_time * (1.0 if k == 0 else heavy.later_round_warning_share)
+
+
 ## Where the red aim line ends (GDD §9.6, the drone's): on the runner while the gatling winds up (it follows them),
 ## then on the locked line, where the runner is along the track, while it fires. Its height is the runner's body's,
 ## as the stream's.

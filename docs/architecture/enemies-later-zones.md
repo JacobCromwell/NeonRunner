@@ -398,7 +398,7 @@ them: `heavy_cyborg.gd` (`HeavyCyborg extends Cyborg`), its gun (`heavy_cyborg_g
 CyborgGun`), its body (`heavy_cyborg_body.gd`, `HeavyCyborgBody extends CyborgBody`) and armour
 (`cyborg_looks/heavy.gd`), its tuning (`HeavyCyborgTuning extends CyborgTuning`, `data/enemies/heavy_cyborg.tres`) and
 its rules (`heavy_cyborg_rules.gd`). The shared cyborg files carry only hooks: `CyborgGun`'s `shot_interval()`,
-`roll_shots()`, `most_shots()`, `charge_sound_point()` and `look` (a cyborg's behaviour unchanged), and
+`roll_shots()`, `most_shots()`, `charge_sound_point()`, `min_flight_time()` and `look` (a cyborg's behaviour unchanged), and
 `CyborgSuit.heavy_set()` (every look gets an armour set, worn only by a Heavy Cyborg).
 - **The stream.** A wind-up (`charge_time`, 1 s: the barrels spin up and turn red-hot, a red ring grows at the muzzle,
   a red aim line runs from the muzzle to the runner and flickers faster as it ends, the `heavy_cyborg_windup` sound,
@@ -408,7 +408,9 @@ its rules (`heavy_cyborg_rules.gd`). The shared cyborg files carry only hooks: `
   zigzag goes through), so the gatling fires them further apart, by the rounds' speed over the closing speed at the
   level's run speed (`shot_interval`); and only as many (`barrage_count`, 6) as all arrive within
   `invulnerability_share` of the hit invulnerability window, so armor or a shield protects through all of it
-  (`most_shots`; every stream is that long, `roll_shots`). Dodged by switching lanes once it locks; a runner who
+  (`most_shots`; every stream is that long, `roll_shots`). Its first round flies `min_warning_time` at least and every
+  later one `later_round_warning_share` of it (`min_flight_time`, a `CyborgGun` hook whose cyborg default asks nothing
+  of later bolts): a stream that would end too close waits. Dodged by switching lanes once it locks; a runner who
   moves during the wind-up is followed; the line's flicker thickens steadily instead with Reduced flashing, and the
   muzzle's flash is left out.
 - **A cyborg's small attack** (owner: it fires when the other small enemies fire and doesn't wait its turn). It is a
@@ -448,8 +450,9 @@ its rules (`heavy_cyborg_rules.gd`). The shared cyborg files carry only hooks: `
   campaign's recency factor for the feature (`LevelConfig.recency_factor`: most in Relay Station, fewer as it gets
   older), from its own random stream. A Heavy Cyborg keeps a cyborg's keep-out (`keep_out`), so the level is built
   exactly as without the feature but for those cyborgs' type, on every seed. Never forced (`OCCASIONAL`): a build
-  whose cyborgs leave it no place has none (the campaign's own seeds have one to three a level at 5 lanes; Relay
-  Station at 6 lanes has none). The Golden Zone dates it from the Ice Lab (a level old in Golden 1), as the teleporters.
+  whose cyborgs leave it no place has none (on the campaign's own seeds at 5 lanes, one or two a level but none in
+  Golden 2, whose one cyborg of its own stands just past a wider gap; Relay Station at 6 lanes has none). The Golden
+  Zone dates it from the Ice Lab (a level old in Golden 1), as the teleporters.
 - **Sounds.** `tools/asset_gen/sfx_bank_heavy_cyborg.gd`: `heavy_cyborg_windup` (the warning: a motor grinding up
   under a ratchet speeding into a rattle and the red charge's hum, lasting the wind-up and 30 ms into the first round;
   lower and heavier than the drone's) and `heavy_cyborg_shot` (a low double crack, 0.2 s).

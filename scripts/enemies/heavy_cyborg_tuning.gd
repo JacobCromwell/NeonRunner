@@ -39,6 +39,9 @@ const UNUSED: PackedStringArray = ["burst_min", "burst_max", "shot_interval", "p
 @export_range(0.08, 0.5, 0.01, "suffix:s") var bullet_gap_early: float = 0.18
 @export_range(0.08, 0.5, 0.01, "suffix:s") var bullet_gap_late: float = 0.16
 @export_range(0.5, 1.0, 0.01) var invulnerability_share: float = 0.9
+## DESIGN-TBD (docs/questions/s1.md): every round after the first leaves at least this share of min_warning_time
+## before it reaches the runner (HeavyCyborgGun.min_flight_time): the stream waits until all of it fits.
+@export_range(0.0, 1.0, 0.05) var later_round_warning_share: float = 0.5
 ## DESIGN-TBD (docs/questions/s1.md): the wind-up's sound plays no further from the runner than this, on the way to
 ## the gatling, so the audio half of the warning is heard from as far off as the stream starts (a positional sound
 ## fades from 20 m and is silent at 90 m: SfxLibrary). The cyborgs' charge-up plays at the cannon.

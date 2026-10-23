@@ -162,6 +162,14 @@ func charge_sound_point() -> Vector3:
 	return _muzzle_base()
 
 
+## The least time shot `k` of a burst (0: the first) may fly before it reaches the runner (_burst_fair): the first,
+## min_warning_time (the warning); the rest, only that they reach them (a cyborg's 2-3 bolts follow so closely that
+## they arrive nearly as late as the first). A shooter whose burst runs longer asks more of its later shots
+## (HeavyCyborgGun).
+func min_flight_time(k: int) -> float:
+	return tuning.min_warning_time if k == 0 else 0.0
+
+
 ## Runs the cannon for one physics frame.
 func update(delta: float) -> void:
 	if not enabled or world == null or world.player == null:
@@ -536,7 +544,7 @@ func _burst_fair(lead: float, shots: int) -> bool:
 		var t: float = intercept_time(from, target, v, speed)
 		if t <= 0.0:
 			return false
-		if k == 0 and t < tuning.min_warning_time:
+		if t < min_flight_time(k):
 			return false
 		var impact: float = player.distance + v * (tau + t)
 		if impact >= hold.x and impact <= hold.y:

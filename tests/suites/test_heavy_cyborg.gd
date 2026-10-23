@@ -288,7 +288,7 @@ func _test_numbers() -> void:
 	for name: String in HeavyCyborgTuning.UNUSED:
 		check(not shown.has(name), "`%s` (a cyborg's, unused) is hidden from the F6 panel" % name)
 	for name: String in ["engage_distance", "charge_time", "reload_late", "bolt_speed_late", "bullets_late", "bullet_gap_late",
-			"invulnerability_share", "model_scale", "health_late", "score_value", "walk_speed", "obstacle_margin",
+			"invulnerability_share", "later_round_warning_share", "model_scale", "health_late", "score_value", "walk_speed", "obstacle_margin",
 			"keep_clear_seconds", "share", "spacing_seconds", "windup_heard_within", "crossfire_gap"]:
 		check(shown.has(name), "`%s` is in the F6 panel" % name)
 	check(ht.score_value == 2 * ct.score_value, "it pays twice a cyborg's score (%d, %d)" % [ht.score_value, ct.score_value])
@@ -879,9 +879,10 @@ func _as_cyborgs(layout: LevelLayout) -> String:
 ## GDD §9.16 (proposed): introduced in Relay Station after its teleporters, one new thing at a time; then Specimen Vault;
 ## and all three of the Golden Zone's levels with no introduction of their own (owner). None in Frost Foundry. Every
 ## build at 3, 5 and 6 lanes on the levels' own seeds is the build without the feature but for the cyborgs whose places
-## they took (so every other suite's checks of those builds hold as they did), with none before the feature's start,
-## and some in each at the campaign's lane count (GameRules.lanes_pc and lanes_mobile; at 3 and 6 lanes they're counted:
-## the feature is never forced, HeavyCyborgRules.OCCASIONAL).
+## they took (so every other suite's checks of those builds hold as they did), with none before the feature's start;
+## Relay Station brings them in at the campaign's lane count (GameRules.lanes_pc and lanes_mobile), and every level has
+## some at one lane count at least (the feature is never forced, HeavyCyborgRules.OCCASIONAL: a build whose own cyborgs
+## leave none a place has none, Golden 2's at 5 lanes among them; the counts are printed).
 func _test_campaign() -> void:
 	var intro: LevelConfig = campaign.step(INTRODUCED_IN).level
 	check(intro.has_feature("heavy_cyborg") and intro.feature_start("heavy_cyborg") > intro.feature_start("teleporter"),
@@ -902,6 +903,7 @@ func _test_campaign() -> void:
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	var counts: PackedStringArray = []
 	for id: String in [BEFORE] + LEVELS:
+		var most: int = 0
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			var patterns: Array = LevelGenerator.load_for(config)
@@ -912,8 +914,9 @@ func _test_campaign() -> void:
 				check(at.is_empty(), "no Heavy Cyborg in %s" % tag)
 				continue
 			counts.append("%s: %d" % [tag, at.size()])
-			if lanes == rules.lanes_pc or lanes == rules.lanes_mobile:
-				check(not at.is_empty(), "%s has Heavy Cyborgs (%d)" % [tag, at.size()])
+			most = maxi(most, at.size())
+			if id == INTRODUCED_IN and (lanes == rules.lanes_pc or lanes == rules.lanes_mobile):
+				check(not at.is_empty(), "%s brings Heavy Cyborgs in (%d)" % [tag, at.size()])
 			if not at.is_empty():
 				check(at[0] >= gen.feature_start("heavy_cyborg") - 0.01,
 					"none before its start in %s (%.0f m, from %.0f m)" % [tag, at[0], gen.feature_start("heavy_cyborg")])
@@ -923,6 +926,7 @@ func _test_campaign() -> void:
 			plain.features = features
 			var without: LevelLayout = LevelGenerator.new().generate(plain, tuning, patterns)
 			check(_as_cyborgs(gen.layout) == _as_cyborgs(without), "%s is built as without them, a cyborg where each stands" % tag)
+		check(id == BEFORE or most > 0, "%s has Heavy Cyborgs at one lane count at least" % id)
 	print("  Heavy Cyborgs on the campaign levels' own seeds: %s" % ", ".join(counts))
 
 
