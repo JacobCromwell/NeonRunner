@@ -26,9 +26,12 @@ const SONGS: Dictionary = {
 	&"beach_boss_song": "Zone_Beach_Boss_Teeth_in_the_Surf.mp3",
 	&"boss_1": "Boss_1_Apex_Combat_Maneuver.mp3",
 }
-## Zones without a generated loop of their own: the Terminal (task O4) plays the Dead Zone's song and ends on its riff.
-## DESIGN-TBD (docs/questions/o4.md item 10): whether the Terminal gets a song of its own (no more generated songs, GDD §11).
-const GENERATED_ZONE_DEFAULTS: Dictionary = {&"casino": &"marketplace", &"beach": &"marketplace", &"terminal": &"dead_zone"}
+## Zones without a generated loop of their own: the Terminal (task O4) plays the Dead Zone's song and ends on its riff, and
+## the Ice Lab (task Q1; GDD §5, Zone 9, proposed: an earlier zone's song until the owner supplies or approves one) the
+## Corporate zone's. DESIGN-TBD (docs/questions/o4.md item 10, docs/questions/q1.md): whether they get songs of their own
+## (no more generated songs, GDD §11).
+const GENERATED_ZONE_DEFAULTS: Dictionary = {&"casino": &"marketplace", &"beach": &"marketplace", &"terminal": &"dead_zone",
+	&"ice_lab": &"corporate"}
 const ZONE_SONGS: Dictionary = {
 	&"city": &"zone_1",
 	&"gangland": &"zone_2",
@@ -39,9 +42,10 @@ const ZONE_SONGS: Dictionary = {
 	&"dead_zone": &"zone_5",
 	&"golden": &"zone_6",
 	&"terminal": &"zone_5",
+	&"ice_lab": &"zone_4",
 }
 ## A zone that plays another zone's song ends its levels on that zone's riff, the one in the song's key.
-const SHARED_SONG_RIFFS: Dictionary = {&"terminal": &"dead_zone"}
+const SHARED_SONG_RIFFS: Dictionary = {&"terminal": &"dead_zone", &"ice_lab": &"corporate"}
 const BOSS_SONGS: Dictionary = {&"city_boss": &"boss_1", &"casino_boss": &"casino_song", &"beach_boss": &"beach_boss_song"}
 ## Zones whose track isn't made yet: the Music player skips it quietly, so a run there keeps whatever plays
 ## (ZoneDef.music). None now (the Terminal plays the Dead Zone's song, task O4); every zone has its track, song and riff.
@@ -66,11 +70,12 @@ const SOUNDS: Array[StringName] = [
 	&"enemy_death", &"cyborg_charge", &"cyborg_shot", &"truck_bang", &"truck_burst", &"truck_cannon_charge",
 	&"truck_cannon", &"truck_rev", &"truck_explode", &"octodog_windup", &"octodog_lunge", &"screech_shake", &"screech_burst",
 	&"screech_swipe", &"drone_swoop", &"drone_windup", &"drone_fire", &"drone_crash", &"emp", &"bad_dream_emerge",
-	&"bad_dream_shriek", &"bad_dream_slash", &"bad_dream_dissolve",
+	&"bad_dream_shriek", &"bad_dream_slash", &"bad_dream_dissolve", &"gantry_creak", &"gantry_land", &"teleport",
+	&"octodog_release",
 ]
 ## Attack warnings (CLAUDE.md readability rules): each must sound exactly the same every time.
 const WARNINGS: Array[StringName] = [&"fence_warning", &"cyborg_charge", &"truck_bang", &"truck_cannon_charge", &"truck_rev",
-	&"octodog_windup", &"screech_shake", &"drone_swoop", &"drone_windup", &"bad_dream_shriek"]
+	&"octodog_windup", &"screech_shake", &"drone_swoop", &"drone_windup", &"bad_dream_shriek", &"gantry_creak"]
 
 
 func run() -> void:
@@ -121,6 +126,11 @@ func _test_supplied_songs() -> void:
 		== &"level_complete_dead_zone", "and its levels end on the Dead Zone's riff, in the song's key")
 	check(MusicDirector.level_complete_sound(library.riff_track(&"terminal"), App.sfx_library) == &"level_complete_dead_zone",
 		"so do its fights that keep the generated loop")
+	check(library.run_track(&"ice_lab") == &"zone_4" and library.path(&"ice_lab") == library.path(&"corporate"),
+		"the Ice Lab plays the Corporate zone's song, and its cinematics the Corporate zone's loop (task Q1, DESIGN-TBD)")
+	check(MusicDirector.level_complete_sound(library.riff_track(library.run_track(&"ice_lab")), App.sfx_library)
+		== &"level_complete_corporate" and MusicDirector.level_complete_sound(library.riff_track(&"ice_lab"), App.sfx_library)
+		== &"level_complete_corporate", "and its levels end on the Corporate zone's riff, in the song's key")
 	for index: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[index]
 		if MUSIC_TO_COME.has(zone.music):

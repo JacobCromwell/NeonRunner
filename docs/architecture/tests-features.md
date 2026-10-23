@@ -188,7 +188,9 @@ City's look (its body, lane blocker and top gone, the crunch, its pieces in
 its look's colours, never glowing, a light shake Screen shake scales away, no damage, no score, other solid
 sides still blocking a dash); a LevelRun of City 2 (it stays smashed through a death and a revive, and a
 retry builds the same level with it whole, pushing a runner who doesn't dash); every skin's pieces'
-colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes; and the
+colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes (a falling gantryway's
+pillar is test_gantryways', which runs into and dashes through every one of the campaign's; the cuts of a level these
+runs play on carry its gantryways, so a pillar in one stands as it does in the level); and the
 fairness measure for a runner who dashes through (The generator, Zone doodads). `RunSim` takes a `&"dash"`
 action. Task L3 added rows and the lane by a side wall: rows placed over quick play's level at 3, 5 and 6 lanes
 with every doodad the first of a row (two, three and four long since task L6; small ones touching and medium and large ones
@@ -396,6 +398,92 @@ open length in stretches of 100 m and more, both walls open at once within `both
 second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1`, the campaign step
 with the full flow, end to end through the smoke tool. How the campaign configures the Beach off its curve, and
 that no other level or boss changed (nor with the volleyball match added), is `test_campaign`'s (Campaign, The Beach).
+`test_ice_lab_levels` checks the Ice Lab's levels (task Q1; Campaign, The Ice Lab): the zone's data and its place in
+the campaign (zone 9 between the Terminal and the Golden Zone, its steps, no boss slot, its skin stand-in, its speed
+between its neighbours', its track playing an earlier zone's song); each level's data (off the curve, its own seed, the
+core patterns, the shared wall-gap numbers with wall running, doodads that push at the usual height, no dash walls or
+maze, its neighbours' dials, a danger density dial between Terminal 2's and Golden 1's) and features, every feature
+introduced before the zone named as kept (`KEEPS`: its cyborgs, window cyborgs, Octodogs and heli drones, and every
+obstacle and mechanic) or left out (`LEAVES_OUT`: every other earlier enemy, the dash walls, the Terminal's maze), and
+nothing of a later zone's (the zone's own mechanics, `OWN`, are none of a later zone's though the Golden Zone stands the
+teleporters again, task Q6); and every build at 3, 5 and 6 lanes on the levels' own seeds and three others, as the campaign
+configures them: no warnings, the campaign's fairness checks (LayoutChecks), the same level on a second build, no enemy
+but its own (no host among the cyborgs), no dash walls, floor cuts, maze or arch stumps, the usual obstacles (holes,
+fences, signs, ceilings and pads, doodads) and every listed feature but the sprinkled-in ceiling scenarios. About 30 s.
+Tasks Q3 to Q5 add their mechanics' checks here: the falling gantryways (Q3) in every level's data (Frost Foundry the
+only one with a `feature_starts` for them), and every build hanging its level's count, each re-checked by
+`LayoutChecks.check_gantryways`; the teleporters (Q4) in Relay Station's and Specimen Vault's data (Relay Station
+introducing them, Specimen Vault its blinking antennas, each with a `feature_starts`), and every build standing its
+level's counts, each re-checked by `LayoutChecks.check_teleporters`.
+`test_gantryways` checks the falling gantryways (task Q3; Falling gantryways): the layout data (no key without them,
+`copy` and `append_pieces` keeping each pillar its own, the calm stretch counted as a doodad in its lane); the generator
+over the Ice Lab's levels at 3, 5 and 6 lanes (Frost Foundry's introduction within `intro_window_seconds` of the start,
+both lanes beside it clear and a cyborg under it; every planted cyborg plain, standing, holding its fire through the calm
+stretch, where its walkway lands on it; none without the feature or with a count of 0); the track (each walkway at the
+ceilings' height, no collision, its hitbox off; its pillar a `gantry_pillar` DashBreakable with a small doodad's body);
+the damage rules (solid, the armor then the shield absorbing it, the dash passing through, god mode); on real physics at 3,
+5 and 6 lanes in every inner lane both ways: the pillar pushing a runner without the dash aside with the walkway staying
+up, a runner who dashes it and steps out either side living while it crushes the cyborg (a kill the score counts), one
+who stays (or jumps or slides) hit only once it drops, the armor, the shield and god mode, the wreck harmless; the warning
+(the creak, the shadow darkening, the red line pulsing and the walkway shuddering, or with Reduced flashing the line
+steady and the walkway only lurching, the hitbox off through the hold, the crash); the crush (every enemy in its path, a heli drone low over the lane too, none beside, above or past its ends);
+every skin's looks inside their boxes, lit, never glowing, in the dissolving material, and drawn by the warm-up with
+nothing physical; every number on the F6 panel; a wall-run gap's stretch kept outside everything a gantryway keeps,
+whatever lane it names (the plan and the re-check, at 3, 5 and 6 lanes: the wall-run gaps' own re-check counts every
+rule's keep-outs in every lane); and every gantryway of the Ice Lab's levels at 3, 5 and 6 lanes on real physics on a
+cut of its level at the level's speed: its pillar pushing a runner without the dash onto clear floor beside it, and a
+runner who dashes it stepping out a reaction later (both ways for the introduction), alive, as it lands on its cyborg;
+and endless mode in the Ice Lab on one seed (no warnings, its count along the whole level, each fair; such a build takes
+about a minute, with or without the gantryways). About 75 s.
+`test_teleporters` checks the teleporters (task Q4; Teleporters): the layout data (no key without them, `copy` its own,
+`append_pieces` renumbering, the calm stretches counted as a doodad in their lanes, an introduction's landing in every
+lane); the generator over Relay Station and Specimen Vault at 3, 5 and 6 lanes (the counts, Relay Station's introduction
+within `intro_window_seconds` of its start with one output pad straight ahead and a fixed light between two output pads,
+Specimen Vault's blinking count and its blinking introduction, every one fair, the same level on a fresh build; none
+without the feature or with a count of 0, no blinking one with a blinking count of 0); a wall-run gap's stretch outside
+everything a teleporter keeps (the plan, both re-checks, at 3, 5 and 6 lanes); the Golden Zone (task Q6): its three
+levels' data (3 each, 1 blinking, no start) and builds at 3, 5 and 6 lanes on their own seeds and a second (no warnings,
+the counts, no introduction, every one fair, no Resonator, Sentinel, Enforcer Truck or dash wall problem, every wider
+gap and dash wall the level asks for); giving way (set aside and put back as they stood, the first blinking one kept,
+moved off a stretch another feature takes or left out, a fixed one blinking where no blinking one fits); the Golden
+enemies' holds (a Resonator's pulse held by a calm stretch, its planned pulses outside every lane's windows, an Enforcer
+Truck's volley held and its showings off a pad's lanes, AttackWatch's runner going around a pad); endless mode in the
+Ice Lab and the Golden Zone on a seed each (its counts along the whole level, no introduction, each fair; about 80 s of
+the suite's time); the track (the pad's
+trigger, the output pads' nodes, nothing else colliding, the lamps showing the light); the light's rules (a fixed light
+stays, a blinking one changes side every `blink_seconds`, the brighter lamp always the side a touch takes, half a cycle
+on the other side); on real physics at 3, 5 and 6 lanes from every inner lane: landing on the one output pad, on the lit
+one of two each way, on the side a blinking light shows at the touch (both, half a cycle apart), keeping the speed, the
+sound once, running through the landing; the way around, a switch out at the approach and a jump over it passing it; the
+dash, a slide and the protection carried through; what a teleport skips (the enemies between leaving play, a heli drone
+coming along with its wind-up called off and one waiting between never coming, a cyborg's charge-up called off, the shots
+gone, the credits passed and the stars' best score leaving them out, the track built ahead, the camera's cut, the flash;
+the director's entries behind the landing never spawning); the flash (and Reduced flashing's soft tint); every teleporter
+of the campaign (the Ice Lab's and the Golden Zone's) at 3, 5 and 6 lanes on real physics on a cut of its level at the
+level's speed, landed on each output pad
+(its light set each way) and run through, and passed in the lane beside it and by a switch out at its approach; every
+skin's looks (the pad flat in its square, the antenna on its far half within the lane, the output pad's marker over a
+runner's head, light only and fading out near the camera, glowing only green or green-white), the warm-up, and every number
+on the F6 panel; the builds where task Q4's review found a teleporter in a fenced ceiling's pick; a fence just behind an
+output pad, never crossed, not hitting the runner who arrives (no sweep back on the step of the jump); and the flash
+cleared by a restart right after a jump. About 2.5 minutes.
+`test_octodog_jars` checks the Octodog jars that break open (task Q5; Octodog jars): the layout's marks (a jar and its dog
+finding each other, `copy` and `to_dict` keeping them, a held dog none of the level's standing Octodogs, a decoy holding
+no dog and never one of the feature's jars); the generator over the Ice Lab's levels at 3, 5 and 6 lanes (up to the count
+of jars that release their dog, one in every level at 5 lanes and in two builds of three at the least, each dog's own
+plan from the release, two charges at least, its first wind-up from release_distance past the jar to jar_pace_seconds
+later, the re-check clean, no warning; the decoys, all of them at 5 lanes on the levels' own seeds; Frost Foundry's jars never before the
+feature's start; the same jars and decoys on a fresh build; none without the feature or with no jars and no decoys, which
+builds as without it, and decoys alone changing only the doodads they dress); the skin (the Ice Lab dresses a jar holding
+a dog as its Octodog jar, the look of the empty ones; other skins as any doodad); and on real physics at 3, 5 and 6 lanes,
+middle and outermost lanes, and once at Specimen Vault's own speed and enemy scaling: the held dog out of play and the
+track's jar in the Octodog jar's look; a dashed jar letting its dog out (the release sound, harmless while it tumbles and
+runs ahead), which makes its planned charges no sooner than planned, each lunge after its wind-up's growl and telegraph, a
+runner who sidesteps each living, one who stays in line hit, one who dashes its lunge killing it (an Octodog kill); a
+runner pushed aside by an unbroken jar never meeting its dog, which leaves play; a wall runner breaking a jar by their
+wall letting its dog out too; a decoy dressed and broken exactly as a jar that releases (the same meshes, colours,
+crunch and pieces) letting nothing out, as a plain doodad in the jar's look; a freed dog waiting for a standing dog's
+charges to end; every jar number on the F6 panel. About 20 seconds.
 `test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
 by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
 between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls
@@ -474,10 +562,11 @@ on the wall face, facing the street, seamless across chunks; and a heli drone's 
 Enforcer Truck's volley and an Octodog's wind-up hold off only while a crossing is in their reach. `test_campaign`'s sweep
 of The Hush lists the builds crowded past any wall-run gap (`WALL_RUN_GAP_CROWDED`: they warn of that and nothing
 else), and `test_danger_density` lets the final band land lower at 3 lanes where the wall-run gaps take the pass's room
-(`WALL_RUN_GAP_ROOM`, and its rise past the middle band fall short by as much there since task L6's review); its route
-cases (`ROUTE_CASES`: a doodad without `DangerDensity.doodad_ok` leaving no way on; none of 1,620 builds shows one
-since task L6's review, whose lanes beside a doodad keep a way around it) and `test_gilded_sentinel`'s Sentinel wall
-case are built without them.
+(`WALL_RUN_GAP_ROOM`, and its rise past the middle band fall short by as much there since task L6's review), and lower
+again where the Golden Zone's teleporters take it too (task Q6, `TELEPORTER_ROOM`: built without them the band keeps
+the floor before); its route cases (`ROUTE_CASES`: a doodad without `DangerDensity.doodad_ok` leaving no way on; none
+of 1,620 builds shows one since task L6's review, whose lanes beside a doodad keep a way around it) are built without
+them, as `test_gilded_sentinel`'s Sentinel wall case was until task Q6 (now Golden 2 at 3 lanes as shipped).
 `test_ceiling_scenarios` checks the ceiling scenarios (task I4; The generator, Ceiling scenarios): their numbers and
 heights (a ceiling fence above a floor runner's jump, a hover truck roof's, a wall runner's body and the chase
 camera); none in the City's, Gangland's or the Marketplace's levels; in every level that lists them, at 3, 5 and 6
@@ -604,8 +693,8 @@ the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attemp
 either retry (and the kept build untouched; every zone doodad and dash wall smashed or marked, then all of them
 standing as the retry's track is built), an attempt dashing through a doodad and a dash wall (at the first of
 Golden 1, Corporate 2, Golden 2, Dead Zone 1 and Golden 3 with a lone zone doodad in the runner's lane well before
-its first wall, a treasure stash's aside (task N1), at 3 lanes, else 5, else 6: Corporate 2 at 6 lanes since task L6's
-review), then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
+its first wall, a treasure stash's aside (task N1), the first doodad in that lane and no teleporter there before the
+wall (task Q6), at 3 lanes, else 5, else 6: Corporate 2 at 6 lanes since task L6's review), then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
 and look; the restart's standing in the physics world) and the restart, not dashing, playing as on a fresh build
 (tasks H5 and H7a, the H merge), the debug keys, F6 edits and another level building again, and endless mode
 building on every run and keeping nothing.

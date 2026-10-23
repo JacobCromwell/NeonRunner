@@ -11,7 +11,8 @@ extends SceneTree
 ##   --zone=city,gangland   the zones to look in (default: every zone in the campaign)
 ##   --from=9100            where the first zone's seeds start (default 9100)
 ##   --block=100            a zone's seeds start `block` above the one before it, counting the campaign's zones in
-##                          order (so `--zone=golden` starts at 9800 with the defaults); 0: every zone starts at --from
+##                          order (so `--zone=golden`, the tenth zone, starts at 10000 with the defaults); 0: every zone
+##                          starts at --from
 ##   --count=20             how many seeds in a row to try for each zone (default 20; with --pick, at most that many)
 ##   --pick=4               stop a zone after this many seeds have been chosen (0, the default: list every passing seed)
 ##   --max-builds=3         with --pick: only a seed whose level the generator built in this many builds or fewer

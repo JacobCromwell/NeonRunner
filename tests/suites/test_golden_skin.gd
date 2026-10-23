@@ -287,7 +287,7 @@ func _check_below_walkways(chunk: Node, skin: GoldenSkin, finish: float, shade: 
 	for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
 		var m := node as MeshInstance3D
 		if m.mesh == null or m.is_in_group(&"debug_hitbox") or under_hazard(m) \
-				or _under(m, func(n: Node) -> bool: return n is Area3D):
+				or _under(m, _track_piece):
 			continue
 		for s: int in m.mesh.get_surface_count():
 			var material: Material = m.mesh.surface_get_material(s)
@@ -365,7 +365,7 @@ func _find_intruders(chunk: Node, skin: GoldenSkin, geo: TrackGeometry, finish: 
 	var band_top: float = minf(skin.decor_min_height - 1.0, tuning.ceiling_height - 0.1)
 	for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
 		var m := node as MeshInstance3D
-		if m.mesh == null or m.is_in_group(&"debug_hitbox") or _under(m, func(n: Node) -> bool: return n is Area3D):
+		if m.mesh == null or m.is_in_group(&"debug_hitbox") or _under(m, _track_piece):
 			continue
 		for s: int in m.mesh.get_surface_count():
 			# Drifting mist and additive light (lamp halos, engine glow) aren't objects.
@@ -830,6 +830,13 @@ func _has_seam(mesh: ArrayMesh, x: float, skin: GoldenSkin) -> bool:
 			if absf(v.x - (x - 0.03)) < 0.002 and v.y < 0.0 and v.y > -0.02:
 				return true
 	return false
+
+
+## True if `n` is a track piece a skin only dresses, which these checks leave out: a trigger (a pad, a ramp, a speed
+## pad) or a teleporter (task Q6: its pads and antenna, its output pads flat on their lanes with their markers of light
+## over them, in the teleporter's own look; test_teleporters checks every skin's teleporter looks).
+func _track_piece(n: Node) -> bool:
+	return n is Area3D or n is Teleporter
 
 
 func _under(node: Node, test: Callable) -> bool:

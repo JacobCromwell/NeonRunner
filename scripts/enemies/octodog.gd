@@ -44,8 +44,22 @@ extends Enemy
 ## params "claim_at" (a runner's distance) until its wind-up, as a Buzz Overdrive does before its rev, so
 ## another type's big attack that gets ready meanwhile waits. Held for another's turn at its wind-up anyway, or
 ## moved off its spot, it lunges at the runner's lane as any dog.
+##
+## Held in a jar (task Q5; GDD §5, Zone 9, the owner, October 21, 2026: "some jars hold a curled-up Octodog ... sometimes
+## smashing an Octodog jar doodad releases its Octodog into the world, and the runner has to fight it"): a dog whose entry
+## is marked LevelLayout.HELD stands in its jar (the zone doodad holding it, LevelLayout.holder_of: the skin draws it
+## curled up in there) and stays out of play there (HELD: no look of its own, no hitbox, no target, immune to weapons,
+## no attack) until the jar breaks (its entry marked "smashed", DashBreakable.smash: the dash, or a wall runner passing
+## one by a side wall, task L3). The jar breaks as every doodad does (its own pieces, the dash's crunch), exactly as a
+## decoy does (LevelLayout.DECOY: one whose dog never comes out), and then the dog bursts out (_release: its green spray
+## and its snarl, the octodog_release sound) and tumbles on ahead of the runner (TUMBLE: jar_tumble_time, flung
+## jar_tumble_speed faster than them, rolling over once, harmless), lands running and plays out as any dog after a lunge:
+## it sprints ahead to its usual distance, paces there and makes its planned charges, each from its wind-up with its cue
+## (GDD §5, proposed: "starts its usual attack from the first wind-up, with its cue, never a lunge without warning"),
+## killed and scored as any Octodog. Its charges were planned from the release (octodog_jar_rules.gd). A runner who passes
+## the jar without smashing it never meets it: it leaves play unseen.
 
-enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING }
+enum Phase { IDLE, WINDUP, LUNGE, TURN, SPRINT, PACE, GIVE_UP, LEAVE, FALLING, HELD, TUMBLE }
 ## The director's answer to its first wind-up's ask (EnemyDirector.major_attack_blocked), asked at
 ## most once a frame: not asked yet this frame, free to go, held for another type's turn (GDD §9), or
 ## held by an exclusive attack (the Bad Dream's chase, GDD §9.7).
@@ -53,7 +67,13 @@ enum TurnAnswer { NOT_ASKED, FREE, HELD_FOR_TURN, HELD_EXCLUSIVE }
 
 const BODY_SIZE := Vector3(0.78, 0.72, 0.9)
 const TOP_SIZE := Vector3(0.84, 0.24, 0.96)
-const PHASE_NAMES: PackedStringArray = ["idle", "windup", "lunge", "turn", "sprint", "pace", "give_up", "leave", "falling"]
+const PHASE_NAMES: PackedStringArray = ["idle", "windup", "lunge", "turn", "sprint", "pace", "give_up", "leave", "falling",
+	"held", "tumble"]
+## Metres past its jar's end a runner who hasn't smashed it is when a dog held in it leaves play (should_retire): their
+## body is past the jar by then, so no dash reaches it any more.
+const JAR_PASSED: float = 1.0
+## The height of its middle above its feet (metres), which its tumble out of a jar rolls it about.
+const TUMBLE_PIVOT: float = 0.4
 ## pad_or_landing_between(): metres kept clear around an anti-grav pad, and after a ceiling section's
 ## end for a player dropping off it to land (at least its landing zone, CeilingZones). Like every
 ## margin here, metres at MovementTuning.REFERENCE_SPEED, stretched by the level's pace.
@@ -78,6 +98,12 @@ var lunge_velocity := Vector2.ZERO
 var history: Array = []
 ## True while hidden in its doghouse (it bursts out as the player approaches).
 var in_doghouse: bool = false
+## True while held in its jar (task Q5: phase HELD; it comes out when the jar is smashed, _release).
+var in_jar: bool = false
+## The player's distance when it came out of its jar (-INF: it hasn't).
+var released_at: float = -INF
+## Its own sounds as it plays them, in order (tests: its release, each wind-up's growl before its lunge).
+var sounds_played: Array[StringName] = []
 
 var _t: OctodogTuning
 var _scaling: float = 0.0
@@ -110,6 +136,10 @@ var _through_lane: int = -1
 var _through_at: float = 0.0
 var _claim_at: float = INF
 var _telegraph_base := Transform3D.IDENTITY
+## Held in a jar (task Q5): the jar's layout entry (LevelLayout.holder_of; {} if the layout has none for it) and where
+## the jar ends along the track.
+var _jar: Dictionary = {}
+var _jar_end: float = 0.0
 
 var _body: Hazard
 var _top: Hazard
@@ -161,7 +191,27 @@ func _build() -> void:
 	_body = add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5 + 0.04, 0.0), true)
 	_top = add_hitbox(&"top", TOP_SIZE, Vector3(0.0, BODY_SIZE.y + 0.04 + TOP_SIZE.y * 0.5 - 0.04, 0.0), true)
 	_build_visuals(p)
+	if LevelLayout.is_held(spawn):
+		_hold_in_jar()
 	_place()
+
+
+## Task Q5: it stands in its jar (the doodad holding it, LevelLayout.holder_of), out of play until the jar is smashed:
+## no look of its own (the jar's shows it curled up), no hitbox, no target, immune to weapons (a shot passing the jar
+## never finds it), no attack.
+func _hold_in_jar() -> void:
+	in_jar = true
+	phase = Phase.HELD
+	history.append([PHASE_NAMES[Phase.HELD], world.player.distance if world.player != null else 0.0])
+	immune_to_weapons = true
+	_set_hitboxes(false)
+	_model.visible = false
+	if _doghouse != null:
+		_doghouse.queue_free()
+		_doghouse = null
+	in_doghouse = false
+	_jar = world.layout.holder_of(spawn) if world.layout != null else {}
+	_jar_end = float(_jar.get("end", _d + 1.4))
 
 
 func _build_visuals(p: Dictionary) -> void:
@@ -233,8 +283,44 @@ func _tick(delta: float) -> void:
 			_d += lunge_velocity.y * k * delta
 		Phase.LEAVE:
 			_d += (v + _t.sprint_speed_over_player * _run_pace) * delta
+		Phase.HELD:
+			if bool(_jar.get("smashed", false)):
+				_release()
+			return
+		Phase.TUMBLE:
+			# Flung on ahead of the runner out of its smashed jar, harmless, until it lands running (task Q5).
+			_d += (v + _t.jar_tumble_speed * _run_pace) * delta
+			if _phase_time >= _t.jar_tumble_time:
+				_set_phase(Phase.SPRINT)
 	_update_hop(delta)
 	_place()
+
+
+## Task Q5: its jar was smashed (GDD §5, Zone 9): it bursts out, just past the jar in its lane (the runner who smashed
+## it is at the jar's front), a green spray flying off it and its snarl playing (octodog_release: the dog's own, so the
+## jar's break itself is any doodad's, the same as a decoy's), and tumbles on ahead of them (TUMBLE), harmless: no hitbox
+## until it's ahead in its sprint after (_sprint), and its attack is its planned charges', each from its wind-up with
+## its cue.
+func _release() -> void:
+	in_jar = false
+	immune_to_weapons = false
+	released_at = world.player.distance
+	_d = maxf(_jar_end + BODY_SIZE.z * 0.5, world.player.distance + 1.5)
+	# It comes out facing on along the track, the way it tumbles and runs.
+	_yaw = 0.0
+	_model.rotation.y = _yaw
+	_model.visible = true
+	_set_phase(Phase.TUMBLE)
+	_place()
+	var at: Vector3 = global_position + Vector3(0.0, 1.0, 0.0)
+	_play(&"octodog_release", at)
+	world.effects.burst(at, OctodogModel.TENTACLE_GREEN_TIP, 16, 0.6)
+
+
+## Plays its sound `sound` at `pos` (RunWorld.play_sfx_at), noting it in sounds_played.
+func _play(sound: StringName, pos: Vector3) -> void:
+	sounds_played.append(sound)
+	world.play_sfx_at(sound, pos)
 
 
 func _set_phase(next: Phase) -> void:
@@ -285,16 +371,34 @@ func _can_wind_up(v: float) -> bool:
 
 
 ## Its sequence's first wind-up asks the director for its turn (EnemyDirector.major_attack_blocked),
-## at most once a frame; the answer holds for the rest of the frame.
+## at most once a frame; the answer holds for the rest of the frame. Before that, one Octodog at a time
+## (GDD §9: a type spaces its own attacks, and the director holds only other types'): while another
+## dog's charge sequence is on it's held as for another type's turn, so its planned charges move on
+## (_moves_on). The generator plans the dogs one at a time already (octodog_rules.gd,
+## octodog_jar_rules.gd); this keeps them so when a wait for its turn moved one's charges on into the
+## next one's, or a dog let out of its jar came out late (task Q5; DESIGN-TBD, docs/questions/q5.md 8).
 func _ask_turn() -> TurnAnswer:
 	if _turn_answer == TurnAnswer.NOT_ASKED:
-		if not world.director.major_attack_blocked(self):
+		if _another_dog_charging():
+			_turn_answer = TurnAnswer.HELD_FOR_TURN
+		elif not world.director.major_attack_blocked(self):
 			_turn_answer = TurnAnswer.FREE
 		elif world.director.held_for_turn(self):
 			_turn_answer = TurnAnswer.HELD_FOR_TURN
 		else:
 			_turn_answer = TurnAnswer.HELD_EXCLUSIVE
 	return _turn_answer
+
+
+## True while another Octodog's charge sequence is on (is_major_attack_active: from its first wind-up until it gives
+## up), so this one's first wind-up waits (_ask_turn).
+func _another_dog_charging() -> bool:
+	for e: Enemy in world.director.active:
+		if e == self or not is_instance_valid(e) or not e.alive or not (e is Octodog):
+			continue
+		if e.is_major_attack_active():
+			return true
+	return false
 
 
 ## The track distance a charge's stretch must end by: the level's end-clear stretch starts there.
@@ -375,7 +479,7 @@ func _start_windup() -> void:
 		target_lane = clampi(_through_lane + (_through_lane - mine), 0, world.geo.lane_count - 1)
 	_set_phase(Phase.WINDUP)
 	_set_hitboxes(true)
-	world.play_sfx_at(&"octodog_windup", global_position + Vector3(0.0, 0.8, 0.0))
+	_play(&"octodog_windup", global_position + Vector3(0.0, 0.8, 0.0))
 	_show_telegraph()
 
 
@@ -398,7 +502,7 @@ func _start_lunge() -> void:
 	_begin_charge_contacts()
 	_set_phase(Phase.LUNGE)
 	_telegraph.visible = false
-	world.play_sfx_at(&"octodog_lunge", global_position + Vector3(0.0, 0.8, 0.0))
+	_play(&"octodog_lunge", global_position + Vector3(0.0, 0.8, 0.0))
 
 
 func _lunge(delta: float, pd: float) -> void:
@@ -596,7 +700,7 @@ func _lane_at(x: float) -> int:
 # --- Presentation -----------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
-	if _model == null or world == null:
+	if _model == null or world == null or phase == Phase.HELD:
 		return
 	var windup: bool = phase == Phase.WINDUP
 	var lunging: bool = phase == Phase.LUNGE
@@ -615,7 +719,7 @@ func _process(delta: float) -> void:
 		Phase.TURN:
 			target_yaw = 0.0
 			ground_speed = 4.0
-		Phase.SPRINT, Phase.PACE, Phase.LEAVE:
+		Phase.SPRINT, Phase.PACE, Phase.LEAVE, Phase.TUMBLE:
 			target_yaw = 0.0
 			ground_speed = maxf(world.player.speed, 1.0)
 		Phase.GIVE_UP:
@@ -632,8 +736,19 @@ func _process(delta: float) -> void:
 	if lunging:
 		var total: float = _t.lunge_duration(maxf(world.player.speed, 1.0), _scaling, _run_pace)
 		y = _t.lunge_hop_height * sin(PI * clampf(_lunge_time / maxf(total, 0.05), 0.0, 1.0))
+	elif phase == Phase.TUMBLE:
+		# Out of its jar (task Q5): an arc and one roll head over heels about its middle, landing on its legs.
+		var k: float = clampf(_phase_time / maxf(_t.jar_tumble_time, 0.05), 0.0, 1.0)
+		var roll: float = TAU * k
+		y = _t.jar_tumble_height * sin(PI * k) + TUMBLE_PIVOT * (1.0 - cos(roll))
+		_model.rotation.x = -roll
+		_model.position.z = TUMBLE_PIVOT * sin(roll)
 	elif _hop_time >= 0.0:
 		y = 0.45 * sin(PI * clampf(_hop_time / _hop_length, 0.0, 1.0))
+	if phase != Phase.TUMBLE and _model.position.z != 0.0:
+		_model.position.z = 0.0
+	if phase != Phase.TUMBLE and phase != Phase.FALLING and _model.rotation.x != 0.0:
+		_model.rotation.x = 0.0
 	if phase == Phase.FALLING:
 		_fall_v -= 22.0 * delta
 		_fall_y += _fall_v * delta
@@ -688,6 +803,9 @@ func _on_defeated(cause: StringName) -> void:
 func should_retire() -> bool:
 	if phase == Phase.LEAVE and _d - world.player_distance() > 110.0:
 		return true
+	# Task Q5: held in a jar the runner has passed without smashing it, it never comes out: it leaves play unseen.
+	if phase == Phase.HELD:
+		return world.player_distance() > _jar_end + JAR_PASSED
 	# Running off ahead or pacing the runner, it meets a dash wall still standing ahead of them (task H7a): it
 	# can't run through a building, so it leaves there, giving up its turn (it waits for none past that).
 	if phase in [Phase.LEAVE, Phase.SPRINT, Phase.PACE] and dash_wall_reached(_d + DASH_WALL_REACH):
@@ -697,9 +815,10 @@ func should_retire() -> bool:
 
 
 ## Auto-fire only picks it once it's in view (and out of its doghouse), doghouse or not, so the
-## hint never changes what the weapon does.
+## hint never changes what the weapon does; never while it's held in its jar (task Q5).
 func targetable() -> bool:
-	return super.targetable() and not in_doghouse and _d - world.player_distance() <= _t.appear_distance * _run_pace
+	return super.targetable() and not in_doghouse and not in_jar \
+		and _d - world.player_distance() <= _t.appear_distance * _run_pace
 
 
 func aim_point() -> Vector3:

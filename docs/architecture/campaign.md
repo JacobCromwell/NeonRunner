@@ -11,16 +11,17 @@ save migration follows: Economy and saving, Saves from before the Casino). A cin
 (Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
 unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
 plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign. A level off the curve
-(`LevelConfig.off_curve`: the Beach's and the Terminal's, below) plays at its own.
+(`LevelConfig.off_curve`: the Beach's, the Terminal's and the Ice Lab's, below) plays at its own.
 
-The campaign (GDD §5) has nine zones, with ids other tasks rely on: `city`, `gangland`,
-`marketplace`, `casino`, `corporate`, `beach`, `dead_zone`, `terminal` and `golden`, with 3, 3, 2, 2, 2, 3, 2, 2 and 3
-levels in `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
+The campaign (GDD §5) has ten zones, with ids other tasks rely on: `city`, `gangland`,
+`marketplace`, `casino`, `corporate`, `beach`, `dead_zone`, `terminal`, `ice_lab` and `golden`, with 3, 3, 2, 2, 2, 3, 2,
+2, 3 and 3 levels in `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
 cinematic slots (every boss also an intro slot: built for the City's, Gangland's and the Casino's, empty and skipped
 for the rest, Empty boss-intro slots below) and a boss slot from GDD §10's roster, but the
 Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
 Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); the Beach's boss is Mecha Guppy and
-Captain Cogs (`beach_boss`, Bosses below). The Terminal has no boss either (owner, October 20, 2026). A zone's music
+Captain Cogs (`beach_boss`, Bosses below). The Terminal and the Ice Lab have no boss either (owner, October 20 and 21,
+2026). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the music already playing carries on: the Terminal's until task O4 adds it). Only the City is in the web demo. The curve runs 0.1 → 0.9
 over the 17 levels on it (FB 4, FB 5; the Beach's three, task D10c and its volleyball match, D10e, are off it, so the Beach moved no other
@@ -44,15 +45,16 @@ and distance-based completion use that value without changing speed, difficulty,
 or the fractional starts of cyborgs and doodads. These are running times without speed-changing
 power-ups or pauses, excluding cinematics and the completion delay. The levels then totalled 34.1 minutes;
 with the Casino's 145 and 150 seconds they total 39.0, with the Beach's 145 and 150 seconds 43.9, and with its
-volleyball match's 55 (a flawless match, task D10e) 44.8 (GDD §5: about 45), and with the Terminal's 140 and 145
-seconds 49.6 (task O1, DESIGN-TBD, `docs/questions/o1.md`; `test_campaign` allows 47-52).
+volleyball match's 55 (a flawless match, task D10e) 44.8 (GDD §5: about 45), with the Terminal's 140 and 145
+seconds 49.6 (task O1, DESIGN-TBD, item 1053), and with the Ice Lab's 140, 145 and 150 seconds 56.8 (task Q1, DESIGN-TBD,
+`docs/questions/q1.md`; `test_campaign` allows 54-59).
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
 Marketplace 1; the Tithe Collector skips the Dead Zone; Zone & Levels 2 excludes Octodogs from
 Golden 1–3, including the Golden Palace). Octodogs remain enabled from Gangland 2 through the
-Dead Zone, the Beach's remix included. Removing only `octodog` from the three Golden resources excludes both dog patterns and
+Dead Zone, the Beach's remix included, and again in the Ice Lab. Removing only `octodog` from the three Golden resources excludes both dog patterns and
 their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
 to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
 through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected), and in the Beach between
@@ -98,12 +100,14 @@ plays exactly as before:
   `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.71 and 0.72, 0.71 and 0.73, strictly between
   Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on the curve as task K4 bent it for the Casino;
 - the curve spans the levels on it (`curve_level_count()`: 17 of `level_count()`'s 20, against
-  `planned_level_count()`'s 20; 17 of 22 since the Terminal), and a level off it takes the place of the level on it
-  before it
+  `planned_level_count()`'s 20; 17 of 22 since the Terminal, 17 of 25 since the Ice Lab), and a level off it takes the
+  place of the level on it before it
   (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
 - a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
-  on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
-  (`Campaign.feature_ages`); a mini-game level (the volleyball match, off the curve with no features) counts for no
+  on it the levels on it and a level off it played before it at the place that level takes (a level ago at least),
+  which dates only what that level brought in itself (every feature the Beach lists an earlier level on the curve
+  did), so the Dead Zone and the Golden Zone keep their ages and recency, and the Golden Zone's teleporters date from
+  the Ice Lab's place, no introduction of its own (task Q6) (`Campaign.feature_ages`); a mini-game level (the volleyball match, off the curve with no features) counts for no
   level's ages, so Sunset Strip kept its own when the match came in before it; a boss fights at the scaling of the
   level before it (`Campaign.level_scaling`: the Beach's boss slot at Sunset Strip's).
 So the other 17 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
@@ -120,7 +124,7 @@ completion bonus, Continue for old saves, its boss, cinematics and music.
 Zone: its intro (the Grand Terminal's, `TerminalIntro`, task F2k: the runner finds the abandoned station in the Dead Zone's
 wasteland, wipes a route board that names THE PALACE and squeezes in through the rubble to the tracks; the arrival flyover it
 played before is gone from this slot), Rubble Line and Last Stop (`data/levels/terminal_1.tres` and `terminal_2.tres`:
-seeds 901 and 902, 140 and 145 s) and its outro (a card), **no boss** (the Marketplace's way: no boss or boss-intro
+seeds 901 and 902, 140 and 145 s) and its outro (`TerminalOutro`, task F2l: the runner finds an abandoned metro train, can't open its front door until the screech inside it does, and goes in; the train speeds off down the tracks), **no boss** (the Marketplace's way: no boss or boss-intro
 slot). Its levels are off the curve like the Beach's, strictly between Dead Zone 2 and Golden 1 (difficulty 0.79 and
 0.805, enemy scaling 0.83 and 0.85, completion bonus Dead Zone 2's; danger density dials 0.37 and 0.38, which add
 nothing there yet: none of the usual enemies and no fillers), so every other level plays exactly as before.
@@ -135,6 +139,46 @@ that stop the runner (`doodads_stop`: Damage and interactions) and stand lower (
 both out. A save from before the Terminal keeps the Golden Zone open (Economy and saving, Saves from before the
 Terminal). `test_campaign` checks the Terminal's steps, numbers and content, and `test_terminal_levels` its levels at
 3, 5 and 6 lanes (arches, stumps, no wall running in the run). DESIGN-TBD (`docs/questions/o1.md`): all the numbers.
+Since the Ice Lab came in after it (task Q1), the Terminal's outro leads into the Ice Lab.
+
+**The Ice Lab** (task Q1; the owner, October 21, 2026; GDD §5, Zone 9). `data/zones/ice_lab.tres` (id `ice_lab`, "The
+Ice Lab", 24.8 m/s, music `ice_lab`) is zone 9, between the Terminal and the Golden Zone (now zone 10): its intro (the
+arrival flyover), Frost Foundry, Relay Station and Specimen Vault (`data/levels/ice_lab_1.tres` to `ice_lab_3.tres`: seeds
+1001 to 1003, 140, 145 and 150 s) and its outro (a card), **no boss** (no boss or boss-intro slot). Its levels are off the
+curve like the Terminal's, strictly between Terminal 2 and Golden 1 and rising (difficulty 0.808, 0.812 and 0.816, enemy
+scaling 0.855, 0.86 and 0.865, danger density dials 0.38, completion bonus Dead Zone 2's), so every other level, the
+Terminal's too, plays exactly as before. Its rules are level data, with nothing of its own in the generator or the track
+builder: the core patterns, the walls every other zone has (no `wall_gap_tuning`, wall running on), doodads that push and
+stand as tall as everywhere (no `doodads_stop` or `doodad_height`), no dash walls (no `dash_wall`, `dash_walls` 0), and
+the features of every earlier zone but their enemies: its enemies are the cyborgs (window cyborgs among them), the
+Octodogs and the heli drones (GDD §5, Zone 9), with the fence generators of the electric fences; no screeches (manhole or
+vent), hover trucks, Barnacle Turrets, Buzz Overdrives, Tithe Collectors, Enforcer Trucks, hosts and Bad Dreams, nor the
+Terminal's debris maze and centipedes. Its dials are its neighbours' (two wider gaps, a cyborg in an Octodog's charge path,
+wall-hop credits, the fill pass, Golden 1's ceiling and doodad shares). Its look is task Q2's `IceLabSkin` (`skin_path` in the zone's data is `ice_lab_skin.tres`; levels 1 and 3 name their own
+leans, `ice_lab_frost_skin.tres` and `ice_lab_lab_skin.tres`; its cyborgs wear the Dead Zone's burned base, and like every
+zone's after the Marketplace its skin shows no wall-run gap guide, `show_wall_run_guide` off: `test_wall_run_gaps`), and its
+levels play the Corporate zone's song (`data/audio/music_library.tres`, DESIGN-TBD). **The per-level lean** (GDD §5: level 1
+snow and industry, level 3 the lab) is the existing hook, `LevelConfig.skin_path`: a level's own skin wins over its zone's
+(`Campaign.configure`, as Checkpoint Plaza's and the Golden Palace's do), and must be a variant of the zone's skin (the same
+script, or a subclass: `test_campaign`, `_test_skins`). **Its mechanics go in as features.** The falling gantryways are in
+(task Q3, Falling gantryways): `gantryway` in all three levels' `features`, Frost Foundry introducing them from 0.15 of the
+level (`feature_starts`), `LevelConfig.gantryways` a level's count (3, DESIGN-TBD); `test_campaign` lists them (FIRST_LEVEL
+Frost Foundry, the Ice Lab's NEW_MECHANICS, so Frost Foundry is out of NOTHING_NEW) and keeps them out of the Golden Zone
+(LEFT_OUT, DESIGN-TBD, `docs/questions/q3.md`: the zone's own mechanic, as the Terminal's maze is the Terminal's). So are
+the teleporters (task Q4, Teleporters, `docs/architecture/teleporters.md`): `teleporter` in Relay Station's and Specimen
+Vault's `features`, Relay Station introducing it from 0.15 (`feature_starts`), `teleporter_blinking` in Specimen Vault's,
+introduced there from 0.15; `LevelConfig.teleporters` (3 and 4) and `blinking_teleporters` (2 of Specimen Vault's),
+DESIGN-TBD; `test_campaign` lists both (FIRST_LEVEL, NEW_MECHANICS, so Relay Station and Specimen Vault are out of
+NOTHING_NEW). Since task Q6 (the owner, October 22, 2026: "we should add the teleporters to the golden zone") all three
+Golden levels stand them too, fixed and blinking alike with no `feature_starts` (LEFT_OUT no longer lists them; their
+ages there date from the Ice Lab's place, above; DESIGN-TBD, `docs/questions/q6.md`). The Octodog jars
+(task Q5) and the zone's two new enemies each add their feature the same way (with a `feature_starts` entry where a level
+introduces it) and their rules or patterns; until then the zone introduces no enemy (`NO_NEW_ENEMY` lists it, for those
+tasks to take out). A save from before the Ice Lab keeps the Golden Zone open (Economy and saving, Saves from before the Ice Lab); the
+weekly challenge's rotation has it (its week on Specimen Vault's rules). `test_campaign` checks the Ice Lab's steps,
+numbers, schedule and saves, and `test_ice_lab_levels` its data and its levels at 3, 5 and 6 lanes (only its own enemies,
+no dash walls or maze, wall running, the usual obstacles, every feature). DESIGN-TBD (`docs/questions/q1.md`): the
+numbers, the window cyborgs and generators, the other mechanics, the music, the saves and the payouts.
 
 **Empty boss-intro slots** (task I8; the owner, October 14, 2026, item 395: every boss gets a slot for an intro
 cinematic, to fill when the owner adds the beats). The City's, Gangland's and the Casino's (The House's, task F2i,
@@ -155,7 +199,7 @@ continues past. A cinematic is a scene whose root extends `Cinematic` (emit `fin
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the City's, Gangland's, the
 Marketplace's, the Casino's, the Dead Zone's and the Terminal's, and the City's boss intro, play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
 Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the City's, Gangland's, the Marketplace's, the Casino's, the Dead Zone's and the Terminal's
-intros their own (`CityIntro`, F2h; `GanglandIntro`, F2g; `MarketplaceIntro`, F2f; `CasinoIntro`, F2j; `DeadZoneIntro`, task F2c; `TerminalIntro`, F2k), Gangland's and the Beach's outros theirs (`GanglandOutro`, F2d; `BeachOutro`, F2e), and the other outros are
+intros their own (`CityIntro`, F2h; `GanglandIntro`, F2g; `MarketplaceIntro`, F2f; `CasinoIntro`, F2j; `DeadZoneIntro`, task F2c; `TerminalIntro`, F2k), Gangland's, the Beach's and the Terminal's outros theirs (`GanglandOutro`, F2d; `BeachOutro`, F2e; `TerminalOutro`, F2l), and the other outros are
 still cards. A boss is
 built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Beach's
 Mecha Guppy and Captain Cogs last, task E5e-c), each slot holding the phases GDD §10 gives its boss and its

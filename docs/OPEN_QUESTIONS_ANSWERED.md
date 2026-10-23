@@ -1724,3 +1724,29 @@ Captain Cogs).
    camera, the hiss), and a stopped runner's choices (dash, switch) need no sight of themselves. Placeholder: drawn
    solid. Should it turn see-through between the camera and the runner, or bite from lower?
    **Answered (owner, October 21, 2026):** leave it as built. Recorded in GDD §9.15.
+
+### Answered on October 22, 2026 (the owner, the Terminal's and the Ice Lab's questions)
+1053. **The levels' lengths, and the campaign's total.** (GDD §5: "a flawless run through every level takes about 45
+   minutes".) Placeholder: Rubble Line 140 s and Last Stop 145 s (`duration_seconds`), like their neighbours'
+   (145-150 s). With them a flawless run through every level takes about 49.6 minutes (it was about 44.8). Should
+   the levels be shorter, or the other levels trimmed, to keep about 45?
+   **Answered (owner, October 22, 2026):** accept it. A longer game is the goal: a first playthrough should take on average at least 2 hours, past Steam's refund window. Recorded in GDD §5 (Level schedule).
+1118. **The levels' lengths, and the campaign's total.** (GDD §5: "a flawless run through every level takes about 45
+   minutes"; item 1053 already asks this for the Terminal.) Placeholder: Frost Foundry 140 s, Relay Station 145 s and
+   Specimen Vault 150 s (`duration_seconds`), rising through the zone as Gangland's and the Terminal's do. With them a
+   flawless run through every level takes about 56.8 minutes (49.6 before the Ice Lab, 44.8 before the Terminal). Should
+   the Ice Lab's levels be shorter (three of 120 s would make it about 55.6), or the other levels trimmed, to keep nearer
+   45?
+
+**The Ice Lab's falling gantryways** (task Q3 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q3.md`; GDD §5, Zone 9)
+   **Answered (owner, October 22, 2026):** keep the lengths. A longer game is the goal: a first playthrough should take on average at least 2 hours, past Steam's refund window. Recorded in GDD §5 (Level schedule).
+1149. **The Golden Zone.** (GDD §5: what a zone introduces keeps appearing later.) Placeholder: the gantryways stay in
+   the Ice Lab, the zone's own mechanic, as the Terminal's debris maze stays in the Terminal (`test_campaign`'s
+   `LEFT_OUT` lists golden/1 to golden/3). Should the Golden Zone hang them too (in its own look)?
+
+**The Ice Lab's teleporters** (task Q4 of the Ice Lab workstream, October 21, 2026; from `docs/questions/q4.md`; GDD §5, Zone 9)
+   **Answered (owner, October 22, 2026):** for now, the falling gantryways stay in the Ice Lab only. Recorded in GDD §5, Zone 9.
+1165. **The Golden Zone.** (GDD §5 says anything introduced keeps appearing later; GDD §5, Zone 9 calls the teleporters the
+   Ice Lab's mechanic.) Placeholder: the Golden Zone's levels don't list them (`test_campaign`, LEFT_OUT), as the falling
+   gantryways and the Terminal's maze stay in their zones. Should the Golden Zone stand teleporters too?
+   **Answered (owner, October 22, 2026):** add the teleporters to the Golden Zone (task Q6). Recorded in GDD §5, Zone 9.

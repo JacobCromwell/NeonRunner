@@ -26,7 +26,8 @@ touch a core file (list in `CLAUDE.md`, "Parallel work") unless the task explici
 run and the suites covering the files you changed). For a data or rename change, also run the
 specific suite that covers it (`--suite=<name>`) if `--gate --plan` didn't list it, and say so in
 your summary. A change to level, pattern, tuning or zone data raises the gate to the full tier
-itself; let it run rather than skipping it.
+itself: on a cloud container run `--gate --cap=merge` and say the full tier is owed (the orchestrator
+shards it; `CLAUDE.md`, Workflow rules), elsewhere let it run.
 
 **End every task** with the `CLAUDE.md` summary: exactly what changed (file and value, or the
 rename/search result), what you verified, and anything you stopped on instead of guessing.

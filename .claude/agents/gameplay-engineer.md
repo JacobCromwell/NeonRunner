@@ -35,7 +35,8 @@ hazards glow in hazard colours; safe things look safe; introduce one new mechani
 suites for what you touched — it includes the smoke run). Add or update tests for what you built, and
 when you add a new enemy, screen or suite whose file name doesn't match its suite's, add a rule to
 `tests/suite_map.json` so the gate picks it up for the next agent; check with `--gate --plan`. Don't
-run the full suite unless the gate raised itself to it (a core file changed). For anything visual,
+run the full suite unless the gate raised itself to it (a core file changed), and on a cloud container
+not even then: run `--gate --cap=merge` and say the full tier is owed (`CLAUDE.md`, Workflow rules). For anything visual,
 render frames on both the default and `--rendering-method gl_compatibility` renderers (`CLAUDE.md`,
 Commands) and look at them yourself.
 

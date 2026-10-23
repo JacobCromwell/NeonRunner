@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/zone_def.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="2_levelscript"]
+[ext_resource type="Resource" path="res://data/levels/ice_lab_1.tres" id="lvl_ice_lab_1"]
+[ext_resource type="Resource" path="res://data/levels/ice_lab_2.tres" id="lvl_ice_lab_2"]
+[ext_resource type="Resource" path="res://data/levels/ice_lab_3.tres" id="lvl_ice_lab_3"]
+[ext_resource type="Resource" path="res://data/cinematics/ice_lab_intro.tres" id="c_intro"]
+[ext_resource type="Resource" path="res://data/cinematics/ice_lab_outro.tres" id="c_outro"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"ice_lab"
+display_name = "The Ice Lab"
+tagline = "A frozen laboratory of steel catwalks and cranes, brains floating in its specimen jars."
+music = &"ice_lab"
+skin_path = "res://data/skins/ice_lab_skin.tres"
+levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_ice_lab_1"), ExtResource("lvl_ice_lab_2"), ExtResource("lvl_ice_lab_3")])
+run_speed = 24.8
+intro = ExtResource("c_intro")
+outro = ExtResource("c_outro")
+in_demo = false
+placeholder = false

@@ -32,16 +32,18 @@ sense of what would be better — a mismatch is a finding, not something to fix 
   colour/shape language, only hazards glow in hazard colours, one new mechanic at a time.
 - For generator/track/damage changes: the fairness sweep still passes at 3, 5 and 6 lanes, and no
   code assumes a specific lane count.
-- A tier that would run past about 10 minutes (the full tier: 50+ minutes) goes in the background with its log in the
-  scratchpad, and you push your branch first: a container restart kills running work. The orchestrator may shard the
-  full tier over several containers (`tools/godot.sh test --tier=full --shard=K/N`; `CLAUDE.md`, Workflow rules).
+- A run that would take past about 10 minutes goes in the background with its log in the scratchpad, and you push
+  your branch first: a container restart kills running work. Never run the full tier (an hour or more) in your own
+  container; the orchestrator shards it (`tools/godot.sh test --tier=full --shard=K/N`; `CLAUDE.md`, Workflow rules).
 - For visual work: frames rendered on both the default and Compatibility (`gl_compatibility`)
   renderers, and Reduced Flashing honoured wherever something flickers.
 - Tests exist for what changed, and the right tier passed: `tools/godot.sh test --tier=merge` on the
   branch after it merged the latest `main` (run it yourself; don't take the task's gate run as the
-  merge check). Run `--tier=full` instead when the branch touched the generator, track builder,
-  damage rules, run world, player, boss framework, test helpers, or `data/levels|patterns|tuning|
-  zones` — `--tier=merge --plan` tells you if it raised itself. If a new enemy, boss, screen or skin
+  merge check). When the branch touched the generator, track builder, damage rules, run world, player,
+  boss framework, test helpers, or `data/levels|patterns|tuning|zones` the plan raises itself to the full
+  tier (`--tier=merge --plan` tells you): run `--tier=merge --cap=merge` (the merge tier plus the suites
+  those files map to) and check that the orchestrator's sharded full-tier run passed on the branch, or
+  name it as still owed in your findings. If a new enemy, boss, screen or skin
   arrived without a `tests/suite_map.json` rule (and its name doesn't match its suite), ask for one.
   `tools/godot.sh smoke` is part of every tier.
 - Every `DESIGN-TBD` placeholder is reasonable and clearly marked, with a matching entry in

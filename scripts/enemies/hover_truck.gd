@@ -650,7 +650,8 @@ func _can_fire() -> bool:
 ## and out of its lane until it has left, so this holds back only a truck that stays longer.
 ## DESIGN-TBD (docs/questions/g5.md 5).
 func _doodad_in_reach() -> bool:
-	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty():
+	# A teleporter's calm stretches count as doodads do (task Q4; LevelLayout.doodad_between).
+	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty() and world.layout.teleporters.is_empty():
 		return false
 	var p: Player = world.player
 	var seconds: float = tune.cannon_charge_seconds + maxf(offset, 0.0) / maxf(tune.shell_speed_at(_scaling), 1.0) \

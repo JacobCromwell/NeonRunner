@@ -98,6 +98,8 @@ vec4 cult_mark(vec2 p, float fw) {
 #include "res://scripts/world/meshes/shaders/kit_casino.gdshaderinc"
 // Terminal patterns (ids 100-108, task O4).
 #include "res://scripts/world/meshes/shaders/kit_terminal.gdshaderinc"
+// Ice Lab patterns (ids 110-119, task Q2).
+#include "res://scripts/world/meshes/shaders/kit_ice_lab.gdshaderinc"
 
 // Two coordinates in the plane of the face, picked by its dominant axis.
 vec2 face_coords(vec3 n) {
@@ -427,6 +429,11 @@ void fragment() {
 		// The Terminal (kit_terminal.gdshaderinc, task O4); only its work lamps glow, and they follow Reduced flashing.
 		base = terminal_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV, TIME, glow);
 	}
+	if (pattern >= 110 && pattern < 120) {
+		// The Ice Lab (kit_ice_lab.gdshaderinc, task Q2); only its machine lamps, screens, jars and status LEDs glow, dimly, and the
+		// lamps follow Reduced flashing.
+		base = ice_lab_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV, TIME, glow);
+	}
 
 	vec3 col;
 	if (glow > 0.002) {
@@ -441,7 +448,7 @@ void fragment() {
 		float f = 1.0 - clamp(dot(nv, VIEW), 0.0, 1.0);
 		// What lies below the street (the Corporate, Dead Zone and Golden Zone's holes, task H3) takes only
 		// a little of the zone's sheen, which at a hole's grazing walls would drown the scenery in it.
-		float sheen_k = (pattern == 31 || pattern == 41 || pattern == 53 || pattern == 54 || pattern == 71 || pattern == 102) ? 0.25 : 1.0;
+		float sheen_k = (pattern == 31 || pattern == 41 || pattern == 53 || pattern == 54 || pattern == 71 || pattern == 102 || pattern == 111) ? 0.25 : 1.0;
 		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength * sheen_k + glass * 0.15);
 		col = (to_linear(base) * shade + sheen) * light_factor(scenery_light) * scenery_tint;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY

@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="LevelConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
+
+[resource]
+script = ExtResource("1_level")
+id = &"ice_lab_3"
+display_name = "Specimen Vault"
+level_seed = 1003
+duration_seconds = 150.0
+difficulty = 0.816
+difficulty_bias = 0.0
+enemy_scaling = 0.865
+off_curve = true
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "wall_run_gaps", "wall_fences", "treasure_stash", "fenced_ceiling", "wall_fences_partial", "gantryway", "octodog_jar", "teleporter", "teleporter_blinking")
+feature_starts = Dictionary[String, float]({
+"teleporter_blinking": 0.15
+})
+skin_path = "res://data/skins/ice_lab_lab_skin.tres"
+guarantee_features = true
+narrow_ceiling_share = 0.5
+spacing_seconds_easy = 1.1
+fill_empty_seconds = 2.0
+danger_density_increase = 0.38
+wide_gaps = 2
+charge_path_cyborgs = 1
+dash_walls = 0
+credit_trail_chance = 0.6
+credit_trail_min = 5
+wall_hop_lines = 1
+doodad_share = 1.0
+doodad_row_chance = 0.7
+fenced_ceiling_pads = 3
+teleporters = 4
+blinking_teleporters = 2
+octodog_jars = 1
+octodog_jar_decoys = 3

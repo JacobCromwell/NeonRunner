@@ -69,8 +69,11 @@ still share one mesh surface/material, including credits placed during a run.
 100-credit look. `--all --reduced` captures both looks in all nine skin resources in one run
 (create `build/credits/` first). The scene disables bloom and includes floor, wall and ceiling credits.
 
-`LevelRun` adds the camera (`RunCamera`), the speed lines (`SpeedLines`), the HUD (`RunHud`) and, in
-debug builds, the debug HUD and the F6 tuning panel. Quick play (`--quick`, or any of `--god
+`LevelRun` adds the camera (`RunCamera`), the speed lines (`SpeedLines`), the teleport's flash (`TeleportFlash`,
+task Q4), the HUD (`RunHud`) and, in debug builds, the debug HUD and the F6 tuning panel. A teleport (task Q4) moves the
+runner along the track in one step (`Player.teleported`); `RunWorld._on_teleported` settles what lay in between (the
+enemies, the shots in the air, the credits and the stars' best score, the track built ahead) and `RunWorld.teleported`
+cuts the camera and shows the flash: Teleporters (`docs/architecture/teleporters.md`). Quick play (`--quick`, or any of `--god
 --seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name> --speed=N
 --thief`) restarts on death like the grey box did.
 A campaign level runs at its zone's speed (Pace, under The generator): `App` gives the run the level's

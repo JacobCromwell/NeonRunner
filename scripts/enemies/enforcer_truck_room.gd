@@ -11,7 +11,7 @@ extends RefCounted
 ## - solid: what the truck never drives through on screen (fences, doodads, floor enemies, and a dash wall in every
 ##   lane: task H7a's walls stand across the street until the runner breaks them, and a showing puts its front
 ##   ahead of the runner, so it never shows itself where its view would reach a wall);
-## - soft: what the runner may need (pads, speed pads, ramps);
+## - soft: what the runner may need (pads, speed pads, ramps, and a teleporter's pad and its way around, task Q6);
 ## - deadly: what would wreck it (gaps too wide to hop, floor cuts' lane windows); it hops the other gaps.
 ## - held: where a hover truck holds the lane (task C6e): a wall to the runner (its sides are solid), never the
 ##   truck's lane, and a showing never stands between the runner and it (it would hide it).
@@ -128,6 +128,17 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 		_add(by["soft"], int(p["lane"]), float(p["at"]) - mt.speed_pad_length, float(p["at"]) + mt.speed_pad_length)
 	for r: Dictionary in layout.ramps:
 		_add(by["soft"], layout.outer_lane(int(r["side"])), float(r["at"]) - mt.ramp_length, float(r["at"]) + mt.ramp_length)
+	# Task Q6 (teleporters in the Golden Zone): a teleporter's pad and the lane beside it on its side, the way around it,
+	# over its pad stretch (its approach, LevelLayout.teleporters `calm`, to a lane switch's room past its far end, as
+	# teleporter_rules.gd keeps them clear): the runner takes it or goes around it, so a showing never takes either lane
+	# there (it would leave the runner only the pad, or no pad). DESIGN-TBD (docs/questions/q6.md).
+	var room_past: float = mt.lane_switch_time * run_speed + LevelGenerator.DOODAD_LANE_MARGIN
+	for tp: Dictionary in layout.teleporters:
+		var calm: Array = tp.get("calm", [])
+		var from: float = float((calm[0] as Array)[1]) if not calm.is_empty() else float(tp["at"])
+		for l: int in [int(tp["lane"]), int(tp["lane"]) + int(tp["side"])]:
+			if l >= 0 and l < lanes:
+				_add(by["soft"], l, from, float(tp["end"]) + room_past)
 	var warns: Array[float] = []
 	var dogs: Array[float] = []
 	var revs_at: Array[float] = []

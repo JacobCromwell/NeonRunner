@@ -34,7 +34,26 @@ any zone's look at its speed, `--take=smash` (the dash), `crash` (the armor, the
 them, the right wall lit then the left, in any zone's look at its speed, `--take=cross` (onto the lit wall midway
 along the lit stretch), `grapple` (the grapple's save onto the wall), `fall` or `look` (a still at the lit wall),
 `--guide=on|off` (the lit wall whatever the skin says; only the Marketplace's skin lights it, task L5), `--lanes=N`, `--close`, `--god`; `tools/measure/wall_run_gaps.gd` counts them per campaign build and zone, lists
-their constraints and dumps a level's as text with `--dump=<step id>`), side wall gaps (`wall_gap_review`, task L4:
+their constraints and dumps a level's as text with `--dump=<step id>`), falling gantryways (`gantryway_review`, task Q3:
+one over an inner lane with the cyborg the generator plants under it, in any zone's look (the Ice Lab's by default) at
+its speed, `--take=drop` (dash the pillar and step out while it lands on the cyborg), `stay` (stay under it: the armor
+takes the hit, `--bare` none), `push` (no dash: the pillar pushes the runner aside) or `look` (a still of it standing),
+`--lanes=N`, `--lane=L`, `--side=-1|1`, `--close`, `--beside` (a camera beside the track), `--hitboxes`,
+`--reduced-flashing`, `--god`; `tools/measure/gantryways.gd` lists where each campaign build hangs them and what they
+cost a build), teleporters (`teleporter_review`, task Q4: one in an inner lane as its rules make one, in any zone's look
+(the Ice Lab's by default) at its speed, through the game's camera with the teleport's flash, `--take=take` (run onto it and
+land on the output pad its light shows), `around` (switch out as its approach begins) or `look` (a still behind it, the
+light still blinking), `--outputs=1|2`, `--light=-1|1`, `--blink`, `--phase=P`, `--hazard` (a fence right past the
+landings), `--lanes=N`, `--lane=L`, `--side=-1|1`, `--close`, `--reduced-flashing`; `tools/measure/teleporters.gd` lists
+where each campaign build stands them, their kinds and hops, what they cost a build and what the re-check finds, with
+`--why` for an introduction that found no spot in its window), Octodog jars (`octodog_jar_review`, task Q5: a jar holding an
+Octodog as the rules make one, its dog's charges planned from the release, in any zone's look (the Ice Lab's by default)
+at its speed, through the game's camera, `--take=release` (dash it: the dog breaks out, tumbles ahead and attacks, the
+runner sidestepping each wind-up), `stay` (dash it and stay in line: the armor takes the lunge, `--bare` none), `pass` (no
+dash: pushed aside, nothing comes out) or `look` (a still beside it), `--lanes=N`, `--lane=L`, `--side=-1|1`,
+`--charges=N`, `--close`, `--beside`, `--hitboxes`, `--god`; the dog's phases print with their times;
+`tools/measure/octodog_jars.gd` lists where each campaign build stands them, what they took out, its decoys and what
+they cost a build, `--max-taken`, `--max-intro-taken` and `--max-ceilings` trying other caps on what a jar takes out), side wall gaps (`wall_gap_review`, task L4:
 an open street in any zone's look with side wall gaps as the generator places them (a left, a right and a both-walls
 one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
 the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across
@@ -102,7 +121,10 @@ breaks with a shield still held: nothing; the shield breaks: the red edges pulse
 they fade; `--hold` stops with the edge steady, for a `--shot` at a phone's window size); `--phone --flavor=web_demo` with the engine's `--resolution 844x340` shows a screen as a
 phone's browser does, the menus magnified, and `--shot=<png>` saves it), the Terminal's skin (`terminal_review`: a stretch laid out as O1's levels are (no wall running), arches a space
 long with the open space between and stumps, holes, one ceiling of each kind, debris, fences, signs, in 19 shots; `--shot=N`,
-`--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`, `--lanes`), a zone skin
+`--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`, `--lanes`), the Ice Lab's skin (`ice_lab_review`: the same options, in any of
+its leans with `--skin=ice_lab_frost|ice_lab|ice_lab_lab`; a stretch with close-ups of each wall bay kind the skin's hash gives, of the
+jars and the Octodog's, both kinds of ceiling, wall gaps, the hall from above, a floor cut, fences, signs and a row of every doodad look of
+each size class, 32 shots), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost

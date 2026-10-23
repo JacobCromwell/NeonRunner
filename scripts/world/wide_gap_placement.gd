@@ -57,7 +57,9 @@ extends RefCounted
 ##    Golden Palace seed with none at all).
 ## Before 4., where the level is still short of its count, its wall-run gaps but its first give way (task J2;
 ## WallRunGapPlacement.set_aside): 1. to 3. again with them out of the way, then each comes back where the wider gaps
-## left its way as it was (put_back).
+## left its way as it was (put_back). Still short, its teleporters but an introduction give way the same (task Q6, the
+## Golden Zone's crowded levels; TeleporterRules.set_aside): each stands again where it stood if the wider gaps left its
+## windows as they were, else at its best fair spot elsewhere, else the level has one fewer (TeleporterRules.put_back).
 ## Which ones: with prefer_enforcer_chases, first one in each Enforcer Truck's chase, once the truck has settled
 ## behind the runner (EnforcerTruckTuning.bait_after_seconds) and before it may drop back (CHASE_END_SECONDS
 ## before it gives up), so the runner can lead it in: from the first of the three sources above with one there,
@@ -68,6 +70,7 @@ extends RefCounted
 const TUNING_PATH: String = "res://data/tuning/wide_gaps.tres"
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+const TeleporterRules = preload("res://scripts/enemies/teleporter_rules.gd")
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
 ## The danger density pass's tuning (DangerDensity.TUNING_PATH): its keep_out_exempt_features.
 const DANGER_DENSITY_TUNING: String = "res://data/tuning/danger_density.tres"
@@ -146,6 +149,26 @@ static func place(gen: LevelGenerator) -> Dictionary:
 				zones.append(zone_of(gen, p.t, span))
 			WallRunGapPlacement.put_back(gen, aside, "the wider gaps", zones)
 			# What came back keeps the last way below off it as the rest of the level's content does.
+			p.keeps = keeps_of(gen)
+	if p.rows.size() < want:
+		# Task Q6 (the Golden Zone's crowded levels): then its teleporters but an introduction give way the same
+		# (TeleporterRules.set_aside): the sources again for the ones still missing; then each teleporter stands again where
+		# it stood if the wider gaps left its windows as they were, else at its best fair spot elsewhere, else the level
+		# has one fewer (put_back). DESIGN-TBD (docs/questions/q6.md): the wider gaps go first.
+		var gone: Array[Dictionary] = TeleporterRules.set_aside(gen)
+		if not gone.is_empty():
+			p.keeps = keeps_of(gen)
+			p.candidates.clear()
+			_find_candidates(p)
+			_from_sources(p, want, whole)
+			# Each wider gap's zone as planned, and a doodad's push's lead past it, which a calm stretch keeps off as a
+			# doodad does (blocker: LevelLayout.doodad_between counts a teleporter's).
+			var zones: Array[Vector2] = []
+			var lead: float = LevelGenerator.doodad_lead_for(gen.tuning)
+			for span: Vector2 in p.rows:
+				var zone: Vector2 = zone_of(gen, p.t, span)
+				zones.append(Vector2(zone.x, zone.y + lead))
+			TeleporterRules.put_back(gen, gone, zones)
 			p.keeps = keeps_of(gen)
 	if p.rows.is_empty() and p.t.add_rows:
 		_add_clearing(p, whole, (whole.x + whole.y) * 0.5)
@@ -366,9 +389,12 @@ static func fits(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: Dict
 	return blocker(gen, t, span, row, keeps) == ""
 
 
-## What keeps a wider gap over `span` from fitting (fits): the level's ends, the first of `keeps` in its way, or
-## another hole; "" if it fits. Something that only touches the zone's end (a pass that kept exactly its margin)
-## isn't in its way.
+## What keeps a wider gap over `span` from fitting (fits): the level's ends, the first of `keeps` in its way, a doodad
+## or a stretch that counts as one (LevelLayout.doodad_between: a rule's doodad and its push's lead, a falling
+## gantryway's or a teleporter's calm stretch, a dash wall) at its take-off or landing, as LayoutChecks.check_wide_gaps
+## asks and the zone doodads keep (task Q5: a jar holding an Octodog moved a wider gap to just before a teleporter's calm
+## stretch, which the keeps only kept off the zone), or another hole; "" if it fits. Something that only touches the
+## zone's end (a pass that kept exactly its margin) isn't in its way.
 static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: Dictionary, keeps: Array[Dictionary]) -> String:
 	var zone: Vector2 = zone_of(gen, t, span)
 	if zone.x < gen.config.start_clear_distance or zone.y > gen.layout.length - gen.config.end_clear_distance:
@@ -383,6 +409,8 @@ static func blocker(gen: LevelGenerator, t: WideGapTuning, span: Vector2, row: D
 		if lane >= 0 and not lanes.is_empty() and not lanes.has(lane):
 			continue
 		return String(k["what"])
+	if gen.layout.doodad_between(zone.x + EPSILON, zone.y + LevelGenerator.doodad_lead_for(gen.tuning) - EPSILON):
+		return "a doodad or a calm stretch"
 	for g: Dictionary in gen.layout.gaps:
 		if not row.is_empty() and float(g["start"]) == float(row["start"]) and float(g["end"]) == float(row["end"]):
 			continue

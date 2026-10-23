@@ -139,7 +139,11 @@ indoors as well as out.) What a look gets and keeps to:
   colonnade with red drapes, balustrades and a coffered roof, open between its columns (large). The Terminal's are
   debris, lower than the others' once task O2 lowers its boxes (GDD §3, §5): cable drums or crates (small), a toppled ticket kiosk,
   a toppled vending machine or a heap of broken concrete (medium), fallen ceiling slabs or a long heap (large), two or three looks a
-  class (`TerminalDoodads`). The statue is deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`, task
+  class (`TerminalDoodads`). The Ice Lab's (task Q2, `IceLabDoodads`) are brain jars and other lab equipment, ice crystal clusters and crates of
+  lab supplies, five looks a class, picked by the skin's lean (`lab_share`: level 1 crystals, crates and frozen machinery, the last level jars, racks and
+  consoles), among them **the Octodog jar** (small class, look name `octodog_jar`: a jar with the Octodog curled up asleep in it) that task Q5 makes
+  break open; it has a name of its own, `look_seed_for()` to ask for it and the body metadata `META_LOOK` (the skins' doodads' picking is otherwise only by
+  `look_seed`; the Ice Lab picks by weights, building its own mesh from `DoodadCards.mesh_for`). The statue is deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`, task
   C4): a plain draped, faceless figure, hands clasped, nothing raised, its front and back on two cards so
   each end shows its own side. `test_golden_skin` guards against the doodad script ever building itself
   from `GoldenStatue`.
@@ -351,6 +355,22 @@ treasure stash's return pad: the track turns the trigger upside down, so the def
 back down at the floor (GDD §3: it looks safe, with no hazard colour). `test_ceiling_scenarios` dresses both with
 every skin in `data/skins/` and the grey box.
 
+**Falling gantryways' looks** (task Q3; the hooks `gantryway`, `gantry_pillar` and `gantryway_wreck`, their colours
+`gantryway_colors()` and material `gantryway_material()`): GantrywayKit's frosted steel catwalk by default, drawn in a
+material that dissolves near the camera (the chase camera passes through a pillar's column and under a falling walkway's
+edge), lit and never glowing, inside its box; the Ice Lab gives it its own steel, frost, snow and ice and its sheen. The
+whole of it is in Falling gantryways (`docs/architecture/gantryways.md`); `test_gantryways` dresses all three with every
+skin in `data/skins/` and the grey box.
+
+**Teleporters' looks** (task Q4; the hooks `teleporter_pad`, `teleporter_antenna` and `teleporter_output`, their colours
+`teleporter_colors()`, `teleporter_palette` by default): TeleporterKit's square pad (a steel plate with a green frame, grid,
+hexagonal emitter and halo), its green antenna with a lamp at each end of its crossbar (whose lit looks the hook returns
+for the Teleporter to light on the level clock) and, over an output pad, a floating marker of light (a glow, a bright core
+and a hexagon, fading out near the camera) so it reads from the start of its teleporter's approach;
+glowing only green or green-white, never a column of light nor anything across a lane; the Ice Lab gives the plate and rim
+its steel. The whole of it is in Teleporters (`docs/architecture/teleporters.md`); `test_teleporters` dresses all three with
+every skin in `data/skins/` and the grey box.
+
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
 (`first_lane`, `last_lane`, `full()`), its collision box (`center`, `size`), the lane seams inside it
@@ -406,7 +426,8 @@ the runner leaves the screen up there.
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
 Corporate), `BeachSkin` (Zone 6, the Beach; task D10, in the campaign since D10c), `DeadZoneSkin` (Zone 7, the
-Dead Zone), `TerminalSkin` (Zone 8, the Terminal, task O4) and `GoldenSkin` (Zone 9, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+Dead Zone), `TerminalSkin` (Zone 8, the Terminal, task O4), `IceLabSkin` (Zone 9, the Ice Lab, task Q2: one skin in three leans,
+`ice_lab_frost`, `ice_lab` and `ice_lab_lab`, for its three levels) and `GoldenSkin` (Zone 10, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is named in its
 `data/zones/<zone id>.tres` by path (`skin_path`; the same for a level's or a boss arena's own skin): the campaign
@@ -433,6 +454,7 @@ value, the one thing a new zone's skin sets for its enemies:
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
 | Beach (D10) | `&"casino"` | the Casino Mob Enforcer | clean |
 | Terminal (O4) | `&"burned"` | none (the zone has no cyborgs; the Dead Zone's burned base if one turns up) | clean |
+| Ice Lab (Q2) | `&"burned"` | the Dead Zone's burned base, until the owner asks for one of their own (GDD §5, Zone 9; placeholder) | clean |
 
 A skin's `cyborg_draw_scale` (the class default 1.0; 1.2 in every zone skin and boss-arena skin: the Neon City in task I2,
 the rest in J1; DESIGN-TBD item 829) draws that zone's cyborgs bigger without touching
@@ -557,7 +579,12 @@ a rusted subway car, a work lamp's tube (the only one that glows, and the only o
 `reduced_flashing`), a dead board or a red-orange plate (a border and four bolts, no symbol), and foliage; their lamps' light
 is painted into every lit pattern (`tm_lit`), decided from where the fixtures stand. The track bed's and the platform's
 parameter carries the width of their lane, read off the floor box (`TerminalTrack.half_width_param`: centimetres times 8 over
-the platform's flags, decoded by rounding), so the shader holds no lane width. Ids 90-99 are the Beach's (task D10, all in use), in
+the platform's flags, decoded by rounding), so the shader holds no lane width. Ids 110-119 are the Ice Lab's (task Q2, all in use), in `kit_ice_lab.gdshaderinc` (`MeshKit.PAT_IL_*`): catwalk grating with
+packed snow and ice (whose parameter carries the lane's half width in centimetres times 8 over `IL_*` flags, as the Terminal's
+track bed's does), everything under the catwalks, frost-crusted steel, ice, lab machinery's flush fronts (`PAT_IL_PANEL`: cabinets,
+rack units, tile, doors), a pale dim screen, an amber machine lamp (the only pattern that reads the time, to breathe slowly and hold
+still with `reduced_flashing`), the liquid in a specimen jar (whose bubbles are slow motion, not a flash), a brain and a drift of
+snow; the colours it needs are its own `il_*` uniforms, sRGB `Vector3`s (`IceLabSkin.srgb()`). Ids 90-99 are the Beach's (task D10, all in use), in
 `kit_beach.gdshaderinc` (`MeshKit.PAT_BEACH_*`: sand, boardwalk, tank, water, wall, thatch, steel, painted
 board, neon silhouette, timber), after `kit_marks.gdshaderinc`'s `band()` and `sd_*()`. A pattern's parameter
 (`UV2.y`) is interpolated across a face, and a rasterizer's interpolation of a constant can be a few units in

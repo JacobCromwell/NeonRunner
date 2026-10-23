@@ -150,9 +150,9 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   volleyball match's stars are by the match (`docs/architecture/mini-games.md`), a boss's by its par times or hits
   (`docs/architecture/bosses.md`, Stars).
 - *Levels* are numbered in play order: City 1-3 are 1-3, Gangland 4-6, Marketplace 7-8, Casino 9-10, Corporate
-  11-12, Beach 13-15 (the match is 14), Dead Zone 16-17, the Terminal 18-19 (task O1) and Golden 20-22. The table and
-  the figures below are as measured before the Terminal came in (Golden 18-20 then); what it changed is under
-  *The Terminal's levels* below.
+  11-12, Beach 13-15 (the match is 14), Dead Zone 16-17, the Terminal 18-19 (task O1), the Ice Lab 20-22 (task Q1) and
+  Golden 23-25. The table and the figures below are as measured before the Terminal came in (Golden 18-20 then); what
+  it and the Ice Lab changed is under *The Terminal's levels* and *The Ice Lab's levels* below.
 - *Where each tier first fits* (5 lanes, each level's own seed; `test_economy.gd`'s `FIRST_FIT`, give or take one
   level, and `IN_TIME` for the "+boss" column). Held: everything but the dash and two prices (Armor I 350, which fits City 1, the October 3 revision;
   Laser I 1,800, first affordable at level 4). The dash is the owner's (task L8): its four prices are 300 / 450 /
@@ -220,8 +220,17 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   two first fits (nothing before it changed): the **Heavy missile** first fits at Terminal 1 (level 18, by 90 credits;
   usable from Terminal 2, still before Golden 2's Sentinels), so `FIRST_FIT` moved there, and the weaker player's
   Armor IV at Terminal 2 (19).
+- *The Ice Lab's levels* (task Q1, measured October 21, 2026 with `--lanes=5 --seeds=0`; DESIGN-TBD,
+  `docs/questions/q1.md`). Frost Foundry, Relay Station and Specimen Vault hold the most credits of any level (1,381,
+  1,224 and 1,365, of which 375, 300 and 275 in treasure stashes): their features are every earlier zone's but the
+  enemies. With Dead Zone 2's completion bonus (425) a typical finish pays 1,392, 1,282 and 1,380 (Dead Zone 1's 1,332,
+  the Golden Zone's 1,155-1,275). They add 4,054 to a typical playthrough: the wallets at the Ice Lab's end are 20,412 /
+  23,412 with the bosses (weaker 15,133 / 18,133), at the Golden Zone's end 24,023 / 28,023 (17,743 / 21,743), and the PC
+  catalog is 1.7 playthroughs (1.4 with the bosses). No tier's first fit moves (every one is placed before the Ice Lab);
+  the weaker player's Heavy missile now fits at Golden 1 (23). (Since task O2's maze the Terminal's levels hold 264 and
+  294, and the Heavy missile first fits at Terminal 2, within `FIRST_FIT`'s level of Terminal 1.)
 
-The save has a version (`Profile.VERSION`, now 5). `Profile.from_dict()` brings an older save up to
+The save has a version (`Profile.VERSION`, now 6). `Profile.from_dict()` brings an older save up to
 date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in
 earned credits at the 150 each it cost (`V1_ARMOR_PRICE`, the only price it ever had), the purchases
 leave `lifetime_spent`, and its old equip toggle goes, so an upgrade bought later starts switched on.
@@ -243,6 +252,13 @@ Golden Zone, so the Golden Zone's intro now follows `terminal/outro` instead of 
 it open and keeps their place; the Terminal is open too (its intro follows the Dead Zone's outro), and the level
 select offers it. Continue goes to the first step not done, which for such a save is the Terminal's intro
 (`test_campaign`, `_test_saves_before_terminal`). DESIGN-TBD (`docs/questions/o1.md`).
+**Saves from before the Ice Lab** (version 5 to 6, task Q1): the Ice Lab came in between the Terminal and the Golden
+Zone, so the Golden Zone's intro now follows `ice_lab/outro` instead of `terminal/outro`. A finished `terminal/outro`
+also counts as `ice_lab/outro` (in every tier), so a player who had reached the Golden Zone keeps it open and keeps their
+place; the Ice Lab is open too (its intro follows the Terminal's outro), and Continue leads into it
+(`_test_saves_before_ice_lab`). A version 4 save takes both steps (its `dead_zone/outro` counts as `terminal/outro`, and
+that as `ice_lab/outro`), so it finds the Ice Lab's intro open as well as the Terminal's, and Continue leads into the
+Terminal. DESIGN-TBD (`docs/questions/q1.md`).
 A change to the save's format bumps the version and adds its step there, with a test.
 
 ## The weekly challenge
@@ -258,8 +274,9 @@ DESIGN-TBD with its number).
   (`unlock_step` = `city/boss`). `App.weekly` holds it; `WeeklyWeek` is one week (its index, entry, zone, seed, dates).
 - *Which level a week plays.* `data/weekly/weekly_seeds.json` is the **shipped seed list**: `{zone, seed}` entries, and week
   N plays entry `N mod size` (`WeeklyChallenge.week`), never a level worked out from the date. The list is the campaign's
-  nine zones in order, four seeds each (36 weeks, then it goes round again; 32 before the Terminal, task O1, which also
-  moved the Golden Zone's seeds to its new block), so the weeks rotate through the zones and every zone is in from the
+  ten zones in order, four seeds each (40 weeks, then it goes round again; 32 before the Terminal, task O1, and 36
+  before the Ice Lab, task Q1, its week on Specimen Vault's rules; each of them moved the Golden Zone's seeds to its new
+  block, now 10000), so the weeks rotate through the zones and every zone is in from the
   start. Every entry was built and checked in advance by a written rule (the first four seeds
   of the zone's block that pass every check in at most three generator builds: `tools/measure/weekly_seeds.gd`, which
   also looks for seeds to add; `test_weekly_challenge` and `test_weekly_fairness` check the list). Once the game has
@@ -272,7 +289,8 @@ DESIGN-TBD with its number).
   seed, five lanes, no `feature_starts`, no recency curve, not off the curve, no mini-game, every feature must appear) and
   `GOLDEN_FIELDS` (everything else, from the campaign's own configuration of `golden/2`, Sentinel Row: difficulty 0.91,
   enemy scaling 0.94 for fire rate, projectile speed and health, 25 m/s, 150 s, `danger_density_increase` and every pacing,
-  density, gap and credit dial). A dial for a feature the zone lacks does nothing (the generator runs a rules script per
+  density, gap and credit dial, and the counts of the features' set pieces: dash walls, ceiling scenarios, falling
+  gantryways, teleporters and their blinking ones). A dial for a feature the zone lacks does nothing (the generator runs a rules script per
   feature the level lists). Generated and played like any level (`LevelCache` keys it by content, so a retry is instant).
 - *The run* (`RunContext.Mode.WEEKLY`, `ctx.weekly`, `ctx.weekly_board`): `App.start_weekly()` builds it with the uniform kit
   (`Loadout.weekly(catalog, kit, mobile)`: the free armor under Armor IV, the dash at IV, no breakable and nothing else,

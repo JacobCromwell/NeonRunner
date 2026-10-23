@@ -101,6 +101,29 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## - centipede: the Cybernetic Centipede (task O3; GDD §9.15), the Terminal's only enemy, from Terminal 1: it waits in
 ##   the debris maze's open cells and chases the runner along its open paths (no patterns: its rules,
 ##   centipede_rules.gd, place it where the maze stays escapable, CentipedeEscape; it needs the debris_maze feature)
+## - gantryway: the Ice Lab's falling gantryways (task Q3; GDD §5, Zone 9, owner, October 21, 2026), from Frost Foundry:
+##   one-lane walkways hanging over an inner lane, each held by a pillar in that lane that pushes like a doodad, which
+##   the dash knocks down: the walkway falls on the lane over about a second, crushing the enemies under it and hitting
+##   a runner still under it (no patterns: its rules, gantryway_rules.gd, place up to `gantryways` of them where a
+##   runner who dashes the pillar always has a lane to step into; numbers in data/tuning/gantryways.tres)
+## - teleporter: the Ice Lab's teleporters (task Q4; GDD §5, Zone 9, owner, October 21, 2026), from Relay Station, and the
+##   Golden Zone's three levels (task Q6; the owner, October 22, 2026): a square pad in an inner lane with a green antenna,
+##   which sends a runner who runs onto it to an output pad further down the track, one or a left and a right one, the
+##   antenna's light (fixed) choosing (no patterns: its rules, teleporter_rules.gd, stand up to `teleporters` of them
+##   where the way around and every landing are fair; numbers in data/tuning/teleporters.tres)
+## - teleporter_blinking: blinking antennas (task Q4; GDD §5), from Specimen Vault, with `teleporter`: `blinking_teleporters`
+##   of the level's teleporters have two output pads and a light that changes side about once a second, the side lit at
+##   the touch deciding (no rules of its own but teleporter_blinking_rules.gd's positions(): teleporter_rules.gd places
+##   them)
+## - octodog_jar: the Ice Lab's Octodog jars that break open (task Q5; GDD §5, Zone 9, owner, October 21, 2026: "sometimes
+##   smashing an Octodog jar doodad releases its Octodog into the world"), from Frost Foundry: a small zone doodad holding
+##   an Octodog (LevelLayout.HOLDS), dressed as the zone's jar with one curled up inside; breaking it (the dash, or a wall
+##   runner by its side wall) lets the dog out, and it runs ahead and attacks like any Octodog, its charges planned from
+##   there (no patterns: its rules, octodog_jar_rules.gd, stand up to `octodog_jars` of them where the release and every
+##   charge are fair, taking what stands on a charge's path or in the jar's room out of the way where that's the only
+##   room, and none in a build without room: an occasional feature; the dog's numbers in data/enemies/octodog.tres,
+##   Jars). `octodog_jar_decoys` of the level's small doodads are dressed and broken the same but hold a dog that never
+##   comes out (LevelLayout.DECOY), and the zone's other Octodog jars are its skin's look only (IceLabDoodads).
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -264,6 +287,48 @@ var _skin: ZoneSkin
 ## task C6c, and Dead Zone 1 two since its ceiling scenarios came, task I4: at 3 lanes its fenced ceiling's build
 ## leaves room for no third); quick play's prototype level takes this default.
 @export_range(0, 8) var dash_walls: int = 3
+## Falling gantryways (task Q3; GDD §5, Zone 9, the owner, October 21, 2026): with the `gantryway` feature, the
+## generator hangs up to this many one-lane walkways over the level's inner lanes, each held by a pillar the dash knocks
+## down (gantryway_rules.gd), spread through the level where they're fair (data/tuning/gantryways.tres); fewer where the
+## level leaves no room, never none. 0 turns them off. Without the feature it does nothing. DESIGN-TBD
+## (docs/questions/q3.md 1 and 14): 3 in each of the Ice Lab's levels; quick play's prototype level takes this default,
+## endless mode its level's (3 over its 20 minutes from the Ice Lab) and a weekly challenge's week Sentinel Row's.
+@export_range(0, 8) var gantryways: int = 3
+## Teleporters (task Q4; GDD §5, Zone 9, the owner, October 21, 2026: "introduced in level 2, with blinking antennas
+## added in level 3"): with the `teleporter` feature, the generator stands up to this many teleporters' pads in the
+## level's inner lanes, each leading to one output pad or a left and a right one further down the track
+## (teleporter_rules.gd), spread through the level where they're fair (data/tuning/teleporters.tres); fewer where the
+## level leaves no room, never none. 0 turns them off. Without the feature it does nothing. DESIGN-TBD
+## (docs/questions/q4.md 1 and 14; q6.md 1): 3 in Relay Station, 4 in Specimen Vault, 3 in each of the Golden Zone's
+## three (task Q6, where they give way to its wider gaps and dash walls); quick play's prototype level takes this default,
+## endless mode its level's (Specimen Vault's 4 over its 20 minutes from the Ice Lab, the Golden Palace's 3 from the Golden
+## Zone) and a weekly challenge's week Sentinel Row's.
+@export_range(0, 8) var teleporters: int = 3
+## With the `teleporter_blinking` feature as well (Specimen Vault, GDD §5: "level 3 adds blinking ones"), this many of
+## the level's teleporters have a blinking antenna: two output pads, the light changing side about once a second, the
+## side lit at the touch deciding where the runner lands (the rest keep a fixed light). Without the feature it does
+## nothing. DESIGN-TBD (docs/questions/q4.md 1; q6.md 1 and 3): 2 of Specimen Vault's 4, 1 of each Golden level's 3.
+@export_range(0, 8) var blinking_teleporters: int = 1
+## Octodog jars that break open (task Q5; GDD §5, Zone 9, the owner, October 21, 2026: "some jars hold a curled-up
+## Octodog ... sometimes smashing an Octodog jar doodad releases its Octodog into the world, and the runner has to fight
+## it"): with the `octodog_jar` feature, the generator stands up to this many jars holding an Octodog
+## (octodog_jar_rules.gd), each where its push is a doodad's and the dog it lets out has room for its usual attack, two
+## charges at least, each charge's stretch clear (what stands on a charge's path or in the jar's room taken out of its
+## way where that's the only room); fewer where the level leaves no room, none in a crowded build (an occasional
+## feature, octodog_jar_rules.gd's OCCASIONAL: no warning, and its decoys stand all the same). 0 turns them off. Without
+## the feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1 and 6): 1 in each of the Ice Lab's levels (a heli
+## drone's pad schedule leaves a freed dog's attack little room once it has started); quick play's prototype level
+## takes this default, endless mode its level's and a weekly challenge's week Sentinel Row's.
+@export_range(0, 8) var octodog_jars: int = 1
+## How many of the level's own small zone doodads standing alone become Octodog jars whose dog never comes out (task Q5;
+## LevelLayout.DECOY; octodog_jar_rules.gd, after_doodads): dressed and broken exactly as the jars that release theirs
+## (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't"), so "sometimes" holds in
+## every level, whatever the skin's own variety of jars adds. Where the level has too few, new small doodads where a
+## zone doodad may stand (the doodad pass's own rules); fewer only where none fits (at three lanes now and then, seldom
+## at five or six).
+## Without the `octodog_jar` feature it does nothing. DESIGN-TBD (docs/questions/q5.md 1): 2 in Frost Foundry, 3 in
+## Relay Station and Specimen Vault, and this default elsewhere.
+@export_range(0, 8) var octodog_jar_decoys: int = 2
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings
 ## into a treasure stash's (treasure_stash_rules.gd), where one fits (an inner lane with inner lanes beside it:
