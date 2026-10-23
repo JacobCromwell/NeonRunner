@@ -13,17 +13,17 @@ extends RefCounted
 ##   become Heavy Cyborgs where one fits (the top-up): each with the chance `share` times the campaign's recency factor
 ##   for the feature (LevelConfig.recency_factor: most in the level that introduces it, fewer as it gets older), the
 ##   first that fits always where the pattern's left none. The passes after the rules (the danger density pass's rows,
-##   the fill pass, the zone doodads) keep off a Heavy Cyborg's keep-out and floor as off any enemy that isn't a cyborg,
-##   its stream's zone among them, and the danger density pass adds no enemy whose attack meets its keep-out (it is
-##   none of the small threats the pass may add enemies near: one there could hold its stream's start); the counted
-##   features keep only a cyborg's margin from it (the wider gaps, the dash walls past their introduction). (A level
-##   without cyborgs of its own, quick play's `--features=heavy_cyborg`, drops the pattern's cyborgs that don't become
-##   Heavy Cyborgs.)
+##   the wider gaps, the fill pass, the zone doodads, the dash walls past their introduction) keep off a Heavy Cyborg's
+##   keep-out and floor as off any enemy that isn't a cyborg, its stream's zone among them, so it never gives way to
+##   them; the danger density pass may add enemies near it as near a cyborg (a small threat), but no rival within its
+##   rivals' clearance (rival_may_stand). (A level without cyborgs of its own, quick play's `--features=heavy_cyborg`,
+##   drops the pattern's cyborgs that don't become Heavy Cyborgs.)
 ## - After the zone doodads (after_doodads), once everything that stands on the floor is placed (nothing after them
 ##   adds a gap, a fence or a doodad in its levels; the gap density pass runs in City 1 only): every Heavy Cyborg that
-##   no longer fits is given back as a plain cyborg (_give_back); where none is left, the first of the level's own
-##   plain cyborgs that fits becomes one (_last_resort, saving a build). A build with none at all is built again with
-##   picks of its pattern forced elsewhere (LevelConfig.guarantee_features), as for any feature.
+##   no longer fits (a cyborg a later rule planted beside it) is given back as a plain cyborg (_give_back); where none
+##   is left, the first of the level's own plain cyborgs that fits becomes one (_last_resort, saving a build). A build
+##   with none at all is built again with picks of its pattern forced elsewhere (LevelConfig.guarantee_features), as for
+##   any feature.
 ## A Heavy Cyborg fits where (fits):
 ## - it stands on the floor where a plain cyborg stood (not a host, no rule's mark in its params: a cyborg planted in
 ##   a charge's path, a Buzz Overdrive's company, one planted under a falling gantryway are their rules' own; the last
@@ -38,8 +38,7 @@ extends RefCounted
 ##   gap's zone, no wall-run gap's clear stretch and no calm stretch a rule keeps in every lane
 ##   (LevelGenerator.rules_doodad_keep_outs with `calm`: an Enforcer Truck's showing window): those let a cyborg stand
 ##   nearer than any other enemy, its obstacle margin away (WallRunGapPlacement.floor_keeps, the Enforcer Truck's
-##   ROOM_TYPES: their re-checks hold a Heavy Cyborg to the rest's rule; DashWallRules.enemy_spans and
-##   WideGapPlacement.keeps_of keep a cyborg's margin from a Heavy Cyborg too, which then gives way to them);
+##   ROOM_TYPES: their re-checks hold a Heavy Cyborg to the rest's rule);
 ## - no rival stands within rival_clear_seconds of run of it (rivals_clear: a cyborg, a window cyborg): one that near
 ##   engages when it does, and its burst's place in the cyborgs' airspace and the crossfire rule could hold the stream's
 ##   start through the whole of its window;
@@ -276,6 +275,20 @@ static func rivals_clear(layout: LevelLayout, e: Dictionary, reach: float) -> bo
 	var at: float = float(e["at"])
 	for o: Dictionary in layout.enemies:
 		if not is_same(o, e) and RIVALS.has(String(o.get("type", ""))) and absf(float(o["at"]) - at) <= reach:
+			return false
+	return true
+
+
+## True if enemy `e` (an entry, or one about to be added: its type and track distance) may stand where it does beside
+## `gen`'s Heavy Cyborgs: a rival (RIVALS) never within rival_clear_seconds of run of one. The danger density pass
+## asks for what it adds (DangerDensity._type_rules_ok).
+static func rival_may_stand(gen: LevelGenerator, e: Dictionary) -> bool:
+	if not RIVALS.has(String(e.get("type", ""))):
+		return true
+	var reach: float = tuning_of().rival_clear_seconds * gen.speed
+	var at: float = float(e["at"])
+	for o: Dictionary in gen.layout.enemies:
+		if String(o.get("type", "")) == TYPE and absf(float(o["at"]) - at) <= reach:
 			return false
 	return true
 

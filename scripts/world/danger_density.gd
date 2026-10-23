@@ -92,9 +92,10 @@ extends RefCounted
 ##   drone, a resonator's pulse, an Octodog, a Buzz Overdrive, a Gilded Sentinel) keeps its stretch;
 ## - over that whole window a floor enemy leaves min_free_lanes lanes free of floor enemies, holes,
 ##   fences and kept lanes (a hover truck's), all the time: the open lane never has to be switched to;
-##   its type's own rules hold (a cyborg's obstacle margin and panic roll, a window cyborg's signs), and a
+##   its type's own rules hold (a cyborg's obstacle margin and panic roll, a window cyborg's signs), a
 ##   wall enemy keeps off what the rules keep wall enemies off (LevelGenerator.wall_section_rules: a Gilded
-##   Sentinel's wall section, task K4);
+##   Sentinel's wall section, task K4), and a cyborg or window cyborg off a Heavy Cyborg's rivals' clearance
+##   (task S1, HeavyCyborgRules.rival_may_stand);
 ## - an added piece keeps the clearance from every fixed stretch and sign, from every enemy's attack
 ##   window but those of row_tolerated_types (whose floor lane stays kept and never counts as open), from
 ##   a quiet stretch, a cyborg's obstacle margin and a pad's lane (a row beside a pad may still lead the
@@ -131,6 +132,7 @@ const TuningScript := preload("res://scripts/world/danger_density_tuning.gd")
 const TUNING_PATH: String = "res://data/tuning/danger_density.tres"
 const CYBORG_RULES: String = "res://scripts/enemies/cyborg_rules.gd"
 const WINDOW_CYBORG_RULES: String = "res://scripts/enemies/window_cyborg_rules.gd"
+const HEAVY_CYBORG_RULES: String = "res://scripts/enemies/heavy_cyborg_rules.gd"
 const RESONATOR_RULES: String = "res://scripts/enemies/resonator_rules.gd"
 const TURRET: String = "barnacle_turret"
 const TURRET_RULES: String = "res://scripts/enemies/barnacle_turret_rules.gd"
@@ -255,6 +257,8 @@ class Plan:
 	var except_cut: Dictionary = {}
 	var window_rules: GDScript
 	var window_half: float = 0.0
+	## The Heavy Cyborg's rules where the level has one (task S1), which keep its rivals off it (_type_rules_ok).
+	var heavy_rules: GDScript
 	## The rules that keep wall enemies off stretches of their wall (LevelGenerator.wall_section_rules: the
 	## Gilded Sentinels' wall sections), which the wall enemies the pass adds keep off (_type_rules_ok).
 	var wall_rules: Array[GDScript] = []
@@ -740,6 +744,8 @@ static func _index_enemies(plan: Plan) -> void:
 		if t != null:
 			plan.window_half = float(t.get("window_length")) * 0.5 + float(consts.get("SIGN_CLEARANCE", 0.0))
 	plan.wall_rules = gen.wall_section_rules()
+	if gen.config.has_feature("heavy_cyborg") and ResourceLoader.exists(HEAVY_CYBORG_RULES):
+		plan.heavy_rules = load(HEAVY_CYBORG_RULES) as GDScript
 
 
 ## Indexes a hole's or fence's `span` in `lane` (the enemy half's plan.lane_pieces).
@@ -922,10 +928,13 @@ static func _overlap_ok(plan: Plan, window: Vector2, group: Array[int]) -> bool:
 ## True if `probe`'s type's own rules would keep it: a cyborg's obstacle margin (CyborgRules), a window
 ## cyborg's signs (WindowCyborgRules), and for a wall enemy, the stretches the rules keep wall enemies off
 ## (plan.wall_rules: a Gilded Sentinel's wall section, which a window cyborg or a wall vent's Screech keeps
-## off, GildedSentinelRules.on_wall_section; their rules ran before the pass).
+## off, GildedSentinelRules.on_wall_section; their rules ran before the pass); and no cyborg or window cyborg
+## near a Heavy Cyborg (HeavyCyborgRules.rival_may_stand, task S1: its burst could hold the stream's start).
 static func _type_rules_ok(plan: Plan, probe: Dictionary) -> bool:
 	var type: String = String(probe["type"])
 	var at: float = float(probe["at"])
+	if plan.heavy_rules != null and not bool(plan.heavy_rules.call("rival_may_stand", plan.gen, probe)):
+		return false
 	if type == "cyborg" and plan.cyborg_rules != null and plan.cyborg_tuning != null:
 		var margin: float = plan.cyborg_rules.call("obstacle_margin_at", plan.cyborg_tuning, plan.gen.pace)
 		if plan.cyborg_rules.call("near_any", plan.cyborg_spans, at, margin):
