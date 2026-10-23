@@ -43,8 +43,12 @@ extends Enemy
 ## - Immune to the claws and stomps; the dash passes through it and does it no harm; other enemies' charges pass it by
 ##   (charge_can_hurt). Weapons hurt it.
 ## Numbers: HunterTuning (data/enemies/hunter.tres). Its entry's params: {"baits": [{at, lane, side, id}]}: the falling
-## gantryways its rules planned in its chase (its pillar's front, its walkway's lane, its step out's side): it comes up on
-## the side away from the next one's step out where it can (_pick_side).
+## gantryways its rules planned in its chase (its pillar's front, its walkway's lane, its pillar's push side, where its
+## rules keep the floor clear for a step out). The bait shapes how it rides (task S2's placeholder, DESIGN-TBD): it comes
+## up on the runner's far side from the next one's walkway lane, so they reach that lane stepping away from it, where they
+## could then step out of it away from it onto open floor, else on the side away from the push (_bait_side); and over a
+## bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's lane, one lane further out, so a
+## runner it followed past that lane can step back in (_run_up_bait).
 
 enum State { WAITING, APPROACH, ALONGSIDE, YIELD, LEAVING, DEAD }
 enum Slash { IDLE, WARNING, FLURRY, RECOVER }
@@ -309,6 +313,13 @@ func _alongside(delta: float) -> void:
 	if want == r and not off_floor:
 		# Never into the runner's lane: it stays where it is (they came across before it followed).
 		want = target_lane if target_lane != r else r + side
+	if not off_floor and slash != Slash.WARNING and slash != Slash.FLURRY:
+		var run_up: Dictionary = _run_up_bait()
+		if not run_up.is_empty() and want == int(run_up["lane"]) and want != r:
+			# Over a bait's run-up it keeps out of the walkway's lane (the runner's way to its pillar): one lane further out.
+			var further: int = want + signi(want - r)
+			if further >= 0 and further < n and _lane_clear_ahead(further, false):
+				want = further
 	if want < 0 or want >= n:
 		_start_yield(&"edge")
 		return
@@ -468,10 +479,10 @@ func _ease_gap(want: float, top: float, delta: float) -> void:
 
 
 ## The side it comes up on beside the runner (-1 left, 1 right; 0: none has room now): one whose lane is on the track and
-## clear ahead (where it comes into view), the side away from the next planned bait's step out first where that bait comes
-## in its chase (so the runner who steps out from under the walkway steps away from it), else the side toward the nearer
-## edge (the runner keeps the most lanes on their other side), else seeded. `arriving`: it's far behind (its lane's
-## clearness counts where it will come into view).
+## clear ahead (where it comes into view), the side the next planned bait asks for first where that bait comes in its chase
+## (_bait_side: the runner can reach the walkway's lane stepping away from it, then step out from under the walkway away
+## from it), else the side toward the nearer edge (the runner keeps the most lanes on their other side), else seeded.
+## `arriving`: it's far behind (its lane's clearness counts where it will come into view).
 func _pick_side(arriving: bool) -> int:
 	var n: int = world.geo.lane_count
 	var r: int = runner_lane()
@@ -486,15 +497,63 @@ func _pick_side(arriving: bool) -> int:
 		return options[0]
 	var bait: Dictionary = _next_bait()
 	if not bait.is_empty():
-		var away: int = -int(bait.get("side", 0))
-		if options.has(away):
-			return away
+		var wanted: int = _bait_side(bait, r)
+		if options.has(wanted):
+			return wanted
 	var room_left: int = r
 	var room_right: int = n - 1 - r
 	if room_left != room_right:
 		# Toward the nearer edge: the runner's far side is the one with more lanes.
 		return -1 if room_left < room_right else 1
 	return options[rng.randi_range(0, 1)]
+
+
+## The side of a runner in lane `r` it rides on for bait `b` (its walkway's lane and its pillar's push side, `side`): their
+## far side from the walkway's lane, so they reach that lane stepping away from it, where they'd then step out of it away
+## from it onto open floor: the push side (its rules' bait, kept clear for the push) or the other side where that's open
+## (_out_open). Else, and with the runner in the walkway's lane, the side away from the push (its rules' bait).
+func _bait_side(b: Dictionary, r: int) -> int:
+	var l: int = int(b.get("lane", -1))
+	var s: int = int(b.get("side", 0))
+	if r == l or s == 0:
+		return -s
+	var far: int = signi(r - l)
+	if -far == s or _out_open(b, -far):
+		return far
+	return -s
+
+
+## True if a runner who dashes bait `b`'s pillar can step out of its walkway's lane to side `out` onto open floor until
+## its calm stretch is over (no hole, floor cut, doodad, live fence, floor enemy, planned or in play, or solid side there:
+## lane_open), with a lane on the walkway's other side for it to ride in meanwhile.
+func _out_open(b: Dictionary, out: int) -> bool:
+	var n: int = world.geo.lane_count
+	var l: int = int(b.get("lane", -1))
+	var lane: int = l + out
+	var g: Dictionary = world.layout.gantryway_by_id(int(b.get("id", -1)))
+	if g.is_empty() or lane < 0 or lane >= n or l - out < 0 or l - out >= n:
+		return false
+	var from: float = float(g["pillar"]) - 1.0
+	var to: float = float((g.get("calm", [from, from]) as Array)[1])
+	if not lane_open(lane, from, to, true):
+		return false
+	for e: Dictionary in world.layout.enemies:
+		var at: float = float(e.get("at", -INF))
+		if int(e.get("lane", -1)) == lane and at >= from - 3.0 and at <= to + 3.0 and LevelGenerator.enemy_uses_floor(e):
+			return false
+	return true
+
+
+## The bait whose run-up the runner is in (its pillar within bait_hold_seconds of run ahead of them), or {}.
+func _run_up_bait() -> Dictionary:
+	var d: float = world.player_distance()
+	var v: float = maxf(world.player.speed, _run_speed)
+	for b: Variant in (spawn.get("params", {}) as Dictionary).get("baits", []):
+		if b is Dictionary:
+			var at: float = float((b as Dictionary).get("at", -INF))
+			if at > d and at - tuning.bait_hold_seconds * v <= d:
+				return b
+	return {}
 
 
 ## The next bait its rules planned (params "baits") that the runner hasn't passed and could reach in its chase, or {}.

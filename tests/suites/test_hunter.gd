@@ -69,6 +69,7 @@ func run() -> void:
 	await _test_flurry()
 	await _test_no_way_out()
 	await _test_bait()
+	await _test_lineup()
 	await _test_encounter()
 	await _test_weapons()
 	await _test_contacts()
@@ -651,6 +652,50 @@ func _test_bait() -> void:
 					% [_brief(r), tag])
 				check((r["faults"] as PackedStringArray).is_empty(), "its rules held %s %s" % [r["faults"], tag])
 				await sim.free_world(w)
+
+
+## Lining up a bait from the pillar's push side (5 lanes, the walkway over lane 2 pushing right, the runner in lane 3):
+## with the walkway's other side open it comes up on the runner's far side (right), they step left into the walkway's lane
+## away from it, dash the pillar and step out left, and it follows them in; with a hole on the other side it comes up on
+## the side away from the push, into the walkway's lane itself, keeps out of it over the bait's run-up (one lane further
+## out, over the hole), and the runner steps back in, dashes and steps out right, and it follows them in.
+func _test_lineup() -> void:
+	var pillar: float = 360.0
+	var dashing: float = mt.run_speed + pt.dash_speed_bonus
+	for other: String in ["open", "hole"]:
+		var tag: String = "(the walkway's other side %s)" % other
+		var layout: LevelLayout = _layout(5, {"baits": [{"at": pillar, "lane": 2, "side": 1, "id": 0}]})
+		_gantryway(layout, 2, pillar, 1)
+		if other == "hole":
+			layout.gaps.append({"lane": 1, "start": pillar - 5.0, "end": pillar + 45.0})
+		var w: RunWorld = _world(layout, 3)
+		_no_flurries(w)
+		var crushed: Array = []
+		w.director.enemy_defeated.connect(func(e: Enemy, cause: StringName) -> void:
+			if e is Hunter:
+				crushed.append(cause))
+		var sides: Array = []
+		var run_up_lanes: Array = []
+		var watch := func(ww: RunWorld) -> void:
+			var hh: Hunter = _hunter(ww)
+			if hh == null or hh.state != Hunter.State.ALONGSIDE:
+				return
+			if sides.is_empty():
+				sides.append(hh.side)
+			var d: float = ww.player.distance
+			if d > pillar - 30.0 and d < pillar - 8.0:
+				run_up_lanes.append(hh.lane)
+		var into: float = pillar - (80.0 if other == "open" else 45.0)
+		var actions: Array = [[into, &"move_left"], [pillar - 0.5 * pt.dash_duration * dashing, &"dash"],
+			[pillar + REACTION * dashing, &"move_left" if other == "open" else &"move_right"]]
+		var r: Dictionary = await _run(w, (pillar + 60.0) / mt.run_speed, actions, watch, func(_ww: RunWorld) -> bool:
+			return not crushed.is_empty())
+		var expect_side: int = 1 if other == "open" else -1
+		check(sides == [expect_side] and not run_up_lanes.has(2) and bool(r["alive"]) and crushed == [Gantryway.CRUSH_CAUSE],
+			"it comes up on the %s, out of the runner's way to the walkway's lane over its run-up (in lanes %s), and the walkway lands on it %s %s"
+			% ["runner's far side from it" if other == "open" else "side away from the push", run_up_lanes, _brief(r), tag])
+		check((r["faults"] as PackedStringArray).is_empty(), "its rules held %s %s" % [r["faults"], tag])
+		await sim.free_world(w)
 
 
 ## A whole encounter (the showcase's): 5 lanes, the runner in lane 1; it arrives, comes up on their left (away from the
