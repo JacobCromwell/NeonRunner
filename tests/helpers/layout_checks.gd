@@ -406,10 +406,26 @@ static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: Leve
 			for o: Dictionary in spots:
 				suite.check(absf(float(o["at"]) - float(e["at"])) >= t.min_spacing - 0.01,
 					"two in a block wait %.0f m apart at least %s" % [t.min_spacing, x])
-			spots.append(CentipedeRulesScript.spot_of(layout, e))
+			# A free one (the owner's answer to item 1202) has no escape proof: the block is checked without it.
+			if not CentipedeRulesScript.is_free(e):
+				spots.append(CentipedeRulesScript.spot_of(layout, e))
+		# A block holding free ones only has nothing to prove (the proof, conservative, finds no way through some blocks
+		# even empty: the rules put no checked centipede there).
+		if spots.is_empty():
+			continue
 		var found: Dictionary = CentipedeEscape.find(layout, tuning, i, spots)
 		suite.check(bool(found["ok"]), "its block stays escapable past its centipedes, the dash at %.0f s (%s) %s"
 			% [float(found["recharge"]), found["reason"], x])
+	# Free ones (item 1202): no more than the level's count, each in an open cell joined to the runner's part of the block.
+	var free: int = 0
+	for e: Dictionary in mine:
+		if CentipedeRulesScript.is_free(e):
+			free += 1
+			suite.check(["near", "way"].has(String(e["params"].get("situation", ""))),
+				"a free centipede waits in an open cell joined to the runner's part of its block (%s) %s"
+				% [e["params"].get("situation", ""), tag])
+	suite.check(free <= DebrisMaze.tuning_for(config).free_centipedes,
+		"at most %d free centipedes in the level (%d) %s" % [DebrisMaze.tuning_for(config).free_centipedes, free, tag])
 	suite.check(ambushes <= DebrisMaze.tuning_for(config).ambush_count,
 		"at most %d ambushes in the level (%d) %s" % [DebrisMaze.tuning_for(config).ambush_count, ambushes, tag])
 

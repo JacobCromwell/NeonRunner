@@ -1755,6 +1755,41 @@ Captain Cogs).
 1205. **A fix to the escape proof** (a note, no question). Its wake check was asked exactly at the wake distance's edge,
    where rounding could put it outside, so a wake could be counted a stretch late (found with the ambush). It now has a
    hair of tolerance: the proof is a little stricter.
+1195. **A runner who misses the escape's pad isn't stuck for good.** ("A section of maze that will make it so the
+   player needs to escape using the anti-grav pad.") Placeholder: the barrier past the pad's room is debris like the
+   rest of the maze, only too deep for one dash: five large pieces in every lane (32.7 m) at the Terminal's 24.6 m/s,
+   where one dash smashes up to four (`escape_pieces` 5; the code never takes fewer than one dash's smashes plus one,
+   `DebrisMaze.escape_pieces`). A runner who misses the pad stops at the barrier and needs a second dash, waiting up to
+   8 s for it, with any centipede that's awake coming for them. An unbreakable barrier would leave them with no way on
+   (the runner can't turn back). Is a long wait and a second dash the right cost of missing the pad, or should the
+   barrier be something else (a solid train car that can't be broken, with a second pad as a fallback)?
+   The owner's sketch of the escape section (read bottom to top, the runner's way; `*` debris, `A` the anti-grav pad,
+   `O` the ceiling landing, `.` open space, `C` a centipede): `|..O..|` over four rows `|*****|`, then `|..A..|`,
+   `|.****|`, two rows `|*****|`, `|.....|`, `|*****|`, `|**C**|`, `|.....|`, `|*****|`.
+   **Answered (owner, October 23, 2026):** yes, a second dash and the wait is the right cost. Recorded in GDD §5, Zone 8.
+1201. **Last Stop's count: is "12" with the ambushes or without?** ("The second level has about 8.8 centipedes ...
+   should be increased to 12.") Placeholder: `centipede_scale` 3.25 (the most a block holds: 7): about 11 regular
+   centipedes a level at 5 lanes over 12 seeds (8 to 15), plus the two ambushes, about 13 in all. Rubble Line's scale is
+   1.45 (8.8 a level against 6.75 at first). Lower Last Stop's to about 2.8 if "12" counts the ambushes.
+   **Answered (owner, October 23, 2026):** 11 regular plus the 2 ambushes is fine. Recorded in GDD §9.15.
+1202. **Centipedes still mostly walled in: relax the escape guarantee?** ("The centipedes should not be always separated
+   from the player.") Placeholder: the place weights favour the open cells (`near_weight` 0.65, `way_weight` 0.3,
+   `trapped_weight` 0.05, from 0.45, 0.3, 0.25) and each open cell offers several spots (`OPEN_SPOTS` 4, `OPEN_TRIES` 8):
+   walled-in ones fall from about 73% to about 60% in Rubble Line and 70% in Last Stop (5 lanes). Most open spots fail
+   the escape proof: every block keeps a way out that never comes within a woken centipede's reach with the dash at its
+   slowest recharge (8 s), and the open cells joined to the runner's part of the maze are few (half the blocks have
+   none). Going further means relaxing that guarantee, for example counting a dash through a centipede (which wounds it)
+   as a way past, or taking the dash as ready at a block's start, so some blocks could only be survived with the dash
+   spent on a centipede. Relax it, or keep it?
+   **Answered (owner, October 23, 2026):** relax it. The dash through a centipede, tried first, barely changed anything
+   (the maze's walls use up the dash), so the owner chose to drop the guarantee for a few centipedes a level instead:
+   the free centipedes (task O6, item 1220). Recorded in GDD §9.15.
+1206. **Endless mode and the weekly week in the Terminal.** Both copy Last Stop's maze tuning, so they inherit every
+   change: endless mode's 20-minute Terminal run goes from about 26-30 centipedes to 84-110, with 68 rows of holes across
+   every lane, 2 ambushes and 1 escape section (the ambushes and escapes counted for the whole run, not per stretch).
+   Is that the endless Terminal wanted, or should endless and the weekly week keep their own numbers (fewer centipedes,
+   ambushes and escapes spread through the run)?
+   **Answered (owner, October 23, 2026):** yes, that is fine. Recorded in GDD §9.15.
 
 ### Answered on October 23, 2026 (the owner's batch: armor comes back after any hit)
 

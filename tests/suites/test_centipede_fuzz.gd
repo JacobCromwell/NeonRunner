@@ -51,7 +51,8 @@ func run() -> void:
 				var build: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
 				var own: Dictionary = {}
 				for e: Dictionary in layout.enemies:
-					if String(e["type"]) == RulesScript.FEATURE:
+					# A free one (item 1202) has no escape proof to test: left out.
+					if String(e["type"]) == RulesScript.FEATURE and not RulesScript.is_free(e):
 						var at_block: int = int(e["params"]["block"])
 						if not own.has(at_block):
 							own[at_block] = []

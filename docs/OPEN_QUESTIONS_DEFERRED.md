@@ -6856,3 +6856,13 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    before. The shop's armor texts now say "back {seconds} s after a hit" (`data/shop/catalog.json`). Review:
    `screens_showcase.tscn -- --screen=hud_armor --tier=3 --worn`.
 
+### Folded on October 23, 2026 (task O6, the Terminal's free centipedes)
+
+**The Terminal's free centipedes** (task O6, the owner's answer to item 1202, October 23, 2026: drop the escape guarantee for some; GDD §9.15)
+1220. **How many free centipedes, and where.** Placeholder: 2 in Rubble Line and 3 in Last Stop
+   (`free_centipedes` in `data/tuning/terminal_maze_*.tres`), one a block spread through the level from the
+   centipedes' start, each in an open cell joined to the runner's part of its block, on the block's quickest way as
+   often as `way_weight` says, else beside it ("near"), with no escape proof. The other centipedes keep the guarantee
+   with them left out of it. The levels' scales went down to keep the totals (`centipede_scale` 1.15 and 2.3): at 5
+   lanes over 12 seeds Rubble Line about 8.8 a level, Last Stop about 11.5 plus its two ambushes; walled-in ones fell to
+   about 43% in both (60-70% before). Right number and places?
