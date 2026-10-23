@@ -6,7 +6,9 @@ extends Node
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
 ## failed, match_results (the volleyball match's results; --score=4-1), slot, cinematic, demo_end, hud; hud_armor (the
 ## HUD's armor through its states, GDD §4: up until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
-## the upgrade's tier N, default 0: the free armor); hud_last_hit (the "one hit from death" cue, GDD §4: the
+## the upgrade's tier N, default 0: the free armor; --worn with a tier of 1 or more takes one hit it survives instead,
+## task S3: its icon stays lit, one hit down, while the ring fills, and it's back whole); hud_last_hit (the "one hit
+## from death" cue, GDD §4: the
 ## free armor breaks at 1 s (a shield still held: nothing shows), the shield at 2 s and then the screen's edges
 ## pulse red with the siren and hold a dim edge until the armor is back at 6 s; --reduced-flashing shows the
 ## steady edge instead of pulses, and --hold stops with the edge steady, for a --shot at a phone's shape);
@@ -238,7 +240,9 @@ func _play(step_id: String, seconds: float) -> void:
 
 ## The HUD's armor through its states on City 1 (god mode): up, then broken by enemy attacks at 2 s
 ## (the runner flashes), its ring a third full at 2.5 s and filling (the wait sped up so a short capture
-## shows it), and back at about 4.3 s, when the icon flashes and armor_back plays.
+## shows it), and back at about 4.3 s, when the icon flashes and armor_back plays. With --worn (and a
+## tier of 1 or more) one hit it survives at 2 s instead (GDD §4, task S3: any hit starts the wait): the
+## icon stays lit, one hit down, while its ring fills, and it's back whole at about 4.3 s.
 func _hud_armor() -> void:
 	var tier: int = 0
 	for arg: String in OS.get_cmdline_user_args():
@@ -250,8 +254,9 @@ func _hud_armor() -> void:
 	var shot := Hazard.new()
 	shot.hazard_name = "showcase shot"
 	shot.is_enemy_attack = true
+	var left: int = p.armor_state.max_hits - 1 if OS.get_cmdline_user_args().has("--worn") else 0
 	p.god_mode = false
-	while p.armor > 0:
+	while p.armor > left:
 		p.invulnerable_left = 0.0
 		p.receive_hit(shot)
 	p.god_mode = true

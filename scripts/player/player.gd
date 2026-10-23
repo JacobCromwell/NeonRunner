@@ -983,6 +983,8 @@ func fall_base() -> float:
 ## into the holes, the lit wall's run carries them across; from the floor's height, as a step onto the wall, and
 ## off the wall by its `until`, over the landing floor). It never pulls them down.
 func _pull_up(cause: StringName) -> void:
+	# Task S3: pulled out of a pit, a move away from a wall they came off before is a lane switch again.
+	_release_grace_left = 0.0
 	var to: Dictionary = {}
 	if grapple_save.is_valid():
 		var answer: Variant = grapple_save.call(self, cause)

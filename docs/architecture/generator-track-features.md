@@ -536,6 +536,16 @@ frame on the wall: in a gap it leaves the wall into the outer lane with no extra
 ScoreKeeper ends the wall run). A wall entry (move or ramp) inside a gap is refused with `wall_missing` and no
 bump. Past the gap, the usual move input steps back onto the wall. `HintDirector` introduces them through the
 `wall_gap` hint. `test_wall_gaps` covers all of this.
+**Coming off a wall moves one lane** (task S3; the owner, October 23, 2026: on The Hush's extended wall runs a move to
+come off the wall threw the runner two lanes, into the hole beside a platform). A move away from the wall while on it
+is a wall jump into the outer lane. When the game takes the runner off the wall itself (`_leave_wall` with
+`wall_exit`, `wall_gap_drop` or `wall_blocked`: the run's end, a gap or an extended wall run's notch, a repel), the
+first move away from it made before they land, within `MovementTuning.wall_release_grace` (0.4 s), is that dismount
+and moves them no further (`Player._on_move`, `_released_side`, `_release_grace_left`; cleared on landing, a wall
+entry, a pull out of a pit, a teleport, a revive). Before, it was a lane switch from the outer lane: a notch drops every standard wall run
+onto its platform just where the move is due. A second move, one after landing, a move back toward the wall and a
+wall jump of the runner's own are as they were. DESIGN-TBD (`docs/questions/s3.md`): the window. `test_movement`
+(ordinary wall runs, a ramp's, a side wall gap) and `test_extended_wall_runs` (The Hush) cover it.
 
 **A level's own wall gaps, and the Beach's open walls** (task D10b; the owner, October 9, 2026: the Beach should
 "feel more open ... much longer sections where there aren't sidewalls", its walls appearing "about 50% of the
@@ -1118,7 +1128,8 @@ Sentinel Row's (none: `GOLDEN_FIELDS`). Every level without them is built exactl
   wall the other wall opens over its crossing, from its run-in to its far edge (`open_wall_of`), so the runner reads from
   the run-in which way to go; and each lit wall opens for `platform_notch_seconds` (0.1 s, about 2.4 m) at each
   platform's near end, so a runner still on the wall there (claws' longer run, the dash) drops onto the platform rather
-  than being carried into the next hole (a press toward the wall does nothing while on it); shorter than the drop off
+  than being carried into the next hole (a press toward the wall does nothing while on it; a move away made as the
+  notch drops them is that dismount, one lane, task S3: Wall gaps, Coming off a wall); shorter than the drop off
   the wall, so a step back on as soon as the runner lands is never refused. Both walls (`wall_path`: from
   `wall_clear_seconds` before its run-in) keep everything wall-side off, as an ordinary one's lit wall does
   (`wall_keep_outs_for`, `on_wall_section`). `problem()` checks its shape, its platforms, its holes lane by lane, both

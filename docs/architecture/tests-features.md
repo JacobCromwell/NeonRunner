@@ -539,7 +539,11 @@ a floor route that steps onto the wall from each stretch; none in any other leve
 a triple on either wall and a double with both lit (on each wall), stepping on early, midway or late in each stretch,
 cross on as many wall runs and land on the landing floor; staying on the platform, jumping from its end and heading for
 the open wall all fall in; the grapple's save over a triple's second hole leaves the runner on the platform after it,
-to cross.
+to cross. At The Hush's own speed (task S3, the owner's October 23 report of being thrown two lanes coming off the
+wall): stepping on early or late, a move away from the wall around each platform's near end (on the wall before it,
+a wall jump; at it and as the notch drops the runner) lands them on the platform one lane off the wall, and they cross;
+so does one just as the last wall run ends; with `wall_release_grace` 0 (the old rule) the same move falls into the
+hole beside the platform.
 `test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
 run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
 leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit
