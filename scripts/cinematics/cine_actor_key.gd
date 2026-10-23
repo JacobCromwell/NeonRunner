@@ -13,7 +13,7 @@ extends CineKey
 ## reaching up), `climb` (out over an edge, its hands holding the key's position) and `get_in` (into a low car
 ## on its right, through an open door, to sitting); `walk` (a walk at walking pace, standing at ease when
 ## it stops); for the Terminal's intro, `wipe` (the right arm wiping a board in front of it in strokes, over `progress`),
-## `scramble` (up loose rubble on hands and feet, its limbs following the distance covered) and `squeeze` (head first into a low
+## `crawl` (up loose rubble on hands and knees, its limbs following the distance covered; `progress` is the slope, CinePoses.crawl_progress) and `squeeze` (head first into a low
 ## gap, from a crouch to lying prone, crawling as it moves, over `progress`); and, for the Terminal's outro, `brace` (feet
 ## apart, leaning in with its arms forward, to heave at something in front of it: progress 0 standing at ease to 1 fully
 ## braced) and `hands_up` (hands thrown up in frustration, held, then slumping back to standing: progress 0-1). A cyborg:

@@ -18,6 +18,8 @@ extends Node3D
 ##   --once               quits when it ends instead of playing it again
 ##   --from=S             starts S seconds in (steps its clock there first), for renders of a later moment
 ##   --cam=px,py,pz,tx,ty,tz[,fov]  holds the camera there (track space) instead of the cinematic's own, for close-ups of a set
+##   --follow=<actor id>  with --cam: the camera rides with that actor (e.g. runner) and --cam's two points are offsets from it
+##                        (track axes: x across the street, y up, z along it), for close-ups of a pose
 ##   --stats              prints the frame's draw calls, objects and primitives (the renderer's own count) every 10 frames
 ## Each event is printed with its time and frame as it fires, to find the matching frames.
 
@@ -110,6 +112,9 @@ func _start() -> void:
 			key.position = Vector3(float(v[0]), float(v[1]), float(v[2]))
 			key.target = Vector3(float(v[3]), float(v[4]), float(v[5]))
 			key.fov = float(v[6]) if v.size() > 6 else 55.0
+			if _opt("follow", "") != "":
+				key.follow = StringName(_opt("follow", ""))
+				key.watch = StringName(_opt("follow", ""))
 			var keys: Array[CineCameraKey] = [key]
 			seq.playing.camera = keys
 	if seq != null and from > 0.0:
