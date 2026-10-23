@@ -19,8 +19,12 @@ extends TestSuite
 ##     armor or the shield absorbs a flurry, one hit for all of it; no flurry without a lane away from it to step into (a
 ##     runner by the edge, a hole in their other lane), and it hovers over holes in its own lane slashing as ever;
 ##   - the gantryway bait at 3, 5 and 6 lanes, both ways round: the runner dashes the pillar and steps out away from it,
-##     it follows into the walkway's lane and the walkway lands on it (the runner's kill); and a whole encounter: its
-##     flurry dodged into the walkway's lane, then the bait;
+##     it follows into the walkway's lane and the walkway lands on it (the runner's kill), a late step out (0.8 s after
+##     the break) too; and whole encounters at Specimen Vault's own leads, its flurries on (every lead, start lane and
+##     push both ways round, and the step-out window: test_hunter_baits);
+##   - its body never takes a dodge from another attack: a cyborg's burst at a runner by the edge with it beside them, it
+##     drops back so they step into its lane; no flurry while a cyborg's gun is on at them; none in a fenced ceiling's
+##     pick, nor into a lane with a trap pad;
 ##   - weapons (the owner: its staying beside the runner makes it "difficult ... to damage ... with laser attacks"): auto-fire,
 ##     laser and missiles, never picks it beside the runner, only clearly ahead (target_ahead), and over a whole chase beside
 ##     a runner auto-firing laser tier 1 it's never picked; 25 laser tier 1 shots (23 health,
@@ -34,7 +38,8 @@ extends TestSuite
 ## - Placement (hunter_rules.gd) on Specimen Vault at 3, 5 and 6 lanes: at least one, after its feature's start, each with a
 ##   falling gantryway in its chase whose Hunter lane is clear, never two at once, each arriving calm (no other attack
 ##   planned there); the same every build; none where the level doesn't list it.
-## - Its warning mark and Reduced flashing; its warm-up look (no physics object); its data (the hint, its sounds).
+## - Its warning mark and Reduced flashing; the sweep of its cuts (its cuts' box always inside what's drawn, CLAUDE.md
+##   principle 4) and its lunge; its warm-up look (no physics object); its data (the hint, its sounds).
 
 const HunterRules := preload("res://scripts/enemies/hunter_rules.gd")
 const GantrywayRules := preload("res://scripts/enemies/gantryway_rules.gd")
@@ -72,18 +77,22 @@ func run() -> void:
 	await _test_flurry()
 	await _test_no_way_out()
 	await _test_bait()
+	await _test_late_step_out()
 	await _test_lineup()
 	await _test_campaign_baits()
 	await _test_encounter()
+	await _test_small_attacks()
 	await _test_weapons()
 	await _test_laser_chase()
 	await _test_contacts()
 	await _test_steering()
 	await _test_ceiling()
+	await _test_fenced_ceiling()
 	await _test_teleport()
 	await _test_give_up()
 	await _test_turns()
 	await _test_mark()
+	await _test_sweep()
 	_test_placement()
 	await _test_warm_up()
 	_test_data()
@@ -345,10 +354,10 @@ static func _blades_top(m: HunterModel) -> float:
 
 
 ## Beside the runner its whole look is on screen in the chase camera's resting view (EnforcerTruckView: the run
-## camera's arithmetic), calm, warning or cutting, its torso turned toward them, at 3, 5 and 6 lanes, every runner lane
-## and either side (each of its parts as a box round it); it never hides the runner; calm, it hides nothing of the floor
-## of their lane and of their other lane (the one they'd step into) from them to 20 m ahead, and warning or cutting
-## nothing of their other lane's.
+## camera's arithmetic), calm, warning or cutting (lunging toward them), its torso turned toward them, at 3, 5 and 6
+## lanes, every runner lane and either side (each of its parts as a box round it); it never hides the runner; calm, it
+## hides nothing of the floor of their lane and of their other lane (the one they'd step into) from them to 20 m ahead,
+## and warning or cutting nothing of their other lane's.
 func _test_view() -> void:
 	var m := HunterModel.new()
 	tree.root.add_child(m)
@@ -361,6 +370,9 @@ func _test_view() -> void:
 			m.cut = 0.3 if pose == 2 else -1.0
 			m.lean = 0.32 if pose == 2 else 0.0
 			m.alert = pose > 0
+			# Cutting, it lunges toward the runner's lane (the lane it cuts: Hunter._place).
+			m.reach = 1.0 if pose == 2 else 0.0
+			m.reach_dir = float(-side)
 			# Its torso turned back toward the runner beside it (Hunter._place).
 			m.face_yaw = atan2(side * 2.4, -t.alongside_ahead)
 			m.animate(0.0)
@@ -659,6 +671,44 @@ func _test_bait() -> void:
 				await sim.free_world(w)
 
 
+## A late step out (task S2's review: the walkway's own window): the runner steps out from under the falling walkway
+## LATE_STEP_OUT seconds after the pillar breaks, still in time; it follows them into the walkway's lane at once, quickly
+## (walkway_switch_seconds), and the walkway lands on it (5 lanes, both ways round; every step-out of the window at 3, 5
+## and 6 lanes: test_hunter_baits).
+const LATE_STEP_OUT: float = 0.8
+
+func _test_late_step_out() -> void:
+	var pillar: float = 330.0
+	var dashing: float = mt.run_speed + pt.dash_speed_bonus
+	for side: int in [-1, 1]:
+		var tag: String = "(5 lanes, the walkway over lane 2, stepping out %s)" % ("left" if side < 0 else "right")
+		var layout: LevelLayout = _layout(5, {"baits": [{"at": pillar, "lane": 2, "side": side, "id": 0}]})
+		_gantryway(layout, 2, pillar, side)
+		var w: RunWorld = _world(layout, 2)
+		_no_flurries(w)
+		var crushed: Array = []
+		w.director.enemy_defeated.connect(func(e: Enemy, cause: StringName) -> void:
+			if e is Hunter:
+				crushed.append(cause))
+		var times: Array = [-1.0, -1.0]
+		w.track.gantryway_fell.connect(func(_g: Gantryway) -> void: times[0] = w.level_time())
+		var quick: Array = [false]
+		var bot := func(ww: RunWorld) -> void:
+			if times[1] < 0.0 and times[0] >= 0.0 and ww.level_time() - float(times[0]) >= LATE_STEP_OUT - 0.001:
+				times[1] = ww.level_time()
+				RunSim.act(ww.player, &"move_left" if side < 0 else &"move_right")
+			var hh: Hunter = _hunter(ww)
+			if hh != null and times[1] >= 0.0:
+				quick[0] = quick[0] or is_equal_approx(float(hh.get(&"_switch_seconds")), t.walkway_switch_seconds)
+		var r: Dictionary = await _run(w, (pillar + 60.0) / mt.run_speed, [[pillar - 0.5 * pt.dash_duration * dashing, &"dash"]],
+			bot, func(_ww: RunWorld) -> bool: return not crushed.is_empty())
+		check(times[1] >= 0.0 and bool(r["alive"]) and crushed == [Gantryway.CRUSH_CAUSE] and quick[0],
+			"a runner who steps out %.1f s after the pillar breaks lives, and it follows them in at once (in %.2f s) and the walkway lands on it %s %s"
+			% [LATE_STEP_OUT, t.walkway_switch_seconds, _brief(r), tag])
+		check((r["faults"] as PackedStringArray).is_empty(), "its rules held %s %s" % [r["faults"], tag])
+		await sim.free_world(w)
+
+
 ## Lining up a bait from the pillar's push side (5 lanes, the walkway over lane 2 pushing right, the runner in lane 3):
 ## with the walkway's other side open it comes up on the runner's far side (right), they step left into the walkway's lane
 ## away from it, dash the pillar and step out left, and it follows them in; with a hole on the other side it comes up on
@@ -821,29 +871,151 @@ static func _moved(item: Dictionary, offset: float) -> Dictionary:
 	return moved
 
 
-## A whole encounter (the showcase's): 5 lanes, the runner in lane 1; it arrives, comes up on their left (away from the
-## bait's step out), and warns; the runner steps away from it into the walkway's lane; it follows; then the bait: the
-## pillar dashed, the step out, and the walkway lands on it.
+## Whole encounters at Specimen Vault's own leads (task S2's review): every bait of the campaign's builds at 3, 5 and 6
+## lanes, from its Hunter's arrival to its pillar, on a plain track, its flurries on; the runner starts in the lane its
+## Hunter rides in at the bait (beside the walkway's lane away from the push) and plays the bait as the bait runner
+## (_bait_runner); the walkway lands on it, the runner alive. Every lead, start lane and push: test_hunter_baits.
 func _test_encounter() -> void:
-	var pillar: float = 250.0
+	var campaign := load(CAMPAIGN_PATH) as Campaign
+	var takes: int = 0
+	var flurries: int = 0
+	for lanes: int in LANE_COUNTS:
+		var config: LevelConfig = campaign.configure(campaign.step("ice_lab/3"), lanes)
+		var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+		for h: Dictionary in HunterRules.hunters_in(gen.layout):
+			for b: Dictionary in (h["params"] as Dictionary).get("baits", []):
+				var lead: float = (float(b["at"]) - float(h["at"])) / gen.speed
+				var lane: int = int(b["lane"])
+				var side: int = int(b["side"])
+				var pillar: float = ARRIVE + lead * mt.run_speed
+				var tag: String = "(Specimen Vault, %d lanes: its bait %.1f s of run after it arrives, over lane %d pushing %s)" % [
+					lanes, lead, lane, "left" if side < 0 else "right"]
+				var layout: LevelLayout = _layout(lanes, {"baits": [{"at": pillar, "lane": lane, "side": side, "id": 0}]})
+				layout.enemies[0]["seed"] = int(h.get("seed", 7))
+				_gantryway(layout, lane, pillar, side)
+				var w: RunWorld = _world(layout, lane - side)
+				var crushed: Array = []
+				w.director.enemy_defeated.connect(func(e: Enemy, cause: StringName) -> void:
+					if e is Hunter:
+						crushed.append(cause))
+				var state: Dictionary = {"pillar": pillar, "lane": lane}
+				w.track.gantryway_fell.connect(func(_g: Gantryway) -> void: state["broke"] = w.level_time())
+				var r: Dictionary = await _run(w, (pillar + 60.0) / mt.run_speed, [], _bait_runner(state), func(_ww: RunWorld) -> bool:
+					return not crushed.is_empty())
+				var warns: int = _events(r["history"], "warn").size()
+				flurries += warns
+				check(bool(r["alive"]) and crushed == [Gantryway.CRUSH_CAUSE],
+					"a whole encounter: %d flurries dodged, the walkway's lane taken, the pillar dashed and the step out, and the walkway lands on it %s %s"
+					% [warns, _brief(r), tag])
+				check((r["faults"] as PackedStringArray).is_empty(), "its rules held through the encounter %s %s" % [r["faults"], tag])
+				takes += 1
+				await sim.free_world(w)
+	check(takes >= 4 and flurries >= 1, "Specimen Vault's encounters were played (%d, %d flurries on the way)" % [takes, flurries])
+
+
+## The bait runner (test_hunter_baits' and the review's probe), its state in `state` (pillar; lane: the walkway's): one
+## lane away from the Hunter a reaction into each warning; the walkway's lane once the pillar is 5 s of run ahead (in
+## sight), a lane at a time 0.3 s apart at most, never during a flurry; the pillar dashed; out from under the walkway away
+## from the Hunter a reaction after it breaks.
+func _bait_runner(state: Dictionary) -> Callable:
 	var dashing: float = mt.run_speed + pt.dash_speed_bonus
-	var layout: LevelLayout = _layout(5, {"baits": [{"at": pillar, "lane": 2, "side": 1, "id": 0}]})
-	layout.enemies[0]["at"] = 40.0
-	_gantryway(layout, 2, pillar, 1)
-	var w: RunWorld = _world(layout, 1)
-	var crushed: Array = []
-	w.director.enemy_defeated.connect(func(e: Enemy, cause: StringName) -> void:
-		if e is Hunter:
-			crushed.append(cause))
-	var actions: Array = [[pillar - 0.5 * pt.dash_duration * dashing, &"dash"], [pillar + REACTION * dashing, &"move_right"]]
-	var r: Dictionary = await _run(w, (pillar + 60.0) / mt.run_speed, actions, _dodger({}), func(_ww: RunWorld) -> bool:
-		return not crushed.is_empty())
-	var warns: Array = _events(r["history"], "warn")
-	check(bool(r["alive"]) and warns.size() == 1 and _events(r["history"], "cut").size() == 1 and crushed == [Gantryway.CRUSH_CAUSE],
-		"a whole encounter: one flurry dodged into the walkway's lane, its next held by the bait's run-up, then the walkway lands on it %s"
-		% _brief(r))
-	check((r["faults"] as PackedStringArray).is_empty(), "its rules held through the encounter %s" % [r["faults"]])
-	await sim.free_world(w)
+	return func(w: RunWorld) -> void:
+		var p: Player = w.player
+		var h: Hunter = _hunter(w)
+		if h == null or not h.alive:
+			return
+		var pillar: float = float(state["pillar"])
+		var lane: int = int(state["lane"])
+		var away: StringName = &"move_left" if h.side > 0 else &"move_right"
+		if h.slash == Hunter.Slash.WARNING and int(state.get("dodged", 0)) != h.flurries and float(h.get(&"_slash_t")) >= REACTION:
+			state["dodged"] = h.flurries
+			RunSim.act(p, away)
+			return
+		if float(state.get("broke", -1.0)) >= 0.0:
+			if not bool(state.get("out", false)) and w.level_time() - float(state["broke"]) >= REACTION:
+				state["out"] = true
+				RunSim.act(p, away)
+			return
+		var in_sight: bool = p.distance >= pillar - 5.0 * mt.run_speed and p.distance < pillar
+		if in_sight and h.slash == Hunter.Slash.IDLE and p.lane != lane and w.level_time() >= float(state.get("next_move", 0.0)):
+			state["next_move"] = w.level_time() + 0.3
+			RunSim.act(p, &"move_right" if p.lane < lane else &"move_left")
+		if not bool(state.get("dashed", false)) and p.lane == lane and p.distance >= pillar - 0.5 * pt.dash_duration * dashing:
+			state["dashed"] = true
+			RunSim.act(p, &"dash")
+
+
+# --- Other enemies' attacks -------------------------------------------------------------------------
+
+## Its body never takes a dodge from another attack (task S2's review), on a cyborg's burst (CyborgGun: every gun built on
+## it, the window cyborg's, the barnacle turret's, the Heavy Cyborg's gatling, counts the same):
+## - a runner by the edge with it beside them (its lane their only other lane): as the cyborg's gun charges it drops back
+##   out of that lane (making room), and the runner steps into it as the burst flies and lives, never bumped; it comes up
+##   beside them again after; the same take without it lives too;
+## - no flurry starts while a cyborg's gun is charging or firing at the runner (one dodge can't answer both).
+func _test_small_attacks() -> void:
+	for with_hunter: bool in [true, false]:
+		var tag: String = "(5 lanes, the runner in lane 4, %s)" % ("it beside them" if with_hunter else "no Hunter")
+		var layout := RunSim.layout(5, 1600.0)
+		if with_hunter:
+			layout.enemies.append({"type": "hunter", "at": ARRIVE, "lane": 0, "side": 0, "seed": 7, "params": {}})
+		layout.enemies.append({"type": "cyborg", "at": 330.0, "lane": 2, "side": 0, "seed": 21,
+			"params": {"stand": true, "fires": true, "panic": false, "host": false}})
+		var w: RunWorld = _world(layout, 4)
+		_no_flurries(w)
+		# [dodged, the Hunter beside them as the gun began to charge, its lane as they dodged]
+		var seen: Array = [false, false, -1]
+		var bot := func(ww: RunWorld) -> void:
+			var cy: Cyborg = null
+			for e: Variant in ww.director.active:
+				if is_instance_valid(e) and e is Cyborg:
+					cy = e as Cyborg
+			if cy == null or seen[0]:
+				return
+			var hh: Hunter = _hunter(ww)
+			if cy.gun.state == CyborgGun.State.CHARGING and not seen[1]:
+				seen[1] = hh != null and hh.state == Hunter.State.ALONGSIDE and hh.lane == 3
+			if cy.gun.state == CyborgGun.State.FIRING:
+				seen[0] = true
+				seen[2] = hh.lane if hh != null and hh.gap < t.blocker_length else -1
+				RunSim.act(ww.player, &"move_left")
+		var r: Dictionary = await _run(w, 420.0 / mt.run_speed, [], bot)
+		var bumped: bool = (r["events"] as Array).any(func(e: Array) -> bool: return e[0] == &"lane_blocked")
+		check(bool(seen[0]) and bool(r["alive"]) and not bumped and w.player.lane == 3,
+			"a runner by the edge steps one lane over from a cyborg's burst and lives, never bumped %s %s" % [_brief(r), tag])
+		if with_hunter:
+			var room: Array = _events(r["history"], "yield:make_room")
+			check(bool(seen[1]) and not room.is_empty() and int(seen[2]) != 3 and _events(r["history"], "alongside").size() >= 2,
+				"beside them as the cyborg's gun charges, it drops back out of the lane they need (%s), and comes up again after %s %s"
+				% [room, _brief(r), tag])
+		await sim.free_world(w)
+	# No flurry while a cyborg's gun is on at the runner: cyborgs in the edge lanes ahead, firing as the runner passes.
+	var layout2 := _layout(5)
+	for k: int in 4:
+		layout2.enemies.append({"type": "cyborg", "at": 200.0 + 110.0 * k, "lane": 0 if k % 2 == 0 else 4, "side": 0,
+			"seed": 30 + k, "params": {"stand": true, "fires": true, "panic": false, "host": false}})
+	var w2: RunWorld = _world(layout2, 2)
+	w2.player.god_mode = true
+	# Frames a gun was on, flurries begun, flurries begun with a gun on before and after that step, a gun on last frame.
+	var counts: Array = [0, 0, 0, false]
+	var last_flurries: Array = [0]
+	var watch := func(ww: RunWorld) -> void:
+		var on: bool = false
+		for e: Variant in ww.director.active:
+			if is_instance_valid(e) and e is Cyborg and (e as Cyborg).alive and (e as Cyborg).gun.is_attacking():
+				on = true
+		var hh: Hunter = _hunter(ww)
+		if hh != null and hh.flurries != last_flurries[0]:
+			last_flurries[0] = hh.flurries
+			counts[1] += 1
+			counts[2] += 1 if bool(counts[3]) and on else 0
+		counts[0] += 1 if on else 0
+		counts[3] = on
+	var r2: Dictionary = await _run(w2, 640.0 / mt.run_speed, [], watch)
+	check(int(counts[0]) > 30 and int(counts[1]) >= 2 and int(counts[2]) == 0,
+		"no flurry starts while a cyborg's gun is charging or firing at the runner (%d flurries, %d begun with a gun on; guns on %d frames) %s"
+		% [counts[1], counts[2], counts[0], _brief(r2)])
+	await sim.free_world(w2)
 
 
 # --- Weapons and contacts -------------------------------------------------------------------------
@@ -1088,6 +1260,69 @@ func _test_ceiling() -> void:
 	await sim.free_world(w)
 
 
+## A fenced ceiling (task S2's review): no flurry plays out in its pick (where the runner reads which pad is the trap,
+## LevelLayout.fenced_pick_between, as a heli drone's barrage), whether its trap pad lies in the lane their dodge would
+## take or not, flurries again once it's passed, the runner (dodging each) alive; and a lane with a trap pad is never
+## open to step into (lane_open): a pad marked unsafe, or any pad under a ceiling with a fence in its lane ahead of it,
+## while a safe pad past the fences, or no pad, leaves the lane open.
+func _test_fenced_ceiling() -> void:
+	var lanes: int = 5
+	var pad: float = 300.0
+	var pick := Vector2(pad - 25.0, pad + 5.0)
+	var reach: float = t.attack_seconds() * mt.run_speed + 2.0
+	for trap_lane: int in [2, 3]:
+		var tag: String = "(the trap pad in lane %d, %s)" % [trap_lane, "the lane a dodge takes" if trap_lane == 2 else "another lane"]
+		var layout: LevelLayout = _layout(lanes)
+		layout.pads.append({"lane": trap_lane, "at": pad, "fenced": "unsafe"})
+		var hull: Dictionary = LevelLayout.make_hull(pad - 3.0, pad + 80.0, Vector2i(trap_lane, trap_lane), lanes)
+		hull["pick"] = [pick.x, pick.y]
+		layout.hulls.append(hull)
+		layout.ceiling_fences.append({"lane": trap_lane, "at": pad + 20.0})
+		var w: RunWorld = _world(layout, 1)
+		# Its first flurry is the one forced in the pick (below); the runner's lane holds no pad.
+		_no_flurries(w)
+		var forced: Array = [false]
+		var dodge: Callable = _dodger({})
+		var bot := func(ww: RunWorld) -> void:
+			dodge.call(ww)
+			var hh: Hunter = _hunter(ww)
+			# Its next flurry due as the runner comes into the pick: it holds it until the pick has passed.
+			if hh != null and not forced[0] and hh.state == Hunter.State.ALONGSIDE and hh.slash == Hunter.Slash.IDLE \
+					and ww.player.distance >= pick.x + 2.0:
+				forced[0] = true
+				hh.set(&"_next_slash", hh.chase_time)
+		var r: Dictionary = await _run(w, (pad + 70.0) / mt.run_speed, [], bot)
+		var warns: Array = _events(r["history"], "warn")
+		var inside: Array = warns.filter(func(e: Array) -> bool: return float(e[0]) + reach >= pick.x and float(e[0]) - 1.0 <= pick.y)
+		var after: Array = warns.filter(func(e: Array) -> bool: return float(e[0]) > pick.y)
+		check(forced[0] and inside.is_empty() and not after.is_empty() and bool(r["alive"]),
+			"no flurry plays out in a fenced ceiling's pick (%d warned there), flurries again after it (%d), the runner alive %s %s"
+			% [inside.size(), after.size(), _brief(r), tag])
+		await sim.free_world(w)
+	# Which lanes are open to step into by the pads.
+	var layout: LevelLayout = _layout(lanes)
+	layout.hulls.append(LevelLayout.make_hull(pad - 3.0, pad + 80.0, Vector2i(2, 3), lanes))
+	layout.ceiling_fences.append_array([{"lane": 2, "at": pad + 20.0}, {"lane": 3, "at": pad + 20.0}])
+	layout.pads.append({"lane": 2, "at": pad})
+	layout.pads.append({"lane": 3, "at": pad + 30.0, "fenced": "safe"})
+	layout.pads.append({"lane": 1, "at": pad, "fenced": "unsafe"})
+	var w: RunWorld = _world(layout, 1)
+	w.player.god_mode = true
+	var r: Dictionary = await _until_alongside(w)
+	var h: Hunter = r["hunter"]
+	if h == null:
+		check(false, "a Hunter beside the runner (the pads' lanes)")
+		await sim.free_world(w)
+		return
+	var near := Vector2(pad - 5.0, pad + 5.0)
+	var by_lane: Array = [h.lane_open(2, near.x, near.y, true), h.lane_open(1, near.x, near.y, true),
+		h.lane_open(3, pad + 25.0, pad + 35.0, true), h.lane_open(4, near.x, near.y, true), h.lane_open(2, near.x, near.y, false)]
+	check(by_lane == [false, false, true, true, false],
+		"a lane with a trap pad is never open to step into (a pad under a fence, a pad marked unsafe: %s), a safe pad's or a padless lane is (%s)"
+		% [by_lane.slice(0, 2), by_lane.slice(2, 4)])
+	await sim.free_world(w)
+
+
 ## A teleporter's entry as its rules make one (test_teleporters' _entry): its pad in `lane` at `front`, one output pad in
 ## `out_lane` `hop` metres on.
 func _teleporter(layout: LevelLayout, lane: int, front: float, out_lane: int, hop: float) -> Dictionary:
@@ -1239,6 +1474,86 @@ func _test_mark() -> void:
 	check(mat.emission.r > 0.9 and mat.emission.g < 0.2 and mat.albedo_color.a < 1.0, "its mark is the floor warnings' see-through red")
 
 
+## How far inside the drawn sweep its cuts' box stays (metres): the box a little smaller than the look.
+const SWEEP_SLACK: float = 0.05
+
+## Its cuts are drawn as far as they reach (task S2's review; CLAUDE.md principle 4: a hitbox no bigger than the look): the
+## see-through red sweep of its blades over the lane it cuts, out over the warning's last TRAIL_IN and whole through the
+## cuts, its rig lunging that way. On every frame its cuts' box is live, every corner of the box lies inside the sweep (its
+## fan's radius, angle and depth: Hunter.slash_fan) with SWEEP_SLACK to spare. The sweep shows only then, only grows (no
+## pulse, no flicker), and plays the same with Reduced flashing on and off; it's the blades' see-through red, steady.
+func _test_sweep() -> void:
+	var plays: Array = []
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		var tag: String = "(Reduced flashing %s)" % ("on" if reduced else "off")
+		var w: RunWorld = _world(_layout(5), 2)
+		w.player.god_mode = true
+		var play: Array = []
+		var faults: PackedStringArray = []
+		var counts: Array = [0, 0, 0]  # frames its box was live, frames the sweep showed, frames it lunged its whole way
+		var last: Array = [-1, 0.0]  # the flurry the sweep last showed for, how far out it was then
+		var watch := func(ww: RunWorld) -> void:
+			var hh: Hunter = _hunter(ww)
+			if hh == null or not hh.alive:
+				return
+			var fan: Dictionary = hh.slash_fan()
+			var st: float = float(hh.get(&"_slash_t"))
+			var due: bool = hh.slash == Hunter.Slash.FLURRY \
+				or (hh.slash == Hunter.Slash.WARNING and st > t.warning_seconds - Hunter.TRAIL_IN + 0.0001)
+			play.append([hh.flurries, int(hh.slash), not fan.is_empty(), snappedf(float(fan.get("share", 0.0)), 0.001)])
+			if due != not fan.is_empty() and faults.size() < 10:
+				faults.append("the sweep %s %s %.3f s into it" % ["missing" if due else "showing", Hunter.Slash.keys()[hh.slash], st])
+			if fan.is_empty():
+				return
+			counts[1] += 1
+			var share: float = float(fan["share"])
+			if int(last[0]) == hh.flurries and share < float(last[1]) - 0.0001 and faults.size() < 10:
+				faults.append("the sweep shrank from %.2f to %.2f (a pulse)" % [last[1], share])
+			last[0] = hh.flurries
+			last[1] = share
+			var toward: float = signf(ww.geo.lane_x(hh.slash_lane) - hh.global_position.x)
+			if float(fan["dir"]) != toward and faults.size() < 10:
+				faults.append("the sweep faces away from the lane it cuts")
+			if hh.slash == Hunter.Slash.FLURRY:
+				counts[2] += 1 if absf(hh.model.rig.position.x - HunterModel.LUNGE * toward) < 0.01 else 0
+			var box: Hazard = hh.slash_hitbox()
+			if not (hh.is_cutting() and box.is_active()):
+				return
+			counts[0] += 1
+			var pivot: Vector3 = fan["pivot"]
+			var half: Vector3 = box.size * 0.5
+			for corner: int in 8:
+				var c: Vector3 = box.global_position + Vector3(half.x * (1 if corner & 1 else -1), half.y * (1 if corner & 2 else -1),
+					half.z * (1 if corner & 4 else -1))
+				var dx: float = (c.x - pivot.x) * float(fan["dir"])
+				var dy: float = c.y - pivot.y
+				var radius: float = Vector2(dx, dy).length()
+				var angle: float = atan2(dy, dx)
+				var pad: float = SWEEP_SLACK / maxf(radius, 0.1)
+				if (radius < float(fan["inner"]) * share + SWEEP_SLACK or radius > float(fan["outer"]) * share - SWEEP_SLACK
+						or angle < float(fan["low"]) + pad or angle > float(fan["high"]) - pad
+						or absf(c.z - pivot.z) > float(fan["half_depth"]) - SWEEP_SLACK) and faults.size() < 10:
+					faults.append("its box's corner (%.2f, %.2f, %.2f) lies outside the sweep (radius %.2f, angle %.2f)" % [c.x, c.y,
+						c.z, radius, angle])
+		var r: Dictionary = await _run(w, 14.0, [], watch, func(ww: RunWorld) -> bool:
+			var hh: Hunter = _hunter(ww)
+			return hh != null and hh.flurries_cut >= 2 and hh.slash == Hunter.Slash.IDLE)
+		check(bool(r["done"]) and int(counts[0]) > 10 and int(counts[1]) > int(counts[0]) and faults.is_empty(),
+			"on every frame its cuts' box is live it lies inside the drawn sweep (%d frames), which shows only from its warning's last %.2f s through its cuts, never pulsing %s %s"
+			% [counts[0], Hunter.TRAIL_IN, faults, tag])
+		check(int(counts[2]) >= int(counts[0]) - 2, "through its cuts it lunges %.1f m toward the lane it cuts (%d of %d frames) %s"
+			% [HunterModel.LUNGE, counts[2], counts[0], tag])
+		plays.append(play)
+		await sim.free_world(w)
+	Settings.flashing_reduced = false
+	check(plays.size() == 2 and plays[0] == plays[1], "the sweep plays the same with Reduced flashing on and off")
+	var mat := HunterModel.slash_material()
+	check(mat.emission.r > 0.9 and mat.emission.g < 0.2 and mat.emission.b < 0.2 and mat.albedo_color.a < 1.0
+		and mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and mat.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED,
+		"the sweep is the blades' see-through red, unlit (the Compatibility renderer draws it the same)")
+
+
 func _test_placement() -> void:
 	var campaign := load(CAMPAIGN_PATH) as Campaign
 	var v: float = SPEED
@@ -1285,16 +1600,19 @@ func _test_warm_up() -> void:
 	var look: Node = Hunter.warm_up(w, layout.enemies[0])
 	var geometry: int = 0
 	var physics: int = 0
+	var sweep: bool = false
 	var stack: Array[Node] = [look]
 	while not stack.is_empty():
 		var n: Node = stack.pop_back()
 		if n is GeometryInstance3D:
 			geometry += 1
+		if n is MeshInstance3D and (n as MeshInstance3D).mesh != null and (n as MeshInstance3D).mesh.get_surface_count() > 0:
+			sweep = sweep or (n as MeshInstance3D).mesh.surface_get_material(0) == HunterModel.slash_material()
 		if n is CollisionObject3D:
 			physics += 1
 		stack.append_array(n.get_children())
-	check(not look.is_inside_tree() and geometry >= 11 and physics == 0,
-		"its warm-up look draws every part, alert too, and its mark (%d), outside the tree, with no physics object" % geometry)
+	check(not look.is_inside_tree() and geometry >= 12 and sweep and physics == 0,
+		"its warm-up look draws every part, alert too, its mark and its sweep (%d), outside the tree, with no physics object" % geometry)
 	look.free()
 	check(w.director.warm_entries().any(func(e: Dictionary) -> bool: return String(e["type"]) == "hunter"),
 		"the director readies it with the level")
