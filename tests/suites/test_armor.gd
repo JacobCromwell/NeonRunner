@@ -1,10 +1,12 @@
 extends TestSuite
 ## Free armor that comes back (GDD §4 and §8, owner's playtest, September 30, 2026; task G3): the
 ## armor's state and rules (DamageRules.Armor: its hits, a blocked hit, the break, the wait on the run's
-## clock at any frame rate, a revive, a pickup, a run without armor); the free armor's and each upgrade
-## tier's hits and waits from the data, alternating as GDD §8 says; in a run: a blocked hit with its
-## invulnerability, back after exactly the wait and not while paused, a revive, armor pickups; the
-## HUD's hits, ring and flash; the shop's upgrade line and prices from the data, and its texts; the
+## clock at any frame rate, a revive, a pickup, a run without armor; since task S3, the owner's October 23,
+## 2026 fix, any hit starts the wait, and at its end the armor is back whole, a pickup's extra hit aside);
+## the free armor's and each upgrade tier's hits and waits from the data, alternating as GDD §8 says; in
+## a run: a blocked hit with its invulnerability, back after exactly the wait and not while paused, worn
+## armor back whole, a revive, armor pickups; the HUD's hits, ring and flash, worn and broken; the
+## shop's upgrade line and prices from the data, and its texts; the
 ## save migration; and through the App on the real main scene, every level, retry, revive, boss fight,
 ## quick play and endless run starting with it, the upgrade and its equip toggle, and the web demo.
 
@@ -21,6 +23,7 @@ func run() -> void:
 	_test_frame_rates()
 	await _test_tiers()
 	await _test_in_a_run()
+	await _test_worn_in_a_run()
 	await _test_revive_and_pickups()
 	await _test_hud()
 	_test_shop_data()
@@ -67,25 +70,52 @@ func _test_state() -> void:
 	check(a.restore() and a.is_up() and not a.is_recharging(), "a revive brings broken armor back whole at once (DESIGN-TBD)")
 	check(not a.restore(), "and changes nothing on whole armor")
 
-	# An upgraded armor with hits to spare (tier 3 of the data).
+	# An upgraded armor with hits to spare (tier 3 of the data). GDD §4 (owner, October 23, 2026, task S3): any
+	# hit starts its wait, and at its end the armor is back whole.
 	var m := DamageRules.Armor.create(rules, 3, true)
 	var hits: int = rules.armor_hits_at(3)
-	check(hits >= 2 and m.hits == hits, "an upgraded armor starts with its tier's hits (%d)" % m.hits)
+	var wait: float = m.recharge_time
+	check(hits >= 3 and m.hits == hits, "an upgraded armor starts with its tier's hits (%d)" % m.hits)
 	check(not m.block() and m.hits == hits - 1 and m.is_up(), "it survives a hit, one hit down")
-	check(not m.tick(1000.0) and m.hits == hits - 1, "worn armor gets nothing back until it breaks (DESIGN-TBD)")
-	check(m.take_pickup() and m.hits == hits and not m.is_recharging(), "a pickup brings worn armor back whole")
+	check(m.is_recharging() and is_equal_approx(m.recharge_left, wait) and is_zero_approx(m.progress()),
+		"and that hit starts its wait (GDD §4: any hit): %.1f s" % m.recharge_left)
+	check(not m.tick(wait * 0.5) and is_equal_approx(m.progress(), 0.5) and m.hits == hits - 1,
+		"worn armor is halfway back after half the wait, its hits as they were")
+	check(not m.block() and m.hits == hits - 2 and is_equal_approx(m.recharge_left, wait * 0.5),
+		"another hit it survives leaves the wait running (DESIGN-TBD, docs/questions/s3.md 1): %.1f s left" % m.recharge_left)
+	check(m.tick(wait * 0.5) and m.hits == hits and not m.is_recharging() and is_equal_approx(m.progress(), 1.0),
+		"at the wait's end it's back whole: from %d hits to %d (GDD §4's 3 from 2)" % [hits - 2, m.hits])
+	check(not m.tick(1000.0) and m.hits == hits, "whole, it stays as it is")
+	# The break: the wait starts again from it (GDD §4: "after it breaks it comes back 30 seconds later").
+	m.block()
+	m.tick(wait * 0.75)
+	for i: int in hits - 2:
+		m.block()
+	check(m.hits == 1 and is_equal_approx(m.recharge_left, wait * 0.25), "(worn down to its last hit, the wait running)")
+	check(m.block() and not m.is_up() and is_equal_approx(m.recharge_left, wait) and is_zero_approx(m.progress()),
+		"the hit that breaks it starts the wait again (DESIGN-TBD, docs/questions/s3.md 1): back %.1f s after it broke"
+		% m.recharge_left)
+	check(not m.tick(wait * 0.5) and not m.is_up() and m.tick(wait * 0.5) and m.hits == hits,
+		"broken, it's back whole when that wait is over")
+	# Pickups.
+	m.block()
+	check(m.is_recharging() and m.take_pickup() and m.hits == hits and not m.is_recharging(),
+		"a pickup brings worn armor back whole at once and ends the wait")
 	check(m.take_pickup() and m.hits == hits + 1, "on whole armor, a pickup adds a hit over its count (DESIGN-TBD)")
 	check(not m.take_pickup() and m.hits == hits + rules.armor_pickup_extra_hits,
 		"up to %d over, then nothing" % rules.armor_pickup_extra_hits)
-	for i: int in hits:
-		m.block()
-	check(m.hits == 1 and m.block() and m.is_recharging(), "its last hit breaks it")
-	check(m.tick(m.recharge_time) and m.hits == hits, "and it comes back to its own count, not the extra hit")
-	m.block()
+	check(not m.block() and m.hits == hits and not m.is_recharging() and is_equal_approx(m.progress(), 1.0),
+		"the extra hit goes first and leaves the armor whole: nothing is down, so no wait (DESIGN-TBD, docs/questions/s3.md 2)")
+	check(not m.block() and m.hits == hits - 1 and m.is_recharging(), "the next hit starts the wait")
+	check(m.tick(wait) and m.hits == hits, "and it comes back to its own count, not the extra hit")
 	for i: int in hits - 1:
 		m.block()
+	check(m.hits == 1 and m.block() and m.is_recharging(), "its last hit breaks it")
 	check(m.is_recharging() and m.take_pickup() and m.hits == hits and is_zero_approx(m.recharge_left),
 		"a pickup on broken armor brings it back whole and ends the wait")
+	m.block()
+	check(m.is_recharging() and m.restore() and m.hits == hits and not m.is_recharging(),
+		"a revive brings worn armor back whole and ends the wait (DESIGN-TBD)")
 
 	# A run without armor (a bare loadout: tests and tools).
 	var none := DamageRules.Armor.create(rules, 0, false)
@@ -122,6 +152,16 @@ func _test_frame_rates() -> void:
 			break
 	check(t >= b.recharge_time - DamageRules.Armor.EPSILON and t - last < b.recharge_time,
 		"with uneven steps too: back on the step that reaches the wait (%.4f s)" % t)
+	# Worn armor's wait the same (GDD §4: any hit starts it).
+	for hz: int in [30, 144]:
+		var w := DamageRules.Armor.create(rules, 3, true)
+		w.block()
+		var step: float = 1.0 / hz
+		var ticks: int = 1
+		while not w.tick(step) and ticks < 100000:
+			ticks += 1
+		check(ticks == roundi(w.recharge_time * hz) and w.hits == w.max_hits,
+			"worn, at %d Hz it's back whole on step %d (%.4f s)" % [hz, ticks, ticks * step])
 
 
 ## GDD §8: the shop's tiers alternate between one more hit and a shorter wait; the numbers are data.
@@ -208,6 +248,65 @@ func _test_in_a_run() -> void:
 	await sim.free_world(world)
 
 
+## GDD §4 (owner, October 23, 2026, task S3: any hit starts the wait): in a run, a hit the upgraded armor survives
+## starts its wait on the run's clock, and at its end the armor is back whole, with its sound (armor_back); a second hit
+## meanwhile leaves the wait running; the hit that breaks it starts the wait again. The wait is shortened here to keep
+## the test quick (the rules are the same at any length: _test_state).
+func _test_worn_in_a_run() -> void:
+	var loadout := Loadout.new()
+	loadout.armor = true
+	loadout.tiers[&"armor"] = 3
+	var hits: int = rules.armor_hits_at(3)
+	var world: RunWorld = sim.build_world(RunSim.layout(5, 2500.0), loadout)
+	var p: Player = world.player
+	var a: DamageRules.Armor = p.armor_state
+	a.recharge_time = 2.0
+	var events: Array[StringName] = []
+	p.movement_event.connect(func(kind: StringName) -> void: events.append(kind))
+	var used: Array[StringName] = []
+	p.item_used.connect(func(item: StringName) -> void: used.append(item))
+	var changes: Array[int] = [0]
+	p.armor_changed.connect(func() -> void: changes[0] += 1)
+	var back_at: Array[float] = [-1.0]
+	p.movement_event.connect(func(kind: StringName) -> void:
+		if kind == &"armor_back":
+			back_at[0] = p.elapsed)
+	await _until(world, func() -> bool: return p.elapsed > 0.2, 1.0)
+	var shot := _shot()
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_ARMOR and p.armor == hits - 1 and a.is_recharging()
+		and p.defense().armor, "a hit the upgraded armor survives starts its wait, and it still covers the player (%d of %d hits)"
+		% [p.armor, hits])
+	var t0: float = p.elapsed
+	check(events.has(&"armor_hit") and not events.has(&"armor_break") and used.is_empty() and changes[0] == 1,
+		"told as a hit it survived (armor_hit, armor_changed), nothing used up (%s)" % [events])
+	await _until(world, func() -> bool: return p.elapsed >= t0 + 1.0, 2.0)
+	p.invulnerable_left = 0.0
+	p.receive_hit(shot)
+	check(p.armor == hits - 2 and absf(a.recharge_left - (t0 + a.recharge_time - p.elapsed)) < 0.001,
+		"a second hit leaves the wait running (%.3f s left)" % a.recharge_left)
+	await _until(world, func() -> bool: return back_at[0] >= 0.0, a.recharge_time + 1.0)
+	check(back_at[0] >= 0.0 and absf(back_at[0] - t0 - a.recharge_time) < 0.001 and p.armor == hits and changes[0] == 3,
+		"it's back whole %.1f s of the run after the first hit, with its sound (armor_back) and armor_changed: %d hits (%.4f s)"
+		% [a.recharge_time, p.armor, back_at[0] - t0])
+	# Worn down to its last hit, then broken: the wait starts again from the break.
+	for i: int in hits - 1:
+		p.invulnerable_left = 0.0
+		p.receive_hit(shot)
+	var t1: float = p.elapsed
+	await _until(world, func() -> bool: return p.elapsed >= t1 + 1.0, 2.0)
+	p.invulnerable_left = 0.0
+	back_at[0] = -1.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_ARMOR and p.armor == 0 and used == [&"armor"]
+		and events.has(&"armor_break") and is_equal_approx(a.recharge_left, a.recharge_time),
+		"the hit that breaks it starts the wait again (DESIGN-TBD): %.2f s left" % a.recharge_left)
+	var t2: float = p.elapsed
+	await _until(world, func() -> bool: return back_at[0] >= 0.0, a.recharge_time + 1.0)
+	check(back_at[0] >= 0.0 and absf(back_at[0] - t2 - a.recharge_time) < 0.001 and p.armor == hits,
+		"and it's back whole %.1f s after the break (%.4f s)" % [a.recharge_time, back_at[0] - t2])
+	shot.free()
+	await sim.free_world(world)
+
+
 func _test_revive_and_pickups() -> void:
 	var loadout: Loadout = Loadout.from_profile(Profile.new(), App.catalog, false)
 	var world: RunWorld = sim.build_world(RunSim.layout(5, 3000.0), loadout)
@@ -276,15 +375,30 @@ func _test_hud() -> void:
 	check(icon.count == hits and icon.is_ready(), "with its hits (%d) and no ring" % icon.count)
 	var flashes: Array[int] = [0]
 	icon.became_ready.connect(func() -> void: flashes[0] += 1)
+	var backs: Array[int] = [0]
+	p.movement_event.connect(func(kind: StringName) -> void:
+		if kind == &"armor_back":
+			backs[0] += 1)
 	var shot := _shot()
 	p.receive_hit(shot)
 	await tree.process_frame
-	check(icon.count == hits - 1 and icon.is_ready(), "a hit it survives takes one off (%d)" % icon.count)
-	for i: int in hits - 1:
+	# GDD §4 (task S3): any hit starts the wait; worn, it still protects, so its icon stays lit.
+	check(icon.count == hits - 1 and not icon.is_ready() and icon.charge() < 0.05 and icon.lit_while_cooling,
+		"a hit it survives takes one off (%d) and starts its ring, the icon still lit (it still covers the player)" % icon.count)
+	p.armor_state.recharge_left = p.armor_state.recharge_time * 0.5
+	await tree.process_frame
+	check(absf(icon.charge() - 0.5) < 0.02 and icon.count == hits - 1, "worn, the ring fills as it comes back (%.2f)" % icon.charge())
+	p.armor_state.recharge_left = 0.05
+	await _until(world, func() -> bool: return p.armor == hits, 1.0)
+	await tree.process_frame
+	check(icon.count == hits and icon.is_ready() and flashes[0] == 1 and backs[0] == 1,
+		"back whole: its hits (%d), the ring gone, the icon flashes and armor_back plays (%d, %d)" % [icon.count, flashes[0], backs[0]])
+	for i: int in hits:
 		p.invulnerable_left = 0.0
 		p.receive_hit(shot)
 	await tree.process_frame
-	check(icon.count == 0 and not icon.is_ready() and icon.charge() < 0.05, "broken: the ring starts to fill (%.2f)" % icon.charge())
+	check(icon.count == 0 and not icon.is_ready() and icon.charge() < 0.05 and not icon.lit_while_cooling,
+		"broken: dimmed, the ring starts to fill (%.2f)" % icon.charge())
 	p.armor_state.recharge_left = p.armor_state.recharge_time * 0.5
 	await tree.process_frame
 	check(absf(icon.charge() - 0.5) < 0.02, "and fills as it comes back (%.2f at half the wait)" % icon.charge())
@@ -296,7 +410,8 @@ func _test_hud() -> void:
 	p.armor_state.recharge_left = 0.05
 	await _until(world, func() -> bool: return p.armor_state.is_up(), 1.0)
 	await tree.process_frame
-	check(icon.count == hits and icon.is_ready() and flashes[0] == 1, "back whole: the ring is gone and the icon flashes once")
+	check(icon.count == hits and icon.is_ready() and flashes[0] == 2 and backs[0] == 2,
+		"back whole: the ring is gone and the icon flashes once more")
 	# The power-up controller reports the same (hud_state).
 	if world.powerups != null:
 		var entry: Dictionary = {}

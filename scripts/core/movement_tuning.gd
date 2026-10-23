@@ -56,6 +56,13 @@ const REFERENCE_SPEED: float = 18.0
 ## Height at which the wall run ends and the player drops to the floor.
 @export_range(0.0, 1.5, 0.05, "suffix:m") var wall_exit_height: float = 0.4
 @export_range(0.0, 12.0, 0.25, "suffix:m/s") var wall_jump_velocity: float = 6.0
+## Task S3 (the owner, October 23, 2026: coming off a wall moves one lane, as it does everywhere): when the game takes
+## the runner off a wall itself (the wall run's end, a wall gap's drop, an extended wall run's notch at a platform, a
+## repel), a press away from that wall made before they land, and at most this long after, is the dismount it meant:
+## they're already coming off into the outer lane, so it moves them no further. 0: none (every press is a lane switch).
+## DESIGN-TBD (docs/questions/s3.md): how long. The drop from a notch takes up to about 0.35 s, from a wall run's end
+## 0.16 s.
+@export_range(0.0, 1.0, 0.01, "suffix:s") var wall_release_grace: float = 0.4
 ## Gap between the outer lane edge and the wall face.
 @export_range(0.0, 1.0, 0.05, "suffix:m") var wall_margin: float = 0.3
 ## GDD §3 (decided September 26, 2026): a blocked entry (a sign, or a wall a boss takes away) plays

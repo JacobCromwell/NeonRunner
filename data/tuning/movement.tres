@@ -24,6 +24,7 @@ wall_max_height = 4.5
 wall_descent_exponent = 1.6
 wall_exit_height = 0.4
 wall_jump_velocity = 6.0
+wall_release_grace = 0.4
 wall_margin = 0.3
 wall_bump_distance = 0.35
 wall_bump_time = 0.16

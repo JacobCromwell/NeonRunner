@@ -140,6 +140,7 @@ func run() -> void:
 	_test_ramp_launch_math()
 	await _test_ramp_wall_run()
 	await _test_wall_bump()
+	await _test_dismounts()
 
 
 ## GDD §3 (decided September 26, 2026): a ramp adds a speed boost that fades away the same way a speed
@@ -341,6 +342,107 @@ func _test_wall_bump() -> void:
 			check(r["events"].count(&"wall_blocked") == 1 and not r["events"].has(&"ramp") and r["alive"] and r["lane"] == outer,
 				"a blocked ramp clanks and bumps once (%d) %s" % [r["events"].count(&"wall_blocked"), tag])
 	sim.trace = false
+
+
+## Task S3 (the owner, October 23, 2026: coming off the wall "must behave exactly as it does everywhere else in the
+## game: one lane"). A move away from the wall while on it is a wall jump into the outer lane: one lane, anywhere on a
+## free entry's wall run or a ramp's. When the game takes the runner off the wall itself (the run's end, a side wall
+## gap), a move away made as they come down is the dismount it meant (Player._on_move,
+## MovementTuning.wall_release_grace): one lane, never a lane switch past the outer lane. Once they've landed a move away
+## switches lanes as it always did, and so does a second move; a move back toward the wall still steps back on; and
+## after a wall jump of their own (the jump) a move away is a lane switch, as before. At 3, 5 and 6 lanes, both walls.
+func _test_dismounts() -> void:
+	var v: float = tuning.run_speed
+	var wall_run: float = (tuning.wall_entry_time + tuning.wall_slide_time) * v
+	var drop: float = WallRunGapPlacement.drop_seconds(tuning)
+	check(tuning.wall_release_grace > drop, "(the grace, %.2f s, outlasts the drop from a wall run's end, %.2f s)"
+		% [tuning.wall_release_grace, drop])
+	sim.trace = true
+	for lanes: int in [3, 5, 6]:
+		for side: int in [-1, 1]:
+			var tag: String = "(lanes=%d, %s wall)" % [lanes, "left" if side < 0 else "right"]
+			var outer: int = lanes - 1 if side > 0 else 0
+			var toward: StringName = &"move_right" if side > 0 else &"move_left"
+			var away: StringName = &"move_left" if side > 0 else &"move_right"
+			var walls := RunSim.layout(lanes, 400.0)
+			var seconds: float = (20.0 + wall_run) / v + 1.2
+			var r: Dictionary = await sim.run(walls, outer, seconds, [[20.0, toward]])
+			var exit_at: float = _off_wall_at(r, 0.0)
+			check(r["events"].has(&"wall_exit") and exit_at < INF and r["lane"] == outer,
+				"a wall run left to its end drops back into the outer lane (%.1f m) %s" % [exit_at, tag])
+			# A move away while on the wall: a wall jump, one lane.
+			for at: float in [0.3, 1.1, 2.0]:
+				r = await sim.run(walls, outer, seconds, [[20.0, toward], [20.0 + at * v, away]])
+				check(r["alive"] and r["events"].has(&"wall_jump") and _lanes_seen(r) == [outer] and r["surface"] == "floor",
+					"a move away %.1f s into the wall run is a wall jump into the outer lane, one lane (%s) %s"
+					% [at, _lanes_seen(r), tag])
+			# Moves after the wall run's own end.
+			for after: float in [0.02, 0.08, drop - 0.03]:
+				r = await sim.run(walls, outer, seconds, [[20.0, toward], [exit_at + after * v, away]])
+				check(r["alive"] and _lanes_seen(r) == [outer] and r["lane"] == outer and not r["events"].has(&"wall_jump"),
+					"a move away %.2f s after the wall run's end, coming down, is that dismount: one lane (%s) %s"
+					% [after, _lanes_seen(r), tag])
+			r = await sim.run(walls, outer, seconds, [[20.0, toward], [exit_at + (drop + 0.15) * v, away]])
+			check(r["alive"] and r["lane"] == outer - side, "once down, a move away switches lanes as before (lane %d) %s"
+				% [r["lane"], tag])
+			r = await sim.run(walls, outer, seconds, [[20.0, toward], [exit_at + 0.03 * v, away], [exit_at + 0.09 * v, away]])
+			check(r["alive"] and r["lane"] == outer - side, "and a second move away switches lanes (lane %d) %s" % [r["lane"], tag])
+			r = await sim.run(walls, outer, seconds, [[20.0, toward], [exit_at + 0.05 * v, toward]], [exit_at + 0.5 * v])
+			check(r["events"].count(&"wall_enter") == 2 and r["at"][exit_at + 0.5 * v]["surface"] == "wall",
+				"a move back toward the wall right after its end still steps back on (%s) %s" % [r["events"], tag])
+			r = await sim.run(walls, outer, seconds, [[20.0, toward], [20.0 + 1.0 * v, &"jump"], [20.0 + 1.1 * v, away]])
+			check(r["alive"] and r["events"].has(&"wall_jump") and r["lane"] == outer - side,
+				"after a wall jump of their own (the jump), a move away is a lane switch, as before (lane %d) %s" % [r["lane"], tag])
+
+			# A side wall gap ahead drops the wall runner off: a move away just after is that dismount too.
+			var gapped := RunSim.layout(lanes, 400.0)
+			gapped.wall_gaps.append({"side": side, "start": 20.0 + 1.0 * v, "end": 20.0 + 1.0 * v + 12.0})
+			r = await sim.run(gapped, outer, seconds, [[20.0, toward]])
+			var gap_at: float = _off_wall_at(r, 0.0)
+			check(r["events"].has(&"wall_gap_drop") and absf(gap_at - (20.0 + 1.0 * v)) < 1.0, "a wall gap drops the runner off (%.1f m) %s"
+				% [gap_at, tag])
+			for after: float in [0.0, 0.1, 0.2]:
+				r = await sim.run(gapped, outer, seconds, [[20.0, toward], [gap_at + after * v, away]])
+				check(r["alive"] and _lanes_seen(r) == [outer] and r["lane"] == outer,
+					"a move away %.1f s after a wall gap's drop is that dismount: one lane (%s) %s" % [after, _lanes_seen(r), tag])
+			r = await sim.run(gapped, outer, seconds, [[20.0, toward], [gap_at - 0.1 * v, away]])
+			check(r["alive"] and r["events"].has(&"wall_jump") and _lanes_seen(r) == [outer],
+				"a move away just before the wall gap is a wall jump, one lane (%s) %s" % [_lanes_seen(r), tag])
+
+			# A ramp's wall run, left to its end: the same.
+			var ramp := RunSim.layout(lanes, 400.0)
+			ramp.ramps.append({"side": side, "at": 20.0})
+			var launch := RampLaunch.of(ramp.ramps[0], tuning, v)
+			r = await sim.run(ramp, outer, 4.0, [[launch.end() + 0.06 * v, away]])
+			check(r["alive"] and r["events"].has(&"ramp") and r["events"].has(&"wall_exit") and _lanes_seen(r) == [outer],
+				"a move away just after a ramp's wall run ends is that dismount: one lane (%s, %s) %s" % [_lanes_seen(r), r["events"], tag])
+			r = await sim.run(ramp, outer, 4.0, [[launch.distance_at(1.0), away]])
+			check(r["alive"] and r["events"].has(&"wall_jump") and _lanes_seen(r) == [outer],
+				"and one on a ramp's wall run is a wall jump, one lane (%s) %s" % [_lanes_seen(r), tag])
+	sim.trace = false
+
+
+## The distance of the first traced frame off the wall after `from`, once the runner has been on it (where they left
+## it); INF if they never did.
+static func _off_wall_at(r: Dictionary, from: float) -> float:
+	var on: bool = false
+	for s: Dictionary in r["trace"]:
+		if float(s["d"]) < from:
+			continue
+		if s["surface"] == "wall":
+			on = true
+		elif on:
+			return float(s["d"])
+	return INF
+
+
+## The lanes the runner was in over a traced run, in order, each once.
+static func _lanes_seen(r: Dictionary) -> Array:
+	var out: Array = []
+	for s: Dictionary in r["trace"]:
+		if out.is_empty() or out[-1] != s["lane"]:
+			out.append(s["lane"])
+	return out
 
 
 ## The furthest the player got toward the wall on `side` from `home` (world x) between two distances.

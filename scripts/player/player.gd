@@ -13,8 +13,9 @@ signal died(cause: String)
 ## Something happened that feedback (sound, HUD) may react to: jump, land, slide, wall_enter,
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
-## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
-## doodad shoved the player into a neighbouring lane), doodad_stop (a zone doodad brought the runner to a stop, where
+## armor_back (the armor came back whole after its wait, broken or worn: GDD §4, any hit starts it),
+## shield_break, revive, dash, dash_end, doodad_push (a zone doodad shoved the player into a neighbouring
+## lane), doodad_stop (a zone doodad brought the runner to a stop, where
 ## doodads stop the runner: doodads_stop, task O2), doodad_smash (the dash broke a zone doodad apart:
 ## `<kind>_smash` for a DashBreakable of another kind: dash_wall_smash, a dash wall crumbling, task H7a,
 ## whether the dash smashed it, the runner crashed through it or passed it on a side wall),
@@ -25,6 +26,9 @@ signal died(cause: String)
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
 ## ceiling over fewer lanes) come with a bump: out toward the blocked side and back. A wall runner knocked
 ## off their wall (repel_from_wall) hears wall_blocked too, and drops off instead.
+## Coming off a wall moves one lane (task S3): a move away from it while on it is a wall jump into the outer lane,
+## and when the game takes the runner off it (wall_exit, wall_gap_drop, wall_blocked) a move away made as they come
+## down is that dismount, no lane switch further (_on_move, MovementTuning.wall_release_grace).
 signal movement_event(kind: StringName)
 ## A thief's touch robbed the player (DamageRules.Outcome.ROBBED, GDD §9.12): the ScoreKeeper takes the
 ## thief's share of the run's credits (Hazard.steals_share). The `robbed` movement event follows.
@@ -261,6 +265,13 @@ var doodad_passes: int = 0
 var _off_wall: int = 0
 var _off_wall_left: float = 0.0
 var _off_wall_claims: Dictionary = {}
+## Task S3 (the owner, October 23, 2026: coming off a wall moves one lane, as it does everywhere): the side wall (-1 or
+## 1) the game itself has just taken the runner off (its run's end, a wall gap's drop, an extended wall run's notch at
+## a platform, a repel: _leave_wall with any kind but a wall jump), and for how much longer a press away from it is the
+## dismount the runner meant, not a lane switch one lane further (_on_move): until they land, for at most
+## MovementTuning.wall_release_grace. A dismount of the player's own (a wall jump, by the jump or a move) has none.
+var _released_side: int = 0
+var _release_grace_left: float = 0.0
 ## How many times a return pad (task I4) dropped the player off a ceiling this run (tests and tools).
 var return_drops: int = 0
 ## How many times a teleporter sent the runner on this run (task Q4; tests and tools).
@@ -385,6 +396,8 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_off_wall = 0
 	_off_wall_left = 0.0
 	_off_wall_claims.clear()
+	_released_side = 0
+	_release_grace_left = 0.0
 	return_drops = 0
 	teleports = 0
 	crashes = 0
@@ -534,6 +547,8 @@ func revive() -> void:
 	alive = true
 	_show_dead(false)
 	invulnerable_left = rules.revive_invulnerability
+	# Task S3: no leftover dismount from before the death (the clock stood still while the runner was down).
+	_release_grace_left = 0.0
 	# DESIGN-TBD (docs/questions/g3.md): the armor comes back whole with a revive.
 	if armor_state.restore():
 		_armor_changed()
@@ -606,10 +621,11 @@ func _physics_process(delta: float) -> void:
 	_slide_left -= delta
 	_push_ignore_left -= delta
 	_off_wall_left -= delta
+	_release_grace_left -= delta
 	invulnerable_left = maxf(invulnerable_left - delta, 0.0)
 	theft_immune_left = maxf(theft_immune_left - delta, 0.0)
-	# Broken armor comes back on the run's clock (GDD §4): it waits while the game is paused or the
-	# player is down.
+	# Armor a hit left down (broken or worn) comes back whole on the run's clock (GDD §4): it waits while the
+	# game is paused or the player is down.
 	if armor_state.tick(delta):
 		_armor_changed()
 		_event(&"armor_back")
@@ -678,6 +694,13 @@ func _on_move(dir: int) -> void:
 			if dir == -wall_side:
 				_leave_wall(tuning.wall_jump_velocity, &"wall_jump")
 		Surface.FLOOR:
+			if dir == -_released_side and _release_grace_left > 0.0:
+				# Task S3: the move meant to come off the wall the game took the runner off a moment ago (an extended
+				# wall run's notch drops them onto its platform just as they reach it, where that move is due). They're
+				# already coming off into the outer lane, the one lane a dismount moves, so it moves them no further.
+				# Once: a second move is a lane switch.
+				_release_grace_left = 0.0
+				return
 			if in_pit:
 				return
 			var target: int = lane + dir
@@ -1010,6 +1033,8 @@ func _land(top: float = 0.0) -> void:
 		floor_y = top
 	vh = 0.0
 	grounded = true
+	# Task S3: down off the wall; from here a move away from it is a lane switch.
+	_release_grace_left = 0.0
 	_event(&"land")
 	if _slide_on_land:
 		_slide_on_land = false
@@ -1185,6 +1210,7 @@ func _try_enter_wall(side: int, from_ramp: bool, ramp: int = 0) -> bool:
 		return false
 	surface = Surface.WALL
 	wall_side = side
+	_release_grace_left = 0.0
 	_wall_t = 0.0
 	_wall_entry_x = _x
 	_wall_entry_h = maxf(h, 0.0)
@@ -1310,6 +1336,11 @@ func _leave_wall(velocity: float, kind: StringName) -> void:
 	_off_wall = wall_side
 	_off_wall_left = tuning.lane_switch_time + tuning.doodad_push_time
 	_off_wall_claims.clear()
+	# Task S3: taken off by the game (anything but a wall jump), a press away from this wall as they come down is the
+	# dismount it meant (_on_move).
+	var own: bool = kind == &"wall_jump"
+	_released_side = 0 if own else wall_side
+	_release_grace_left = 0.0 if own else tuning.wall_release_grace
 	surface = Surface.FLOOR
 	_start_switch(geo.lane_count - 1 if wall_side > 0 else 0)
 	vh = velocity
@@ -1807,6 +1838,7 @@ func _teleport(entry: Dictionary) -> bool:
 	_off_wall = 0
 	_off_wall_left = 0.0
 	_off_wall_claims.clear()
+	_release_grace_left = 0.0
 	_passing.clear()
 	_blocked_ramp = 0
 	teleports += 1

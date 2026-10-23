@@ -9,10 +9,12 @@ extends CanvasLayer
 ## top left, the progress meter moves into the right column and the icons sit above the debug help.
 ## Power-ups report themselves: if world.powerups has hud_state(), each entry
 ## {id, icon, tier, ready 0–1, active, charges} gets an icon; otherwise the HUD shows the player's
-## own charges (and claws, which have no cooldown). The armor (GDD §4) shows its hits left, and while
-## it's broken a ring filling in the kit's calm accent until it's back, when the icon flashes (its
-## sound is the player's `armor_back`). A pickup taken during the run (GDD §10) flashes its item's
-## icon, which joins the protections in its place if the run didn't bring that item.
+## own charges (and claws, which have no cooldown). The armor (GDD §4) shows its hits left, and from any
+## hit it takes (GDD §4, task S3: any hit starts its wait) a ring filling in the kit's calm accent until
+## it's back whole, when the icon flashes (its sound is the player's `armor_back`); while it has hits
+## left the icon stays lit (CooldownIcon.lit_while_cooling), broken it dims. A pickup taken during the
+## run (GDD §10) flashes its item's icon, which joins the protections in its place if the run didn't
+## bring that item.
 ## With no armor hit or shield left (GDD §4, "One hit from death") the screen's edges pulse red with a
 ## two-tone siren and then hold a dim red edge (LastHitWarning, `last_hit`, a canvas layer of its own under this one and
 ## the attack markers).
@@ -275,6 +277,8 @@ func _process(_delta: float) -> void:
 			icon.count = int(p.get(entry[2]))
 			if entry[0] == &"armor":
 				icon.set_cooldown(1.0 - p.armor_state.progress(), 1.0)
+				# Worn but not broken it still protects: lit, with only the ring showing the wait (task S3).
+				icon.lit_while_cooling = p.armor_state.is_up()
 	if world.powerups != null and world.powerups.has_method(&"hud_state"):
 		_update_powerups(world.powerups.call(&"hud_state"))
 
