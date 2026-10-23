@@ -126,9 +126,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   comes out (LevelLayout.DECOY), and the zone's other Octodog jars are its skin's look only (IceLabDoodads).
 ## - heavy_cyborg: the Heavy Cyborg (task S1; GDD §9.16, owner, October 23, 2026), one of the Ice Lab's new enemies,
 ##   from Relay Station (after its teleporters), then Specimen Vault and the Golden Zone's three levels: a bigger
-##   cyborg with a gatling (its pattern, data/patterns/heavy_cyborg.json, places it; its rules, heavy_cyborg_rules.gd,
-##   keep it clear of obstacles as the cyborgs' do and keep its stream's zone calm; numbers in
-##   data/enemies/heavy_cyborg.tres)
+##   cyborg with a gatling (no patterns: its rules, heavy_cyborg_rules.gd, turn a share of the level's plain cyborgs
+##   into Heavy Cyborgs where one fits, after the zone doodads, so the level is built as without it but for their
+##   type; never forced, an occasional feature; numbers in data/enemies/heavy_cyborg.tres)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.

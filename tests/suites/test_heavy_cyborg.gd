@@ -18,12 +18,16 @@ extends TestSuite
 ## - Its kills: a stomp on its head and the dash kill it; the claws don't (a claw runner who touches it dies), nor
 ##   does armor stop its body; laser tier 1 takes twice a cyborg's shots; another enemy's charge and a falling
 ##   gantryway destroy it; it never boards an Enforcer Truck.
-## - The generator: its pattern and rules over seeds, lane counts and difficulties (clear of every obstacle, the same
-##   every build), none without the feature; the campaign's levels (introduced in Relay Station from its start,
-##   after the teleporters; Specimen Vault and Golden 1-3 with no introduction of their own; none in Frost Foundry);
-##   and full levels in god mode, every round fair.
+## - The generator: Heavy Cyborgs take the places of plain cyborgs (HeavyCyborgRules), over seeds, lane counts and
+##   difficulties: each build is the build without the feature but for the cyborgs whose places they took, each where
+##   one fits (clear of every obstacle, its stream's zone clear, spaced, the level's last cyborg kept), the same every
+##   build, most builds with some, none without the feature; the campaign's levels (introduced in Relay Station from its
+##   start, after the teleporters; Specimen Vault and Golden 1-3 with no introduction of their own; none in Frost
+##   Foundry; every build on their own seeds as without it, and some in each at the campaign's lane count); and full
+##   levels in god mode, every round fair.
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+const HeavyRules = preload("res://scripts/enemies/heavy_cyborg_rules.gd")
 const GantrywayRules := preload("res://scripts/enemies/gantryway_rules.gd")
 const HEAVY_TUNING_PATH: String = "res://data/enemies/heavy_cyborg.tres"
 const CYBORG_TUNING_PATH: String = "res://data/enemies/cyborg.tres"
@@ -285,7 +289,7 @@ func _test_numbers() -> void:
 		check(not shown.has(name), "`%s` (a cyborg's, unused) is hidden from the F6 panel" % name)
 	for name: String in ["engage_distance", "charge_time", "reload_late", "bolt_speed_late", "bullets_late", "bullet_gap_late",
 			"invulnerability_share", "model_scale", "health_late", "score_value", "walk_speed", "obstacle_margin",
-			"keep_clear_seconds", "windup_heard_within", "crossfire_gap"]:
+			"keep_clear_seconds", "share", "spacing_seconds", "windup_heard_within", "crossfire_gap"]:
 		check(shown.has(name), "`%s` is in the F6 panel" % name)
 	check(ht.score_value == 2 * ct.score_value, "it pays twice a cyborg's score (%d, %d)" % [ht.score_value, ct.score_value])
 	# Owner: twice a cyborg's laser hits (laser tier 1); proposed: the other tiers and the missiles twice too.
@@ -796,9 +800,16 @@ func _test_enforcer() -> void:
 
 # --- The generator ----------------------------------------------------------------------------------
 
+## Heavy Cyborgs take the places of plain cyborgs (HeavyCyborgRules), on the prototype level with cyborgs over lane
+## counts, difficulties and seeds: every build is the build without the feature but for the cyborgs whose places they
+## took (_as_cyborgs), the same on a second build; each stands in a lane, clear of every obstacle by the cyborgs' margin,
+## at least spacing_seconds of run from the one before; in a build with more than one, every one's stream's zone holds
+## nothing that holds a stream (only the last resort's may); the level keeps a cyborg; most builds have some.
 func _test_generation() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var heavies: int = 0
+	var builds: int = 0
+	var with_some: int = 0
 	var lanes_seen: Dictionary = {}
 	for lanes: int in [3, 5, 6]:
 		for difficulty: float in [0.3, 0.6, 0.9]:
@@ -808,34 +819,69 @@ func _test_generation() -> void:
 				config.difficulty = difficulty
 				config.level_seed = level_seed
 				config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "speed_pads", "cyborg", "heavy_cyborg"])
+				var plain: LevelConfig = config.duplicate() as LevelConfig
+				plain.features = PackedStringArray(["ramps", "ceilings", "pulsing", "speed_pads", "cyborg"])
 				var patterns: Array = LevelGenerator.load_for(config)
 				var gen := LevelGenerator.new()
 				var a: LevelLayout = gen.generate(config, tuning, patterns)
 				var tag: String = "lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
-				check(gen.warnings.is_empty(), "its patterns generate without warnings %s %s" % [tag, gen.warnings])
+				check(gen.warnings.is_empty(), "it generates without warnings %s %s" % [tag, gen.warnings])
 				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 				check(JSON.stringify(a.enemies) == JSON.stringify(b.enemies), "the same seed, the same Heavy Cyborgs " + tag)
-				var spans: Array[Vector2] = CyborgRules.obstacle_spans(a, tuning, CeilingZones.make(config, tuning))
+				var c: LevelLayout = LevelGenerator.new().generate(plain, tuning, patterns)
+				check(_as_cyborgs(a) == _as_cyborgs(c), "built as without the feature, a cyborg where each Heavy Cyborg stands " + tag)
+				var spans: Array[Vector2] = CyborgRules.obstacle_spans(a, gen.tuning, gen.zones)
+				var margin: float = CyborgRules.obstacle_margin_at(ht, gen.pace)
+				var at: Array[float] = LevelGenerator.feature_positions(a, "heavy_cyborg")
+				var zones_clear: int = 0
+				for i: int in at.size():
+					var zone: Vector2 = HeavyRules.stream_zone(gen, at[i], ht)
+					zones_clear += 0 if a.doodad_between(zone.x, zone.y) else 1
+					check(not CyborgRules.near_any(spans, at[i], margin - 0.01),
+						"it stands clear of every obstacle by the cyborgs' margin at %.1f %s" % [at[i], tag])
+					check(i == 0 or at[i] - at[i - 1] >= ht.spacing_seconds * gen.speed - 0.01,
+						"at least %.1f s of run after the one before (%.1f m) %s" % [ht.spacing_seconds, at[i], tag])
+				check(at.size() < 2 or zones_clear == at.size(), "their streams' zones are clear (%d of %d) %s" % [zones_clear,
+					at.size(), tag])
+				check(LevelGenerator.feature_positions(c, "cyborg").is_empty() or not LevelGenerator.feature_positions(a, "cyborg").is_empty(),
+					"the level keeps a cyborg " + tag)
 				for e: Dictionary in a.enemies:
-					if String(e["type"]) != "heavy_cyborg":
-						continue
-					heavies += 1
-					lanes_seen[int(e["lane"])] = true
-					check(int(e["lane"]) >= 0 and int(e["lane"]) < lanes, "in a lane of the track " + tag)
-					check(not CyborgRules.near_any(spans, float(e["at"]), ht.obstacle_margin - 0.01),
-						"it stands clear of gaps, fences, ramps, pads and landing zones at %.1f %s" % [float(e["at"]), tag])
+					if String(e["type"]) == "heavy_cyborg":
+						lanes_seen[int(e["lane"])] = true
+						check(int(e["lane"]) >= 0 and int(e["lane"]) < lanes and int(e.get("side", 0)) == 0
+							and (e.get("params", {}) as Dictionary).is_empty(), "on the floor, in a lane of the track, no cyborg's params " + tag)
+				heavies += at.size()
+				builds += 1
+				with_some += 1 if not at.is_empty() else 0
 				LayoutChecks.check_ceilings(self, a, config, tag)
-	check(heavies > 60, "its pattern places plenty of them (%d)" % heavies)
+	check(heavies > 60 and with_some * 10 >= builds * 9, "they take plenty of places (%d), in most builds (%d of %d)" % [heavies,
+		with_some, builds])
 	check(lanes_seen.size() >= 5, "in every lane across the builds (%s)" % [lanes_seen.keys()])
 	var plain: LevelConfig = base.duplicate() as LevelConfig
 	plain.features = PackedStringArray(["ramps", "ceilings", "pulsing", "cyborg"])
 	var none: LevelLayout = LevelGenerator.new().generate(plain, tuning, LevelGenerator.load_for(plain))
-	check(LevelGenerator.feature_positions(none, "heavy_cyborg").is_empty(), "levels without the feature place none")
+	check(LevelGenerator.feature_positions(none, "heavy_cyborg").is_empty(), "levels without the feature have none")
+
+
+## `layout` as JSON, with each Heavy Cyborg back as a cyborg and every plain cyborg's params dropped (its panic roll): the
+## same text as the layout of the level without the feature where the Heavy Cyborgs took nothing but cyborgs' places.
+func _as_cyborgs(layout: LevelLayout) -> String:
+	var d: Dictionary = layout.to_dict().duplicate(true)
+	for e: Dictionary in d["enemies"]:
+		if String(e["type"]) == "heavy_cyborg":
+			e["type"] = "cyborg"
+			e["params"] = {}
+		elif HeavyRules.is_plain_cyborg(e):
+			e["params"] = {}
+	return JSON.stringify(d)
 
 
 ## GDD §9.16 (proposed): introduced in Relay Station after its teleporters, one new thing at a time; then Specimen Vault;
 ## and all three of the Golden Zone's levels with no introduction of their own (owner). None in Frost Foundry. Every
-## build at 3, 5 and 6 lanes on the levels' own seeds has them, none before the feature's start.
+## build at 3, 5 and 6 lanes on the levels' own seeds is the build without the feature but for the cyborgs whose places
+## they took (so every other suite's checks of those builds hold as they did), with none before the feature's start,
+## and some in each at the campaign's lane count (GameRules.lanes_pc and lanes_mobile; at 3 and 6 lanes they're counted:
+## the feature is never forced, HeavyCyborgRules.OCCASIONAL).
 func _test_campaign() -> void:
 	var intro: LevelConfig = campaign.step(INTRODUCED_IN).level
 	check(intro.has_feature("heavy_cyborg") and intro.feature_start("heavy_cyborg") > intro.feature_start("teleporter"),
@@ -853,25 +899,37 @@ func _test_campaign() -> void:
 	var golden_ages: Dictionary[String, int] = campaign.configure(campaign.step("golden/1"), 3).feature_ages
 	check(int(golden_ages.get("heavy_cyborg", -1)) == 1, "Golden 1's Heavy Cyborgs are a level old, the Ice Lab's (%s)"
 		% golden_ages.get("heavy_cyborg", -1))
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	var counts: PackedStringArray = []
 	for id: String in [BEFORE] + LEVELS:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
-			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+			var patterns: Array = LevelGenerator.load_for(config)
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
 			var at: Array[float] = LevelGenerator.feature_positions(gen.layout, "heavy_cyborg")
 			var tag: String = "%s lanes=%d" % [id, lanes]
 			if id == BEFORE:
 				check(at.is_empty(), "no Heavy Cyborg in %s" % tag)
 				continue
-			check(not at.is_empty(), "%s places Heavy Cyborgs (%d)" % [tag, at.size()])
+			counts.append("%s: %d" % [tag, at.size()])
+			if lanes == rules.lanes_pc or lanes == rules.lanes_mobile:
+				check(not at.is_empty(), "%s has Heavy Cyborgs (%d)" % [tag, at.size()])
 			if not at.is_empty():
 				check(at[0] >= gen.feature_start("heavy_cyborg") - 0.01,
 					"none before its start in %s (%.0f m, from %.0f m)" % [tag, at[0], gen.feature_start("heavy_cyborg")])
+			var plain: LevelConfig = config.duplicate() as LevelConfig
+			var features: PackedStringArray = plain.features.duplicate()
+			features.remove_at(features.find("heavy_cyborg"))
+			plain.features = features
+			var without: LevelLayout = LevelGenerator.new().generate(plain, tuning, patterns)
+			check(_as_cyborgs(gen.layout) == _as_cyborgs(without), "%s is built as without them, a cyborg where each stands" % tag)
+	print("  Heavy Cyborgs on the campaign levels' own seeds: %s" % ", ".join(counts))
 
 
 ## Full levels in god mode (grapples pull the runner out of gaps) over lane counts and seeds: every round follows a
 ## wind-up, comes from ahead with enough warning, never arrives near a fence or gap; at most max_bursts_in_air bursts
 ## of the cyborg-type guns at once, its streams among them; no Heavy Cyborg ever stands near an obstacle; and most of
-## those the runner passes get to fire a stream (its stream's zone is kept clear before it: HeavyCyborgRules).
+## those the runner passes get to fire a stream (each stands where its stream's zone is clear: HeavyCyborgRules).
 func _test_fair_play() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var rounds: int = 0
