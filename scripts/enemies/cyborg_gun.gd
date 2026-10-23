@@ -58,11 +58,13 @@ var body: GunModel
 var wild: bool = false
 var wild_spread: float = 2.0
 var enabled: bool = true
-## The charge-up's and each bolt's sounds, and the bolts' name (a death's cause): the cyborgs' own
-## unless the shooter has its own (the Barnacle Turret, GDD §9.8).
+## The charge-up's and each bolt's sounds, the bolts' name (a death's cause) and their look (the pool's red
+## enemy_* looks): the cyborgs' own unless the shooter has its own (the Barnacle Turret, GDD §9.8; the Heavy
+## Cyborg's gatling, GDD §9.16).
 var charge_sound: StringName = &"cyborg_charge"
 var shot_sound: StringName = &"cyborg_shot"
 var shot_name: String = SHOT_NAME
+var look: StringName = LOOK
 ## The shooter's own rule for the player's path around a bolt's arrival, in place of the floor's
 ## (path_clear): Callable(from_d: float, to_d: float) -> bool. Unset for the cyborgs; the Barnacle
 ## Turret, which fires only at a ceiling rider, sets one for the ceiling (GDD §9.8).
@@ -135,6 +137,31 @@ func is_attacking() -> bool:
 	return state == State.CHARGING or state == State.FIRING
 
 
+## Seconds between a burst's shots as they're fired: the cyborgs' tuning.shot_interval. A shooter whose shots
+## must reach the runner spaced its own way overrides it (HeavyCyborgGun, the Heavy Cyborg's gatling, GDD §9.16).
+## The claim in the air, the planned arrivals (_burst_fair) and the firing all read it, so it must not change
+## during a burst.
+func shot_interval() -> float:
+	return tuning.shot_interval
+
+
+## How many shots the burst starting now fires (rolled at its charge-up): the cyborgs' 2–3 (tuning.burst_min to
+## burst_max, GDD §9.2). A shooter with a stream of its own overrides it and most_shots() (HeavyCyborgGun).
+func roll_shots() -> int:
+	return rng.randi_range(tuning.burst_min, maxi(tuning.burst_min, tuning.burst_max))
+
+
+## The most shots a burst may fire: _burst_fair plans that many before a charge-up starts.
+func most_shots() -> int:
+	return tuning.burst_max
+
+
+## Where the charge-up's sound plays (the audio half of the telegraph): the cannon's own muzzle. A shooter whose
+## warning starts far enough off to be faint there overrides it (HeavyCyborgGun).
+func charge_sound_point() -> Vector3:
+	return _muzzle_base()
+
+
 ## Runs the cannon for one physics frame.
 func update(delta: float) -> void:
 	if not enabled or world == null or world.player == null:
@@ -143,7 +170,7 @@ func update(delta: float) -> void:
 	match state:
 		State.READY:
 			_timer -= delta
-			if _timer <= 0.0 and _allowed() and _airspace_free() and _burst_fair(tuning.charge_time, tuning.burst_max) \
+			if _timer <= 0.0 and _allowed() and _airspace_free() and _burst_fair(tuning.charge_time, most_shots()) \
 					and _crossfire_fair(false):
 				_start_charge()
 		State.CHARGING:
@@ -398,13 +425,13 @@ func _box_query(mask: int, size: Vector3) -> PhysicsShapeQueryParameters3D:
 func _start_charge() -> void:
 	state = State.CHARGING
 	_timer = 0.0
-	_burst = rng.randi_range(tuning.burst_min, maxi(tuning.burst_min, tuning.burst_max))
+	_burst = roll_shots()
 	_shots_left = _burst
 	var now: float = world.level_time()
-	_claim = _airspace().claim(shooter, now + tuning.charge_time + (_burst - 1) * tuning.shot_interval
+	_claim = _airspace().claim(shooter, now + tuning.charge_time + (_burst - 1) * shot_interval()
 		+ tuning.burst_gap, _window.x, _window.y, wild, now)
 	var at: Vector3 = _muzzle_base()
-	world.play_sfx_at(charge_sound, at)
+	world.play_sfx_at(charge_sound, charge_sound_point())
 	events.append({"t": world.level_time(), "event": &"charge", "shots": _burst,
 		"player_d": world.player.distance, "shooter_d": shooter.track_distance(), "from": at})
 
@@ -440,7 +467,7 @@ func _fire_step(delta: float) -> void:
 	if _shots_left > 0 and _allowed() and _time_to_player(player) >= tuning.min_warning_time * 0.5:
 		_fire(player)
 		_shots_left -= 1
-		_timer = tuning.shot_interval
+		_timer = shot_interval()
 		body.set_charge(float(_shots_left) / float(maxi(_burst, 1)))
 	else:
 		_shots_left = 0
@@ -481,7 +508,7 @@ func _fire(player: Player) -> void:
 		return
 	aim = target + Vector3(0.0, 0.0, -v * t)
 	var velocity: Vector3 = (aim - from).normalized() * speed
-	world.projectiles.fire_enemy(from, velocity, LOOK, shot_name, tuning.bolt_life)
+	world.projectiles.fire_enemy(from, velocity, look, shot_name, tuning.bolt_life)
 	world.play_sfx_at(shot_sound, from)
 	if not _claim.is_empty():
 		_airspace().arrives(_claim, world.level_time() + t)
@@ -501,8 +528,9 @@ func _burst_fair(lead: float, shots: int) -> bool:
 	var now: float = world.level_time()
 	_window = Vector2(INF, -INF)
 	_reach = player.distance
+	var interval: float = shot_interval()
 	for k: int in maxi(shots, 1):
-		var tau: float = lead + k * tuning.shot_interval
+		var tau: float = lead + k * interval
 		var from: Vector3 = _muzzle_base() + Vector3(0.0, 0.0, -track_velocity * tau)
 		var target: Vector3 = c + Vector3(0.0, 0.0, -v * tau)
 		var t: float = intercept_time(from, target, v, speed)
