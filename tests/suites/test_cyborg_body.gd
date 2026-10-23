@@ -565,12 +565,14 @@ func _test_colours() -> void:
 	# surfaces (the emblem's medallion, pinstripes), whose base colours follow the colour rules.
 	var markers: Array[float] = [CyborgSuit.SCREEN, CyborgSuit.RING, CyborgSuit.ORB, CyborgSuit.GLASS]
 	var surfaces: Array[float] = [CyborgSuit.EMBLEM, CyborgSuit.STRIPES]
-	# Each set's look (a host set is its look's), for its brightness limit.
+	# Each set's look (a host set is its look's, and so is the Heavy Cyborg's armour set, task S1), for its brightness
+	# limit.
 	var owner_look: Dictionary = {"": CyborgSuit.BASE}
 	var host_sets: Array[String] = []
 	for look: StringName in CyborgSuit.LOOKS:
 		owner_look[String(look)] = look
 		owner_look[String(CyborgSuit.host_set(look))] = look
+		owner_look[String(CyborgSuit.heavy_set(look))] = look
 		host_sets.append(String(CyborgSuit.host_set(look)))
 	var pieces: Dictionary = _pieces()
 	for set_name: String in pieces:

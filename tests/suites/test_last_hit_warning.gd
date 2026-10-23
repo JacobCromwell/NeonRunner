@@ -26,7 +26,7 @@ const ATTACK_WARNINGS: Array[StringName] = [
 	&"bomb_whistle", &"tower_crack", &"takeover_whine", &"gc_whine", &"gc_grind", &"gc_hatch", &"gc_whistle",
 	&"cogs_aim", &"cogs_charge", &"guppy_rumble", &"guppy_floor_warn", &"wave_swell", &"swarm_chitter",
 	&"swarm_wave", &"host_roar", &"sleep_taker_shriek", &"sleep_taker_whisper", &"sleep_taker_inhale",
-	&"house_cherry", &"house_lightning", &"house_bar",
+	&"house_cherry", &"house_lightning", &"house_bar", &"heavy_cyborg_windup",
 ]
 ## Sounds with a warning's name that aren't one (the Buzz Overdrive's charge is the attack itself).
 const NOT_WARNINGS: Array[StringName] = [&"buzz_charge"]
