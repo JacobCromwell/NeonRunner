@@ -653,7 +653,9 @@ them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), the Term
 debris maze seen from the game camera on the way in, stopped at a wall and inside it (`debris_maze_review`,
 `--level=terminal/1 --block=N --out=build/maze`), the Cybernetic Centipede's model in each pose and an encounter with
 it in a maze block, a head-on dash through it and its bites (`centipede_showcase`, `--scenario=chase|model
---pose=walk|sleep|wake|bite|wounded`), a
+--pose=walk|sleep|wake|bite|wounded`), the Hunter calm, warning and cutting, or a chase in which it comes up beside the
+runner, a flurry is dodged and a falling gantryway lands on it (`hunter_showcase`, `--scenario=chase|model
+--camera=game|side|behind --stay --mortal`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
 `--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), a campaign level's line
 of wall-hop credits ridden by a wall hopper (`wall_hop_review`, `--level=<id> --take=hop|run --camera=game|side`), an
@@ -705,6 +707,13 @@ others at 3, 5 and 6 lanes, with and without them: where each one hangs (its pil
 lane, the introduction, both lanes beside it kept clear, the cyborg planted under it), what the generator's own re-check
 finds (nothing), and what they cost a build (`godot --headless -s res://tools/measure/gantryways.gd -- [--levels=ice_lab/1]
 [--lanes=3,5,6] [--seeds=N] [--why]`).
+
+`tools/measure/hunters.gd` builds the campaign levels with Hunters (Specimen Vault) on their own seed and others at 3, 5
+and 6 lanes, and with `--weekly` the weekly challenge's Ice Lab weeks: how many Hunters arrive and where, their
+introduction's distance past the feature's start, the falling gantryways in each chase and how many of the level's can
+be baits, and what the Hunters' rules and the gantryways', teleporters' and jars' own re-checks find (nothing)
+(`godot --headless -s res://tools/measure/hunters.gd -- [--levels=ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--weekly]
+[--why] [--gantryways=N] [--start=F]`).
 
 `tools/measure/teleporters.gd` builds every campaign level with teleporters (Relay Station, Specimen Vault and the Golden
 Zone's three) on its own seed and others at 3, 5 and 6 lanes, with and without them: where each one stands (its pad's

@@ -107,9 +107,11 @@ a gap, see below), the Tithe Collector (GDD §9.12, from Corporate 2, skipping t
 the Golden Zone: see Thefts above), the Gilded Sentinels (GDD §9.11, from Golden 2: live statues in
 wall niches whose halberd cuts their wall section and the outer lane, see below), the Enforcer Truck
 (GDD §9.13, from Corporate 2: an armoured truck chasing the runner from behind that only other enemies'
-charges, a floor cut or a too-wide gap destroy, see below), and the Cybernetic Centipede (GDD §9.15, the Terminal's
+charges, a floor cut or a too-wide gap destroy, see below), the Cybernetic Centipede (GDD §9.15, the Terminal's
 only enemy: it waits in the debris maze's cells, chases along its open paths and takes two dashes; its placements
-proven escapable, `enemy-centipede.md`).
+proven escapable, `enemy-centipede.md`), and the Hunter (GDD §9.17, from Specimen Vault: a torso on a hover disc that
+rides beside the runner, slashes into their lane and follows them into the lane they leave, brought in only where a
+falling gantryway can be dropped on it; `enemy-hunter.md`).
 `scripts/enemies/mesh_batch.gd` merges an enemy's low-poly parts into one mesh per material to keep draw
 calls down.
 

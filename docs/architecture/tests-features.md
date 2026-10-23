@@ -386,6 +386,20 @@ hint. `test_centipede_fuzz` (slow, a few minutes) runs the bot on many more: ove
 placements at the other seeds, and every spot the rules may offer a block's centipede, alone and in pairs spaced as the
 rules space two, wherever the proof's way out wakes them (unbitten, the invariants, the bound, and most of the woken
 spots' centipedes waking as the proof has them).
+`test_hunter` (medium, about 20 s) checks the Hunter (task S2; Enemies, Beside the runner: the Hunter): its numbers (the
+owner's 25 s and 25 laser hits, a warning with time to change lanes, cuts over a whole jump but never one lane over, every
+number in F6), its look (draw calls, standard materials, only the eyes, blades and jets glowing, the blades in the hazard
+red, raised for a warning and chopping in turn) and, through the chase camera's resting view (EnforcerTruckView), its whole
+look on screen beside the runner at 3, 5 and 6 lanes, every lane and side, hiding neither them nor the floor they need;
+then on real physics at the Ice Lab's speed, every frame watched (its body never meets the runner's, never sinks below the
+floor, cuts only the lane it warned of a whole warning later): its arrival, following into the lane the runner leaves
+(and bumping them back unharmed, dashing too), its flurries (dodged one lane away; a runner who stays or jumps cut down;
+the armor and the shield taking one hit for a whole flurry), no flurry without a way out (an edge, a hole in the other
+lane) and hovering over holes, the gantryway bait at 3, 5 and 6 lanes both ways round, the bait lined up from the push
+side, every bait of Specimen Vault's own builds on a cut of the level, a whole encounter, weapons (25 shots, the other
+tiers in proportion), contacts and charges, steering round a doodad and a standing enemy, a ceiling, a teleport, giving
+up, the director's turns, its warning mark with and without Reduced flashing; its placement on Specimen Vault (a bait in
+every chase, never two at once, the same every build, none elsewhere), its warm-up and its data (hint, sounds).
 `test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
 gaps): the zone and level data and its place in the campaign (zone 6, its steps, slots and music stand-in, its
 volleyball match second); both generated levels (Tiki Tides and Sunset Strip, beach/1 and beach/3) at 3, 5 and 6 lanes
