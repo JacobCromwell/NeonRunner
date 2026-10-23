@@ -347,11 +347,12 @@ func _test_wall_bump() -> void:
 ## Task S3 (the owner, October 23, 2026: coming off the wall "must behave exactly as it does everywhere else in the
 ## game: one lane"). A move away from the wall while on it is a wall jump into the outer lane: one lane, anywhere on a
 ## free entry's wall run or a ramp's. Where a wall gap sets the runner down (LevelLayout.SETS_DOWN: an extended wall
-## run's notch at its platform, test_extended_wall_runs), a move away until their wall run would have ended on a whole
-## wall is still that dismount: one lane, landed or not; one after that, or a second one, switches lanes, and a move
-## back toward the wall past the gap steps back on (Player._on_move). Everywhere else nothing changed: after the wall
-## run's own end or a plain wall gap's drop a move away switches lanes, a move back toward the wall steps back on, and
-## after a wall jump of their own (the jump) a move away is a lane switch. At 3, 5 and 6 lanes, on both walls.
+## run's notch at its platform, test_extended_wall_runs), their first move away from the wall is still that dismount,
+## one lane, whenever it comes, until they step back onto a wall (or a death and a revive end it); a second one switches
+## lanes, a move back toward the wall past the gap steps back on, and after that wall run a move away is a lane switch
+## again (Player._on_move). Everywhere else nothing changed: after the wall run's own end or a plain wall gap's drop a
+## move away switches lanes, a move back toward the wall steps back on, and after a wall jump of their own (the jump) a
+## move away is a lane switch. At 3, 5 and 6 lanes, on both walls.
 func _test_dismounts() -> void:
 	var v: float = tuning.run_speed
 	var whole: float = tuning.wall_entry_time + tuning.wall_slide_time
@@ -394,9 +395,8 @@ func _test_dismounts() -> void:
 			plain.wall_gaps.append(gap.duplicate())
 			r = await sim.run(plain, outer, seconds, [[on, toward]])
 			var drop_at: float = _off_wall_at(r, 0.0)
-			var rest: float = whole - (drop_at - _on_wall_at(r)) / v
-			check(r["events"].has(&"wall_gap_drop") and absf(drop_at - float(gap["start"])) < 1.0 and rest > 0.8,
-				"a wall gap drops the runner off (%.1f m, %.2f s of their wall run left) %s" % [drop_at, rest, tag])
+			check(r["events"].has(&"wall_gap_drop") and absf(drop_at - float(gap["start"])) < 1.0,
+				"a wall gap drops the runner off (%.1f m) %s" % [drop_at, tag])
 			r = await sim.run(plain, outer, seconds, [[on, toward], [drop_at + 0.05 * v, away]])
 			check(r["alive"] and r["lane"] == outer - side,
 				"after a plain wall gap's drop a move away switches lanes, as before (lane %d) %s" % [r["lane"], tag])
@@ -409,20 +409,33 @@ func _test_dismounts() -> void:
 			var marked: Dictionary = gap.duplicate()
 			marked[LevelLayout.SETS_DOWN] = true
 			sets.wall_gaps.append(marked)
-			for after: float in [0.0, rest - 0.1]:
+			for after: float in [0.0, 0.3, 1.0]:
 				r = await sim.run(sets, outer, seconds, [[on, toward], [drop_at + after * v, away]])
 				check(r["alive"] and r["events"].has(&"wall_gap_drop") and _lanes_seen(r) == [outer] and r["lane"] == outer,
-					"set down, a move away %.2f s after the drop (their wall run not yet over) is the dismount: one lane (%s) %s"
-					% [after, _lanes_seen(r), tag])
-			r = await sim.run(sets, outer, seconds, [[on, toward], [drop_at + (rest + 0.15) * v, away]])
-			check(r["alive"] and r["lane"] == outer - side,
-				"once their wall run would have ended, a move away switches lanes (lane %d) %s" % [r["lane"], tag])
+					"set down, a move away %.1f s after the drop is the dismount: one lane (%s) %s" % [after, _lanes_seen(r), tag])
 			r = await sim.run(sets, outer, seconds, [[on, toward], [drop_at + 0.05 * v, away], [drop_at + 0.3 * v, away]])
-			check(r["alive"] and r["lane"] == outer - side, "and so does a second move away (lane %d) %s" % [r["lane"], tag])
+			check(r["alive"] and r["lane"] == outer - side, "a second move away switches lanes (lane %d) %s" % [r["lane"], tag])
 			var past: float = float(gap["end"]) + 1.0
-			r = await sim.run(sets, outer, seconds, [[on, toward], [past, toward]], [past + 0.4 * v])
-			check(r["events"].count(&"wall_enter") == 2 and r["at"][past + 0.4 * v]["surface"] == "wall",
+			r = await sim.run(sets, outer, (past + whole * v) / v + 0.8, [[on, toward], [past, toward]], [past + 0.4 * v])
+			var again_off: float = _off_wall_at(r, past + 0.5 * v)
+			check(r["events"].count(&"wall_enter") == 2 and r["at"][past + 0.4 * v]["surface"] == "wall" and again_off < INF,
 				"a move back toward the wall past the gap steps back on (%s) %s" % [r["events"], tag])
+			r = await sim.run(sets, outer, (past + whole * v) / v + 0.8, [[on, toward], [past, toward], [again_off + 0.05 * v, away]])
+			check(r["alive"] and r["lane"] == outer - side,
+				"back on the wall it's over: after that wall run's own end a move away switches lanes (lane %d) %s" % [r["lane"], tag])
+			# A death ends it, and the revive after it brings none back.
+			var world: RunWorld = sim.build_world(sets)
+			world.player.setup(tuning, world.geo, outer)
+			r = await sim.step_world(world, (drop_at + 0.1 * v) / v, [[on, toward]])
+			var pending: bool = int(world.player.get(&"_set_down_side")) == side
+			world.player.call(&"_die", "test hazard")
+			var cleared: bool = int(world.player.get(&"_set_down_side")) == 0
+			world.player.revive()
+			r = await sim.step_world(world, 0.6, [[world.player.distance + 0.3 * v, away]])
+			check(pending and cleared and r["alive"] and r["lane"] == outer - side,
+				"a death ends the dismount a set-down left pending: after the revive a move away switches lanes (%s, %s, lane %d) %s"
+				% [pending, cleared, r["lane"], tag])
+			await sim.free_world(world)
 
 			# A ramp's wall run: a wall jump on it, a lane switch after its own end, as before.
 			var ramp := RunSim.layout(lanes, 300.0)
@@ -435,14 +448,6 @@ func _test_dismounts() -> void:
 			check(r["alive"] and r["events"].has(&"wall_exit") and r["lane"] == outer - side,
 				"after a ramp's wall run's own end a move away switches lanes, as before (lane %d) %s" % [r["lane"], tag])
 	sim.trace = false
-
-
-## The distance of the first traced frame on a wall (INF if the runner never got on one).
-static func _on_wall_at(r: Dictionary) -> float:
-	for s: Dictionary in r["trace"]:
-		if s["surface"] == "wall":
-			return float(s["d"])
-	return INF
 
 
 ## The distance of the first traced frame off the wall after `from`, once the runner has been on it (where they left

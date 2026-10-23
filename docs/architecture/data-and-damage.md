@@ -181,8 +181,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   bare `Loadout` (tests, tools) has no armor until a pickup gives it. DESIGN-TBD (`docs/questions/s3.md`):
   a hit the armor survives while the wait runs leaves it running, the hit that breaks it starts it again
   (back the whole wait after it broke, GDD §4); a pickup's extra hit is no part of its own count (losing
-  it starts no wait, the wait never brings it back). DESIGN-TBD (`docs/questions/g3.md`): the pickup's
-  extra hit; the revive; that the free armor can't be switched off.
+  it starts no wait, the wait never brings it back). DESIGN-TBD (items 245-247 in `docs/OPEN_QUESTIONS*.md`):
+  the pickup's extra hit; that the free armor can't be switched off; the revive.
 - Enemy shots go through `ProjectilePool.fire_enemy()`; the pool sweeps each shot against the
   player's hitbox and calls `receive_hit`, so armor, shield, invulnerability and the dash all apply.
 - **Signs: the armor takes the hit** (task K3, the owner's request: a sign no longer kills a runner whose armor

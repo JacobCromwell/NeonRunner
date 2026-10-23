@@ -13,7 +13,8 @@ const GANTRY_PILLAR: String = "gantryway"
 const WALL_RUN_HOLE: String = "wall_run"
 ## The key that marks a side wall gap (wall_gaps) that sets a wall runner down where they're meant to come off the
 ## wall: an extended wall run's notch at its platform's near end (WallRunGapPlacement.openings_of). Task S3: the
-## Player keeps a move away from that wall the dismount it was until their wall run would have ended (wall_gap_at).
+## Player keeps the runner's first move away from that wall the dismount it would have been on it, until they step back
+## onto a wall (wall_gap_at).
 const SETS_DOWN: String = "sets_down"
 ## The key of a zone doodad that holds an enemy until it's smashed (task Q5; GDD §5, Zone 9, the owner, October 21,
 ## 2026: "some jars hold a curled-up Octodog", and "sometimes smashing an Octodog jar doodad releases its Octodog into

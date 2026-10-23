@@ -150,8 +150,8 @@ static func lets_through(hazard: Hazard, outcome: Outcome) -> bool:
 ## `recharge_time` after it broke (GDD §4: "after it breaks it comes back 30 seconds later"); a pickup's
 ## extra hit over `max_hits` is no part of the armor's own count: losing it leaves the armor whole, with
 ## no wait, and the wait brings back `max_hits`, not the extra.
-## DESIGN-TBD (docs/questions/g3.md): a pickup taken while it's whole adds a hit, up to
-## `pickup_extra_hits` over its count; a revive brings it back whole.
+## DESIGN-TBD (items 245 and 247 in docs/OPEN_QUESTIONS*.md): a pickup taken while it's whole adds a hit,
+## up to `pickup_extra_hits` over its count; a revive brings it back whole.
 class Armor:
 	## A wait this close to its end counts as over (float steps never land on exactly 0).
 	const EPSILON: float = 0.0001

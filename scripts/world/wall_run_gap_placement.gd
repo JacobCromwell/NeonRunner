@@ -361,8 +361,8 @@ static func open_wall_of(w: Dictionary) -> Dictionary:
 ## open wall (open_wall_of), and on each lit wall a notch platform_notch_seconds long at each platform's near end, so a
 ## runner whose wall run would carry them past the platform (claws, the dash) drops onto it (Player: a wall gap drops a
 ## wall runner off into the outer lane). It drops every standard wall run there too, just where the move to come off
-## the wall is due, so it's marked LevelLayout.SETS_DOWN (task S3: Player keeps that move the dismount, one lane, until
-## their wall run would have ended). [] for an ordinary wall-run gap.
+## the wall is due, so it's marked LevelLayout.SETS_DOWN (task S3: Player keeps the runner's first move away from the
+## wall the dismount, one lane, until they step back onto a wall). [] for an ordinary wall-run gap.
 static func openings_of(w: Dictionary, speed: float, t: WallRunGapTuning = null) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if runs_of(w) < 2:

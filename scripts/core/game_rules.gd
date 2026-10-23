@@ -34,9 +34,9 @@ extends Resource
 @export var armor_tier_hits: PackedInt32Array = PackedInt32Array([2, 2, 3, 3])
 ## DESIGN-TBD (R7 tunes them): the armor upgrade's wait from a hit to its being back whole, per tier (tier 1 first).
 @export var armor_tier_recharge: PackedFloat32Array = PackedFloat32Array([30.0, 25.0, 25.0, 20.0])
-## DESIGN-TBD (docs/questions/g3.md): an armor pickup (GDD §10) brings broken or worn armor back whole at
-## once; taken while the armor is whole, it adds a hit, up to this many over the armor's count (0: it
-## does nothing then).
+## DESIGN-TBD (item 245 in docs/OPEN_QUESTIONS*.md): an armor pickup (GDD §10) brings broken or worn armor
+## back whole at once; taken while the armor is whole, it adds a hit, up to this many over the armor's
+## count (0: it does nothing then).
 @export_range(0, 3) var armor_pickup_extra_hits: int = 1
 
 @export_group("Thefts")

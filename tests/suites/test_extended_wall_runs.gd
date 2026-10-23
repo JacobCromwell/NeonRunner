@@ -59,14 +59,16 @@ func _track(lanes: int, runs: int, side: int, both: bool, mt: MovementTuning = n
 ## threw the runner two lanes, not one, so he died many times). The notch at each platform's near end
 ## (WallRunGapPlacement.openings_of) drops every standard wall run off onto the platform just where the move to come
 ## off the wall is due, and that move, made a moment after the drop, was a lane switch from the outer lane: one lane
-## further, over the hole beside the platform. The notch now sets the runner down (LevelLayout.SETS_DOWN): until their
-## wall run would have ended on a whole wall, a move away is the dismount it would have been (Player._on_move). At The
-## Hush's own speed, at 3, 5 and 6 lanes, on a triple on either wall and a double with both lit (on each): a runner who
-## steps onto the wall early or late in each stretch and presses away from it around each platform's near end (on the
-## wall before it: a wall jump; at it, as the notch drops them, and once landed while their wall run would still last)
-## comes down onto the platform in the outer lane, one lane off the wall, steps back on from its last stretch and
-## crosses. After the last wall run's own end, over the landing floor, a move away is a lane switch, as everywhere. With
-## the notch a plain wall gap (unmarked, the old rule), the same move over the first platform falls into the hole beside it.
+## further, over the hole beside the platform. The notch now sets the runner down (LevelLayout.SETS_DOWN): their first
+## move away from the wall, until they step back onto one, is the dismount it would have been on it (Player._on_move).
+## At The Hush's own speed, at 3, 5 and 6 lanes, on a triple on either wall and a double with both lit (on each): a
+## runner who steps onto the wall early or late in each stretch and presses away from it around each platform's near
+## end (on the wall before it: a wall jump; at it, as the notch drops them, and once landed, up to a second later) comes
+## down onto the platform in the outer lane, one lane off the wall, steps back on from its last stretch and crosses. A
+## second move away after that switches lanes, into the hole, as it always did, and so does one after the last wall
+## run's own end, over the landing floor (it holds every lane). With the notch a plain wall gap (unmarked, the old
+## rule), the first move over the first platform falls into the hole beside it. The lane beside every platform is a hole
+## all along it, so the move away taken as the dismount could never have saved them.
 func _test_dismounts() -> void:
 	var mt: MovementTuning = campaign.configure(campaign.step(HUSH), 5).movement_for(tuning)
 	var v: float = mt.run_speed
@@ -92,10 +94,16 @@ func _test_dismounts() -> void:
 					notches += 1 if bool(g.get(LevelLayout.SETS_DOWN, false)) else 0
 				check(notches == p.size() * WallRunGapPlacement.sides_of(w).size(),
 					"each platform's notch on each lit wall sets the runner down (%d) %s" % [notches, tag])
+				var beside: bool = true
+				for q: Vector2 in p:
+					beside = beside and _hole_all_along(layout, outer - side, q.x, q.y)
+				check(beside, "the lane beside each platform is a hole all along it " + tag)
 				for k: float in [0.15, 0.9]:
 					# Seconds from each platform's near end (its notch's start): before it, on the wall over the hole, the
-					# move is a wall jump; from it on the notch has dropped the runner, landed on the platform by the last.
-					for off: float in [-0.12, 0.0, 0.05, 0.12, 0.28]:
+					# move is a wall jump; from it on the notch has set the runner down: landed by 0.28 s, on the platform
+					# still at 0.5 s and, stepping back on late, at 1.0 s.
+					var offs: Array = [-0.12, 0.0, 0.05, 0.12, 0.28, 0.5] if k < 0.5 else [-0.12, 0.0, 0.12, 0.5, 1.0]
+					for off: float in offs:
 						var actions: Array = []
 						var probes: Array = []
 						var last_on: float = 0.0
@@ -104,7 +112,7 @@ func _test_dismounts() -> void:
 							actions.append([last_on, toward])
 							if i < p.size():
 								actions.append([p[i].x + off * v, away])
-								probes.append(p[i].x + 0.6 * v)
+								probes.append(p[i].x + maxf(0.6, off + 0.06) * v)
 						# The last wall run's own end, over the landing floor: a move away just after it.
 						var ends_at: float = last_on + wall_run
 						actions.append([ends_at + 0.06 * v, away])
@@ -126,17 +134,39 @@ func _test_dismounts() -> void:
 							and ends_at > float(w["end"]) and ends_at < landing,
 							"after the last wall run's own end a move away is a lane switch, as everywhere: the landing floor holds every lane (%s) %s"
 							% [end, what])
+				# A second move away after the one taken as the dismount switches lanes, into the hole, as it always did.
+				var first_on: float = lerpf(c[0].x + 0.3, c[0].y - 0.8, 0.5)
+				var twice: Dictionary = await sim.run(layout, outer, (p[0].x + 1.6 * v) / v,
+					[[first_on, toward], [p[0].x + 0.12 * v, away], [p[0].x + 0.4 * v, away]], [], mt)
+				check(not bool(twice["alive"]) and String(twice["cause"]) == "fell" and int(twice["lane"]) == outer - side,
+					"a second move away on the platform switches lanes, into the hole beside it (%s, lane %d) %s"
+					% [twice["cause"], int(twice["lane"]), tag])
 				# The old rule: the notch a plain wall gap, the move made as it drops the runner switched them one lane
 				# further, into the hole.
 				var plain: LevelLayout = layout.copy()
 				for g: Dictionary in plain.wall_gaps:
 					g.erase(LevelLayout.SETS_DOWN)
 				var before: Dictionary = await sim.run(plain, outer, (p[0].x + 0.8 * v) / v,
-					[[lerpf(c[0].x + 0.3, c[0].y - 0.8, 0.5), toward], [p[0].x + 0.05 * v, away]], [], mt)
+					[[first_on, toward], [p[0].x + 0.05 * v, away]], [], mt)
 				check(not bool(before["alive"]) and String(before["cause"]) == "fell"
 					and (before["events"] as Array).has(&"wall_gap_drop") and int(before["lane"]) == outer - side,
 					"(with the notch a plain wall gap, the old rule, the same move throws the runner a second lane, into the hole: %s, lane %d) %s"
 					% [before["cause"], int(before["lane"]), tag])
+
+
+## True if lane `lane` of `layout` has no floor anywhere in [from, to]: its holes (gaps) cover all of it.
+static func _hole_all_along(layout: LevelLayout, lane: int, from: float, to: float) -> bool:
+	var spans: Array[Vector2] = []
+	for g: Dictionary in layout.gaps:
+		if int(g["lane"]) == lane and float(g["end"]) > from and float(g["start"]) < to:
+			spans.append(Vector2(float(g["start"]), float(g["end"])))
+	spans.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var at: float = from
+	for span: Vector2 in spans:
+		if span.x > at + 0.001:
+			return false
+		at = maxf(at, span.y)
+	return at >= to - 0.001
 
 
 func _test_numbers() -> void:
@@ -193,15 +223,25 @@ func _test_hush() -> void:
 		check(got == want, "its three, in order: a double with both walls, a double and a triple with one (%s) %s"
 			% [got, tag])
 		LayoutChecks.check_wall_run_gaps(self, layout, config, tag)
-		# Task S3: only the notches set the runner down; every other wall gap drops them as it always did.
+		# Task S3: only the notches set the runner down; every other wall gap drops them as it always did. And a move
+		# away from the wall can't save a runner set down on a platform: the lane beside it is a hole all along it.
 		var notches: int = 0
+		var platforms: int = 0
 		var sets_down: int = 0
+		for e: Dictionary in config.extended_wall_runs:
+			platforms += (int(e["runs"]) - 1) * (2 if String(e["walls"]) == "both" else 1)
 		for w: Dictionary in extended:
 			notches += WallRunGapPlacement.sides_of(w).size() * WallRunGapPlacement.platforms_of(w).size()
+			for side: int in WallRunGapPlacement.sides_of(w):
+				for q: Vector2 in WallRunGapPlacement.platforms_of(w):
+					check(_hole_all_along(layout, layout.outer_lane(side) - side, q.x, q.y),
+						"the lane beside its platform at %.0f m by the %s wall is a hole all along it %s"
+						% [q.x, "left" if side < 0 else "right", tag])
 		for g: Dictionary in layout.wall_gaps:
 			sets_down += 1 if bool(g.get(LevelLayout.SETS_DOWN, false)) else 0
-		check(sets_down == notches and notches == 5, "only its %d notches set the runner down (%d wall gaps do) %s"
-			% [notches, sets_down, tag])
+		check(sets_down == notches and notches == platforms,
+			"only its %d notches, one at each of its platforms (%d), set the runner down (%d wall gaps do) %s"
+			% [notches, platforms, sets_down, tag])
 		var grid := FloorRoute.new(layout, config.movement_for(tuning))
 		for w: Dictionary in extended:
 			var where: String = "(%d runs at %.0f m) %s" % [WallRunGapPlacement.runs_of(w), float(w["start"]), tag]
