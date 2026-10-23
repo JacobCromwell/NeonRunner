@@ -162,14 +162,14 @@ func _gantryway(layout: LevelLayout, lane: int, pillar: float, side: int) -> Dic
 ## Steps `w` up to `seconds` of physics, the runner running: `actions` ([distance, action], RunSim's) fire as they reach
 ## them, `bot` is called with the world before each step, and it stops once `done` (called with the world after each step)
 ## holds or the runner dies. Every frame is watched (_watch). Returns {done, alive, cause, faults, events ([kind, level
-## time]), hunter (the last one seen), history and sounds (its, kept after it's gone)}.
+## time]), hunter (the last one seen), history, sounds and stopped (its, kept after it's gone)}.
 func _run(w: RunWorld, seconds: float, actions: Array = [], bot: Callable = Callable(), done: Callable = Callable()) -> Dictionary:
 	var p: Player = w.player
 	if not p.running:
 		await tree.physics_frame
 		p.running = true
 	var out := {"done": false, "alive": true, "cause": "", "faults": PackedStringArray(), "events": [], "hunter": null,
-		"history": [], "sounds": []}
+		"history": [], "sounds": [], "stopped": []}
 	var on_event := func(kind: StringName) -> void: (out["events"] as Array).append([kind, w.level_time()])
 	var on_died := func(cause: String) -> void: out["cause"] = cause
 	p.movement_event.connect(on_event)
@@ -186,6 +186,7 @@ func _run(w: RunWorld, seconds: float, actions: Array = [], bot: Callable = Call
 			out["hunter"] = h
 			out["history"] = h.history
 			out["sounds"] = h.sounds_played
+			out["stopped"] = h.sounds_stopped
 			_watch(w, h, out["faults"])
 		if done.is_valid() and done.call(w):
 			out["done"] = true
@@ -1578,6 +1579,9 @@ func _test_ceiling() -> void:
 		and float(called[0][0]) < pad + 3.0 and warns.any(func(e: Array) -> bool: return float(e[0]) < pad and float(e[0]) > pad - 0.5 * mt.run_speed)
 		and _events(r["history"], "cut").filter(func(e: Array) -> bool: return float(e[0]) > pad - 1.0 and float(e[0]) < hull_end).is_empty(),
 		"a warning on as the pad lifts the runner is called off, no cut follows %s" % _brief(r))
+	var stopped: Array = (r["stopped"] as Array).filter(func(e: Array) -> bool: return e[0] == &"hunter_scrape")
+	check(not called.is_empty() and stopped.size() == 1 and absf(float(stopped[0][1]) - float(called[0][1])) < 0.001,
+		"its scrape stops as the warning is called off (%s)" % [stopped])
 	check(below[0] > 60 and below[1] == below[0] and on_ceiling.is_empty(),
 		"on the ceiling it waits below beside them (%d of %d frames), never warning" % [below[1], below[0]])
 	check(not later.is_empty(), "back on the floor it slashes again")

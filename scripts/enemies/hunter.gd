@@ -117,9 +117,13 @@ var chase_time: float = 0.0
 var history: Array = []
 ## Every sound it asked for, as [sound, level time] (tests: each warning is heard; silent headless runs ask all the same).
 var sounds_played: Array = []
+## Every sound it cut short, as [sound, level time]: its warning's scrape when the warning is called off (tests).
+var sounds_stopped: Array = []
 var model: HunterModel
-## Metres it has risen over hover_height to clear a live fence in its way (_update_lift).
+## Metres it has risen over hover_height to clear a fence in its way (_update_lift).
 var lift: float = 0.0
+## Its warning's scrape plays on its own voice, carried with it, so a call-off can cut it short (_stop_scrape).
+var _scrape_voice: AudioStreamPlayer3D
 
 var _x: float = 0.0
 var _switch_from: float = 0.0
@@ -242,6 +246,15 @@ func _build() -> void:
 	_mark.visible = false
 	add_child(_mark)
 	_build_trail()
+	_scrape_voice = AudioStreamPlayer3D.new()
+	_scrape_voice.name = "ScrapeVoice"
+	_scrape_voice.position = Vector3(0.0, tuning.hover_height + 1.0, 0.0)
+	if world.sfx_library != null:
+		_scrape_voice.unit_size = world.sfx_library.warning_full_volume_distance
+		_scrape_voice.max_distance = world.sfx_library.warning_max_distance
+	if AudioServer.get_bus_index(SfxLibrary.BUS) >= 0:
+		_scrape_voice.bus = SfxLibrary.BUS
+	add_child(_scrape_voice)
 	_blocker_query.collide_with_areas = true
 	_blocker_query.collide_with_bodies = false
 	_blocker_query.collision_mask = TrackBuilder.LAYER_LANE_BLOCKER
@@ -1320,7 +1333,7 @@ func _warn() -> void:
 	slash_lane = runner_lane()
 	_next_slash = chase_time + tuning.slash_interval(rng)
 	_mark.visible = true
-	_sfx_at(&"hunter_scrape")
+	_scrape()
 	_note(&"warn")
 
 
@@ -1348,10 +1361,12 @@ func _end_flurry() -> void:
 
 
 ## A warning or a flurry on is called off (the runner left the floor or teleported; it makes room, steers or gives up):
-## its blades go down, its mark and its sweep go.
+## its blades go down, its mark and its sweep go, and a warning's scrape stops with it.
 func _call_off_slash() -> void:
 	if slash != Slash.WARNING and slash != Slash.FLURRY:
 		return
+	if slash == Slash.WARNING:
+		_stop_scrape()
 	_slash_box.set_enabled(false)
 	slash = Slash.RECOVER
 	_slash_t = 0.0
@@ -1613,7 +1628,28 @@ func _sfx(sound: StringName) -> void:
 	world.play_sfx(sound)
 
 
-## A sound from where it is (its warning's scrape, its cuts, its death).
+## Its warning's scrape (hunter_scrape, as long as the warning) on its own voice, carried with it (_stop_scrape).
+func _scrape() -> void:
+	sounds_played.append([&"hunter_scrape", world.level_time()])
+	var library: SfxLibrary = world.sfx_library
+	if library == null or not SfxLibrary.audible():
+		return
+	var stream: AudioStream = library.stream(&"hunter_scrape")
+	if stream == null:
+		return
+	_scrape_voice.stream = stream
+	_scrape_voice.volume_db = library.volume(&"hunter_scrape")
+	_scrape_voice.play()
+
+
+## A warning called off: its scrape stops with it (task S2's review: no warning sound goes on for cuts that won't come).
+func _stop_scrape() -> void:
+	sounds_stopped.append([&"hunter_scrape", world.level_time()])
+	if _scrape_voice != null and _scrape_voice.playing:
+		_scrape_voice.stop()
+
+
+## A sound from where it is (its cuts, its death).
 func _sfx_at(sound: StringName) -> void:
 	sounds_played.append([sound, world.level_time()])
 	world.play_sfx_at(sound, aim_point())
