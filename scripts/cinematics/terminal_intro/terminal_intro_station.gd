@@ -42,7 +42,7 @@ const LINTEL_TOOTH_INSIDE: float = 0.4
 ## Where the runner squeezes through (x along the wall, and how far either side of it the teeth are shallower), so that the crack there
 ## is wide enough for their body: a tooth over this stretch hangs this far at most (metres; the runner lying prone is 0.45 m deep, the
 ## crack 0.85 m, its crouch 0.6 m).
-# DESIGN-TBD (docs/questions/s2.md item 3): the shallower teeth over the squeeze.
+# DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1209): the shallower teeth over the squeeze.
 const LINTEL_CALM_AT: float = 0.2
 const LINTEL_CALM_HALF: float = 1.0
 const LINTEL_CALM_DEPTH: float = 0.14
@@ -231,7 +231,7 @@ func _ground(s: MeshLayer) -> void:
 	_slab(s, -n.frontage * 0.5, n.frontage * 0.5, 0.0, 0.07, STONE_DARK, n.forecourt + 0.45, n.forecourt - 0.5)
 	for side: float in [-1.0, 1.0]:
 		_slab(s, side * n.frontage * 0.5 - 0.9, side * n.frontage * 0.5 + 0.9, 0.0, 7.4, STONE_DARK, n.forecourt + 0.9, n.forecourt - 1.0)
-	# DESIGN-TBD (docs/questions/s2.md item 5): the step removed from the head house's front.
+	# DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1211): the step removed from the head house's front.
 	# (No broad step out in front of the head house's plinth: the route board hangs at its foot and the runner stands at the board,
 	# which would put them inside it. The plinth's own course, 0.28 m out, is drawn with the head house.)
 

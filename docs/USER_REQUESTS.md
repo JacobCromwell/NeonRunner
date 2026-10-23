@@ -9,11 +9,6 @@ request that is now in the done file.
 
 - [ ] **The host cyborg, easier to tell apart** (task S1): give the host of the Cyborg's Bad Dream a purple smoke coming
   off it (ideal), or a purple glow, without hurting performance much, so the player can pick that cyborg out more easily.
-- [ ] **The Terminal's intro, fixes** (task S2): the runner walks through a big grey block on the way to the sign (move
-  the block or the path so they don't pass through a solid object); the sign's spark sound is poor (remove it, or a
-  longer electrical zap); the rubble climb bends the runner's back about 90 degrees backwards (crawl up on hands and
-  knees instead); no floor under the runner where they land inside the terminal (add floor matching the rest of the
-  terminal's: the train tracks and the rest).
 - [ ] **Armor comes back after any hit** (task S3, a bug): the armor regenerates only once it is at 0. Its wait should
   start when a hit is taken: armor of 3 knocked to 2 starts the timer, and at its end the armor is back to 3.
 - [ ] **The Hush's chasms: letting go of the wall moves two lanes** (task S3, a bug): on The Hush's long extended wall

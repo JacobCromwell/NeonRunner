@@ -76,7 +76,7 @@ func _buzz() -> PackedFloat32Array:
 ## A letter sparking (1.0 s): an electrical zap. A hard snap as the arc strikes with a thump behind it and a falling chirp, then a
 ## ragged "bzzzt": a mains buzz (100 Hz up, rich in harmonics, sagging in pitch) and a bright sizzle, both chopped by a flickering
 ## gate that gutters more and more as the arc dies, crackles thinning out and a faint ballast hum winding down under it.
-# DESIGN-TBD (docs/questions/s2.md item 6): a zap rather than no sound, and its length.
+# DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1212): a zap rather than no sound, and its length.
 func _zap() -> PackedFloat32Array:
 	var rng := _rng(2203)
 	var d: float = 1.0

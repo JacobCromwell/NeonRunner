@@ -6118,7 +6118,7 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     up at the crack; they scramble up its slope on hands and feet (`scramble`, 2.8 s) and squeeze through the crack head first,
     lying down as they go (`squeeze`, 1.6 s). The poses (`CinePoses`) are hand-set placeholders like the others. Poses do not
     blend, so each change of the runner's pose (the walk to the scramble, the scramble to the squeeze, the crawl to the jump) is on
-    a camera cut.
+    a camera cut. *(Changed by task S2, October 23, 2026: item 1208, the crawl.)*
 
 1113. **Inside.** Placeholder (`TerminalIntroEntry`): after a 0.4 s dip to black, the Terminal's own stage (the zone's skin, from its
     data): a section of the station's wall standing at the left platform's back, in the Terminal's old tile and ashlar, with the
@@ -6133,7 +6133,7 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     twenty shots: the face (2.8 s), the sweep (3.4 s), the station from across the street (4.4 s: the fallen letters, the pull
     back, the crane), following the runner across the forecourt (3.0 s), at the board (2.6 s), the board close up (2.5 s), the
     runner deciding (2.3 s), the entrance (1.4 s), the climb (4.5 s), inside (4.6 s). The zone's music fades in over 4 s from the
-    start.
+    start. *(Changed by task S2, October 23, 2026: item 1207, 33.2 s.)*
 
 1115. **Its sounds.** Seven new ones (`tools/asset_gen/sfx_bank_terminal_intro.gd`): `waste_wind`, `sign_buzz`, `sign_zap` (a
     letter sparking), `grime_wipe`, `rubble_scramble`, `landing_thud` and `station_hum`; the game's `rubble_shift` for the squeeze
@@ -6799,3 +6799,38 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    gap) and two in Last Stop's (`gap_rows` 2: 6 more), each with the level's hard spacing clear around it. GDD §5, Zone 8
    still says "a couple of holes, not many": to be updated with this decision. Rows across every lane but one (like
    other zones' added rows) would be easier. Right length and number?
+
+### Folded on October 23, 2026 (task S2, the Terminal's intro, fixes)
+
+1207. **How long the intro may now run.** GDD §6 (Cinematics, "Terminal intro") sets no length; F2k's brief suggested about 25 to 32 s. A crawl
+   at a believable pace up the 6 m of rubble takes about 4.6 s, where the old scramble took 2.8 s, so everything after the climb moved
+   1.2 s later. Placeholder: 33.2 s in all (`duration`, `fade_at`, `card_at`, `inside_at`, `jump_at`, `climb_from`, `crest_at`,
+   `through_at` in the tuning, marked `DESIGN-TBD` on `duration`); the look at the entrance before the climb was shortened from
+   1.5 s to 0.9 s to give some of it back. The alternative is to shorten an earlier beat (the facade shot is 4.4 s) by that much.
+
+1208. **The crawl's pace and look.** GDD §6 says only that the runner climbs the rubble; the owner asked for hands and knees, "naturally".
+   Placeholder (`CinePoses.crawl`, constants `CRAWL_*`): the body pitched along the slope, the diagonal hand and knee reaching together,
+   about 1.35 m/s over the surface (a brisk crawl, 1.05 m of ground per cycle of the limbs, so a bit over one cycle a second), the head up
+   to look ahead at the crack; the camera rides with them from beside the heap (`climb_cam`). A slower, more labouring crawl would need more time
+   (item 1207).
+
+1209. **The squeeze, lowered.** The orchestrator's brief kept the squeeze and the jump as they were (the owner didn't mention them). To stop the runner's head and hands going through
+   the lintel's stone teeth (the crouch the squeeze starts from reached 0.87 m over the rubble, the crack is 0.85 m), the crouch is lower
+   (0.60 m) and the lying body slimmer (head carried 0.45 m over the rubble, was 0.52 m), and the lintel's teeth are shallow (0.14 m) over the
+   stretch the runner passes (`TerminalIntroStation.LINTEL_CALM_*`; it still has ragged teeth elsewhere, so the crack still reads as a
+   crack). The alternative is a taller crack (`door_height`, `heap_height` in the tuning), which changes how much light shows.
+
+1210. **Where the runner goes after the sign.** The owner's beat says they make up their mind and then look at the entrance. Placeholder: they
+   turn and set off back the way they came (out along the bare pavement, not across the heap's flank, which was a walk through the rubble
+   before), and the next shot cuts to them standing at the heap's foot, on its surface (they stood in it, 0.34 m deep, before). Nothing
+   shows them cross the forecourt between the two.
+
+1211. **The route board's step.** The station had a broad step, 1.4 m out and 0.5 m high, along the whole front of the head house (the
+   "big grey block" the runner walked into at the board). It is gone; the plinth's own course (0.28 m out) stays, and the board hangs at its
+   foot. No design is lost: the owner's beats do not mention a step.
+
+1212. **The sign's spark.** The owner left the choice between no spark sound and a better one. Placeholder: a longer (1.0 s) electrical
+   zap (`sign_zap`, `tools/asset_gen/sfx_bank_terminal_intro.gd`), played with each burst of sparks that shows (one in three
+   with Reduced flashing), but at least 0.7 s after the last zap (`TerminalIntro.ZAP_GAP`, by the orchestrator at review) so most of each
+   zap's buzz is heard before the next restarts it. A sound of its own for the sign, or none, is the owner's to choose.
+

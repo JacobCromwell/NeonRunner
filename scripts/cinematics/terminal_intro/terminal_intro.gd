@@ -38,7 +38,7 @@ const CREST_LIFT: float = 0.04
 ## The runner's eye line (metres): the face shot looks at it.
 const EYE_HEIGHT: float = 1.13
 ## The shortest time between two sign zaps (seconds): most of a zap (1.0 s) is heard before the next one restarts it.
-# DESIGN-TBD (docs/questions/s2.md item 6): the zap's length and spacing.
+# DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1212): the zap's length and spacing.
 const ZAP_GAP: float = 0.7
 
 ## Its numbers (null: NUMBERS_PATH's).

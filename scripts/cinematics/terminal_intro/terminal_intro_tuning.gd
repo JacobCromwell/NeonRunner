@@ -17,7 +17,7 @@ extends Resource
 @export_group("Timing")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1114): the length and the shots' times; the orchestrator's brief for the task suggested about 25
 ## to 32 s (the owner's beats set no length). Longer than GDD §1's 5-15 s, as the other intros are. It ends on black: Terminal 1
-## opens on its own view. DESIGN-TBD (docs/questions/s2.md item 1): task S2 made it 1.2 s longer (33.2 s), to give the owner's hands-and-knees crawl up
+## opens on its own view. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1207): task S2 made it 1.2 s longer (33.2 s), to give the owner's hands-and-knees crawl up
 ## the rubble its time (4.6 s, was 2.8 s of scramble) and an unhurried look at the entrance before it (0.9 s, was 1.5 s).
 @export_range(10.0, 60.0, 0.1, "suffix:s") var duration: float = 33.2
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_in: float = 1.0
@@ -149,7 +149,7 @@ extends Resource
 @export var looks: PackedVector3Array = PackedVector3Array([Vector3(0.0, 0.0, 0.0), Vector3(0.7, 4.0, 0.0), Vector3(1.5, -38.0, -2.0),
 	Vector3(2.15, -38.0, -2.0), Vector3(3.2, 44.0, 6.0), Vector3(4.6, 52.0, 14.0), Vector3(6.4, 54.0, 16.0)])
 ## After the wipe they have stepped back from the board (how far out from the front), look at it, nod (`nod_at`), and turn to
-## the entrance (`turn_at`), setting off back the way they came (DESIGN-TBD, docs/questions/s2.md item 4: out round the heap's foot, never
+## the entrance (`turn_at`), setting off back the way they came (DESIGN-TBD, docs/OPEN_QUESTIONS_DEFERRED.md item 1210: out round the heap's foot, never
 ## across its flank, as the cut to the foot follows).
 @export_range(1.0, 4.0, 0.05, "suffix:m") var step_back: float = 2.0
 @export_range(0.0, 60.0, 0.05, "suffix:s") var nod_at: float = 19.2
