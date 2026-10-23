@@ -883,6 +883,14 @@ func _test_generation() -> void:
 	plain.features = PackedStringArray(["ramps", "ceilings", "pulsing", "cyborg"])
 	var none: LevelLayout = LevelGenerator.new().generate(plain, tuning, LevelGenerator.load_for(plain))
 	check(LevelGenerator.feature_positions(none, "heavy_cyborg").is_empty(), "levels without the feature have none")
+	# Quick play's `--features=heavy_cyborg` alone: its pattern's Heavy Cyborgs, and none of its cyborgs left plain.
+	var alone: LevelConfig = base.duplicate() as LevelConfig
+	alone.features = PackedStringArray(["ramps", "ceilings", "pulsing", "heavy_cyborg"])
+	var solo := LevelGenerator.new()
+	solo.generate(alone, tuning, LevelGenerator.load_for(alone))
+	var solo_at: Array[float] = _check_places(solo, "without cyborgs of its own")
+	check(not solo_at.is_empty() and LevelGenerator.feature_positions(solo.layout, "cyborg").is_empty(),
+		"a level without cyborgs of its own has its pattern's Heavy Cyborgs (%d) and no plain cyborg" % solo_at.size())
 
 
 ## Checks where every Heavy Cyborg of `gen`'s build stands (HeavyCyborgRules.fits) and returns their spots: none before

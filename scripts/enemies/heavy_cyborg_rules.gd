@@ -14,7 +14,8 @@ extends RefCounted
 ##   for the feature (LevelConfig.recency_factor: most in the level that introduces it, fewer as it gets older), the
 ##   first that fits always where the pattern's left none. The passes after the rules (the danger density pass, the
 ##   wider gaps, the fill pass, the zone doodads, the dash walls past their introduction) keep off a Heavy Cyborg's
-##   keep-out and floor as off any enemy that isn't a cyborg, its stream's zone among them.
+##   keep-out and floor as off any enemy that isn't a cyborg, its stream's zone among them. (A level without cyborgs of
+##   its own, quick play's `--features=heavy_cyborg`, drops the pattern's cyborgs that don't become Heavy Cyborgs.)
 ## - After the zone doodads (after_doodads), once everything that stands on the floor is placed (nothing after them
 ##   adds a gap, a fence or a doodad in its levels; the gap density pass runs in City 1 only): every Heavy Cyborg that
 ##   no longer fits is given back as a plain cyborg (_give_back); where none is left, the first of the level's own
@@ -68,15 +69,28 @@ static func apply(gen: LevelGenerator) -> void:
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(gen.layout, gen.tuning, gen.zones)
 	var taken: Array[Vector2] = taken_spans(gen)
 	var spacing: float = t.spacing_seconds * gen.speed
-	var left: int = 0
+	# The level's last plain cyborg stays one where the level has cyborgs of its own (they keep appearing).
+	var own: bool = gen.config.has_feature(CYBORG)
+	var left: int = 0 if own else 1 << 30
 	for e: Dictionary in gen.layout.enemies:
-		left += 1 if is_plain_cyborg(e) else 0
+		left += 1 if own and is_plain_cyborg(e) else 0
 	var placed: Array[float] = []
+	var stray: Array[Dictionary] = []
 	for e: Dictionary in pattern_cyborgs(gen):
 		var at: float = float(e["at"])
 		if left > 1 and _spaced(placed, at, spacing) and fits(gen, e, t, spans, taken):
 			_take(e, placed)
 			left -= 1
+		else:
+			stray.append(e)
+	# A level without cyborgs of its own (quick play's `--features=heavy_cyborg`) keeps none of the pattern's that didn't
+	# become Heavy Cyborgs: no cyborg rule has planned around them.
+	if not own and not stray.is_empty():
+		var kept: Array[Dictionary] = []
+		for e: Dictionary in gen.layout.enemies:
+			if not _holds(stray, e):
+				kept.append(e)
+		gen.layout.enemies = kept
 	# The top-up: a share of the level's other plain cyborgs, the first that fits always where the pattern's left none.
 	var from: float = gen.feature_start(TYPE)
 	var chance: float = clampf(t.share * gen.config.recency_factor([TYPE]), 0.0, 1.0)
