@@ -67,6 +67,8 @@ const MUZZLE_FLASH_TIME: float = 0.05
 
 ## The gatling's meshes, built once: {receiver, barrels, ring} ArrayMeshes.
 static var _gatling: Dictionary = {}
+## The barrels' red-hot material, built once (_hot_material).
+static var _hot: Material
 
 ## Firing (the stream is under way): the barrels spin flat out and stay hot; HeavyCyborg sets it each tick.
 var firing: bool = false
@@ -83,6 +85,8 @@ var _gun_aim := Vector3.ZERO
 var _gun_aiming: bool = false
 var _gun_w: float = 0.0
 var _spin: float = 0.0
+## Whether the barrels show red-hot now (their material is swapped only when it changes).
+var _barrels_hot: bool = false
 var _muzzle_flash_left: float = 0.0
 var _line_target := Vector3.ZERO
 var _line_progress: float = 0.0
@@ -188,6 +192,7 @@ func die(cause: StringName) -> void:
 	_ring.visible = false
 	_flash.visible = false
 	_barrels.material_override = null
+	_barrels_hot = false
 	super.die(cause)
 
 
@@ -287,7 +292,9 @@ func _update_gatling(delta: float) -> void:
 	var target_spin: float = lerpf(SPIN_IDLE, SPIN_FULL, heat * heat) if heat > 0.0 else SPIN_IDLE
 	_spin = target_spin if heat > 0.0 else move_toward(_spin, SPIN_IDLE, 30.0 * delta)
 	_barrels.rotate_z(_spin * delta)
-	_barrels.material_override = _hot_material() if heat >= HOT_FROM else null
+	if (heat >= HOT_FROM) != _barrels_hot:
+		_barrels_hot = heat >= HOT_FROM
+		_barrels.material_override = _hot_material() if _barrels_hot else null
 	_ring.visible = heat > 0.02
 	if _ring.visible:
 		_ring.scale = Vector3.ONE * lerpf(0.35, 1.0, heat)
@@ -364,9 +371,11 @@ func _build_gatling() -> void:
 	add_child(_aim_line)
 
 
-## The barrels' red-hot look (shared by every Heavy Cyborg).
+## The barrels' red-hot look (shared by every Heavy Cyborg), built on first use.
 static func _hot_material() -> Material:
-	return GreyboxMaterials.glow(HOT_COLOR, 3.0)
+	if _hot == null:
+		_hot = GreyboxMaterials.glow(HOT_COLOR, 3.0)
+	return _hot
 
 
 ## The gatling's low-poly meshes, built once and shared: the receiver (with its drum, handle, coupling and the

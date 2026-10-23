@@ -40,25 +40,31 @@ const UNUSED: PackedStringArray = ["burst_min", "burst_max", "shot_interval", "p
 @export_range(0.08, 0.5, 0.01, "suffix:s") var bullet_gap_late: float = 0.16
 @export_range(0.5, 1.0, 0.01) var invulnerability_share: float = 0.9
 ## DESIGN-TBD (docs/questions/s1.md): every round after the first leaves at least this share of min_warning_time
-## before it reaches the runner (HeavyCyborgGun.min_flight_time): the stream waits until all of it fits.
+## before it reaches the runner (HeavyCyborgGun.min_flight_time, measured from the barrels' tips).
 @export_range(0.0, 1.0, 0.05) var later_round_warning_share: float = 0.5
+## DESIGN-TBD (docs/questions/s1.md): a stream that no longer fits whole (it starts late: its place in the air came
+## free, or the path cleared, as the runner closed in) fires as many of its rounds as still fit, this many at the least,
+## else it waits (HeavyCyborgGun._burst_fair).
+@export_range(1, 20) var min_stream_rounds: int = 4
 ## DESIGN-TBD (docs/questions/s1.md): the wind-up's sound plays no further from the runner than this, on the way to
 ## the gatling, so the audio half of the warning is heard from as far off as the stream starts (a positional sound
 ## fades from 20 m and is silent at 90 m: SfxLibrary). The cyborgs' charge-up plays at the cannon.
 @export_range(5.0, 90.0, 1.0, "suffix:m") var windup_heard_within: float = 24.0
 
 @export_group("Generator")
-## DESIGN-TBD (docs/questions/s1.md): Heavy Cyborgs take the places of some of the level's cyborgs
-## (HeavyCyborgRules): the chance that a cyborg that fits becomes one, at the campaign recency curve's factor 1 (a
-## feature introduced long ago; LevelConfig.recency_factor scales it: four times this in the level that introduces
-## it, FeatureRecency.introduced). The first that fits from the feature's start always does.
+## DESIGN-TBD (docs/questions/s1.md): besides its own pattern's (data/patterns/heavy_cyborg.json), a share of the
+## level's other plain cyborgs become Heavy Cyborgs where one fits (HeavyCyborgRules' top-up): the chance that one
+## does, at the campaign recency curve's factor 1 (a feature introduced long ago; LevelConfig.recency_factor scales
+## it: four times this in the level that introduces it, FeatureRecency.introduced). The first that fits always does
+## where the pattern's left none.
 @export_range(0.0, 1.0, 0.01) var share: float = 0.12
 ## DESIGN-TBD (docs/questions/s1.md): seconds of run at least between two Heavy Cyborgs.
 @export_range(0.0, 20.0, 0.5, "suffix:s") var spacing_seconds: float = 3.0
-## DESIGN-TBD (docs/questions/s1.md): seconds of run before it that must hold nothing that holds a stream (a doodad, a
-## falling gantryway's or a teleporter's calm stretch, a dash wall: LevelLayout.doodad_between) for a cyborg there to
-## become a Heavy Cyborg (HeavyCyborgRules.stream_zone): a stream lands over about the last two seconds before the
-## runner reaches it, and its clear path reaches a little further.
+## DESIGN-TBD (docs/questions/s1.md): seconds of run before it that must hold nothing its stream is held for, in any
+## lane (a gap, a live fence, a doodad, a falling gantryway's or a teleporter's calm stretch, a dash wall:
+## CyborgGun.floor_clear, what the gatling's path_clear asks) for a Heavy Cyborg to stand there
+## (HeavyCyborgRules.stream_zone): a stream lands over about the last two seconds before the runner reaches it, and
+## its clear path reaches a little further.
 @export_range(0.0, 6.0, 0.1, "suffix:s") var keep_clear_seconds: float = 2.0
 
 

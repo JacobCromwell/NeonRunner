@@ -1,106 +1,232 @@
 extends RefCounted
 ## Generator rules for the Heavy Cyborg (GDD §9.16), run for levels with the `heavy_cyborg` feature (the Ice Lab's
 ## Relay Station, from its introduction, and Specimen Vault; the Golden Zone's three levels). It stands on the floor
-## ahead like a cyborg (proposed), so Heavy Cyborgs take the places of some of the level's cyborgs: no pattern of its
-## own, as the ceiling scenarios take some of the level's ceilings. After the zone doodads (after_doodads), when every
-## rule and pass but the wall fences, the side wall gaps, the gap density pass and the credits has built the level
-## around its cyborgs, a share of the plain cyborgs from the feature's start on become Heavy Cyborgs, each where one
-## fits (fits):
-## - a plain cyborg: on the floor, not a host, no rule's mark in its params (a cyborg planted in a charge's path, a
-##   Buzz Overdrive's company, one planted under a falling gantryway are their rules' own), and none the danger density
-##   pass added (its own small threats, of the types its tuning lists: DangerDensity's `added_enemies`);
+## ahead like a cyborg (proposed), and every Heavy Cyborg stands where its stream gets to fire (fits).
+## - Its own encounters: its pattern (data/patterns/heavy_cyborg.json, PATTERN_ID: picked from the feature's start as
+##   often as a single cyborg's, the campaign's recency curve and the level's feature_weights on top) places a plain
+##   cyborg alone, its stream's zone the pattern's own empty floor before it. Every rule plans around it as around any
+##   plain cyborg (the cyborg rules keep it from every obstacle; the dash walls, wall-run gaps and an Enforcer Truck's
+##   showing let it stand as near as a cyborg, and a rule that makes room may take it out): this pattern's picks move
+##   the level's other picks, as any pattern's do, but where a Heavy Cyborg will stand the rules plan as for a cyborg.
+## - Last of the rules (apply, RUN_AFTER), each such cyborg still standing becomes a Heavy Cyborg where one fits, and
+##   stays a plain cyborg where none does. The passes after the rules (the danger density pass, the wider gaps, the
+##   fill pass, the zone doodads, the dash walls past their introduction) then keep off its keep-out and floor as off
+##   any enemy that isn't a cyborg, its stream's zone among them.
+## - After the zone doodads (after_doodads), once everything that stands on the floor is placed (nothing after them
+##   adds a gap, a fence or a doodad in its levels; the gap density pass runs in City 1 only): every Heavy Cyborg that
+##   no longer fits is given back as a plain cyborg (_give_back), and a share of the level's other plain cyborgs from
+##   the feature's start on become Heavy Cyborgs where one fits (the top-up): each with the chance `share` times the
+##   campaign's recency factor for the feature (LevelConfig.recency_factor: most in the level that introduces it, fewer
+##   as it gets older), the first that fits always where the pattern's left none. A build with none at all is built
+##   again with picks of its pattern forced elsewhere (LevelConfig.guarantee_features), as for any feature.
+## A Heavy Cyborg fits where (fits):
+## - it stands on the floor where a plain cyborg stood (not a host, no rule's mark in its params: a cyborg planted in
+##   a charge's path, a Buzz Overdrive's company, one planted under a falling gantryway are their rules' own; the
+##   top-up takes none the danger density pass added, its own small threats of the types its tuning lists);
 ## - it keeps the cyborgs' margin from every obstacle (CyborgRules: their rules and its walk keep it), the zone
 ##   doodads' included;
-## - its stream's zone (stream_zone: keep_clear_seconds of run before it) holds nothing that holds a stream
-##   (CyborgGun.path_clear, LevelLayout.doodad_between: a doodad, a falling gantryway's or a teleporter's calm stretch,
-##   a dash wall), so it gets to fire as the runner closes in (the zone doodads already keep a cyborg's keep-out, the
-##   same two seconds, clear: LevelGenerator.doodad_enemy_keep_out);
+## - its stream's zone (stream_zone: keep_clear_seconds of run before it) holds nothing its stream is held for, in any
+##   lane (CyborgGun.floor_clear, what the gun's path_clear asks around every round's arrival: a gap or a live fence, a
+##   doodad, a falling gantryway's or a teleporter's calm stretch, a dash wall), so it gets to fire as the runner closes
+##   in;
 ## - what it reaches (its stream's zone, its keep-out and the floor it uses) meets no dash wall's footprint, no wider
 ##   gap's zone, no wall-run gap's clear stretch and no calm stretch a rule keeps in every lane
 ##   (LevelGenerator.rules_doodad_keep_outs with `calm`: an Enforcer Truck's showing window): those let a cyborg stand
 ##   nearer than any other enemy, its obstacle margin away (DashWallRules.enemy_spans, WideGapPlacement.keeps_of,
 ##   WallRunGapPlacement.floor_keeps, the Enforcer Truck's ROOM_TYPES), and their re-checks hold a Heavy Cyborg to the
 ##   rest's rule;
-## - at least spacing_seconds of run from the Heavy Cyborg before it;
-## - never the level's last plain cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions), nor
-##   the last of the level's own cyborgs before the danger density pass's first (the pass adds its own only past the
-##   level's first); the pass's own count for neither.
-## The first that fits from the start always becomes one (the introduction: the first cyborg that fits past the start).
-## Where none fits, the first plain cyborg past the start that fits but for its stream's zone becomes the level's one
-## (CyborgGun.path_clear holds its stream while the runner is where it can't fairly be shot, so it may not get to fire);
-## a build with no plain cyborg past the start that fits so has none (OCCASIONAL). Each later one does with the chance
-## `share` times the campaign's recency factor for the feature (LevelConfig.recency_factor: most in the level that
-## introduces it, fewer as it gets older), drawn from its own random stream. Everything else is built exactly as without
-## the feature: the rules and passes before planned around a cyborg, and a Heavy Cyborg keeps a cyborg's keep-out and
-## floor (keep_out; its tuning's floor reach), so the passes after it build the same too, and every other rule's
-## re-check finds it where it found the cyborg. It is never a panic variant nor a host.
-## DESIGN-TBD (docs/questions/s1.md): taking the cyborgs' places, the share, the spacing and the stream's zone.
+## - at least spacing_seconds of run from every other Heavy Cyborg;
+## - never the level's last plain cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions), nor,
+##   in the top-up, the last of the level's own floor cyborgs before the danger density pass's first (the pass adds its
+##   own only past the level's first).
+## A Heavy Cyborg keeps a cyborg's keep-out (keep_out: from two seconds of run before it, its stream's zone, to its
+## margin after it) and its tuning's floor reach. It is never a panic variant nor a host.
+## DESIGN-TBD (docs/questions/s1.md): its pattern's weight, the top-up's share, the spacing and the stream's zone.
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const TYPE: String = "heavy_cyborg"
 const CYBORG: String = "cyborg"
 const TUNING_PATH: String = "res://data/enemies/heavy_cyborg.tres"
-## Never forced (as the ceiling scenarios and the Octodog jars): a build of a level that lists the feature whose cyborgs
-## leave a Heavy Cyborg no place has none, the generator never builds it again for one (each build again would move
-## everything else: the rest of the level is built exactly as without the feature), and the campaign's checks don't ask
-## every build for one (LayoutChecks.occasional). test_heavy_cyborg checks that every build of the campaign's levels on
-## their own seeds at the campaign's lane count has some (and counts them at 3 and 6 lanes), and that most builds of the
-## prototype level over seeds, lane counts and difficulties do. DESIGN-TBD (docs/questions/s1.md).
-const OCCASIONAL: bool = true
-## The params a plain cyborg's entry may carry (its pattern's and its rules' panic roll); any other is a rule's mark.
+## Its pattern's id (data/patterns/heavy_cyborg.json).
+const PATTERN_ID: String = "heavy_cyborg"
+## Its rules run last of the rules (whichever of these the level has), so every rule plans around the plain cyborg
+## where a Heavy Cyborg will stand.
+const RUN_AFTER: Array[String] = ["cyborg", "window_cyborg", "host", "hover_truck", "octodog", "drone", "generator",
+	"barnacle_turret", "buzz_overdrive", "wall_run_gaps", "dash_wall", "enforcer_truck", "gantryway", "octodog_jar",
+	"teleporter", "gilded_sentinel", "resonator", "treasure_stash", "fenced_ceiling", "floor_cutter", "centipede",
+	"debris_maze"]
+## The params a plain cyborg's entry may carry (its rules' panic roll); any other is a rule's mark.
 const PLAIN_PARAMS: PackedStringArray = ["panic", "host"]
+static var trace: Array[String] = []  # PROBE-ONLY
+static var apply_trace: Array[String] = []  # PROBE-ONLY
 
 
-## Turns a share of the level's plain cyborgs into Heavy Cyborgs (see the header).
-static func after_doodads(gen: LevelGenerator) -> void:
-	if not gen.config.has_feature(TYPE):
-		return
+## Last of the rules: the cyborg of each of its pattern's picks still standing becomes a Heavy Cyborg where one fits,
+## spaced from the one before (never the level's last plain cyborg); one that doesn't stays the plain cyborg it is.
+static func apply(gen: LevelGenerator) -> void:
+	apply_trace.clear()  # PROBE-ONLY
 	var t: HeavyCyborgTuning = tuning_of()
-	var lay: LevelLayout = gen.layout
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(gen.layout, gen.tuning, gen.zones)
+	var taken: Array[Vector2] = taken_spans(gen)
+	var spacing: float = t.spacing_seconds * gen.speed
+	var left: int = 0
+	for e: Dictionary in gen.layout.enemies:
+		left += 1 if is_plain_cyborg(e) else 0
+	var placed: Array[float] = []
+	for e: Dictionary in pattern_cyborgs(gen):
+		var at: float = float(e["at"])
+		if left > 1 and _spaced(placed, at, spacing) and fits(gen, e, t, spans, taken):
+			_take(e, placed)
+			left -= 1
+			apply_trace.append("%.0f:ok" % at)  # PROBE-ONLY
+		else:  # PROBE-ONLY
+			apply_trace.append("%.0f:no:%s" % [at, "left" if left <= 1 else ("spacing" if not _spaced(placed, at, spacing) else _why_not(gen, e, t, spans, taken))])  # PROBE-ONLY
+	# The top-up: a share of the level's other plain cyborgs, the first that fits always where the pattern's left none.
 	var from: float = gen.feature_start(TYPE)
 	var chance: float = clampf(t.share * gen.config.recency_factor([TYPE]), 0.0, 1.0)
-	var spacing: float = t.spacing_seconds * gen.speed
 	var rng: RandomNumberGenerator = gen.rng_for(TYPE)
+	var plain: Array[Dictionary] = []
+	for e: Dictionary in gen.layout.enemies:
+		if is_plain_cyborg(e) and float(e["at"]) >= from - 0.001:
+			plain.append(e)
+	plain.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
+	for e: Dictionary in plain:
+		var at: float = float(e["at"])
+		if left <= 1 or not _spaced(placed, at, spacing) or not fits(gen, e, t, spans, taken):
+			continue
+		# One draw for every cyborg that may become one, the first's too: the same stream whatever the share.
+		var roll: float = rng.randf()
+		if not placed.is_empty() and roll >= chance:
+			continue
+		apply_trace.append("%.0f:topup" % at)  # PROBE-ONLY
+		_take(e, placed)
+		left -= 1
+
+
+## The plain cyborgs its pattern's picks placed that still stand (LevelGenerator.picks: the one inside each pick's
+## stretch), in order.
+static func pattern_cyborgs(gen: LevelGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for p: Dictionary in gen.picks:
+		if String(p.get("id", "")) != PATTERN_ID:
+			continue
+		var from: float = float(p["at"])
+		var to: float = from + float(p.get("used", 0.0))
+		for e: Dictionary in gen.layout.enemies:
+			var at: float = float(e["at"])
+			if at >= from and at <= to and is_plain_cyborg(e):
+				out.append(e)
+				break
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
+	return out
+
+
+## After the zone doodads: every Heavy Cyborg that no longer fits (or stands nearer the one before than the spacing) is
+## given back as a plain cyborg, then the top-up (see the header).
+static func after_doodads(gen: LevelGenerator) -> void:
+	trace.clear()  # PROBE-ONLY
+	if not gen.config.has_feature(TYPE):
+		return
+	var lay: LevelLayout = gen.layout
+	var t: HeavyCyborgTuning = tuning_of()
+	var spacing: float = t.spacing_seconds * gen.speed
 	var taken: Array[Vector2] = taken_spans(gen)
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(lay, gen.tuning, gen.zones)
+	var placed: Array[float] = []
+	var heavies: Array[Dictionary] = []
+	for e: Dictionary in lay.enemies:
+		if String(e.get("type", "")) == TYPE:
+			heavies.append(e)
+	heavies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
+	for e: Dictionary in heavies:
+		var at: float = float(e["at"])
+		if _spaced(placed, at, spacing) and fits(gen, e, t, spans, taken):
+			placed.append(at)
+			trace.append("%.0f:kept" % at)  # PROBE-ONLY
+		else:
+			trace.append("%.0f:back:%s" % [at, "spacing" if not _spaced(placed, at, spacing) else _why_not(gen, e, t, spans, taken)])  # PROBE-ONLY
+			_give_back(e)
+	if placed.is_empty():
+		_last_resort(gen, t, spans, taken)
+
+
+## Where none is left after the zone doodads: the first of the level's own plain cyborgs from the feature's start on
+## that fits becomes one (never the last plain cyborg, nor the last own floor cyborg before the danger density pass's
+## first, nor one the pass added), which saves a build of the guarantee.
+static func _last_resort(gen: LevelGenerator, t: HeavyCyborgTuning, spans: Array[Vector2], taken: Array[Vector2]) -> void:
+	var from: float = gen.feature_start(TYPE)
 	# The danger density pass's own cyborgs are none of these: it adds them only past the level's first.
 	var added: Array = gen.danger_density_result.get("added_enemies", [])
 	var added_first: float = INF
 	for e: Variant in added:
 		if String((e as Dictionary).get("type", "")) == CYBORG:
 			added_first = minf(added_first, float((e as Dictionary)["at"]))
-	var plain: Array[Dictionary] = []
+	var own: Array[Dictionary] = []
 	var before_added: int = 0
-	for e: Dictionary in lay.enemies:
+	var left: int = 0
+	for e: Dictionary in gen.layout.enemies:
 		if String(e.get("type", "")) != CYBORG or _holds(added, e):
 			continue
-		before_added += 1 if float(e["at"]) < added_first else 0
-		if is_plain_cyborg(e) and float(e["at"]) >= from - 0.001:
-			plain.append(e)
-	var left: int = 0
-	for e: Dictionary in lay.enemies:
-		left += 1 if is_plain_cyborg(e) and not _holds(added, e) else 0
-	plain.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
-	var last: float = -INF
-	for e: Dictionary in plain:
+		own.append(e)
+		before_added += 1 if float(e["at"]) < added_first and _counts_first(e) else 0
+		left += 1 if is_plain_cyborg(e) else 0
+	own.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
+	for e: Dictionary in own:
 		var at: float = float(e["at"])
-		var first_kept: bool = at < added_first and before_added <= 1
-		if left <= 1 or first_kept or at - last < spacing or not fits(gen, e, t, spans, taken):
-			continue
-		# One draw for every cyborg that fits, the first's too: the same stream whatever the share.
-		var roll: float = rng.randf()
-		if last > -INF and roll >= chance:
-			continue
-		_take_place(e)
-		left -= 1
-		before_added -= 1 if at < added_first else 0
-		last = at
-	if last > -INF or left <= 1:
-		return
-	for e: Dictionary in plain:
-		if not (float(e["at"]) < added_first and before_added <= 1) and fits(gen, e, t, spans, taken, false):
-			_take_place(e)
+		var first_kept: bool = at < added_first and _counts_first(e) and before_added <= 1
+		if at >= from - 0.001 and is_plain_cyborg(e) and left > 1 and not first_kept and fits(gen, e, t, spans, taken):
+			trace.append("%.0f:lastresort" % at)  # PROBE-ONLY
+			_take(e, [])
 			return
+
+
+static func _zone_why(lay: LevelLayout, z: Vector2, at: float) -> String:  # PROBE-ONLY
+	var what: PackedStringArray = []  # PROBE-ONLY
+	for d: Dictionary in lay.doodads:  # PROBE-ONLY
+		var sp: Vector2 = LevelLayout.doodad_extent(d)  # PROBE-ONLY
+		if sp.x <= z.y and sp.y >= z.x: what.append("doodad@%.0f/l%d" % [sp.x - at, int(d["lane"])])  # PROBE-ONLY
+	if lay.gantryway_between(z.x, z.y): what.append("gantryway")  # PROBE-ONLY
+	if lay.teleporter_between(z.x, z.y): what.append("teleporter")  # PROBE-ONLY
+	if lay.dash_wall_between(z.x, z.y): what.append("dashwall")  # PROBE-ONLY
+	for f: Dictionary in lay.fences:  # PROBE-ONLY
+		if float(f["at"]) >= z.x and float(f["at"]) <= z.y and not f.get("disabled", false): what.append("fence@%.0f/l%d" % [float(f["at"]) - at, int(f["lane"])])  # PROBE-ONLY
+	for g: Dictionary in lay.gaps:  # PROBE-ONLY
+		if float(g["start"]) <= z.y and float(g["end"]) >= z.x: what.append("gap@%.0f..%.0f/l%d" % [float(g["start"]) - at, float(g["end"]) - at, int(g["lane"])])  # PROBE-ONLY
+	return ",".join(what)  # PROBE-ONLY
+static func _why_not(gen: LevelGenerator, e: Dictionary, t: HeavyCyborgTuning, spans: Array[Vector2], taken: Array[Vector2]) -> String:  # PROBE-ONLY
+	var at: float = float(e["at"])  # PROBE-ONLY
+	if CyborgRules.near_any(spans, at, CyborgRules.obstacle_margin_at(t, gen.pace)): return "margin"  # PROBE-ONLY
+	var z: Vector2 = stream_zone(gen, at, t)  # PROBE-ONLY
+	if not zone_clear(gen.layout, z): return "zone:" + _zone_why(gen.layout, z, at)  # PROBE-ONLY
+	return "taken"  # PROBE-ONLY
+
+
+## True if `at` is at least `spacing` from every one of `placed`.
+static func _spaced(placed: Array[float], at: float, spacing: float) -> bool:
+	for p: float in placed:
+		if absf(at - p) < spacing:
+			return false
+	return true
+
+
+## Cyborg entry `e` becomes a Heavy Cyborg, in its place (none of a cyborg's params: no panic variant); `placed` notes
+## where.
+static func _take(e: Dictionary, placed: Array[float]) -> void:
+	e["type"] = TYPE
+	e["params"] = {}
+	placed.append(float(e["at"]))
+
+
+## Heavy Cyborg entry `e` goes back to the level as the plain cyborg it was (no panic variant).
+static func _give_back(e: Dictionary) -> void:
+	e["type"] = CYBORG
+	e["params"] = {"panic": false}
+
+
+## True if cyborg entry `e` counts as the level's first of its kind for the danger density pass (DangerDensity: a floor
+## cyborg that isn't a host).
+static func _counts_first(e: Dictionary) -> bool:
+	return int(e.get("side", 0)) == 0 and not bool((e.get("params", {}) as Dictionary).get("host", false))
 
 
 ## True if `list` holds `item` itself (not an equal copy).
@@ -109,12 +235,6 @@ static func _holds(list: Array, item: Dictionary) -> bool:
 		if is_same(x, item):
 			return true
 	return false
-
-
-## Cyborg entry `e` becomes a Heavy Cyborg, in its place (none of a cyborg's params: no panic variant).
-static func _take_place(e: Dictionary) -> void:
-	e["type"] = TYPE
-	e["params"] = {}
 
 
 ## True if enemy entry `e` is a plain cyborg (see the header): one a Heavy Cyborg may take the place of.
@@ -131,21 +251,25 @@ static func is_plain_cyborg(e: Dictionary) -> bool:
 
 
 ## True if a Heavy Cyborg fits where cyborg entry `e` stands (see the header): `spans` are the level's obstacles
-## (CyborgRules.obstacle_spans) and `taken` the stretches its reach keeps off (taken_spans). With `zone_clear` off, its
-## stream's zone may hold what holds a stream (the guarantee's last resort).
+## (CyborgRules.obstacle_spans) and `taken` the stretches its reach keeps off (taken_spans).
 static func fits(gen: LevelGenerator, e: Dictionary, t: HeavyCyborgTuning, spans: Array[Vector2],
-		taken: Array[Vector2], zone_clear: bool = true) -> bool:
+		taken: Array[Vector2]) -> bool:
 	var at: float = float(e["at"])
 	if CyborgRules.near_any(spans, at, CyborgRules.obstacle_margin_at(t, gen.pace)):
 		return false
-	var zone: Vector2 = stream_zone(gen, at, t)
-	if zone_clear and gen.layout.doodad_between(zone.x, zone.y):
+	if not zone_clear(gen.layout, stream_zone(gen, at, t)):
 		return false
 	var reach: Vector2 = reach_of(gen, e, t)
 	for s: Vector2 in taken:
 		if s.x <= reach.y and s.y >= reach.x:
 			return false
 	return true
+
+
+## True if a stream's zone (`zone`, track distances) holds nothing its stream is held for, in any lane
+## (CyborgGun.floor_clear: what the gun's path_clear asks around each round's arrival).
+static func zone_clear(layout: LevelLayout, zone: Vector2) -> bool:
+	return CyborgGun.floor_clear(layout, zone.x, zone.y)
 
 
 ## What a Heavy Cyborg standing where entry `e` does reaches along the track (metres): its stream's zone, its keep-out
@@ -184,9 +308,9 @@ static func stream_zone(gen: LevelGenerator, at: float, t: HeavyCyborgTuning = n
 	return Vector2(at - t.keep_clear_seconds * gen.speed, at)
 
 
-## What the passes keep off around Heavy Cyborg entry `e` (LevelGenerator.enemy_keep_out: the fill pass, the zone
-## doodads, the danger density pass, the wall fences, the gap density pass...): a cyborg's (CyborgRules.keep_out), so
-## everything after it is built as around the cyborg whose place it took.
+## What the passes keep off around Heavy Cyborg entry `e` (LevelGenerator.enemy_keep_out: the danger density pass, the
+## wider gaps, the fill pass, the zone doodads, the dash walls...): a cyborg's (CyborgRules.keep_out: from two seconds
+## of run before it, its stream's zone, to its margin after it).
 static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 	return CyborgRules.keep_out(gen, e)
 

@@ -18,13 +18,17 @@ extends TestSuite
 ## - Its kills: a stomp on its head and the dash kill it; the claws don't (a claw runner who touches it dies), nor
 ##   does armor stop its body; laser tier 1 takes twice a cyborg's shots; another enemy's charge and a falling
 ##   gantryway destroy it; it never boards an Enforcer Truck.
-## - The generator: Heavy Cyborgs take the places of plain cyborgs (HeavyCyborgRules), over seeds, lane counts and
-##   difficulties: each build is the build without the feature but for the cyborgs whose places they took, each where
-##   one fits (clear of every obstacle, its stream's zone clear, spaced, the level's first and last cyborgs kept), the same every
-##   build, most builds with some, none without the feature; the campaign's levels (introduced in Relay Station from its
-##   start, after the teleporters; Specimen Vault and Golden 1-3 with no introduction of their own; none in Frost
-##   Foundry; every build on their own seeds as without it, and some in each at the campaign's lane count); and full
-##   levels in god mode, every round fair.
+## - The stream when it no longer fits whole: as many rounds as still fit, min_stream_rounds at the least, every one
+##   flying its warning from the barrels' tips; with fewer than that, none.
+## - The generator (HeavyCyborgRules: its pattern's cyborgs, last of the rules, and the top-up after the zone doodads),
+##   over seeds, lane counts and difficulties: each Heavy Cyborg where its stream gets to fire (its stream's zone clear
+##   of every gap, live fence and doodad in every lane: what its gun's path_clear holds a stream for), clear of every
+##   obstacle, off the stretches a cyborg may stand nearer to than other enemies, spaced, the level's last plain cyborg
+##   kept, the same every build, most builds with some, none without the feature; the campaign's levels (introduced in
+##   Relay Station from its start, after the teleporters; Specimen Vault and Golden 1-3 with no introduction of their
+##   own; none in Frost Foundry; every build on their own seeds with two at the campaign's lane count and one at least
+##   at 3 and 6 lanes, every one where its stream gets to fire); and full levels in god mode, every round fair, every
+##   Heavy Cyborg passed firing. test_heavy_cyborg_play plays the campaign's own builds.
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const HeavyRules = preload("res://scripts/enemies/heavy_cyborg_rules.gd")
@@ -67,6 +71,7 @@ func run() -> void:
 	_test_warning_sound()
 	await _test_look()
 	await _test_stream()
+	await _test_partial_stream()
 	await _test_dodge()
 	await _test_follows_windup()
 	await _test_zigzag()
@@ -288,8 +293,8 @@ func _test_numbers() -> void:
 	for name: String in HeavyCyborgTuning.UNUSED:
 		check(not shown.has(name), "`%s` (a cyborg's, unused) is hidden from the F6 panel" % name)
 	for name: String in ["engage_distance", "charge_time", "reload_late", "bolt_speed_late", "bullets_late", "bullet_gap_late",
-			"invulnerability_share", "later_round_warning_share", "model_scale", "health_late", "score_value", "walk_speed", "obstacle_margin",
-			"keep_clear_seconds", "share", "spacing_seconds", "windup_heard_within", "crossfire_gap"]:
+			"invulnerability_share", "later_round_warning_share", "min_stream_rounds", "model_scale", "health_late", "score_value",
+			"walk_speed", "obstacle_margin", "keep_clear_seconds", "share", "spacing_seconds", "windup_heard_within", "crossfire_gap"]:
 		check(shown.has(name), "`%s` is in the F6 panel" % name)
 	check(ht.score_value == 2 * ct.score_value, "it pays twice a cyborg's score (%d, %d)" % [ht.score_value, ct.score_value])
 	# Owner: twice a cyborg's laser hits (laser tier 1); proposed: the other tiers and the missiles twice too.
@@ -311,6 +316,8 @@ func _test_numbers() -> void:
 		var closing: float = round_speed + MovementTuning.REFERENCE_SPEED
 		check(n >= 5 and (n - 1) * gap <= rules.hit_invulnerability * ht.invulnerability_share + 0.0001,
 			"scaling %.2f: a stream of %d rounds arrives within the invulnerability window (%.2f s)" % [s, n, (n - 1) * gap])
+		check(ht.min_stream_rounds >= 2 and ht.min_stream_rounds < n,
+			"scaling %.2f: a stream that no longer fits whole still fires %d of its %d rounds" % [s, ht.min_stream_rounds, n])
 		# A round fills the runner's depth for (hurtbox + round) / closing speed; the rest is the gap to zigzag through.
 		var busy: float = (tuning.hurtbox_size.z + 0.5) / closing
 		check(gap - busy > 0.08, "scaling %.2f: %.2f s between rounds to zigzag through" % [s, gap - busy])
@@ -455,6 +462,38 @@ func _test_stream() -> void:
 	check(not r["alive"] and r["cause"] == HeavyCyborgGun.GATLING_NAME,
 		"a stream hits a runner who stays on its line (%s)" % r["cause"])
 	await sim.free_world(w)
+
+
+## The review's partial streams: a stream that starts late (its gun held until the runner is nearer than a whole stream
+## fits: at the reference speed and the lowest scaling, its 6 rounds need the wind-up to start about 66 m off, 4 about
+## 54 m off) fires as many of its rounds as still fit, min_stream_rounds at the least, each flying its warning from the
+## barrels' tips (the first min_warning_time, the rest later_round_warning_share of it: HeavyCyborgGun.min_flight_time);
+## let go where fewer than that fit, it fires none.
+func _test_partial_stream() -> void:
+	for let_go: float in [58.0, 50.0]:
+		var w: RunWorld = sim.build_world(RunSim.layout(3, 600.0))
+		w.player.god_mode = true
+		var heavy: HeavyCyborg = _spawn(w, 110.0, 1, {"fires": false})
+		var gun := heavy.gun as HeavyCyborgGun
+		await _step_until(w, func() -> bool:
+			if not gun.enabled and heavy.track_distance() - w.player.distance <= let_go:
+				gun.enabled = true
+			return heavy.track_distance() < w.player.distance - 5.0, 8.0)
+		var charges: Array[Dictionary] = _events_of(gun, &"charge")
+		var shots: Array[Dictionary] = _events_of(gun, &"shot")
+		var tag: String = "(let go %.0f m off: %d wind-ups, %d rounds)" % [let_go, charges.size(), shots.size()]
+		if let_go > 54.0:
+			check(charges.size() == 1 and shots.size() == int(charges[0]["shots"]) and shots.size() >= ht.min_stream_rounds
+				and shots.size() < gun.most_shots(), "a stream that no longer fits whole fires the rounds that still do " + tag)
+			for i: int in shots.size():
+				var least: float = ht.min_warning_time * (1.0 if i == 0 else ht.later_round_warning_share)
+				var flight: float = float(shots[i]["arrive"]) - float(shots[i]["t"])
+				check(flight >= least - 0.005, "round %d flies %.3f s from the barrels' tips (%.3f at the least) %s"
+					% [i, flight, least, tag])
+		else:
+			check(charges.is_empty() and shots.is_empty(), "one with fewer than %d rounds left to fire waits, and fires none %s"
+				% [ht.min_stream_rounds, tag])
+		await sim.free_world(w)
 
 
 ## A runner who switches lanes once the stream starts (its aim locked) dodges all of it.
@@ -800,11 +839,11 @@ func _test_enforcer() -> void:
 
 # --- The generator ----------------------------------------------------------------------------------
 
-## Heavy Cyborgs take the places of plain cyborgs (HeavyCyborgRules), on the prototype level with cyborgs over lane
-## counts, difficulties and seeds: every build is the build without the feature but for the cyborgs whose places they
-## took (_as_cyborgs), the same on a second build; each stands in a lane, clear of every obstacle by the cyborgs' margin,
-## at least spacing_seconds of run from the one before; in a build with more than one, every one's stream's zone holds
-## nothing that holds a stream (only the last resort's may); the level keeps a cyborg; most builds have some.
+## Heavy Cyborgs (HeavyCyborgRules: its pattern's cyborgs and the top-up's) on the prototype level with cyborgs over lane
+## counts, difficulties and seeds: the same on a second build; each stands on the floor in a lane, with none of a
+## cyborg's params, where its stream gets to fire (_check_places); the level keeps a plain cyborg; most builds have some
+## (the prototype level has no guarantee, LevelConfig.guarantee_features), in every lane across them; levels without the
+## feature have none.
 func _test_generation() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var heavies: int = 0
@@ -819,8 +858,6 @@ func _test_generation() -> void:
 				config.difficulty = difficulty
 				config.level_seed = level_seed
 				config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "speed_pads", "cyborg", "heavy_cyborg"])
-				var plain: LevelConfig = config.duplicate() as LevelConfig
-				plain.features = PackedStringArray(["ramps", "ceilings", "pulsing", "speed_pads", "cyborg"])
 				var patterns: Array = LevelGenerator.load_for(config)
 				var gen := LevelGenerator.new()
 				var a: LevelLayout = gen.generate(config, tuning, patterns)
@@ -828,23 +865,8 @@ func _test_generation() -> void:
 				check(gen.warnings.is_empty(), "it generates without warnings %s %s" % [tag, gen.warnings])
 				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 				check(JSON.stringify(a.enemies) == JSON.stringify(b.enemies), "the same seed, the same Heavy Cyborgs " + tag)
-				var c: LevelLayout = LevelGenerator.new().generate(plain, tuning, patterns)
-				check(_as_cyborgs(a) == _as_cyborgs(c), "built as without the feature, a cyborg where each Heavy Cyborg stands " + tag)
-				var spans: Array[Vector2] = CyborgRules.obstacle_spans(a, gen.tuning, gen.zones)
-				var margin: float = CyborgRules.obstacle_margin_at(ht, gen.pace)
-				var at: Array[float] = LevelGenerator.feature_positions(a, "heavy_cyborg")
-				var zones_clear: int = 0
-				for i: int in at.size():
-					var zone: Vector2 = HeavyRules.stream_zone(gen, at[i], ht)
-					zones_clear += 0 if a.doodad_between(zone.x, zone.y) else 1
-					check(not CyborgRules.near_any(spans, at[i], margin - 0.01),
-						"it stands clear of every obstacle by the cyborgs' margin at %.1f %s" % [at[i], tag])
-					check(i == 0 or at[i] - at[i - 1] >= ht.spacing_seconds * gen.speed - 0.01,
-						"at least %.1f s of run after the one before (%.1f m) %s" % [ht.spacing_seconds, at[i], tag])
-				check(at.size() < 2 or zones_clear == at.size(), "their streams' zones are clear (%d of %d) %s" % [zones_clear,
-					at.size(), tag])
-				check(LevelGenerator.feature_positions(c, "cyborg").is_empty() or not LevelGenerator.feature_positions(a, "cyborg").is_empty(),
-					"the level keeps a cyborg " + tag)
+				var at: Array[float] = _check_places(gen, tag)
+				check(not LevelGenerator.feature_positions(a, "cyborg").is_empty(), "the level keeps a cyborg " + tag)
 				for e: Dictionary in a.enemies:
 					if String(e["type"]) == "heavy_cyborg":
 						lanes_seen[int(e["lane"])] = true
@@ -854,7 +876,7 @@ func _test_generation() -> void:
 				builds += 1
 				with_some += 1 if not at.is_empty() else 0
 				LayoutChecks.check_ceilings(self, a, config, tag)
-	check(heavies > 60 and with_some * 10 >= builds * 9, "they take plenty of places (%d), in most builds (%d of %d)" % [heavies,
+	check(heavies > 60 and with_some * 10 >= builds * 9, "plenty of them (%d), in most builds (%d of %d)" % [heavies,
 		with_some, builds])
 	check(lanes_seen.size() >= 5, "in every lane across the builds (%s)" % [lanes_seen.keys()])
 	var plain: LevelConfig = base.duplicate() as LevelConfig
@@ -863,26 +885,47 @@ func _test_generation() -> void:
 	check(LevelGenerator.feature_positions(none, "heavy_cyborg").is_empty(), "levels without the feature have none")
 
 
-## `layout` as JSON, with each Heavy Cyborg back as a cyborg and every plain cyborg's params dropped (its panic roll): the
-## same text as the layout of the level without the feature where the Heavy Cyborgs took nothing but cyborgs' places.
-func _as_cyborgs(layout: LevelLayout) -> String:
-	var d: Dictionary = layout.to_dict().duplicate(true)
-	for e: Dictionary in d["enemies"]:
-		if String(e["type"]) == "heavy_cyborg":
-			e["type"] = "cyborg"
-			e["params"] = {}
-		elif HeavyRules.is_plain_cyborg(e):
-			e["params"] = {}
-	return JSON.stringify(d)
+## Checks where every Heavy Cyborg of `gen`'s build stands (HeavyCyborgRules.fits) and returns their spots: none before
+## the feature's start; each clear of every obstacle by the cyborgs' margin; its stream's zone clear of every gap, live
+## fence and doodad in every lane, so it gets to fire (CyborgGun.floor_clear, what its gun's path_clear asks around each
+## round's arrival; the review's B1); its reach off every dash wall's footprint, wider gap's zone, wall-run gap's clear
+## stretch and every-lane calm stretch (HeavyCyborgRules.taken_spans); at least spacing_seconds of run after the one
+## before.
+func _check_places(gen: LevelGenerator, tag: String) -> Array[float]:
+	var lay: LevelLayout = gen.layout
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(lay, gen.tuning, gen.zones)
+	var margin: float = CyborgRules.obstacle_margin_at(ht, gen.pace)
+	var taken: Array[Vector2] = HeavyRules.taken_spans(gen)
+	var at: Array[float] = LevelGenerator.feature_positions(lay, "heavy_cyborg")
+	for e: Dictionary in lay.enemies:
+		if String(e["type"]) != "heavy_cyborg":
+			continue
+		var a: float = float(e["at"])
+		var zone: Vector2 = HeavyRules.stream_zone(gen, a, ht)
+		var reach: Vector2 = HeavyRules.reach_of(gen, e, ht)
+		var off: bool = true
+		for s: Vector2 in taken:
+			off = off and (s.x > reach.y or s.y < reach.x)
+		check(a >= gen.feature_start("heavy_cyborg") - 0.01, "none before its start (%.0f m) %s" % [a, tag])
+		check(not CyborgRules.near_any(spans, a, margin - 0.01), "clear of every obstacle by the cyborgs' margin at %.0f m %s"
+			% [a, tag])
+		check(CyborgGun.floor_clear(lay, zone.x, zone.y), "its stream's zone (%.0f-%.0f m) holds no gap, live fence or doodad %s"
+			% [zone.x, zone.y, tag])
+		check(off, "its reach (%.0f-%.0f m) keeps off every dash wall, wider gap, wall-run gap and calm stretch %s"
+			% [reach.x, reach.y, tag])
+	for i: int in range(1, at.size()):
+		check(at[i] - at[i - 1] >= ht.spacing_seconds * gen.speed - 0.01,
+			"at least %.1f s of run after the one before (%.0f m) %s" % [ht.spacing_seconds, at[i], tag])
+	return at
 
 
 ## GDD §9.16 (proposed): introduced in Relay Station after its teleporters, one new thing at a time; then Specimen Vault;
 ## and all three of the Golden Zone's levels with no introduction of their own (owner). None in Frost Foundry. Every
-## build at 3, 5 and 6 lanes on the levels' own seeds is the build without the feature but for the cyborgs whose places
-## they took (so every other suite's checks of those builds hold as they did), with none before the feature's start;
-## Relay Station brings them in at the campaign's lane count (GameRules.lanes_pc and lanes_mobile), and every level has
-## some at one lane count at least (the feature is never forced, HeavyCyborgRules.OCCASIONAL: a build whose own cyborgs
-## leave none a place has none, Golden 2's at 5 lanes among them; the counts are printed).
+## build at 3, 5 and 6 lanes on the levels' own seeds, as the campaign configures it, has Heavy Cyborgs where their
+## streams get to fire (_check_places), with no warning: two at least at the campaign's lane count (GameRules.lanes_pc
+## and lanes_mobile; Relay Station's from its start for them, its introduction) and one at least at the others (the
+## review's target, DESIGN-TBD, docs/questions/s1.md; LevelConfig.guarantee_features, each level's weight for their
+## pattern, `feature_weights`). The counts are printed; test_heavy_cyborg_play plays these builds through.
 func _test_campaign() -> void:
 	var intro: LevelConfig = campaign.step(INTRODUCED_IN).level
 	check(intro.has_feature("heavy_cyborg") and intro.feature_start("heavy_cyborg") > intro.feature_start("teleporter"),
@@ -893,47 +936,36 @@ func _test_campaign() -> void:
 		var level: LevelConfig = campaign.step(id).level
 		check(level.has_feature("heavy_cyborg") and level.feature_starts.has("heavy_cyborg") == (id == INTRODUCED_IN),
 			"%s has it%s" % [id, ", from a start of its own" if id == INTRODUCED_IN else ", with no introduction of its own"])
-		# The rules run in the order the campaign introduces the features: after the teleporters', before the blinking
-		# antennas'.
 		var order: PackedStringArray = level.features
 		check(order.find("heavy_cyborg") == order.find("teleporter") + 1, "%s lists it right after the teleporters" % id)
+		check(level.guarantee_features, "%s guarantees its features, the Heavy Cyborg's among them" % id)
 	var golden_ages: Dictionary[String, int] = campaign.configure(campaign.step("golden/1"), 3).feature_ages
 	check(int(golden_ages.get("heavy_cyborg", -1)) == 1, "Golden 1's Heavy Cyborgs are a level old, the Ice Lab's (%s)"
 		% golden_ages.get("heavy_cyborg", -1))
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	var counts: PackedStringArray = []
 	for id: String in [BEFORE] + LEVELS:
-		var most: int = 0
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
-			var patterns: Array = LevelGenerator.load_for(config)
-			var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
-			var at: Array[float] = LevelGenerator.feature_positions(gen.layout, "heavy_cyborg")
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
 			var tag: String = "%s lanes=%d" % [id, lanes]
+			var at: Array[float] = _check_places(gen, tag)
 			if id == BEFORE:
 				check(at.is_empty(), "no Heavy Cyborg in %s" % tag)
 				continue
 			counts.append("%s: %d" % [tag, at.size()])
-			most = maxi(most, at.size())
-			if id == INTRODUCED_IN and (lanes == rules.lanes_pc or lanes == rules.lanes_mobile):
-				check(not at.is_empty(), "%s brings Heavy Cyborgs in (%d)" % [tag, at.size()])
-			if not at.is_empty():
-				check(at[0] >= gen.feature_start("heavy_cyborg") - 0.01,
-					"none before its start in %s (%.0f m, from %.0f m)" % [tag, at[0], gen.feature_start("heavy_cyborg")])
-			var plain: LevelConfig = config.duplicate() as LevelConfig
-			var features: PackedStringArray = plain.features.duplicate()
-			features.remove_at(features.find("heavy_cyborg"))
-			plain.features = features
-			var without: LevelLayout = LevelGenerator.new().generate(plain, tuning, patterns)
-			check(_as_cyborgs(gen.layout) == _as_cyborgs(without), "%s is built as without them, a cyborg where each stands" % tag)
-		check(id == BEFORE or most > 0, "%s has Heavy Cyborgs at one lane count at least" % id)
+			var least: int = 2 if lanes == rules.lanes_pc or lanes == rules.lanes_mobile else 1
+			check(at.size() >= least, "%s brings Heavy Cyborgs in where their streams get to fire (%d, %d at the least)"
+				% [tag, at.size(), least])
+			check(gen.warnings.is_empty(), "%s builds without warnings %s" % [tag, gen.warnings])
 	print("  Heavy Cyborgs on the campaign levels' own seeds: %s" % ", ".join(counts))
 
 
 ## Full levels in god mode (grapples pull the runner out of gaps) over lane counts and seeds: every round follows a
-## wind-up, comes from ahead with enough warning, never arrives near a fence or gap; at most max_bursts_in_air bursts
-## of the cyborg-type guns at once, its streams among them; no Heavy Cyborg ever stands near an obstacle; and most of
-## those the runner passes get to fire a stream (each stands where its stream's zone is clear: HeavyCyborgRules).
+## wind-up, comes from ahead with enough warning (measured from the barrels' tips), never arrives near a fence or gap; at
+## most max_bursts_in_air bursts of the cyborg-type guns at once, its streams among them; no Heavy Cyborg ever stands
+## near an obstacle; and every one the runner passes fires a stream of min_stream_rounds rounds at the least (each
+## stands where its stream's zone is clear: HeavyCyborgRules).
 func _test_fair_play() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var rounds: int = 0
@@ -977,7 +1009,7 @@ func _test_fair_play() -> void:
 				var gun: CyborgGun = heavy_guns[k]
 				if homes[k] < w.player.distance:
 					passed += 1
-					fired += 0 if _events_of(gun, &"shot").is_empty() else 1
+					fired += 1 if _events_of(gun, &"shot").size() >= ht.min_stream_rounds else 0
 				var charge_t: float = -1.0
 				var first: bool = false
 				for ev: Dictionary in gun.events:
@@ -993,7 +1025,7 @@ func _test_fair_play() -> void:
 							check(charge_t >= 0.0 and t - charge_t >= ht.charge_time - 0.02, "every round follows a wind-up " + tag)
 							check(float(ev["shooter_d"]) > float(ev["player_d"]), "rounds only come from ahead " + tag)
 							var warning: float = float(ev["arrive"]) - t
-							check(warning >= (ht.min_warning_time if first else ht.min_warning_time * 0.5) - 0.02,
+							check(warning >= ht.min_warning_time * (1.0 if first else ht.later_round_warning_share) - 0.005,
 								"every round gives enough warning (%.2f s) %s" % [warning, tag])
 							first = false
 							var impact: float = ev["impact"]
@@ -1003,5 +1035,5 @@ func _test_fair_play() -> void:
 			check(most <= w.rules.max_bursts_in_air, "at most %d bursts in the air at a time, its streams counted (%d) %s"
 				% [w.rules.max_bursts_in_air, most, tag])
 			await sim.free_world(w)
-	check(passed >= 4 and fired * 4 >= passed * 3 and rounds > 0,
-		"most Heavy Cyborgs the runner passes fire a stream (%d of %d, %d rounds)" % [fired, passed, rounds])
+	check(passed >= 4 and fired == passed and rounds > 0,
+		"every Heavy Cyborg the runner passes fires a stream (%d of %d, %d rounds)" % [fired, passed, rounds])

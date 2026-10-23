@@ -23,6 +23,8 @@ const GATLING_NAME: String = "heavy cyborg gatling"
 const BULLET_LOOK: StringName = &"enemy_bullet"
 
 var heavy: HeavyCyborgTuning
+## How many rounds the stream _burst_fair last planned fits (0 before it planned one).
+var _fair_rounds: int = 0
 
 
 func _init(p_shooter: Enemy, p_world: RunWorld, p_tuning: HeavyCyborgTuning, p_rng: RandomNumberGenerator,
@@ -46,9 +48,10 @@ func shot_interval() -> float:
 	return heavy.bullet_gap_at(_scaling()) * (round_speed + run) / round_speed
 
 
-## Every stream fires its full count (HeavyCyborgTuning.barrage_count: no more than fit the invulnerability window).
+## A stream fires its full count (HeavyCyborgTuning.barrage_count: no more than fit the invulnerability window), or as
+## many as still fit as it starts (_burst_fair planned them just before).
 func roll_shots() -> int:
-	return most_shots()
+	return _fair_rounds if _fair_rounds > 0 else most_shots()
 
 
 func most_shots() -> int:
@@ -72,9 +75,29 @@ func charge_sound_point() -> Vector3:
 ## Every round after the first reaches the runner later_round_warning_share of min_warning_time after it leaves the
 ## gatling at the least, so a runner zigzagging back into the line sees each one coming: its stream lasts a couple of
 ## seconds as the runner closes in, so its last rounds fly far shorter than its first, and a stream that would end too
-## close waits (_burst_fair) as a cyborg's burst does for its first bolt.
+## close waits (_burst_fair) or fires fewer rounds, as many as still fit. Measured from where its rounds leave the
+## barrels' tips (muzzle_reach along their line, HeavyCyborg.MUZZLE_REACH), not from the gatling's muzzle point inside
+## them, which _burst_fair plans from: a round takes muzzle_reach / bolt_speed() to get there.
 func min_flight_time(k: int) -> float:
-	return tuning.min_warning_time * (1.0 if k == 0 else heavy.later_round_warning_share)
+	var least: float = tuning.min_warning_time * (1.0 if k == 0 else heavy.later_round_warning_share)
+	return least + muzzle_reach / maxf(bolt_speed(), 0.1)
+
+
+## A stream that no longer fits whole fires as many of its rounds as still do, min_stream_rounds at the least (the
+## rounds it leaves out are its last ones, the nearest the runner: a stream that starts late, after its place in the
+## air came free or the path cleared, still fires); with fewer than that it waits, as a cyborg's burst does. Planned
+## before the wind-up (roll_shots then fires that many) and again as the aim locks, where the stream may lose more of
+## its last rounds but never gains any.
+func _burst_fair(lead: float, shots: int) -> bool:
+	var most: int = maxi(shots, 1)
+	for n: int in range(most, clampi(heavy.min_stream_rounds, 1, most) - 1, -1):
+		if super(lead, n):
+			_fair_rounds = n
+			if state == State.CHARGING:
+				_burst = n
+				_shots_left = n
+			return true
+	return false
 
 
 ## Where the red aim line ends (GDD §9.6, the drone's): on the runner while the gatling winds up (it follows them),

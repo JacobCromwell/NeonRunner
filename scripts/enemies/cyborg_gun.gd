@@ -557,12 +557,27 @@ func _burst_fair(lead: float, shots: int) -> bool:
 
 
 ## True if the player's path between two track distances has no live fence, no gap and no zone
-## doodad in any lane (and, for a player on a wall, no sign on that wall). A shooter's own path_rule
-## decides instead. The doodads: DESIGN-TBD (docs/questions/g5.md 5).
+## doodad in any lane (floor_clear; and, for a player on a wall, no sign on that wall). A shooter's own
+## path_rule decides instead. The doodads: DESIGN-TBD (docs/questions/g5.md 5).
 func path_clear(from_d: float, to_d: float) -> bool:
 	if path_rule.is_valid():
 		return bool(path_rule.call(from_d, to_d))
 	var layout: LevelLayout = world.layout
+	if not floor_clear(layout, from_d, to_d):
+		return false
+	var player: Player = world.player
+	if player.surface == Player.Surface.WALL:
+		for s: Dictionary in layout.signs:
+			if int(s["side"]) == player.wall_side and s["start"] <= to_d and s["end"] >= from_d:
+				return false
+	return true
+
+
+## True if `layout`'s floor between two track distances holds nothing a burst is held for (path_clear), in any
+## lane: no zone doodad nor what counts as one (LevelLayout.doodad_between: a falling gantryway's or a teleporter's
+## calm stretch, a dash wall), no live fence and no gap. The generator asks it too, for where a shooter's bursts
+## must get to fire (HeavyCyborgRules: a Heavy Cyborg's stream's zone).
+static func floor_clear(layout: LevelLayout, from_d: float, to_d: float) -> bool:
 	if layout.doodad_between(from_d, to_d):
 		return false
 	for f: Dictionary in layout.fences:
@@ -572,11 +587,6 @@ func path_clear(from_d: float, to_d: float) -> bool:
 	for g: Dictionary in layout.gaps:
 		if g["start"] <= to_d and g["end"] >= from_d:
 			return false
-	var player: Player = world.player
-	if player.surface == Player.Surface.WALL:
-		for s: Dictionary in layout.signs:
-			if int(s["side"]) == player.wall_side and s["start"] <= to_d and s["end"] >= from_d:
-				return false
 	return true
 
 
