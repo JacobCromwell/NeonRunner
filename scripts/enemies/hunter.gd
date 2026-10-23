@@ -685,9 +685,15 @@ func _index_layout() -> void:
 ## comes into view from behind). It hovers over holes, gaps and floor cuts. A floor enemy under a walkway falling on that
 ## lane doesn't count: the walkway is about to crush it.
 func _lane_clear_ahead(l: int, to_runner: bool) -> bool:
-	var n: int = world.geo.lane_count
-	if l < 0 or l >= n:
-		return false
+	return lane_blocker(l, to_runner) == ""
+
+
+## What its body would have to go round in lane `l` from its rear to steer_ahead_seconds past its front (with
+## `to_runner`, from where it is up to the runner's front and on): "" for nothing, else what stands there first in
+## blocker_in's order; "off" for a lane off the track (tools/measure/hunter_chases.gd tells its yields apart by it).
+func lane_blocker(l: int, to_runner: bool = false) -> String:
+	if l < 0 or l >= world.geo.lane_count:
+		return "off"
 	var d: float = world.player_distance()
 	var v: float = maxf(world.player.speed, 1.0)
 	var mid: float = d - gap
@@ -695,37 +701,52 @@ func _lane_clear_ahead(l: int, to_runner: bool) -> bool:
 	var to: float = maxf(mid, d if to_runner else mid) + tuning.blocker_length * 0.5 + tuning.steer_ahead_seconds * v
 	if to_runner:
 		from = maxf(from, d - VIEW_GAP)
-	return not blocked_in(l, from, to)
+	return blocker_in(l, from, to)
 
 
 ## True if something its body must go round stands in lane `l` between track distances `from` and `to` (see
 ## _lane_clear_ahead).
 func blocked_in(l: int, from: float, to: float) -> bool:
-	if _doodad_in(l, from, to):
-		return true
+	return blocker_in(l, from, to) != ""
+
+
+## What its body must go round in lane `l` between track distances `from` and `to` (see _lane_clear_ahead), the first
+## found: "pillar" (a gantryway's), "jar" (an Octodog's, a decoy's), "doodad", "fence" (a live one), "teleporter" (its
+## pad and antenna), "ramp", "dash_wall" (a standing one) or "enemy" (on the floor); "" for nothing.
+func blocker_in(l: int, from: float, to: float) -> String:
+	var dd: Dictionary = _doodad_entry_in(l, from, to)
+	if not dd.is_empty():
+		if dd.has(LevelLayout.GANTRY_PILLAR):
+			return "pillar"
+		return "jar" if dd.has(LevelLayout.HOLDS) else "doodad"
 	var half: float = world.tuning.fence_depth * 0.5 + 0.4
 	for f: Dictionary in _lane_fences[l]:
 		var at: float = float(f["at"])
 		if at - half > to:
 			break
 		if at + half >= from and not bool(f.get("disabled", false)):
-			return true
+			return "fence"
 	var lay: LevelLayout = world.layout
 	for tp: Dictionary in lay.teleporters:
 		if int(tp["lane"]) == l and float(tp["at"]) - 0.5 <= to and float(tp["end"]) + 0.5 >= from:
-			return true
+			return "teleporter"
 	for r: Dictionary in lay.ramps:
 		var at: float = float(r["at"])
 		if lay.outer_lane(int(r["side"])) == l and at <= to and at + world.tuning.ramp_length >= from:
-			return true
+			return "ramp"
 	for w: Dictionary in lay.dash_walls:
 		if not bool(w.get("smashed", false)) and float(w["start"]) <= to and float(w["end"]) >= from:
-			return true
-	return _floor_enemy_in(l, from - ENEMY_ROOM, to + ENEMY_ROOM, true)
+			return "dash_wall"
+	return "enemy" if _floor_enemy_in(l, from - ENEMY_ROOM, to + ENEMY_ROOM, true) else ""
 
 
 ## A standing doodad in lane `l` reaching into [from, to].
 func _doodad_in(l: int, from: float, to: float) -> bool:
+	return not _doodad_entry_in(l, from, to).is_empty()
+
+
+## The layout entry of a standing doodad in lane `l` reaching into [from, to] (the one starting furthest on), or {}.
+func _doodad_entry_in(l: int, from: float, to: float) -> Dictionary:
 	var spans: Array = _lane_doodads[l]
 	var starts: PackedFloat32Array = spans[0]
 	var ends: PackedFloat32Array = spans[1]
@@ -733,9 +754,9 @@ func _doodad_in(l: int, from: float, to: float) -> bool:
 	var i: int = starts.bsearch(to, false) - 1
 	while i >= 0 and starts[i] >= from - _doodad_reach - 0.01:
 		if ends[i] >= from and not bool((entries[i] as Dictionary).get("smashed", false)):
-			return true
+			return entries[i]
 		i -= 1
-	return false
+	return {}
 
 
 ## A floor enemy in play (or a hover truck holding its lane) in lane `l` between `from` and `to`. With

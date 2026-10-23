@@ -282,7 +282,7 @@
     {"match": "tools/showcase/octodog_jar_review*", "suites": ["octodog_jars"]},
     {"match": "tools/measure/octodog_jars.gd", "suites": ["octodog_jars"]},
     {"match": "tools/showcase/hunter_showcase*", "suites": ["hunter"]},
-    {"match": "tools/measure/hunters.gd", "suites": ["hunter"]},
+    {"match": "tools/measure/hunter*", "suites": ["hunter"]},
     {"match": "tools/*", "suites": []},
     {"match": "project.godot", "tier": "full"},
     {"match": "export_presets.cfg", "suites": ["web_demo"]},
