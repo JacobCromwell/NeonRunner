@@ -10,7 +10,7 @@ extends CinematicSequencer
 ## 2. The runner walks quickly up to the route board by the entrance and wipes it with their hand (CinePoses' `wipe`,
 ##    TerminalIntroSign); cut to a close-up of the board: a list of stops, one in gold, THE PALACE.
 ## 3. They make up their mind (a nod, a turn to the entrance). The entrance is blocked by rubble with a crack of light at the
-##    top (TerminalIntroHeap); they climb the rubble (`scramble`) and squeeze in through the gap (`squeeze`).
+##    top (TerminalIntroHeap); they climb the rubble on hands and knees (`crawl`) and squeeze in through the gap (`squeeze`).
 ## 4. Inside (the Terminal's own look, a cut to another stage under black: switch_stage): they come out over the rubble and
 ##    jump down to the ground, and the first level's layout is ahead: the tracks running off into the distance, platforms,
 ##    arches, lamps (TerminalIntroEntry); the zone's title card, and black.
@@ -37,6 +37,9 @@ const CRAWL_PATH_POINTS: int = 120
 const CREST_LIFT: float = 0.04
 ## The runner's eye line (metres): the face shot looks at it.
 const EYE_HEIGHT: float = 1.13
+## The shortest time between two sign zaps (seconds): most of a zap (1.0 s) is heard before the next one restarts it.
+# DESIGN-TBD (docs/questions/s2.md item 6): the zap's length and spacing.
+const ZAP_GAP: float = 0.7
 
 ## Its numbers (null: NUMBERS_PATH's).
 @export var numbers: TerminalIntroTuning
@@ -514,11 +517,15 @@ func _events(t: CineTimeline) -> void:
 		t.sound(at, &"sign_buzz", -8.0)
 		at += 2.3
 	var soft: bool = Settings.flashing_reduced
+	var last_zap: float = -INF
 	for b: int in letters.bursts.size():
 		var burst: Vector2 = letters.bursts[b]
-		# Only the bursts that show sparks have their zap (with Reduced flashing that is one in three).
-		if burst.x > 2.4 and burst.x < n.sign_at - 0.4 and TerminalIntroLetters.burst_shows(b, soft):
+		# Only the bursts that show sparks have their zap (with Reduced flashing that is one in three), and not one hard on the
+		# last: the sequencer has one player per sound, so a zap restarted inside ZAP_GAP would cut off its buzz's tail.
+		if burst.x > 2.4 and burst.x < n.sign_at - 0.4 and TerminalIntroLetters.burst_shows(b, soft) \
+				and burst.x - last_zap >= ZAP_GAP:
 			t.sound(burst.x, &"sign_zap", -4.0)
+			last_zap = burst.x
 	for k: int in 3:
 		t.sound(n.wipe_at + 0.25 + float(k) * 0.62, &"grime_wipe", -4.0)
 	at = n.door_at
