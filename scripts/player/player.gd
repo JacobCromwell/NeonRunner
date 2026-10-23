@@ -26,9 +26,10 @@ signal died(cause: String)
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
 ## ceiling over fewer lanes) come with a bump: out toward the blocked side and back. A wall runner knocked
 ## off their wall (repel_from_wall) hears wall_blocked too, and drops off instead.
-## Coming off a wall moves one lane (task S3): a move away from it while on it is a wall jump into the outer lane,
-## and when the game takes the runner off it (wall_exit, wall_gap_drop, wall_blocked) a move away made as they come
-## down is that dismount, no lane switch further (_on_move, MovementTuning.wall_release_grace).
+## Coming off a wall moves one lane (task S3): a move away from it while on it is a wall jump into the outer lane; where
+## a wall gap sets the runner down (LevelLayout.SETS_DOWN: an extended wall run's notch at its platform, which drops them
+## just where that move is due), a move away until their wall run would have ended is still that dismount, and switches
+## them no further (_on_move).
 signal movement_event(kind: StringName)
 ## A thief's touch robbed the player (DamageRules.Outcome.ROBBED, GDD §9.12): the ScoreKeeper takes the
 ## thief's share of the run's credits (Hazard.steals_share). The `robbed` movement event follows.
@@ -265,11 +266,13 @@ var doodad_passes: int = 0
 var _off_wall: int = 0
 var _off_wall_left: float = 0.0
 var _off_wall_claims: Dictionary = {}
-## Task S3 (the owner, October 23, 2026: coming off a wall moves one lane, as it does everywhere): the side wall (-1 or
-## 1) the game itself has just taken the runner off (its run's end, a wall gap's drop, an extended wall run's notch at
-## a platform, a repel: _leave_wall with any kind but a wall jump), and for how much longer a press away from it is the
-## dismount the runner meant, not a lane switch one lane further (_on_move): until they land, for at most
-## MovementTuning.wall_release_grace. A dismount of the player's own (a wall jump, by the jump or a move) has none.
+## Task S3 (the owner, October 23, 2026: coming off a wall "must behave exactly as it does everywhere else in the game:
+## one lane"). A wall gap that sets the runner down (LevelLayout.SETS_DOWN: an extended wall run's notch at its
+## platform's near end) drops every standard wall run there, just where the move to come off the wall is due, and that
+## move, a moment later, was a lane switch from the outer lane: a second lane, into the hole beside the platform. So the
+## wall (-1 or 1) it set them down from, and how much longer a move away from that wall is still the dismount it would
+## have been on the wall (_on_move): the rest of the wall run the gap cut short, as if the wall were whole. Nowhere else:
+## after the wall run's own end, a plain wall gap or a repel, a move away switches lanes as it always did.
 var _released_side: int = 0
 var _release_grace_left: float = 0.0
 ## How many times a return pad (task I4) dropped the player off a ceiling this run (tests and tools).
@@ -695,10 +698,9 @@ func _on_move(dir: int) -> void:
 				_leave_wall(tuning.wall_jump_velocity, &"wall_jump")
 		Surface.FLOOR:
 			if dir == -_released_side and _release_grace_left > 0.0:
-				# Task S3: the move meant to come off the wall the game took the runner off a moment ago (an extended
-				# wall run's notch drops them onto its platform just as they reach it, where that move is due). They're
-				# already coming off into the outer lane, the one lane a dismount moves, so it moves them no further.
-				# Once: a second move is a lane switch.
+				# Task S3: set down off the wall by a gap (an extended wall run's notch), where on a whole wall they'd still
+				# be on it: the move is the dismount it would have been there, into the outer lane they're already in, so
+				# it moves them no further. Once: a second move is a lane switch.
 				_release_grace_left = 0.0
 				return
 			if in_pit:
@@ -983,7 +985,7 @@ func fall_base() -> float:
 ## into the holes, the lit wall's run carries them across; from the floor's height, as a step onto the wall, and
 ## off the wall by its `until`, over the landing floor). It never pulls them down.
 func _pull_up(cause: StringName) -> void:
-	# Task S3: pulled out of a pit, a move away from a wall they came off before is a lane switch again.
+	# Task S3: pulled out of a pit, a move away from a wall a gap set them down from is a lane switch again.
 	_release_grace_left = 0.0
 	var to: Dictionary = {}
 	if grapple_save.is_valid():
@@ -1035,8 +1037,6 @@ func _land(top: float = 0.0) -> void:
 		floor_y = top
 	vh = 0.0
 	grounded = true
-	# Task S3: down off the wall; from here a move away from it is a lane switch.
-	_release_grace_left = 0.0
 	_event(&"land")
 	if _slide_on_land:
 		_slide_on_land = false
@@ -1312,7 +1312,14 @@ func wall_supported(side: int, d: float) -> bool:
 func _update_wall(delta: float) -> void:
 	if not wall_supported(wall_side, distance):
 		# A wall gap: the wall runner drops off into the outer lane, falling from where they were.
+		var side: int = wall_side
+		var rest: float = tuning.wall_entry_time + tuning.wall_slide_time * wall_time_multiplier - _wall_t
 		_leave_wall(0.0, &"wall_gap_drop")
+		if bool(LevelLayout.wall_gap_at(wall_gaps, side, distance).get(LevelLayout.SETS_DOWN, false)):
+			# Task S3: one that sets them down (an extended wall run's notch at its platform): for the rest of the wall run
+			# it cut short, a move away from the wall is the dismount it would have been (_on_move).
+			_released_side = side
+			_release_grace_left = rest
 		return
 	_wall_t += delta
 	var wall_x: float = wall_side * geo.wall_x()
@@ -1338,11 +1345,8 @@ func _leave_wall(velocity: float, kind: StringName) -> void:
 	_off_wall = wall_side
 	_off_wall_left = tuning.lane_switch_time + tuning.doodad_push_time
 	_off_wall_claims.clear()
-	# Task S3: taken off by the game (anything but a wall jump), a press away from this wall as they come down is the
-	# dismount it meant (_on_move).
-	var own: bool = kind == &"wall_jump"
-	_released_side = 0 if own else wall_side
-	_release_grace_left = 0.0 if own else tuning.wall_release_grace
+	# Task S3: off the wall, a move away from it is a lane switch (but where a gap sets them down: _update_wall).
+	_release_grace_left = 0.0
 	surface = Surface.FLOOR
 	_start_switch(geo.lane_count - 1 if wall_side > 0 else 0)
 	vh = velocity

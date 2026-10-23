@@ -13,7 +13,9 @@ extends TestSuite
 ## - real physics at 3, 5 and 6 lanes: a runner who steps onto the lit wall in its lit stretch, lands on each platform
 ##   and steps back on from it crosses (early, midway or late in each stretch), on either wall where both are lit;
 ##   one who stays on the platform falls into the next hole, one who jumps from it too, and one who heads for the open
-##   wall falls in; the grapple's save over a later hole carries the runner onto the platform after it.
+##   wall falls in; the grapple's save over a later hole carries the runner onto the platform after it;
+## - coming off the wall moves one lane (task S3, the owner's October 23, 2026 report): at The Hush's own speed, a move
+##   away from the wall around each platform's near end, where its notch drops the runner, lands them on the platform.
 
 const APPROACH_AT: float = 100.0
 const HUSH: String = "dead_zone/2"
@@ -56,21 +58,19 @@ func _track(lanes: int, runs: int, side: int, both: bool, mt: MovementTuning = n
 ## threw the runner two lanes, not one, so he died many times). The notch at each platform's near end
 ## (WallRunGapPlacement.openings_of) drops every standard wall run off onto the platform just where the move to come
 ## off the wall is due, and that move, made a moment after the drop, was a lane switch from the outer lane: one lane
-## further, over the hole beside the platform. Now a move away from the wall while the runner comes down from a wall the
-## game took them off is the dismount it meant (Player._on_move, MovementTuning.wall_release_grace). At The Hush's own
-## speed, at 3, 5 and 6 lanes, on a triple on either wall and a double with both lit (on each): a runner who steps onto
-## the wall early or late in each stretch and presses away from it around each platform's near end (on the wall before
-## it: a wall jump; at it, and as the notch drops them) comes down onto the platform in the outer lane, one lane off the
-## wall, steps back on from its last stretch and crosses; and once more just as the last wall run ends over the landing
-## floor. With the grace off (the old rule), the same press over the first platform falls into the hole beside it.
+## further, over the hole beside the platform. The notch now sets the runner down (LevelLayout.SETS_DOWN): until their
+## wall run would have ended on a whole wall, a move away is the dismount it would have been (Player._on_move). At The
+## Hush's own speed, at 3, 5 and 6 lanes, on a triple on either wall and a double with both lit (on each): a runner who
+## steps onto the wall early or late in each stretch and presses away from it around each platform's near end (on the
+## wall before it: a wall jump; at it, as the notch drops them, and once landed while their wall run would still last)
+## comes down onto the platform in the outer lane, one lane off the wall, steps back on from its last stretch and
+## crosses. After the last wall run's own end, over the landing floor, a move away is a lane switch, as everywhere. With
+## the notch a plain wall gap (unmarked, the old rule), the same move over the first platform falls into the hole beside it.
 func _test_dismounts() -> void:
 	var mt: MovementTuning = campaign.configure(campaign.step(HUSH), 5).movement_for(tuning)
 	var v: float = mt.run_speed
 	var wall_run: float = (mt.wall_entry_time + mt.wall_slide_time) * v
-	var old: MovementTuning = mt.duplicate() as MovementTuning
-	old.wall_release_grace = 0.0
-	check(v > tuning.run_speed and mt.wall_release_grace > 0.0, "(The Hush runs at %.1f m/s; the grace is %.2f s)"
-		% [v, mt.wall_release_grace])
+	check(v > tuning.run_speed, "(The Hush runs at %.1f m/s)" % v)
 	for lanes: int in [3, 5, 6]:
 		for case: Array in [[3, -1, false], [3, 1, false], [2, 1, true]]:
 			var runs: int = case[0]
@@ -86,10 +86,15 @@ func _test_dismounts() -> void:
 				var landing: float = float(w["landing"])
 				var tag: String = "(%d lanes, %d runs, %s wall%s)" % [lanes, runs, "left" if side < 0 else "right",
 					", both lit" if bool(case[2]) else ""]
+				var notches: int = 0
+				for g: Dictionary in layout.wall_gaps:
+					notches += 1 if bool(g.get(LevelLayout.SETS_DOWN, false)) else 0
+				check(notches == p.size() * WallRunGapPlacement.sides_of(w).size(),
+					"each platform's notch on each lit wall sets the runner down (%d) %s" % [notches, tag])
 				for k: float in [0.15, 0.9]:
 					# Seconds from each platform's near end (its notch's start): before it, on the wall over the hole, the
-					# move is a wall jump; from it on the notch has dropped the runner and they are coming down.
-					for off: float in [-0.12, 0.0, 0.05, 0.12, 0.2]:
+					# move is a wall jump; from it on the notch has dropped the runner, landed on the platform by the last.
+					for off: float in [-0.12, 0.0, 0.05, 0.12, 0.28]:
 						var actions: Array = []
 						var probes: Array = []
 						var last_on: float = 0.0
@@ -116,15 +121,20 @@ func _test_dismounts() -> void:
 						check(bool(r["alive"]) and events.count(&"wall_enter") == runs and events.count(&"wall_exit") == 1,
 							"and crosses on %d wall runs: %s %s, %s" % [runs, r["cause"], events, what])
 						var end: Dictionary = r["at"][probes[-1]]
-						check(end["surface"] == "floor" and int(end["lane"]) == outer and ends_at > float(w["end"]) and ends_at < landing,
-							"a move away just as the last wall run ends comes off it one lane too (%s) %s" % [end, what])
-				# The old rule: the move made as the notch drops the runner switched them one lane further, into the hole.
-				var drop_at: float = p[0].x + 0.05 * v
-				var before: Dictionary = await sim.run(layout, outer, (p[0].x + 0.8 * v) / v,
-					[[lerpf(c[0].x + 0.3, c[0].y - 0.8, 0.5), toward], [drop_at, away]], [], old)
+						check(end["surface"] == "floor" and int(end["lane"]) == outer - side and bool(end["alive"])
+							and ends_at > float(w["end"]) and ends_at < landing,
+							"after the last wall run's own end a move away is a lane switch, as everywhere: the landing floor holds every lane (%s) %s"
+							% [end, what])
+				# The old rule: the notch a plain wall gap, the move made as it drops the runner switched them one lane
+				# further, into the hole.
+				var plain: LevelLayout = layout.copy()
+				for g: Dictionary in plain.wall_gaps:
+					g.erase(LevelLayout.SETS_DOWN)
+				var before: Dictionary = await sim.run(plain, outer, (p[0].x + 0.8 * v) / v,
+					[[lerpf(c[0].x + 0.3, c[0].y - 0.8, 0.5), toward], [p[0].x + 0.05 * v, away]], [], mt)
 				check(not bool(before["alive"]) and String(before["cause"]) == "fell"
 					and (before["events"] as Array).has(&"wall_gap_drop") and int(before["lane"]) == outer - side,
-					"(with the grace off, the old rule, the same move throws the runner a second lane, into the hole: %s, lane %d) %s"
+					"(with the notch a plain wall gap, the old rule, the same move throws the runner a second lane, into the hole: %s, lane %d) %s"
 					% [before["cause"], int(before["lane"]), tag])
 
 

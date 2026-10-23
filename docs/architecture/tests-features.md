@@ -541,9 +541,9 @@ cross on as many wall runs and land on the landing floor; staying on the platfor
 the open wall all fall in; the grapple's save over a triple's second hole leaves the runner on the platform after it,
 to cross. At The Hush's own speed (task S3, the owner's October 23 report of being thrown two lanes coming off the
 wall): stepping on early or late, a move away from the wall around each platform's near end (on the wall before it,
-a wall jump; at it and as the notch drops the runner) lands them on the platform one lane off the wall, and they cross;
-so does one just as the last wall run ends; with `wall_release_grace` 0 (the old rule) the same move falls into the
-hole beside the platform.
+a wall jump; at it, as the notch drops the runner, and once landed while their wall run would still last) lands them
+on the platform one lane off the wall, and they cross; after the last wall run's own end a move away is a lane switch,
+as everywhere; with the notch a plain wall gap (the old rule) the same move falls into the hole beside the platform.
 `test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
 run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
 leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit

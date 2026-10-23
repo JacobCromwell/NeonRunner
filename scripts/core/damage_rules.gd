@@ -140,8 +140,8 @@ static func lets_through(hazard: Hazard, outcome: Outcome) -> bool:
 ##   starts the wait, and at its end the armor is back whole, 3): a hit that leaves it down (under
 ##   `max_hits`, broken or not) starts the wait, and `recharge_time` later it's back whole, on the run's
 ##   clock: tick() advances the wait from the Player's physics step, so a pause (or a death) stops it, and
-##   it's the same at any frame rate. Until it was only the break that started it, and worn armor never
-##   came back.
+##   it's the same at any frame rate. (Before task S3 only the break started it, and worn armor never
+##   came back.)
 ## - A pickup (GDD §10) brings it back whole at once, and a revive does too (restore()).
 ## A run whose loadout has no armor (a bare Loadout: tests and tools) starts without it (`carried`
 ## false); a pickup gives it.

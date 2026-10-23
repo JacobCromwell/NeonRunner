@@ -276,8 +276,9 @@ func _test_protections() -> void:
 	var hits: int = rules.armor_hits_at(1)
 	var up: Dictionary = await _run_into(3, 1, [s], _loadout("upgrade"), 3.0, {"probes": [past]})
 	check(hits >= 2 and up["r"]["alive"] and up["blocks"] == [&"armor_hit"] and int(up["armor"]) == hits - 1
-		and not bool(up["recharging"]) and (up["used"] as Array).is_empty() and int(up["blocked"]) == 1 and _alive_at(up, past),
-		"an upgraded armor (%d hits) takes the sign's hit and stays up, one hit down (%d left, %s)" % [hits, int(up["armor"]), up["blocks"]])
+		and bool(up["recharging"]) and (up["used"] as Array).is_empty() and int(up["blocked"]) == 1 and _alive_at(up, past),
+		"an upgraded armor (%d hits) takes the sign's hit and stays up, one hit down (%d left, %s), its wait started (GDD §4: any hit)"
+		% [hits, int(up["armor"]), up["blocks"]])
 	var shield: Dictionary = await _run_into(3, 1, [s], _loadout("shield"), 3.0, {"probes": [past]})
 	check(shield["r"]["alive"] and shield["blocks"] == [&"shield_break"] and int(shield["shield"]) == 0
 		and shield["used"] == [&"shield"] and _alive_at(shield, past),
