@@ -14,10 +14,12 @@ extends RefCounted
 ##   (CyborgGun.path_clear, LevelLayout.doodad_between: a doodad, a falling gantryway's or a teleporter's calm stretch,
 ##   a dash wall), so it gets to fire as the runner closes in (the zone doodads already keep a cyborg's keep-out, the
 ##   same two seconds, clear: LevelGenerator.doodad_enemy_keep_out);
-## - what it reaches (its stream's zone, its keep-out and the floor it uses) meets no dash wall's footprint and no calm
-##   stretch a rule keeps in every lane (LevelGenerator.rules_doodad_keep_outs with `calm`: an Enforcer Truck's showing
-##   window): those rules let a cyborg stand nearer than any other enemy (DashWallRules.enemy_spans, the Enforcer
-##   Truck's ROOM_TYPES), and their re-checks hold a Heavy Cyborg to the rest's rule;
+## - what it reaches (its stream's zone, its keep-out and the floor it uses) meets no dash wall's footprint, no wider
+##   gap's zone, no wall-run gap's clear stretch and no calm stretch a rule keeps in every lane
+##   (LevelGenerator.rules_doodad_keep_outs with `calm`: an Enforcer Truck's showing window): those let a cyborg stand
+##   nearer than any other enemy, its obstacle margin away (DashWallRules.enemy_spans, WideGapPlacement.keeps_of,
+##   WallRunGapPlacement.floor_keeps, the Enforcer Truck's ROOM_TYPES), and their re-checks hold a Heavy Cyborg to the
+##   rest's rule;
 ## - at least spacing_seconds of run from the Heavy Cyborg before it;
 ## - never the level's last cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions).
 ## The first that fits from the start always becomes one (the introduction: the first cyborg that fits past the start).
@@ -135,11 +137,15 @@ static func reach_of(gen: LevelGenerator, e: Dictionary, t: HeavyCyborgTuning = 
 
 
 ## The stretches a Heavy Cyborg's reach keeps off, any lane (see the header): every dash wall's footprint
-## (DashWallRules.footprint) and every calm stretch a rule keeps in every lane.
+## (DashWallRules.footprint), wider gap's zone (WideGapPlacement.keep_outs) and wall-run gap's clear stretch with its
+## margin (WallRunGapPlacement.keep_out), and every calm stretch a rule keeps in every lane.
 static func taken_spans(gen: LevelGenerator) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for w: Dictionary in gen.layout.dash_walls:
 		out.append(LevelGenerator.DashWallRules.footprint(gen, w))
+	out.append_array(WideGapPlacement.keep_outs(gen))
+	for w: Dictionary in gen.layout.wall_run_gaps:
+		out.append(WallRunGapPlacement.keep_out(w))
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if bool(k.get("calm", false)) and not k.has("lane"):
 			out.append(Vector2(float(k["from"]), float(k["to"])))
