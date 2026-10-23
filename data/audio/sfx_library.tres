@@ -241,7 +241,7 @@ volume_db = {
 "searchlight_on": -4.0,
 "shield_break": -6.0,
 "sign_buzz": -9.0,
-"sign_zap": -8.0,
+"sign_zap": -9.5,
 "sleep_taker_crackle": -3.0,
 "sleep_taker_exhale": -5.0,
 "sleep_taker_hand": -3.5,

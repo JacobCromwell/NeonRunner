@@ -5,7 +5,7 @@ extends "res://tools/asset_gen/sfx_bank_cinematics.gd"
 ## effect, each is under 2.5 s. The ones that run on (wind, buzz, hum) fade in and out over 0.3 s so repeats overlap evenly.
 ##   waste_wind        the wasteland's wind: a low swell of air over rubble with a thin whistle and ash ticking
 ##   sign_buzz         the sign's dying lamps: a mains hum with its harmonics wavering, crackling now and then
-##   sign_zap          a letter sparking: a sharp electric snap, a falling whine and a short crackle
+##   sign_zap          a letter sparking: an electrical zap, a hard snap and a ragged "bzzzt" that gutters out, crackling (1 s)
 ##   grime_wipe        a bare hand wiping a grimy enamel board: a dry, gritty swish
 ##   rubble_scramble   climbing loose rubble on hands and feet: knocks and scrapes, stones slipping away behind
 ##   landing_thud      dropping onto the station's floor: a dull thump, grit skittering
@@ -73,25 +73,55 @@ func _buzz() -> PackedFloat32Array:
 	return b
 
 
-## A letter sparking (0.55 s): a snap of static, a falling whine, then a few cracks as it dies away.
+## A letter sparking (1.0 s): an electrical zap. A hard snap as the arc strikes with a thump behind it and a falling chirp, then a
+## ragged "bzzzt": a mains buzz (100 Hz up, rich in harmonics, sagging in pitch) and a bright sizzle, both chopped by a flickering
+## gate that gutters more and more as the arc dies, crackles thinning out and a faint ballast hum winding down under it.
+# DESIGN-TBD (docs/questions/s2.md item 6): a zap rather than no sound, and its length.
 func _zap() -> PackedFloat32Array:
 	var rng := _rng(2203)
-	var d: float = 0.55
+	var d: float = 1.0
 	var b := DSP.buffer(d)
-	var snap := DSP.noise(0.06, rng)
-	DSP.filter(snap, &"bandpass", 3000.0, 0.8)
-	DSP.envelope(snap, 0.0004, 0.014)
-	DSP.mix(b, snap, 0.0, 1.2)
-	var whine := DSP.osc(0.4, func(u: float) -> float: return DSP.sweep(2600.0, 600.0, u), &"saw")
-	DSP.filter(whine, &"bandpass", 1500.0, 1.5)
-	DSP.envelope(whine, 0.001, 0.12, 0.05)
-	DSP.mix(b, whine, 0.01, 0.6)
-	var hum := DSP.osc(0.45, func(_u: float) -> float: return 100.0, &"square")
-	DSP.filter(hum, &"lowpass", 800.0)
-	DSP.envelope(hum, 0.002, 0.2, 0.1)
-	DSP.mix(b, hum, 0.0, 0.1)
-	DSP.mix(b, _crackle(0.5, 9, 6.0, 3600.0, rng), 0.04, 0.7)
-	DSP.shape(b, 0.001, 0.05)
+	# The strike: a bright burst of static, and the thump of the discharge under it.
+	var snap := DSP.noise(0.12, rng)
+	DSP.filter(snap, &"highpass", 1600.0)
+	DSP.envelope(snap, 0.0003, 0.02)
+	DSP.mix(b, snap, 0.0, 1.3)
+	var thump := DSP.osc(0.1, func(u: float) -> float: return DSP.sweep(190.0, 60.0, u), &"sine")
+	DSP.envelope(thump, 0.001, 0.03)
+	DSP.mix(b, thump, 0.0, 0.55)
+	var chirp := DSP.osc(0.25, func(u: float) -> float: return DSP.sweep(3600.0, 520.0, pow(u, 0.6)), &"saw")
+	DSP.filter(chirp, &"bandpass", 1900.0, 1.2)
+	DSP.envelope(chirp, 0.001, 0.07, 0.03)
+	DSP.mix(b, chirp, 0.005, 0.4)
+	# The arc: a buzz sagging from 240 Hz to 95 Hz (a saw and a square an octave up, driven hard so the harmonics buzz), with a sizzle
+	# of high noise riding it.
+	var arc_d: float = 0.88
+	var pitch: Callable = func(u: float) -> float: return DSP.sweep(240.0, 95.0, pow(u, 0.6)) * (1.0 + 0.03 * sin(TAU * 31.0 * u))
+	var arc := DSP.osc(arc_d, pitch, &"saw")
+	DSP.mix(arc, DSP.osc(arc_d, func(u: float) -> float: return pitch.call(u) * 2.0, &"square"), 0.0, 0.5)
+	DSP.drive(arc, 5.0)
+	DSP.filter(arc, &"bandpass", 1900.0, 0.6)
+	var sizzle := DSP.noise(arc_d, rng)
+	DSP.filter(sizzle, &"bandpass", 4800.0, 0.8)
+	DSP.mix(arc, sizzle, 0.0, 0.8)
+	# The flicker: the arc is cut in and out in cells of about 22 ms, more and more of them out as it dies.
+	var cell: int = int(0.022 * RATE)
+	var at: int = 0
+	while at < arc.size():
+		var u: float = float(at) / float(arc.size())
+		var level: float = 1.0 if rng.randf() < lerpf(0.95, 0.35, u) else 0.07
+		for j: int in mini(cell, arc.size() - at):
+			arc[at + j] *= level
+		at += cell
+	DSP.envelope(arc, 0.002, 0.3, 0.12)
+	DSP.mix(b, arc, 0.01, 0.95)
+	# Crackles thinning out, and the ballast's hum winding down beneath.
+	DSP.mix(b, _crackle(d, 26, 0.4, 4200.0, rng), 0.03, 0.6)
+	var hum := DSP.osc(0.9, func(u: float) -> float: return DSP.sweep(100.0, 70.0, u), &"saw")
+	DSP.filter(hum, &"lowpass", 600.0)
+	DSP.adsr(hum, 0.02, 0.2, 0.5, 0.4)
+	DSP.mix(b, hum, 0.05, 0.14)
+	DSP.shape(b, 0.001, 0.12)
 	DSP.crush(b, 8, 16000.0)
 	return b
 
