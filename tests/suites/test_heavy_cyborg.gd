@@ -20,11 +20,11 @@ extends TestSuite
 ##   gantryway destroy it; it never boards an Enforcer Truck.
 ## - The stream when it no longer fits whole: as many rounds as still fit, min_stream_rounds at the least, every one
 ##   flying its warning from the barrels' tips; with fewer than that, none.
-## - The generator (HeavyCyborgRules: its pattern's cyborgs, last of the rules, and the top-up after the zone doodads),
-##   over seeds, lane counts and difficulties: each Heavy Cyborg where its stream gets to fire (its stream's zone clear
-##   of every gap, live fence and doodad in every lane: what its gun's path_clear holds a stream for), clear of every
-##   obstacle, off the stretches a cyborg may stand nearer to than other enemies, spaced, the level's last plain cyborg
-##   kept, the same every build, most builds with some, none without the feature; the campaign's levels (introduced in
+## - The generator (HeavyCyborgRules: its pattern's cyborgs and the top-up, last of the rules), over seeds, lane counts
+##   and difficulties: each Heavy Cyborg where its stream gets to fire (its stream's zone clear of every gap, live fence
+##   and doodad in every lane: what its gun's path_clear holds a stream for; no cyborg or window cyborg within a second
+##   of run of it), clear of every obstacle, off the stretches a cyborg may stand nearer to than other enemies, spaced,
+##   the level's last plain cyborg kept, the same every build, most builds with some, none without the feature; the campaign's levels (introduced in
 ##   Relay Station from its start, after the teleporters; Specimen Vault and Golden 1-3 with no introduction of their
 ##   own; none in Frost Foundry; every build on their own seeds with two at the campaign's lane count and one at least
 ##   at 3 and 6 lanes, every one where its stream gets to fire); and full levels in god mode, every round fair, every
