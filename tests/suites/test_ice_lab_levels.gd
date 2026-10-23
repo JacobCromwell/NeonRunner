@@ -24,8 +24,9 @@ extends TestSuite
 ## jars that break open (all three levels, introduced in Frost Foundry from early on: every build stands up to the level's
 ## count of jars that release an Octodog, sprinkled in where a freed dog's attack has room, most builds one, and up to
 ## its count of decoys, one at least at five and six lanes, each where LayoutChecks.check_octodog_jars finds it fair;
-## test_octodog_jars has the rest), and later the zone's two new enemies (GDD §5, Level schedule). Nothing here stands in
-## for them.
+## test_octodog_jars has the rest); and its new enemies (GDD §5, Level schedule) as their tasks come: S1's Heavy Cyborg
+## (GDD §9.16, proposed: introduced in Relay Station after its teleporters, then in Specimen Vault; none in Frost Foundry;
+## test_heavy_cyborg has the rest).
 
 const ZONE_PATH: String = "res://data/zones/ice_lab.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
@@ -40,8 +41,9 @@ const NAMES: Array[String] = ["Frost Foundry", "Relay Station", "Specimen Vault"
 const OTHER_SEEDS: Array[int] = [8801, 8802, 8803]
 ## The enemy types a build may hold (GDD §5, Zone 9: "cyborg gangsters, Octodogs and heli drones"): the cyborgs, the window
 ## cyborgs (GDD §9.2: cyborgs in the building windows; the task's call, docs/questions/q1.md), the Octodogs, the heli
-## drones, and the fence generators, which are part of the electric fences (GDD §9.1), one of the usual obstacles.
-const ENEMY_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "octodog", "drone", "generator"]
+## drones, and the fence generators, which are part of the electric fences (GDD §9.1), one of the usual obstacles; and the
+## zone's new enemies (NEW_ENEMIES).
+const ENEMY_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "octodog", "drone", "generator", "heavy_cyborg"]
 ## The features introduced before the Ice Lab that every one of its levels keeps (GDD §5, Zone 9, proposed: "the usual
 ## obstacles stay (gaps, electric fences, signs, ceilings and pads, doodads)", wall running and ceilings as in other zones;
 ## anything introduced earlier keeps appearing later): its enemies and every mechanic and obstacle. DESIGN-TBD
@@ -57,6 +59,9 @@ const LEAVES_OUT: PackedStringArray = ["hover_truck", "screech", "screech_vents"
 ## The Ice Lab's own mechanics (tasks Q3, Q4 and Q5), none of them a later zone's though one stands them again: the Golden
 ## Zone's teleporters, fixed and blinking (the owner, October 22, 2026, task Q6).
 const OWN: PackedStringArray = ["gantryway", "teleporter", "teleporter_blinking", "octodog_jar"]
+## The Ice Lab's new enemies (GDD §5, Zone 9), none of them a later zone's though one appears there again: the Heavy Cyborg
+## (task S1, GDD §9.16; the owner, October 23, 2026: also in all three of the Golden Zone's levels).
+const NEW_ENEMIES: PackedStringArray = ["heavy_cyborg"]
 
 
 var campaign: Campaign
@@ -135,7 +140,7 @@ func _test_level_data() -> void:
 	for s: CampaignStep in campaign.steps():
 		if s.is_level() and s.zone_index > at:
 			for f: String in s.level.features:
-				if not before.has(f) and not OWN.has(f):
+				if not before.has(f) and not OWN.has(f) and not NEW_ENEMIES.has(f):
 					later[f] = true
 	var seeds: Dictionary = {}
 	for s: CampaignStep in campaign.steps():
@@ -192,6 +197,12 @@ func _test_level_data() -> void:
 		check(level.has_feature("octodog_jar") and level.octodog_jars > 0 and level.feature_starts.has("octodog_jar") == (n == 0)
 			and (n > 0 or level.feature_start("octodog_jar") < level.feature_start("gantryway")),
 			"%s stands Octodog jars that break open (%d)%s" % [tag, level.octodog_jars, ", introducing them" if n == 0 else ""])
+		# Task S1 (GDD §9.16, proposed: "introduced in the Ice Lab's Relay Station (level 2), after its teleporters, so one
+		# new thing comes at a time, then in Specimen Vault"): the Heavy Cyborg.
+		check(level.has_feature("heavy_cyborg") == (n > 0) and level.feature_starts.has("heavy_cyborg") == (n == 1)
+			and (n != 1 or level.feature_start("heavy_cyborg") > level.feature_start("teleporter")),
+			"%s %s" % [tag, "has no Heavy Cyborg" if n == 0 else "has Heavy Cyborgs%s" % (", introducing them after its teleporters"
+				if n == 1 else "")])
 
 
 ## Every build at 3, 5 and 6 lanes on the levels' own seeds and others, as the campaign configures it.
@@ -232,8 +243,12 @@ func _test_levels() -> void:
 					if host or not ENEMY_TYPES.has(type):
 						others.append("%s%s" % [type, " (a host)" if host else ""])
 					enemies[type] = int(enemies.get(type, 0)) + 1
-				check(others.is_empty(), "no enemy but cyborgs, window cyborgs, Octodogs, heli drones and fence generators (%s) %s"
+				check(others.is_empty(), "no enemy but cyborgs, window cyborgs, Octodogs, heli drones, fence generators and Heavy Cyborgs (%s) %s"
 					% [others, tag])
+				# Task S1: Heavy Cyborgs only from Relay Station's start for them on.
+				var heavies: Array[float] = LevelGenerator.feature_positions(layout, "heavy_cyborg")
+				check(heavies.is_empty() or (config.has_feature("heavy_cyborg") and heavies[0] >= gen.feature_start("heavy_cyborg") - 0.01),
+					"%d Heavy Cyborgs, none before their start %s" % [heavies.size(), tag])
 				check(layout.dash_walls.is_empty() and layout.cuts.is_empty() and layout.maze.is_empty(),
 					"no dash walls, floor cuts or debris maze %s" % tag)
 				# Task Q3: as many falling gantryways as the level asks for (LayoutChecks.check_gantryways: each fair).

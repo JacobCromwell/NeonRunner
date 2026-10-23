@@ -19,11 +19,12 @@ extends TestSuite
 ## keeps the Golden Zone it had open (Profile version 5). test_terminal_levels checks its levels' own rules. And the Ice
 ## Lab (task Q1; the owner, October 21, 2026, GDD §5 Zone 9): zone 9, between the Terminal and the Golden Zone (now zone
 ## 10), three levels and no boss, off the difficulty curve between Terminal 2's and Golden 1's, its enemies the cyborgs,
-## the Octodogs and the heli drones, no other earlier enemy and no dash walls (ICE_LAB_LEAVES_OUT), nothing new until its
-## mechanics' tasks (Q3, Q4) and its two new enemies come, and every other level and boss configured exactly as in the
-## campaign before it; a save from before it keeps the Golden Zone it had open (Profile version 6). test_ice_lab_levels
-## checks its levels' own rules. The Golden Zone keeps the Ice Lab's teleporters, fixed and blinking (task Q6; the owner,
-## October 22, 2026), but not its falling gantryways nor its Octodog jars (LEFT_OUT); test_teleporters checks its builds.
+## the Octodogs and the heli drones, no other earlier enemy and no dash walls (ICE_LAB_LEAVES_OUT), its own mechanics
+## (tasks Q3, Q4, Q5) and its new enemies (the Heavy Cyborg, task S1, GDD §9.16, from Relay Station), and every other
+## level and boss configured exactly as in the campaign before it; a save from before it keeps the Golden Zone it had open
+## (Profile version 6). test_ice_lab_levels checks its levels' own rules. The Golden Zone keeps the Ice Lab's teleporters,
+## fixed and blinking (task Q6; the owner, October 22, 2026), and its Heavy Cyborgs (task S1; the owner, October 23, 2026),
+## but not its falling gantryways nor its Octodog jars (LEFT_OUT); test_teleporters checks its builds.
 
 ## The zones in order and their level counts (GDD §5; the Casino added as Zone 4 by the owner, October 8,
 ## 2026, the Beach as Zone 6, between Corporate and the Dead Zone, October 9, the Terminal as Zone 8, between the
@@ -94,6 +95,9 @@ const FIRST_LEVEL: Dictionary = {
 	# Task Q5 (GDD §5, Zone 9, owner, October 21, 2026; its level schedule lists them for Frost Foundry): the Octodog jars
 	# that break open, from Frost Foundry.
 	"octodog_jar": "ice_lab/1",
+	# Task S1 (GDD §9.16; the owner, October 23, 2026; Relay Station proposed, after its teleporters): the Heavy Cyborg,
+	# from Relay Station, then in Specimen Vault and the Golden Zone's three levels.
+	"heavy_cyborg": "ice_lab/2",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
@@ -141,22 +145,22 @@ const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "
 ## volleyball match, beach/2, places no features at all: the schedule leaves it out. The Casino's two, "the
 ## Marketplace's enemies and mechanics in a new setting" (owner, October 8, 2026), bring the ceiling scenarios since
 ## task I4. The Ice Lab's three bring its mechanics, NEW_MECHANICS: Frost Foundry the falling gantryways, task Q3, Relay
-## Station the teleporters and Specimen Vault their blinking antennas, task Q4, and the three the Octodog jars, task Q5.)
+## Station the teleporters and Specimen Vault their blinking antennas, task Q4, and the three the Octodog jars, task Q5;
+## and Relay Station its first new enemy, the Heavy Cyborg, task S1.)
 const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "terminal/2", "golden/3"]
 ## Zones that introduce no new enemy, the exceptions to GDD §5's rule, and why: the Casino ("every zone introduces
 ## at least one new enemy, except the Casino, which reuses the Marketplace's", owner, October 8, 2026) and the Beach,
-## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"), and the Ice Lab until its two new
-## enemies are designed (owner, October 21, 2026: they come in later sessions). None of them introduces anything else
-## either (NOTHING_NEW), but for the mechanics in NEW_MECHANICS.
+## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"). None of them introduces anything
+## else either (NOTHING_NEW), but for the mechanics in NEW_MECHANICS. (The Ice Lab was one until its first new enemy, the
+## Heavy Cyborg, came in: task S1.)
 const NO_NEW_ENEMY: Dictionary = {
 	"casino": "it reuses the Marketplace's (GDD §5, owner)",
 	"beach": "a remix of everything before it (owner, October 9, 2026)",
-	"ice_lab": "its two new enemies come in later sessions (owner, October 21, 2026)",
 }
-## The mechanics a zone of NO_NEW_ENEMY introduces all the same: the Casino's ceiling scenarios (task I4; GDD §3,
+## The mechanics the Casino, a zone of NO_NEW_ENEMY, introduces all the same: its ceiling scenarios (task I4; GDD §3,
 ## "Ceiling scenarios": never in zones 1-2, sprinkled into later zones; DESIGN-TBD where they start,
-## items 836–845 (docs/OPEN_QUESTIONS*.md)), and the Ice Lab's falling gantryways (task Q3) and teleporters with their
-## blinking antennas (task Q4; GDD §5, Zone 9) and its Octodog jars (task Q5).
+## items 836–845 (docs/OPEN_QUESTIONS*.md)); and the Ice Lab's own mechanics: its falling gantryways (task Q3) and
+## teleporters with their blinking antennas (task Q4; GDD §5, Zone 9) and its Octodog jars (task Q5).
 const NEW_MECHANICS: Dictionary = {
 	"casino": ["treasure_stash", "fenced_ceiling"],
 	"ice_lab": ["gantryway", "teleporter", "teleporter_blinking", "octodog_jar"],
@@ -206,7 +210,11 @@ const V2_STEPS: PackedStringArray = ["city/intro", "city/1", "city/2", "city/3",
 ## Features that are enemies (for "every zone introduces at least one new enemy").
 const ENEMIES: Array = ["cyborg", "window_cyborg", "hover_truck", "screech", "octodog", "generator", "drone",
 	"barnacle_turret", "buzz_overdrive", "tithe_collector", "enforcer_truck", "host", "resonator", "gilded_sentinel",
-	"centipede"]
+	"centipede", "heavy_cyborg"]
+## The Ice Lab's new enemies the Golden Zone keeps (task S1: the Heavy Cyborg, in all three of its levels with no
+## introduction of its own; the owner, October 23, 2026), which it dates from the Ice Lab as it does the teleporters
+## (_ages_but_ice_lab).
+const ICE_LAB_ENEMIES: Array = ["heavy_cyborg"]
 
 
 func run() -> void:
@@ -790,7 +798,7 @@ func _test_off_curve(campaign: Campaign) -> void:
 
 	# The campaign before the Beach, built from the same data without it (and without the Terminal and the Ice Lab, which
 	# came after it: _test_terminal_off_curve, _test_ice_lab_off_curve; so its feature ages are compared but the Ice Lab's
-	# own mechanics', _ages_but_ice_lab).
+	# own mechanics' and new enemies', _ages_but_ice_lab).
 	var seven := campaign.duplicate() as Campaign
 	var zones: Array[ZoneDef] = []
 	for zone: ZoneDef in campaign.zones:
@@ -898,8 +906,9 @@ func _test_ice_lab_off_curve(campaign: Campaign) -> void:
 ## place on the curve of the last level on it before the zone, and that level's completion bonus. The campaign before the
 ## zone came (the same data without the zones `newer`: it and any that came after it) has `levels` levels, and every step
 ## of it but the cinematics, levels and bosses alike, configures exactly as it does now: the same place on the curve,
-## difficulty, enemy scaling, run speed, feature ages (but the Ice Lab's own mechanics, which the Golden Zone's
-## teleporters date from since task Q6: _ages_but_ice_lab), skin, sky and recency curve, and the same completion bonus.
+## difficulty, enemy scaling, run speed, feature ages (but the Ice Lab's own mechanics and new enemies, which the Golden
+## Zone's teleporters and Heavy Cyborgs date from since tasks Q6 and S1: _ages_but_ice_lab), skin, sky and recency curve,
+## and the same completion bonus.
 func _check_joins_off_curve(campaign: Campaign, id: String, before_id: String, after_id: String, newer: Array,
 		levels: int) -> void:
 	var zone: ZoneDef = _zone(campaign, id)
@@ -1260,10 +1269,12 @@ func _test_recency(campaign: Campaign) -> void:
 		"the Beach's Tithe Collectors are 1 and 2 levels old, and the levels after it keep their ages (Dead Zone 1's Buzz Overdrive 2)")
 	# Task Q6: the Golden Zone stands the Ice Lab's teleporters again with no introduction of its own (the Ice Lab, off the
 	# curve, taught them), so its first level dates them from Relay Station's and Specimen Vault's place, not as its own.
+	# Its Heavy Cyborgs too (task S1: in all three of its levels with no introduction of its own, the owner, October 23,
+	# 2026).
 	var golden_ages: Dictionary[String, int] = campaign.configure(campaign.step("golden/1"), 3).feature_ages
 	check(int(golden_ages.get("teleporter", -1)) == 1 and int(golden_ages.get("teleporter_blinking", -1)) == 1
-		and int(golden_ages.get("resonator", -1)) == 0,
-		"Golden 1's teleporters are a level old, the Ice Lab's, and its Resonators its own (%s)" % [golden_ages])
+		and int(golden_ages.get("heavy_cyborg", -1)) == 1 and int(golden_ages.get("resonator", -1)) == 0,
+		"Golden 1's teleporters and Heavy Cyborgs are a level old, the Ice Lab's, and its Resonators its own (%s)" % [golden_ages])
 
 	var intro: Array[int] = [0, 0]
 	var core: Array[int] = [0, 0]
@@ -1802,13 +1813,14 @@ func _test_saves_before_ice_lab() -> void:
 
 ## `config`'s feature ages for a comparison with the campaign before a zone off the curve came in (the Beach, the
 ## volleyball match, the Terminal, the Ice Lab), which leaves the Ice Lab out: without the Ice Lab's own mechanics
-## (NEW_MECHANICS), as the Golden Zone's teleporters date from it since task Q6 (Campaign.feature_ages counts a level off
-## the curve played before a level on it), where the campaign without it would have Golden 1 bring them in. They date
-## no pick (no pattern requires them: _test_recency), so the levels still build as before; every other age
-## must match.
+## (NEW_MECHANICS) and new enemies (ICE_LAB_ENEMIES), as the Golden Zone's teleporters and Heavy Cyborgs date from it since
+## tasks Q6 and S1 (Campaign.feature_ages counts a level off the curve played before a level on it), where the campaign
+## without it would have Golden 1 bring them in. The mechanics date no pick (no pattern requires them: _test_recency);
+## the Heavy Cyborg's patterns are picked as a feature a level old in Golden 1, as the Ice Lab taught it (DESIGN-TBD,
+## docs/questions/s1.md), where Golden 1 bringing it in would boost them. Every other age must match.
 func _ages_but_ice_lab(config: LevelConfig) -> String:
 	var ages: Dictionary[String, int] = config.feature_ages.duplicate()
-	for f: String in NEW_MECHANICS["ice_lab"]:
+	for f: String in (NEW_MECHANICS["ice_lab"] as Array) + ICE_LAB_ENEMIES:
 		ages.erase(f)
 	return var_to_str(ages)
 

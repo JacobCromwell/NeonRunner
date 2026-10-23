@@ -71,11 +71,11 @@ const SOUNDS: Array[StringName] = [
 	&"truck_cannon", &"truck_rev", &"truck_explode", &"octodog_windup", &"octodog_lunge", &"screech_shake", &"screech_burst",
 	&"screech_swipe", &"drone_swoop", &"drone_windup", &"drone_fire", &"drone_crash", &"emp", &"bad_dream_emerge",
 	&"bad_dream_shriek", &"bad_dream_slash", &"bad_dream_dissolve", &"gantry_creak", &"gantry_land", &"teleport",
-	&"octodog_release",
+	&"octodog_release", &"heavy_cyborg_windup", &"heavy_cyborg_shot",
 ]
 ## Attack warnings (CLAUDE.md readability rules): each must sound exactly the same every time.
 const WARNINGS: Array[StringName] = [&"fence_warning", &"cyborg_charge", &"truck_bang", &"truck_cannon_charge", &"truck_rev",
-	&"octodog_windup", &"screech_shake", &"drone_swoop", &"drone_windup", &"bad_dream_shriek", &"gantry_creak"]
+	&"octodog_windup", &"screech_shake", &"drone_swoop", &"drone_windup", &"bad_dream_shriek", &"gantry_creak", &"heavy_cyborg_windup"]
 
 
 func run() -> void:
