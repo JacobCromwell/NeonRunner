@@ -178,7 +178,7 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   cover both). A revive brings it back whole (`restore()`); an armor pickup (`take_pickup()`) does too,
   at once, ending the wait, and on whole armor adds a hit, up to `armor_pickup_extra_hits` over its
   count. `armor_changed` tells the HUD and the player model; `ScoreKeeper` counts every blocked hit. A
-  bare `Loadout` (tests, tools) has no armor until a pickup gives it. DESIGN-TBD (`docs/OPEN_QUESTIONS_DEFERRED.md` items 1216-1218):
+  bare `Loadout` (tests, tools) has no armor until a pickup gives it. Item 1216 answered by the owner (as built); DESIGN-TBD (`docs/OPEN_QUESTIONS_DEFERRED.md` items 1217-1218):
   a hit the armor survives while the wait runs leaves it running, the hit that breaks it starts it again
   (back the whole wait after it broke, GDD §4); a pickup's extra hit is no part of its own count (losing
   it starts no wait, the wait never brings it back). DESIGN-TBD (items 245-247 in `docs/OPEN_QUESTIONS*.md`):

@@ -1766,3 +1766,63 @@ Captain Cogs).
     **Answered** (owner, October 23, 2026, reported as a bug): any hit starts the wait, and at its end the armor is back
     whole (armor of 3 knocked to 2 starts the timer and comes back to 3). Recorded in GDD §4 and §8; built in task S3
     (a hit during the wait: item 1216).
+
+### Answered on October 23, 2026 (the owner, after the October 23 batch: items 1207, 1213, 1216 and 1219)
+
+1207. **How long the intro may now run.** GDD §6 (Cinematics, "Terminal intro") sets no length; F2k's brief suggested about 25 to 32 s. A crawl
+   at a believable pace up the 6 m of rubble takes about 4.6 s, where the old scramble took 2.8 s, so everything after the climb moved
+   1.2 s later. Placeholder: 33.2 s in all (`duration`, `fade_at`, `card_at`, `inside_at`, `jump_at`, `climb_from`, `crest_at`,
+   `through_at` in the tuning, marked `DESIGN-TBD` on `duration`); the look at the entrance before the climb was shortened from
+   1.5 s to 0.9 s to give some of it back. The alternative is to shorten an earlier beat (the facade shot is 4.4 s) by that much.
+   **Answered** (the owner, October 23, 2026: yes, 33.2 s is fine.)
+
+1213. **How much smoke, and how much of the read on the glow?** Smoke and fair warnings pull against each other, and the
+   owner's first choice (smoke) is the weaker one for it. The run camera sits behind and above the runner, so everything
+   further down a host's lane (a cyborg charging its cannon, a fence) is on screen *inside the host's column*: the smoke
+   is a veil over exactly what the player has to read. A saturated violet veil turns a red charge-up pink (the fences'
+   colour) from an opacity of about 0.1 up, and a fence purple (the host's): the first version, violet at 0.75, put a
+   charge orb 0.02 from fence pink on the hue and saturation wheel (the project's measure; the rule is 0.3), and 0.4 was
+   still borderline. A smoke dense enough to read from 60 m is therefore a smoke that hides or recolours a warning
+   behind a host. So the smoke can only be a faint beacon (pale lilac, at most 0.4 opaque, thinning above the head, gone
+   for a host within a stomp's approach of the runner) and the **glow on the host's body carries the read** (a violet
+   outline; it lights only the host, so it tints nothing behind it). The GDD allows either a smoke or a glow. Is a
+   smoke this faint, with the glow doing the work, what the owner wants, or should the smoke be denser at the cost of
+   the warnings seen through it (and which warnings may it hide)? (GDD §9.7, Origin; the readability rules in CLAUDE.md.)
+   Placeholder: `host_glow_energy` 1.5; smoke opacity 0.4 (`host_smoke_strength`, capped there by `HostSmoke.MAX_STRENGTH`,
+   which `test_cyborg_body` checks numerically on both renderers' blending), billows filling 60% of each column
+   (`host_smoke_density`), climbing 0.7 m/s (`host_smoke_rise_speed`, at most 1: no billow passes a point more than about
+   1.3 times a second), a middle column 1.0 m wide at its base and 1.8 m tall (`host_smoke_width`, `host_smoke_height`;
+   a zone draws its cyborgs 1.2 times bigger), gone closer than 12 m from the camera and full beyond 22 m
+   (`host_smoke_near_gone`, `host_smoke_near_full`: the camera is 7.5 m behind the runner, so gone for a host within 4.5 m
+   of the runner and full from 14.5 m ahead). An opacity or a glow of 0 turns it off. DESIGN-TBD in `cyborg_tuning.gd`.
+   **Answered** (the owner, October 23, 2026: good as is (the purple body glow carries the read, the smoke stays a faint beacon).)
+
+1216. **A hit while the armor's wait runs** (GDD §4, Free armor; §8, Armor). GDD §4 now says any hit starts the wait and
+   at its end the armor is back whole, and still says "after it breaks it comes back 30 seconds later". Placeholder: a
+   hit the armor survives while its wait runs leaves the wait running (it doesn't start again), but the hit that
+   breaks it starts the wait again, so broken armor is always back the tier's whole wait after it broke. Armor III
+   (3 hits, 25 s): hits at 0 s and 10 s, back whole at 25 s; hits at 0, 10 and 20 s (broken), back at 45 s.
+   `DamageRules.Armor.block()` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`. Alternatives: (a) the wait keeps
+   running through the break too (back at 25 s in the second example: 5 s after it broke, against "after it breaks it
+   comes back 30 seconds later"); (b) every hit starts the wait again (back 25 s after the last hit). Each is a
+   one-line change.
+   **Answered** (the owner, October 23, 2026: good as is (a hit the armor survives leaves the wait running; the hit that breaks it starts it again).)
+
+1219. **Coming off the wall at The Hush's platforms** (GDD §3, Side walls and "Extended wall runs in The Hush"; the owner:
+   coming off the wall "must behave exactly as it does everywhere else in the game: one lane"). The cause: the notch
+   at each platform's near end (item 1050) drops every standard wall run off onto the platform just as it reaches it,
+   0.25 to 0.8 s before that wall run would have ended, and just where the move to come off the wall is due; that move,
+   a moment after the drop, was a lane switch from the outer lane into the hole beside the platform. Placeholder: the
+   notch is marked as a wall gap that sets the runner down (`LevelLayout.SETS_DOWN`, `WallRunGapPlacement.openings_of`),
+   and the runner's first move away from the wall after it is the dismount it would have been on the wall, whenever it
+   comes: it moves them no further (`Player._on_move`, `DESIGN-TBD`). It lasts until they step back onto a wall, or a
+   pull out of a pit, a teleport, a death or a revive ends it; no timer, so a late move does what an early one does. A
+   second move switches lanes; a move back toward the wall still steps back on. It can't swallow a move that would have
+   saved them: the lane beside every platform is a hole all along it (checked in The Hush's builds at 3, 5 and 6 lanes).
+   One harmless cost: on the double with both walls lit, crossing from one platform to the other wall in a jump takes
+   one move more. Nothing else changed: after a wall run's own end, a plain wall gap's drop or a repel, a move away
+   switches lanes as it always did. Alternatives: (a) the same after every drop and every wall run's end, for a moment
+   (it would swallow a quick move right after one, such as the hover truck's dodge out of its lane after a wall gap
+   drops the runner into it, which `test_hover_truck` relies on); (b) the move as a late wall jump, with its leap,
+   rather than nothing.
+   **Answered** (the owner, October 23, 2026: just the chasms (the set-down dismount stays at The Hush's notches only; everywhere else unchanged; the move does nothing rather than a late wall jump).)

@@ -550,7 +550,7 @@ swallow a move that would have saved them, since the lane beside every platform 
 wall run's holes run in every lane but its platforms', `test_extended_wall_runs` checks The Hush's at 3, 5 and 6
 lanes). Nothing else changed: after the wall run's own end, a plain wall gap's drop or a repel a move away switches
 lanes as it always did (the hover truck's dodge out of its lane right after a wall gap drops the runner into it,
-`test_hover_truck`, relies on it). DESIGN-TBD (`docs/OPEN_QUESTIONS_DEFERRED.md` item 1219): the rule. `test_movement` (ordinary and ramp
+`test_hover_truck`, relies on it). The rule is the owner's (October 23, 2026, item 1219: only at these notches). `test_movement` (ordinary and ramp
 wall runs, plain and set-down gaps) and `test_extended_wall_runs` (The Hush) cover it.
 
 **A level's own wall gaps, and the Beach's open walls** (task D10b; the owner, October 9, 2026: the Beach should

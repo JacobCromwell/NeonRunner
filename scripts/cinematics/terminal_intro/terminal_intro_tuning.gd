@@ -17,7 +17,7 @@ extends Resource
 @export_group("Timing")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1114): the length and the shots' times; the orchestrator's brief for the task suggested about 25
 ## to 32 s (the owner's beats set no length). Longer than GDD §1's 5-15 s, as the other intros are. It ends on black: Terminal 1
-## opens on its own view. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1207): task S2 made it 1.2 s longer (33.2 s), to give the owner's hands-and-knees crawl up
+## opens on its own view. Approved (the owner, October 23, 2026, item 1207 in docs/OPEN_QUESTIONS_ANSWERED.md): task S2 made it 1.2 s longer (33.2 s), to give the owner's hands-and-knees crawl up
 ## the rubble its time (4.6 s, was 2.8 s of scramble) and an unhurried look at the entrance before it (0.9 s, was 1.5 s).
 @export_range(10.0, 60.0, 0.1, "suffix:s") var duration: float = 33.2
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_in: float = 1.0

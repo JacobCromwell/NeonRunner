@@ -51,7 +51,7 @@ extends CyborgGunTuning
 ## whatever stands behind the host on screen, a cyborg charging its cannon or a fence among them, and a violet
 ## veil turns a red charge pink (the fences' colour): so the smoke has to stay thin and pale, the glow on the
 ## body carries the read, and the smoke fades out as the runner closes on the host.
-## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 1213): how much of each, and how far out the smoke fades.
+## Approved as built (the owner, October 23, 2026, item 1213 in docs/OPEN_QUESTIONS_ANSWERED.md): how much of each, and how far out the smoke fades.
 ## The purple glow on the host's body (0 none; 1.5 is a clear violet outline from 14 to 100 m).
 @export_range(0.0, 3.0, 0.05) var host_glow_energy: float = 1.5
 ## The smoke's opacity at the thickest, at most HostSmoke.MAX_STRENGTH (more would veil a red charge pink); 0

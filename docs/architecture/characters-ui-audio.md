@@ -99,7 +99,7 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
       `CyborgBody.apply_host_tuning` from `Cyborg._build`; an opacity of 0 turns the smoke off, a glow of 0 the glow.
     The Dead Zone intro's crouched host (a `CineActorNode` body) has both too. Review frames: the enemy showcase's
     `hosts`, `hosts_far`, `veil2` (a charging cyborg behind a host) and `stomp` (a host 2 m ahead, a fence behind it)
-    views, on both renderers. DESIGN-TBD: `docs/OPEN_QUESTIONS_DEFERRED.md` items 1213-1215.
+    views, on both renderers. Item 1213 approved by the owner (October 23, 2026); DESIGN-TBD: `docs/OPEN_QUESTIONS_DEFERRED.md` items 1214-1215.
     `test_cyborg_body` runs every check over every look: the hitboxes, budgets and size, the weapons,
     and the colour rules: nothing on a cyborg glows but the cold white face and screens, the red
     charge-up and a host's purple; nothing is copper, purple only on hosts, no hazard or "safe" colour

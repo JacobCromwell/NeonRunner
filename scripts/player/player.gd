@@ -1315,8 +1315,8 @@ func _update_wall(delta: float) -> void:
 		_leave_wall(0.0, &"wall_gap_drop")
 		if bool(LevelLayout.wall_gap_at(wall_gaps, side, distance).get(LevelLayout.SETS_DOWN, false)):
 			# Task S3: one that sets them down (an extended wall run's notch at its platform): their first move away from
-			# the wall, until they step back onto one, is the dismount it would have been on it (_on_move). DESIGN-TBD
-			# (docs/OPEN_QUESTIONS_DEFERRED.md item 1219): until then, and nothing rather than a late wall jump's leap.
+			# the wall, until they step back onto one, is the dismount it would have been on it (_on_move): until then,
+			# and nothing rather than a late wall jump's leap (the owner, October 23, 2026: only here, item 1219).
 			_set_down_side = side
 		return
 	_wall_t += delta

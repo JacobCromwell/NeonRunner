@@ -145,7 +145,7 @@ static func lets_through(hazard: Hazard, outcome: Outcome) -> bool:
 ## - A pickup (GDD §10) brings it back whole at once, and a revive does too (restore()).
 ## A run whose loadout has no armor (a bare Loadout: tests and tools) starts without it (`carried`
 ## false); a pickup gives it.
-## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 1216-1217): another hit while the wait runs keeps it running (it doesn't
+## The owner, October 23, 2026 (item 1216, docs/OPEN_QUESTIONS_ANSWERED.md; the extra hit, DESIGN-TBD item 1217): another hit while the wait runs keeps it running (it doesn't
 ## start again), but the hit that breaks the armor starts it again, so broken armor is always back
 ## `recharge_time` after it broke (GDD §4: "after it breaks it comes back 30 seconds later"); a pickup's
 ## extra hit over `max_hits` is no part of the armor's own count: losing it leaves the armor whole, with
@@ -199,7 +199,7 @@ class Armor:
 
 	## One contact it blocked (resolve() answered BLOCKED_ARMOR). True if that was its last hit: it broke.
 	## A hit that leaves it down starts its wait (GDD §4: any hit), or, while that runs, leaves it running,
-	## but for the one that breaks it, which starts it again (DESIGN-TBD, docs/OPEN_QUESTIONS_DEFERRED.md item 1216).
+	## but for the one that breaks it, which starts it again (the owner, October 23, 2026, item 1216).
 	func block() -> bool:
 		if not is_up():
 			return false

@@ -6798,12 +6798,6 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 
 ### Folded on October 23, 2026 (task S2, the Terminal's intro, fixes)
 
-1207. **How long the intro may now run.** GDD §6 (Cinematics, "Terminal intro") sets no length; F2k's brief suggested about 25 to 32 s. A crawl
-   at a believable pace up the 6 m of rubble takes about 4.6 s, where the old scramble took 2.8 s, so everything after the climb moved
-   1.2 s later. Placeholder: 33.2 s in all (`duration`, `fade_at`, `card_at`, `inside_at`, `jump_at`, `climb_from`, `crest_at`,
-   `through_at` in the tuning, marked `DESIGN-TBD` on `duration`); the look at the entrance before the climb was shortened from
-   1.5 s to 0.9 s to give some of it back. The alternative is to shorten an earlier beat (the facade shot is 4.4 s) by that much.
-
 1208. **The crawl's pace and look.** GDD §6 says only that the runner climbs the rubble; the owner asked for hands and knees, "naturally".
    Placeholder (`CinePoses.crawl`, constants `CRAWL_*`): the body pitched along the slope, the diagonal hand and knee reaching together,
    about 1.35 m/s over the surface (a brisk crawl, 1.05 m of ground per cycle of the limbs, so a bit over one cycle a second), the head up
@@ -6832,26 +6826,6 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 
 ### Folded on October 23, 2026 (task S1, the host cyborg stands out)
 
-1213. **How much smoke, and how much of the read on the glow?** Smoke and fair warnings pull against each other, and the
-   owner's first choice (smoke) is the weaker one for it. The run camera sits behind and above the runner, so everything
-   further down a host's lane (a cyborg charging its cannon, a fence) is on screen *inside the host's column*: the smoke
-   is a veil over exactly what the player has to read. A saturated violet veil turns a red charge-up pink (the fences'
-   colour) from an opacity of about 0.1 up, and a fence purple (the host's): the first version, violet at 0.75, put a
-   charge orb 0.02 from fence pink on the hue and saturation wheel (the project's measure; the rule is 0.3), and 0.4 was
-   still borderline. A smoke dense enough to read from 60 m is therefore a smoke that hides or recolours a warning
-   behind a host. So the smoke can only be a faint beacon (pale lilac, at most 0.4 opaque, thinning above the head, gone
-   for a host within a stomp's approach of the runner) and the **glow on the host's body carries the read** (a violet
-   outline; it lights only the host, so it tints nothing behind it). The GDD allows either a smoke or a glow. Is a
-   smoke this faint, with the glow doing the work, what the owner wants, or should the smoke be denser at the cost of
-   the warnings seen through it (and which warnings may it hide)? (GDD §9.7, Origin; the readability rules in CLAUDE.md.)
-   Placeholder: `host_glow_energy` 1.5; smoke opacity 0.4 (`host_smoke_strength`, capped there by `HostSmoke.MAX_STRENGTH`,
-   which `test_cyborg_body` checks numerically on both renderers' blending), billows filling 60% of each column
-   (`host_smoke_density`), climbing 0.7 m/s (`host_smoke_rise_speed`, at most 1: no billow passes a point more than about
-   1.3 times a second), a middle column 1.0 m wide at its base and 1.8 m tall (`host_smoke_width`, `host_smoke_height`;
-   a zone draws its cyborgs 1.2 times bigger), gone closer than 12 m from the camera and full beyond 22 m
-   (`host_smoke_near_gone`, `host_smoke_near_full`: the camera is 7.5 m behind the runner, so gone for a host within 4.5 m
-   of the runner and full from 14.5 m ahead). An opacity or a glow of 0 turns it off. DESIGN-TBD in `cyborg_tuning.gd`.
-
 1214. **Which purple?** The smoke is a pale lilac (`HostSmoke.SMOKE_COLOR`, 0.88 / 0.76 / 1.0): the host purple (the
    glitching screen's and the veins', `CyborgKit.GLITCH_COLOR`, 0.72 / 0.25 / 1.0) lightened towards white, because a
    more saturated smoke fails the veil rule in item 1213 at any useful opacity (the Bad Dream's own violet, 0.58 / 0.28 /
@@ -6869,16 +6843,6 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 
 ### Folded on October 23, 2026 (task S3, the armor's wait from any hit; coming off a wall moves one lane; item 244 answered by the owner, `docs/OPEN_QUESTIONS_ANSWERED.md`)
 
-1216. **A hit while the armor's wait runs** (GDD §4, Free armor; §8, Armor). GDD §4 now says any hit starts the wait and
-   at its end the armor is back whole, and still says "after it breaks it comes back 30 seconds later". Placeholder: a
-   hit the armor survives while its wait runs leaves the wait running (it doesn't start again), but the hit that
-   breaks it starts the wait again, so broken armor is always back the tier's whole wait after it broke. Armor III
-   (3 hits, 25 s): hits at 0 s and 10 s, back whole at 25 s; hits at 0, 10 and 20 s (broken), back at 45 s.
-   `DamageRules.Armor.block()` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`. Alternatives: (a) the wait keeps
-   running through the break too (back at 25 s in the second example: 5 s after it broke, against "after it breaks it
-   comes back 30 seconds later"); (b) every hit starts the wait again (back 25 s after the last hit). Each is a
-   one-line change.
-
 1217. **A pickup's extra hit** (GDD §10, the standard armor rule; item 245's placeholder adds one hit over the armor's
    count to whole armor). Placeholder: the extra hit isn't part of the armor's own count. It goes first, and losing it
    leaves the armor whole, so no wait starts; the wait brings back the armor's own count, never the extra hit
@@ -6891,22 +6855,4 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    the badge and no shading over it (`CooldownIcon.lit_while_cooling`, set by `RunHud`); broken, it dims and shades as
    before. The shop's armor texts now say "back {seconds} s after a hit" (`data/shop/catalog.json`). Review:
    `screens_showcase.tscn -- --screen=hud_armor --tier=3 --worn`.
-
-1219. **Coming off the wall at The Hush's platforms** (GDD §3, Side walls and "Extended wall runs in The Hush"; the owner:
-   coming off the wall "must behave exactly as it does everywhere else in the game: one lane"). The cause: the notch
-   at each platform's near end (item 1050) drops every standard wall run off onto the platform just as it reaches it,
-   0.25 to 0.8 s before that wall run would have ended, and just where the move to come off the wall is due; that move,
-   a moment after the drop, was a lane switch from the outer lane into the hole beside the platform. Placeholder: the
-   notch is marked as a wall gap that sets the runner down (`LevelLayout.SETS_DOWN`, `WallRunGapPlacement.openings_of`),
-   and the runner's first move away from the wall after it is the dismount it would have been on the wall, whenever it
-   comes: it moves them no further (`Player._on_move`, `DESIGN-TBD`). It lasts until they step back onto a wall, or a
-   pull out of a pit, a teleport, a death or a revive ends it; no timer, so a late move does what an early one does. A
-   second move switches lanes; a move back toward the wall still steps back on. It can't swallow a move that would have
-   saved them: the lane beside every platform is a hole all along it (checked in The Hush's builds at 3, 5 and 6 lanes).
-   One harmless cost: on the double with both walls lit, crossing from one platform to the other wall in a jump takes
-   one move more. Nothing else changed: after a wall run's own end, a plain wall gap's drop or a repel, a move away
-   switches lanes as it always did. Alternatives: (a) the same after every drop and every wall run's end, for a moment
-   (it would swallow a quick move right after one, such as the hover truck's dodge out of its lane after a wall gap
-   drops the runner into it, which `test_hover_truck` relies on); (b) the move as a late wall jump, with its leap,
-   rather than nothing.
 
