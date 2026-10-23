@@ -68,6 +68,14 @@ const ENEMY_ROOM: float = 1.3
 const MARK_Y: float = 0.035
 const MARK_WIDTH_START: float = 0.3
 const MARK_WIDTH_END: float = 0.82
+## The sweep of its blades through the lane it cuts (task S2's review: what its cuts' box reaches is drawn, a little
+## further): seconds before its cuts that it sweeps out (its lunge with it), its pivot's distance in front of its chest
+## beyond its lunge (metres toward that lane), and how much further than the box it reaches (metres, and radians at its
+## top and bottom edges).
+const TRAIL_IN: float = 0.12
+const PIVOT_FORWARD: float = 0.3
+const SLASH_MARGIN: float = 0.1
+const SLASH_ANGLE_PAD: float = 0.08
 ## The enemy types whose lane attack makes a runner need a lane (_must_make_room): a big attack on (is_major_attack_active)
 ## of any type but these, whose attacks a jump dodges (the Octodog's lunge).
 const JUMPABLE_ATTACKS: Array[StringName] = [&"octodog"]
@@ -114,6 +122,10 @@ var _slash_box: Hazard
 var _slash_root: Node3D
 var _blocker: Area3D
 var _mark: MeshInstance3D
+## The sweep of its blades (slash_fan): its mesh, and its shape {x (its pivot from its middle toward the lane it cuts), y
+## (its pivot's height), inner, outer, low, high, half_depth}.
+var _trail: MeshInstance3D
+var _fan: Dictionary = {}
 var _blocker_query := PhysicsShapeQueryParameters3D.new()
 ## The layout's standing pieces by lane, for its steering: [starts (PackedFloat32Array), ends, entries] per lane, sorted
 ## by start; and the longest one's length (a row of doodads counts whole: LevelLayout.doodad_extent).
@@ -124,8 +136,8 @@ var _run_speed: float = 18.0
 
 
 ## A Hunter's whole look for EnemyDirector.warm_up (which frees it) and ShaderWarmup (task PERF1): its model calm and
-## alert (the eyes' and blades' brighter materials on extra nodes), and its warning mark. The first one builds the meshes
-## and materials every later Hunter shares. No physics object.
+## alert (the eyes' and blades' brighter materials on extra nodes), its warning mark and the sweep of its blades. The first
+## one builds the meshes and materials every later Hunter shares. No physics object.
 static func warm_up(_world: RunWorld, _entry: Dictionary) -> Node:
 	var look := HunterModel.new()
 	look.name = "HunterWarmUp"
@@ -140,6 +152,9 @@ static func warm_up(_world: RunWorld, _entry: Dictionary) -> Node:
 	mark.mesh = GreyboxMaterials.unit_box()
 	mark.material_override = HunterModel.mark_material()
 	look.add_child(mark)
+	var sweep := MeshInstance3D.new()
+	sweep.mesh = HunterModel.slash_mesh(0.4, 3.0, -1.2, 1.0, 1.2)
+	look.add_child(sweep)
 	return look
 
 
@@ -188,6 +203,7 @@ func _build() -> void:
 	_mark.top_level = true
 	_mark.visible = false
 	add_child(_mark)
+	_build_trail()
 	_blocker_query.collide_with_areas = true
 	_blocker_query.collide_with_bodies = false
 	_blocker_query.collision_mask = TrackBuilder.LAYER_LANE_BLOCKER
@@ -907,6 +923,7 @@ func _update_slash(delta: float) -> void:
 			if _slash_t >= tuning.recover_seconds:
 				slash = Slash.IDLE
 	_update_mark()
+	_update_trail()
 
 
 ## True if a flurry may begin now (the class doc): alongside and settled beside the runner, on the floor in their lane's
@@ -1017,6 +1034,81 @@ func _place_slash_box() -> void:
 	var p: Player = world.player
 	_slash_root.global_transform = Transform3D(Basis.IDENTITY, Vector3(world.geo.lane_x(slash_lane),
 		tuning.slash_height * 0.5, TrackGeometry.world_z(p.distance)))
+
+
+## The sweep of its blades through the lane it cuts (task S2's review, CLAUDE.md principle 4: its cuts' box reaches no
+## further than what's drawn): a red see-through fan (HunterModel.slash_mesh) round a pivot PIVOT_FORWARD in front of its
+## chest as it lunges (HunterModel.LUNGE) at its shoulders' height, from its cuts' box's near edge at the top of the box to
+## its near edge at the floor, out to past the box's far corners, two sheets each side of the runner along the track, the
+## whole box inside it with SLASH_MARGIN (and SLASH_ANGLE_PAD) to spare. Built once for the lane width.
+func _build_trail() -> void:
+	var lw: float = world.geo.lane_width
+	var half: float = lw * 0.5 - tuning.side_margin
+	var pivot_x: float = HunterModel.LUNGE + PIVOT_FORWARD
+	var near: float = lw - half - pivot_x
+	var far: float = lw + half - pivot_x
+	var sy: float = tuning.hover_height + HunterModel.WAIST_Y + HunterModel.SHOULDER.y
+	var top: float = tuning.slash_height
+	_fan = {
+		"x": pivot_x,
+		"y": sy,
+		"inner": clampf(near - 0.25, 0.05, 0.4),
+		"outer": Vector2(far, maxf(sy, top - sy)).length() + SLASH_MARGIN,
+		"low": atan2(-sy, near) - SLASH_ANGLE_PAD,
+		"high": atan2(top - sy, near) + SLASH_ANGLE_PAD,
+		"half_depth": tuning.slash_depth * 0.5 + SLASH_MARGIN,
+	}
+	_trail = MeshInstance3D.new()
+	_trail.name = "SlashSweep"
+	_trail.mesh = HunterModel.slash_mesh(float(_fan["inner"]), float(_fan["outer"]), float(_fan["low"]), float(_fan["high"]),
+		float(_fan["half_depth"]))
+	_trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_trail.top_level = true
+	_trail.visible = false
+	add_child(_trail)
+
+
+## How far its sweep and lunge are out (0-1): sweeping out over the warning's last TRAIL_IN, out through the cuts.
+func _sweep_share() -> float:
+	match slash:
+		Slash.WARNING:
+			return clampf((_slash_t - (tuning.warning_seconds - TRAIL_IN)) / TRAIL_IN, 0.0, 1.0)
+		Slash.FLURRY:
+			return 1.0
+	return 0.0
+
+
+## Shows the sweep (see _build_trail) where its cuts' box is: growing out over the warning's last TRAIL_IN, whole through
+## the cuts (its box live only then), gone once they end or are called off. Steady: no pulse, no flicker (one sweep a
+## flurry), so Reduced flashing leaves it as it is.
+func _update_trail() -> void:
+	var k: float = _sweep_share()
+	_trail.visible = k > 0.0 and slash_lane >= 0
+	if not _trail.visible:
+		return
+	var dir: float = signf(world.geo.lane_x(slash_lane) - _x)
+	if dir == 0.0:
+		dir = float(-side)
+	var pivot := Vector3(_x + dir * float(_fan["x"]), float(_fan["y"]), TrackGeometry.world_z(world.player_distance()))
+	_trail.global_transform = Transform3D(Basis.from_scale(Vector3(dir * k, k, 1.0)), pivot)
+
+
+## The sweep its cuts' box lies in while it shows (tests): {pivot (world), dir (-1, 1: across toward the lane it cuts),
+## share (how far out, 0-1), inner, outer, low, high (radians from across, up positive), half_depth}; {} while it shows
+## none.
+func slash_fan() -> Dictionary:
+	if _trail == null or not _trail.visible:
+		return {}
+	var out: Dictionary = _fan.duplicate()
+	var b: Basis = _trail.global_transform.basis
+	out["pivot"] = _trail.global_position
+	out["dir"] = signf(b.x.x)
+	out["share"] = absf(b.x.x)
+	return out
+
+
+func slash_trail() -> MeshInstance3D:
+	return _trail
 
 
 ## The red mark on the locked lane through a warning and its cuts: from mark_behind behind the runner to mark_ahead ahead,
@@ -1154,6 +1246,11 @@ func _place(delta: float) -> void:
 	model.cut = cut
 	model.lean = lerpf(model.lean, lean, 1.0 - exp(-12.0 * delta))
 	model.alert = slash == Slash.WARNING or slash == Slash.FLURRY
+	# Its lunge toward the lane it cuts, with the sweep of its blades (_update_trail), easing back as it recovers.
+	model.reach = _sweep_share() if slash != Slash.RECOVER \
+		else minf(model.reach, 1.0 - clampf(_slash_t / maxf(tuning.recover_seconds, 0.05), 0.0, 1.0))
+	if slash_lane >= 0 and absf(world.geo.lane_x(slash_lane) - _x) > 0.01:
+		model.reach_dir = signf(world.geo.lane_x(slash_lane) - _x)
 	var dir: float = signf(_switch_to - _switch_from)
 	model.roll = -dir * 0.2 * sin(PI * _switch_t) if _switch_t < 1.0 else 0.0
 	model.animate(delta)

@@ -17,6 +17,11 @@ extends Node3D
 ## (the disc and everything on it) hovers hover_height up and bobs; the torso turns at its graft in the disc toward the
 ## runner (face_yaw) and leans in to cut (lean); each arm swings at its shoulder (raise: both blades up for a flurry's
 ## warning; cut: the flurry, the arms chopping in turn). Its pose is set by the fields below and applied by animate().
+##
+## DESIGN-TBD (docs/questions/s2.md, item 17, and the sweep's item): the look as a whole awaits the owner (its shapes,
+## proportions and colours from the reference image, the blades' red proposed in GDD §9.17), and so do its lunge toward
+## the lane it cuts (LUNGE) and the see-through red sweep of its cuts over that lane (slash_mesh, SLASH; task S2's review:
+## what its cuts' hitbox reaches is drawn).
 
 ## Its colours: the grey skin, the vest's black and its rivets, the mask's rubber and its filters' steel, the hoses, the
 ## disc's dark steel, its worn edges and frost, the bracers.
@@ -48,6 +53,10 @@ const TOP: float = 1.86
 const ARM_REST: float = 0.18
 const ARM_RAISED: float = 2.55
 const ARM_CUT: float = -0.35
+## DESIGN-TBD: how far its rig lunges toward the lane it cuts through a flurry (metres across the track, `reach` 1).
+const LUNGE: float = 0.5
+## DESIGN-TBD: the slash's red: the blades' hazard red, see-through (its sweep over the lane it cuts: slash_mesh).
+const SLASH := Color(1.0, 0.1, 0.06)
 
 ## Meshes, built once: {disc, jets, torso, eyes, arm_l, arm_r, blade_l, blade_r}.
 static var _meshes: Dictionary = {}
@@ -65,7 +74,8 @@ var blades: Array[MeshInstance3D] = []
 
 ## Its pose (animate() applies it): how high the disc hovers, the torso's turn (radians round y, 0 facing ahead) and lean
 ## (toward where it faces), both blades raised for a warning (0-1), the flurry (0-1 over its cuts, -1: none), the disc's
-## roll as it changes lanes (radians), and whether it's alert (a warning or a flurry: eyes and blades brighter).
+## roll as it changes lanes (radians), whether it's alert (a warning or a flurry: eyes and blades brighter), and its lunge
+## toward the lane it cuts (0-1 of LUNGE, toward x `reach_dir`, -1 or 1).
 var hover: float = 0.38
 var face_yaw: float = 0.0
 var lean: float = 0.0
@@ -74,6 +84,8 @@ var cut: float = -1.0
 var cuts: int = 4
 var roll: float = 0.0
 var alert: bool = false
+var reach: float = 0.0
+var reach_dir: float = 1.0
 var _bob_t: float = 0.0
 var _alert_shown: int = -1
 
@@ -105,7 +117,7 @@ func build() -> void:
 ## Applies the pose (see the fields), `delta` seconds on for its bob.
 func animate(delta: float) -> void:
 	_bob_t += delta
-	rig.position = Vector3(0.0, hover + 0.035 * sin(_bob_t * 3.1), 0.0)
+	rig.position = Vector3(reach * LUNGE * reach_dir, hover + 0.035 * sin(_bob_t * 3.1), 0.0)
 	rig.rotation = Vector3(0.025 * sin(_bob_t * 2.3), 0.0, roll + 0.02 * sin(_bob_t * 1.7))
 	torso.rotation = Vector3(-lean, face_yaw, 0.0)
 	for i: int in arms.size():
@@ -224,6 +236,55 @@ static func jet_material() -> Material:
 ## The warning mark's material (the floor warnings' red, see-through): drawn on a unit box (GreyboxMaterials.unit_box).
 static func mark_material() -> Material:
 	return GreyboxMaterials.glow(WARNING_COLOR, 3.0, 0.5)
+
+
+## The slash's material (slash_mesh): the blades' red glowing see-through, both faces drawn, unlit (the Compatibility
+## renderer draws it the same). Steady: it never pulses or flickers.
+static func slash_material() -> StandardMaterial3D:
+	if not _materials.has(&"slash"):
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(SLASH, 0.3)
+		m.emission_enabled = true
+		m.emission = SLASH
+		m.emission_energy_multiplier = 1.6
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_materials[&"slash"] = m
+	return _materials[&"slash"]
+
+
+## The sweep of its blades through the lane it cuts (Hunter's slash fan, task S2's review: what its cuts' hitbox reaches
+## is drawn): a fan in the x-y plane round its pivot, from `low` to `high` radians (0 along +x, toward the lane), from
+## radius `inner` to `outer`, as two sheets `half_depth` each side of z = 0 and the band joining their outer arcs, in
+## `segments` steps.
+static func slash_mesh(inner: float, outer: float, low: float, high: float, half_depth: float, segments: int = 24) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_normal(Vector3.BACK)
+	var point := func(a: float, r: float, z: float) -> Vector3: return Vector3(cos(a) * r, sin(a) * r, z)
+	for z: float in [-half_depth, half_depth]:
+		for i: int in segments:
+			var a0: float = lerpf(low, high, float(i) / segments)
+			var a1: float = lerpf(low, high, float(i + 1) / segments)
+			st.add_vertex(point.call(a0, inner, z))
+			st.add_vertex(point.call(a0, outer, z))
+			st.add_vertex(point.call(a1, outer, z))
+			st.add_vertex(point.call(a0, inner, z))
+			st.add_vertex(point.call(a1, outer, z))
+			st.add_vertex(point.call(a1, inner, z))
+	for i: int in segments:
+		var a0: float = lerpf(low, high, float(i) / segments)
+		var a1: float = lerpf(low, high, float(i + 1) / segments)
+		st.add_vertex(point.call(a0, outer, -half_depth))
+		st.add_vertex(point.call(a0, outer, half_depth))
+		st.add_vertex(point.call(a1, outer, half_depth))
+		st.add_vertex(point.call(a0, outer, -half_depth))
+		st.add_vertex(point.call(a1, outer, half_depth))
+		st.add_vertex(point.call(a1, outer, -half_depth))
+	var mesh: ArrayMesh = st.commit()
+	mesh.surface_set_material(0, slash_material())
+	return mesh
 
 
 # --- Meshes ------------------------------------------------------------------------------------------
