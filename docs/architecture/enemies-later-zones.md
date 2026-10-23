@@ -463,8 +463,12 @@ behaviour unchanged), and `CyborgSuit.heavy_set()` (every look gets an armour se
   - The pattern moves the levels' other picks, as any new pattern does. Each level's weight for it (`feature_weights`
     in its data) is one whose own-seed builds at 3, 5 and 6 lanes keep every counted feature their builds had before
     it (teleporters, blinking ones, dash walls, wider gaps, gantryways, Enforcer Trucks, Octodog jars and decoys,
-    treasure stashes and fenced ceilings) and have two Heavy Cyborgs at least at 5 lanes and one at 3 and 6:
-    COUNTS_TBD. The Golden Zone dates it from the Ice Lab (a level old in Golden 1), as the teleporters.
+    treasure stashes and fenced ceilings) and have two Heavy Cyborgs at least at 5 lanes and one at 3 and 6: Relay
+    Station 2.9 (2, 3 and 3 Heavy Cyborgs at 3, 5 and 6 lanes), Specimen Vault 2.5 (6, 3, 2), Golden 1 2.3 (6, 4, 3),
+    Golden 2 none of its own (1, 2, 2), Golden 3 1.8 (2, 3, 2); only Golden 1's and Golden 3's wall-run gaps at 3 lanes,
+    which come by frequency, are fewer. The generator takes about as long as before. Any change that moves the levels'
+    picks (a new pattern, the Hunter's) calls for the weights to be checked again. The Golden Zone dates it from the
+    Ice Lab (a level old in Golden 1), as the teleporters.
 - **Sounds.** `tools/asset_gen/sfx_bank_heavy_cyborg.gd`: `heavy_cyborg_windup` (the warning: a motor grinding up
   under a ratchet speeding into a rattle and the red charge's hum, lasting the wind-up and 30 ms into the first round;
   lower and heavier than the drone's) and `heavy_cyborg_shot` (a low double crack, 0.2 s).
