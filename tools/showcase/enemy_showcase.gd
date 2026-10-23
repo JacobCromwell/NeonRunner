@@ -22,10 +22,17 @@ extends Node3D
 ##                    right side (the weapon arm)
 ##   lineup_far       every look at gameplay distance through the run camera: calm faces 14 m ahead,
 ##                    aiming ones (weapons charged) behind them, shocked ones behind those
+##   heavy            the Heavy Cyborg (GDD §9.16) beside a cyborg for scale: idle, walking, winding up (its
+##                    barrels hot, the red aim line on a point in front of the camera) and firing (a muzzle flash)
+##   heavy_turn       a Heavy Cyborg from the front, its right side, the back and its left side
+##   heavy_lineup     every look's Heavy Cyborg side by side, the base first, winding up
+##   heavy_far        gameplay distance through the run camera: Heavy Cyborgs 20, 40 and 60 m ahead, the nearest
+##                    two winding up at the runner (their aim lines), a cyborg beside the first for scale
 ## Every view takes --skin=res://path/to/skin.tres (default: the grey box) and --variant=<name>, the
 ## skin's enemy_variant: a look's own name (base, brute, casino, vr_runner, burned, golden) or a skin's
 ## (city: the base; scavenger: Gangland's Brute), as CyborgSuit.look_for reads it. Live, ui_left and
-## ui_right switch the look (the view rebuilds with it). --nolabel hides the captions.
+## ui_right switch the look (the view rebuilds with it). --nolabel hides the captions. --camera=x,y,z,tx,ty,tz puts
+## the camera at x,y,z looking at tx,ty,tz instead of the view's own (a close-up of any view but play).
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const SCENE: String = "res://tools/showcase/enemy_showcase.tscn"
@@ -81,11 +88,28 @@ func _ready() -> void:
 			_look(Vector3(0.0, 1.0, 4.05), Vector3(0.0, 0.86, -1.0))
 		"lineup_far":
 			_far_lineup()
+		"heavy":
+			_heavy_row(variant)
+			_look(Vector3(0.0, 1.6, 7.0), Vector3(0.0, 1.05, -1.0))
+		"heavy_turn":
+			_heavy_turn(variant)
+			_look(Vector3(0.0, 1.5, 6.4), Vector3(0.0, 1.05, -1.0))
+		"heavy_lineup":
+			_heavy_lineup()
+			_look(Vector3(0.0, 1.5, 7.6), Vector3(0.0, 1.05, -1.0))
+		"heavy_far":
+			_heavy_far()
 		_:
 			_pose_row(variant)
 			_look(Vector3(0.0, 1.3, 5.2), Vector3(0.0, 0.8, -1.0))
-	if not OS.get_cmdline_user_args().has("--nolabel") and not view.begins_with("lineup") and view != "generator":
-		_caption("%s   (enemy_variant %s)" % [CyborgSuit.LOOK_TITLES[CyborgSuit.look_for(variant)], variant])
+	var cam: PackedFloat64Array = PackedFloat64Array(Array(_opt("camera", "").split(",", false)).map(
+		func(v: String) -> float: return v.to_float()))
+	if cam.size() == 6:
+		_look(Vector3(cam[0], cam[1], cam[2]), Vector3(cam[3], cam[4], cam[5]))
+	if not OS.get_cmdline_user_args().has("--nolabel") and not view.begins_with("lineup") and view != "generator" \
+			and view != "heavy_lineup":
+		_caption("%s%s   (enemy_variant %s)" % ["Heavy Cyborg · " if view.begins_with("heavy") else "",
+			CyborgSuit.LOOK_TITLES[CyborgSuit.look_for(variant)], variant])
 
 
 ## ui_left / ui_right: the previous or next look, rebuilding the view with it.
@@ -375,3 +399,72 @@ func _far_lineup() -> void:
 				b.set_pose(CyborgBody.Pose.AIM)
 				b.aim_at(Vector3(0.0, 1.0, 0.0))
 				b.set_charge(0.8)
+
+
+## A Heavy Cyborg (GDD §9.16) of look `v` at `pos`, built as HeavyCyborg builds it (drawn at the grey box's cyborg
+## scale times its own).
+func _heavy(v: StringName, pos: Vector3, seed_value: int) -> HeavyCyborgBody:
+	var b := HeavyCyborgBody.new()
+	add_child(b)
+	b.build(v, false, false, seed_value)
+	b.position = pos
+	var t := load("res://data/enemies/heavy_cyborg.tres") as HeavyCyborgTuning
+	b.scale = Vector3.ONE * CyborgSuit.draw_scale(_world.skin) * (t.model_scale if t != null else 1.0)
+	return b
+
+
+## Winding up at `target` (`progress` into it), or firing (`progress` 1 and `firing`): its pose, face, heat and line.
+static func _wind_up(b: HeavyCyborgBody, target: Vector3, progress: float, firing: bool = false) -> void:
+	b.set_pose(CyborgBody.Pose.AIM)
+	b.set_expression(Kit.Face.AIMING)
+	b.set_charge(progress)
+	b.firing = firing
+	b.aim_at(target)
+	b.show_aim_line(target, progress)
+
+
+## A cyborg for scale, then a Heavy Cyborg idle, walking, winding up and firing.
+func _heavy_row(v: StringName) -> void:
+	var cyborg := _body(v, false, Vector3(-3.3, 0.0, 0.0), 1)
+	cyborg.scale = Vector3.ONE * CyborgSuit.draw_scale(_world.skin)
+	_heavy(v, Vector3(-1.9, 0.0, 0.0), 2).set_pose(CyborgBody.Pose.IDLE)
+	var walk := _heavy(v, Vector3(-0.3, 0.0, 0.0), 3)
+	walk.set_pose(CyborgBody.Pose.WALK)
+	walk.set_move_speed(0.9)
+	_wind_up(_heavy(v, Vector3(1.3, 0.0, 0.0), 4), Vector3(0.6, 0.6, 6.0), 0.7)
+	var fire := _heavy(v, Vector3(2.9, 0.0, 0.0), 5)
+	_wind_up(fire, Vector3(2.2, 0.6, 6.0), 1.0, true)
+	fire.flash_muzzle()
+
+
+## The same Heavy Cyborg from the front, its right side, the back and its left side.
+func _heavy_turn(v: StringName) -> void:
+	for i: int in 4:
+		var b := _heavy(v, Vector3(-2.4 + i * 1.6, 0.0, 0.0), 40)
+		b.rotation.y = -PI * 0.5 * i
+
+
+## Every look's Heavy Cyborg, the base first, winding up, each captioned with its look's name and zone.
+func _heavy_lineup() -> void:
+	var looks: Array[StringName] = CyborgSuit.LOOKS
+	for i: int in looks.size():
+		var x: float = (i - (looks.size() - 1) * 0.5) * 1.45
+		_wind_up(_heavy(looks[i], Vector3(x, 0.0, 0.0), 50 + i), Vector3(x * 0.6, 0.6, 7.0), 0.8)
+		_label(Vector3(x, 2.45, 0.0), CyborgSuit.LOOK_TITLES[looks[i]].replace(" · ", "\n"), 24)
+
+
+## Gameplay distance through the run camera: Heavy Cyborgs 20, 40 and 60 m ahead, the two nearest winding up at the
+## runner, a cyborg beside the nearest for scale.
+func _heavy_far() -> void:
+	var t := load("res://data/tuning/movement.tres") as MovementTuning
+	_world.player.visible = true
+	_camera.fov = t.camera_fov
+	_look(Vector3(0.0, t.camera_height, t.camera_distance), Vector3(0.0, 1.0, -t.camera_look_ahead))
+	var runner := Vector3(0.0, 0.6, 0.0)
+	var cyborg := _body(_variant, false, _world.lane_point(1, 20.0), 30)
+	cyborg.scale = Vector3.ONE * CyborgSuit.draw_scale(_world.skin)
+	for spec: Array in [[2, 20.0, 0.8], [3, 40.0, 0.5], [0, 60.0, 0.0]]:
+		var b := _heavy(_variant, _world.lane_point(int(spec[0]), float(spec[1])), 31 + int(spec[1]))
+		b.rotation.y = 0.0
+		if float(spec[2]) > 0.0:
+			_wind_up(b, runner, float(spec[2]))
