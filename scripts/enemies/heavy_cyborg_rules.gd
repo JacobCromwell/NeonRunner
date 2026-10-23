@@ -39,6 +39,23 @@ static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 	return Vector2(at - maxf(tuning.keep_clear_seconds * gen.speed, margin), at + margin)
 
 
+## What every lane keeps clear before each Heavy Cyborg (LevelGenerator.rules_doodad_keep_outs): its stream's zone, from
+## keep_clear_seconds of run before it to where it stands, as a calm stretch ({from, to, calm: true}): nothing the
+## rules or the passes after them stand there (a teleporter's pad stretch or landing, a falling gantryway, a zone
+## doodad, the danger density pass's pieces), so its stream finds the clear path it needs (CyborgGun.path_clear holds
+## it by any of those, a teleporter's calm stretches and a gantryway's included) as the runner closes in. The rules that
+## plan around what the others keep read it whenever they run (the teleporters' and the gantryways' run before these).
+static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var tuning: HeavyCyborgTuning = tuning_of()
+	for e: Dictionary in gen.layout.enemies:
+		if String(e.get("type", "")) != TYPE:
+			continue
+		var at: float = float(e["at"])
+		out.append({"from": at - tuning.keep_clear_seconds * gen.speed, "to": at, "calm": true, "type": TYPE})
+	return out
+
+
 ## Its tuning (data/enemies/heavy_cyborg.tres), or the class's defaults.
 static func tuning_of() -> HeavyCyborgTuning:
 	var t := load(TUNING_PATH) as HeavyCyborgTuning if ResourceLoader.exists(TUNING_PATH) else null
