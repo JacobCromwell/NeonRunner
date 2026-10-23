@@ -20,7 +20,7 @@ extends TestSuite
 ##   gantryway destroy it; it never boards an Enforcer Truck.
 ## - The generator: Heavy Cyborgs take the places of plain cyborgs (HeavyCyborgRules), over seeds, lane counts and
 ##   difficulties: each build is the build without the feature but for the cyborgs whose places they took, each where
-##   one fits (clear of every obstacle, its stream's zone clear, spaced, the level's last cyborg kept), the same every
+##   one fits (clear of every obstacle, its stream's zone clear, spaced, the level's first and last cyborgs kept), the same every
 ##   build, most builds with some, none without the feature; the campaign's levels (introduced in Relay Station from its
 ##   start, after the teleporters; Specimen Vault and Golden 1-3 with no introduction of their own; none in Frost
 ##   Foundry; every build on their own seeds as without it, and some in each at the campaign's lane count); and full

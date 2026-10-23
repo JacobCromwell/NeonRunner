@@ -436,12 +436,14 @@ its rules (`heavy_cyborg_rules.gd`). The shared cyborg files carry only hooks: `
 - **In the levels.** No pattern of its own: Heavy Cyborgs take the places of some of the level's cyborgs.
   `HeavyCyborgRules.after_doodads` (after the zone doodads, when every rule and pass but the wall fences, the side wall
   gaps, the gap density pass and the credits has built the level around its cyborgs) turns a share of the plain
-  cyborgs past the feature's start (no host, no rule's mark) into Heavy Cyborgs where one fits: the cyborgs' margin
-  from every obstacle; its stream's zone (`keep_clear_seconds` of run before it) clear of what holds a stream
+  cyborgs past the feature's start (no host, no rule's mark, none the danger density pass added) into Heavy Cyborgs
+  where one fits: the cyborgs' margin from every obstacle; its stream's zone (`keep_clear_seconds` of run before it)
+  clear of what holds a stream
   (`LevelLayout.doodad_between`); what it reaches (that zone, its keep-out, its floor) off every dash wall's
   footprint, wider gap's zone, wall-run gap's clear stretch and calm stretch a rule keeps in every lane (those let a
   cyborg stand its margin away, any other enemy only its keep-out away, and their re-checks hold a Heavy Cyborg to
-  the rest's rule); `spacing_seconds` from the one before; never the level's last cyborg. The first that fits always
+  the rest's rule); `spacing_seconds` from the one before; never the level's first cyborg (the danger density pass
+  adds its own only past it) nor its last plain one, so the pass's dial changes none of them. The first that fits always
   does (Relay Station's introduction, from 0.3 of the level); each later one with the chance `share` times the
   campaign's recency factor for the feature (`LevelConfig.recency_factor`: most in Relay Station, fewer as it gets
   older), from its own random stream. A Heavy Cyborg keeps a cyborg's keep-out (`keep_out`), so the level is built
