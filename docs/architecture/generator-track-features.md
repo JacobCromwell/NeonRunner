@@ -1021,7 +1021,7 @@ throughout (`docs/questions/j2.md`).
   short and it has wall-run gaps, the generator builds it once more with the first one's clear stretch kept for them
   (`LevelGenerator._make_wide_gap_room`, `wall_run_gap_reserve`, `WallRunGapPlacement.wide_gap_reserve`; never in the
   level that brings the feature in), so it goes elsewhere, its own last resort making room as ever (Golden 2 at 3
-  lanes on its own seed: a Gilded Sentinel that isn't the level's first). That build stands only with every wider gap,
+  lanes on seed 9027, `test_wall_run_gaps`' WIDE_GAP_ROOM_CASE). That build stands only with every wider gap,
   a wall-run gap, every feature and no warning, else the level is built as before; it isn't a build of the guarantee
   (`attempts`). DESIGN-TBD (`docs/questions/j2.md`): which gives way when a level has room for only one.
 - **At run time**: the attacks a runner can't dodge on the way to the wall or over the gap hold off while a crossing

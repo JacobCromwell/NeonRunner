@@ -37,14 +37,14 @@ const AT: float = 60.0
 const SPEEDS: Array[float] = [18.0, 25.0]
 ## Campaign builds, as {id, lanes, seed}, where the danger density pass would add a wall enemy on a
 ## Sentinel's wall section if it didn't ask the Sentinels' rules (SentinelWallsUnchecked; task K4): Golden 2 at
-## 3 lanes on seed 9019 as shipped, whose pass would put window cyborgs on the wall sections of the Sentinels at 2029
-## and 2508 m (the first such build of Golden 2's at 3 lanes on seeds 9001-9060 since task S1's Heavy Cyborg moved
-## what the pass adds; 9040 is another). Golden 2 at 3 lanes on seed 9011, the case since task Q6's teleporters, no
-## longer builds that way, nor do the Palace at 6 lanes on seed 9004 without its wall-run gaps (task J2's), the Palace
-## at 3 lanes on seed 9024 (the H series' case), at 3 lanes on seed 9039 (task K5's) and Golden 2 at 5 lanes on seed
-## 9034 (K4's). Built as shipped every Sentinel keeps its rules; built without the check, the problem shows (else
-## re-pin the case). A case may name features to build it `without` (one that moves what the pass adds on that seed).
-const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/2", "lanes": 3, "seed": 9019, "without": []}]
+## 3 lanes on seed 9022 as shipped, whose pass would put a window cyborg on the wall section of the Sentinel at 3669 m
+## (the first such build of Golden 2's at 3 lanes on seeds 9001-9060 since task S1's Heavy Cyborg moved what the pass
+## adds; 9030 is another). Golden 2 at 3 lanes on seed 9011, the case since task Q6's teleporters, no longer builds
+## that way, nor do the Palace at 6 lanes on seed 9004 without its wall-run gaps (task J2's), the Palace at 3 lanes on
+## seed 9024 (the H series' case), at 3 lanes on seed 9039 (task K5's) and Golden 2 at 5 lanes on seed 9034 (K4's).
+## Built as shipped every Sentinel keeps its rules; built without the check, the problem shows (else re-pin the
+## case). A case may name features to build it `without` (one that moves what the pass adds on that seed).
+const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/2", "lanes": 3, "seed": 9022, "without": []}]
 
 var sim: RunSim
 var t: GildedSentinelTuning

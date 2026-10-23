@@ -37,6 +37,11 @@ const APPROACH_AT: float = 100.0
 ## Metres of the runner's run an Octodog's charge winding up now plays out over, for _test_holds (any window shows
 ## the hold; the dog's own, OctodogTuning.window_length, is a little longer).
 const DOG_WINDOW: float = 20.0
+## A build whose one clear stretch its wider gaps and its first wall-run gap both want (_test_wide_gap_room): Golden 2
+## at 3 lanes on seed 9027, the first such build of Golden 2's at 3 lanes on seeds 9000-9029 since task S1's Heavy
+## Cyborg moved its picks (at 5 lanes, seeds 9004 and 9016 are others). Golden 2 at 3 lanes on its own seed, the case
+## since task J2, no longer needs the room. Else re-pin the case.
+const WIDE_GAP_ROOM_CASE: Dictionary = {"id": "golden/2", "lanes": 3, "seed": 9027}
 
 var sim: RunSim
 var campaign: Campaign
@@ -183,8 +188,8 @@ func _test_without() -> void:
 ## A level's first wall-run gap makes room for a wider gap it crowds out (LevelGenerator._make_wide_gap_room): what a
 ## finished build keeps for its wider gaps in the one more build (WallRunGapPlacement.wide_gap_reserve) is its first
 ## wall-run gap's clear stretch where its wider gaps fall short, and nothing where they're all there, where it has no
-## wall-run gap, or in the level that brings the feature in; and Golden 2 at 3 lanes on its own seed, whose one clear
-## stretch both want, has every wider gap and its wall-run gap elsewhere, its own last resort having made the room.
+## wall-run gap, or in the level that brings the feature in; and WIDE_GAP_ROOM_CASE, whose one clear stretch both
+## want, has every wider gap and its wall-run gap elsewhere, its own last resort having made the room.
 func _test_wide_gap_room() -> void:
 	var mt: MovementTuning = tuning
 	var shape: WallRunGapPlacement.Shape = WallRunGapPlacement.shape_for(mt, mt.run_speed)
@@ -209,15 +214,19 @@ func _test_wide_gap_room() -> void:
 		gen.wide_gap_result = short
 		lay.wall_run_gaps.clear()
 		check(WallRunGapPlacement.wide_gap_reserve(gen).is_empty(), "a build with no wall-run gap keeps nothing")
-	var golden: LevelConfig = campaign.configure(campaign.step("golden/2"), 3)
-	var built: LevelGenerator = LayoutCache.generator(golden, tuning, LevelGenerator.load_for(golden))
+	var golden: LevelConfig = campaign.configure(campaign.step(String(WIDE_GAP_ROOM_CASE["id"])),
+		int(WIDE_GAP_ROOM_CASE["lanes"]))
+	golden.level_seed = int(WIDE_GAP_ROOM_CASE["seed"])
+	var built := LevelGenerator.new()
+	built.generate(golden, tuning, LevelGenerator.load_for(golden))
 	var made: bool = false
 	for c: String in built.wall_run_gap_result.get("constraints", []):
 		made = made or c.begins_with("the last resort took out")
 	check(WideGapPlacement.rows_of(built).size() == golden.wide_gaps and not built.layout.wall_run_gaps.is_empty() and made
 		and WallRunGapPlacement.wide_gap_reserve(built).is_empty() and built.warnings.is_empty(),
-		"Golden 2 at 3 lanes has every wider gap and its wall-run gap, its last resort having made the room (%s)"
-		% [built.wall_run_gap_result.get("constraints", [])])
+		("%s at %d lanes on seed %d has every wider gap and its wall-run gap, its last resort having made the room (%s); "
+		+ "else re-pin WIDE_GAP_ROOM_CASE") % [WIDE_GAP_ROOM_CASE["id"], WIDE_GAP_ROOM_CASE["lanes"],
+			WIDE_GAP_ROOM_CASE["seed"], built.wall_run_gap_result.get("constraints", [])])
 
 
 func _check_none(layout: LevelLayout, tag: String) -> void:
