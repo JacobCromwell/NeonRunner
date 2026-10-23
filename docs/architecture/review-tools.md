@@ -114,7 +114,7 @@ the runner dashes on (`--high`, `--side`, `--lanes=N`, `--skin=`, `--reduced-fla
 the Hunter calm, warning and cutting side by side (`--scenario=model`) or a scripted chase on Specimen Vault's look: it
 arrives, comes up beside the runner, a flurry dodged into a falling gantryway's lane, then the bait (`--camera=game|side|
 behind`, `--stay`, `--mortal`, `--lanes=N`, `--skin=`, `--reduced-flashing`; `tools/measure/hunters.gd` lists every
-build's Hunters and their baits), the Golden Zone's statue
+build's Hunters and their baits, `tools/measure/hunter_chases.gd` plays their chases), the Golden Zone's statue
 kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`, `sewer_swarm_showcase`),
 the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
 and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;

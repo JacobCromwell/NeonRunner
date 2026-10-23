@@ -23,13 +23,16 @@ extends Enemy
 ##   under a falling walkway it follows at once, in walkway_switch_seconds). It never takes the runner's lane, and its body
 ##   is safe but solid: a lane blocker bumps a lane change into it back (as the hover truck's sides) and its body's hitbox
 ##   is harmless (Hazard.harmless): only the blades hurt.
-## - It steers: what stands in its lane ahead (a doodad, a gantryway's pillar, a live fence, a teleporter's pad, a ramp, a
-##   standing dash wall, another enemy on the floor) it goes round in the lane further out, or, with none, it makes room.
-##   Holes, gaps and floor cuts it hovers over.
+## - It steers: what stands in its lane ahead (a doodad, a gantryway's pillar, a gapped fence, a teleporter's pad, a ramp,
+##   a standing dash wall, another enemy on the floor) it goes round in the lane further out; with none, it crosses behind
+##   the runner to their other side where that's open (SWITCH, cross_gap behind them), else it drops back behind the
+##   camera and comes up again once it may (regain_seconds). Holes, gaps and floor cuts it hovers over, and a full fence it
+##   rises over (lift, as a flyer over a dash wall), except beside a runner in an edge lane: risen there it would hide their
+##   lane ahead, so it goes round. (Task S2's review, DESIGN-TBD: more of its chase beside them.)
 ## - It never takes the runner's way out: where their lane holds what they must leave it for (a doodad, a floor enemy, a
 ##   walkway falling on it, another enemy's lane attack or small attack: a cyborg-type gun's burst, an enemy shot; a
 ##   wall-run gap) within make_room_seconds and the lane on their other side isn't open, it makes room: it drops back
-##   behind the camera and comes up again once it may (regain_seconds).
+##   cross_gap behind them, still on screen, and comes up again as soon as they no longer need its lane (room_seconds).
 ## - The flurry: alongside and settled, the runner on the floor with the lane on their other side open to step into until
 ##   its last cut (the dodge: one lane away, never a jump), its warning (warning_seconds): both blades raised, a steel
 ##   scrape (hunter_scrape) and a red mark on the runner's lane; then flurry_seconds of quick cuts into that lane (its
@@ -38,8 +41,10 @@ extends Enemy
 ##   one hit: armor or the shield takes the first contact and the invulnerability window covers the rest. No flurry in the
 ##   level's calm start, over a gantryway's run-up and calm stretch (the bait stays clean), a teleporter's calm stretch in
 ##   the runner's lane, a wall-run gap's crossing or a fenced ceiling's pick, while another enemy's small attack is on at
-##   them, or one whose dodge would take them two lanes past the next bait's walkway lane. A runner who takes a pad, steps
-##   onto a wall or teleports during one calls it off. It holds its lane through a warning and its cuts, then follows.
+##   them, one whose dodge would take them two lanes past the next bait's walkway lane, or one it would be risen over a
+##   fence through as it sweeps and cuts. A runner who takes a pad, steps onto a wall or teleports during one calls it
+##   off. It holds its lane through a warning and its cuts, then follows; what shuts its lane ahead meanwhile (it steers,
+##   crosses or drops back) calls them off.
 ## - A runner on a ceiling or a wall it waits below, beside their lane, never cutting.
 ## - A teleport leaves it behind (follows_runner keeps it in play through EnemyDirector.runner_teleported): it catches up
 ##   from where the jump left it (no further back than catch_up_gap_max), its time running all along.
@@ -52,10 +57,12 @@ extends Enemy
 ## gantryways its rules planned in its chase (its pillar's front, its walkway's lane, its pillar's push side, where its
 ## rules keep the floor clear for a step out). The bait shapes how it rides (task S2's placeholder, DESIGN-TBD): it comes
 ## up on the runner's far side from the next one's walkway lane, so they reach that lane stepping away from it, where they
-## could then step out of it away from it onto open floor, else on the side away from the push (_bait_side); it never
-## rides between them and that lane two lanes or more off, dropping back or holding back unseen until they're past
-## (_blocks_bait); and over a bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's lane, one
-## lane further out, so a runner it followed past that lane can step back in (_run_up_bait).
+## could then step out of it away from it onto open floor, else on the side away from the push (_bait_side); riding between
+## them and that lane two lanes or more off (a runner by the edge on the wrong side), it stays beside them, its flurries
+## never carrying them further from that lane, until the pillar is bait_cross_seconds of run ahead; then it crosses to
+## their other side, or, with no lane there, drops back or holds back unseen until they're past (_blocks_bait), leaving
+## them a window to cross; and over a bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's
+## lane, one lane further out, so a runner it followed past that lane can step back in (_run_up_bait).
 
 enum State { WAITING, APPROACH, ALONGSIDE, YIELD, LEAVING, DEAD, SWITCH }
 enum Slash { IDLE, WARNING, FLURRY, RECOVER }
@@ -87,8 +94,6 @@ const SLASH_ANGLE_PAD: float = 0.08
 const JUMPABLE_ATTACKS: Array[StringName] = [&"octodog"]
 ## Seconds a stepping-out check (_out_open) stays good before it's looked at again (task S2's review: its cost).
 const OUT_OPEN_REFRESH: float = 0.25
-## Making room (_start_yield), it stays back at least this long (seconds) before coming up again.
-const ROOM_SECONDS: float = 0.4
 
 var tuning: HunterTuning
 var state: State = State.WAITING
@@ -445,10 +450,10 @@ func _alongside(delta: float) -> void:
 	_ease_gap(maxf(-tuning.alongside_ahead, least), tuning.approach_speed, delta)
 
 
-## It can't stay beside the runner: it drops back behind the camera, its cuts called off, and comes up again once it may.
-## Making room for them (`why` make_room: the runner needs its lane), it drops back only cross_gap (DESIGN-TBD, task S2's
-## review: still on screen, with them), clear of the lane beside them so they can step into it in front of it, and comes
-## up again as soon as they no longer need it.
+## It can't stay beside the runner: it drops back behind the camera, its cuts called off, and comes up again once it may
+## (regain_seconds). Making room for them (`why` make_room: the runner needs its lane), it drops back only cross_gap
+## (DESIGN-TBD, task S2's review: still on screen, with them), clear of the lane beside them so they can step into it in
+## front of it, and comes up again as soon as they no longer need it (room_seconds at least).
 func _start_yield(why: StringName) -> void:
 	state = State.YIELD
 	_yield_t = 0.0
@@ -463,7 +468,7 @@ func _yield(delta: float) -> void:
 	if _yield_room:
 		var behind: float = MIN_GAP_IN_LANE if lane == r else -INF
 		_ease_gap(maxf(tuning.cross_gap, behind), tuning.drop_speed, delta)
-		if _yield_t >= ROOM_SECONDS and gap >= MIN_GAP_IN_LANE and world.player.surface == Player.Surface.FLOOR \
+		if _yield_t >= tuning.room_seconds and gap >= MIN_GAP_IN_LANE and world.player.surface == Player.Surface.FLOOR \
 				and not _must_make_room():
 			var s: int = side if r + side >= 0 and r + side < world.geo.lane_count and _lane_clear_ahead(r + side, true) \
 				and not _blocks_bait(side, r) else _pick_side(false)

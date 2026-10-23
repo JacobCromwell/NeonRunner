@@ -54,17 +54,21 @@ extends EnemyTuning
 @export_range(0.05, 1.0, 0.05, "suffix:m") var fence_clearance: float = 0.25
 @export_range(2.0, 15.0, 0.5, "suffix:m/s") var lift_speed: float = 8.0
 ## DESIGN-TBD (task S2's review): its lane shut ahead by something it can't rise over, with no lane further out, it crosses
-## to the runner's other side rather than making room: it drops back behind them, crosses their lane at least this far
-## behind them (its middle's gap, metres), and comes up beside them there.
+## to the runner's other side rather than dropping out of view: it drops back behind them, crosses their lane at least
+## this far behind them (its middle's gap, metres), and comes up beside them there. Making room (make_room_seconds) it
+## drops back this far too, still on screen.
 @export_range(2.6, 6.0, 0.1, "suffix:m") var cross_gap: float = 3.2
 ## DESIGN-TBD: it never takes the runner's only way out (CLAUDE.md: the player dies in one hit): it makes room (drops back
-## behind them) when their lane holds what they must leave it for within this many seconds of run (a doodad, a floor enemy,
-## a walkway falling over it, another enemy's lane attack, a wall-run gap) and the lane on their other side isn't open.
+## cross_gap behind them) when their lane holds what they must leave it for within this many seconds of run (a doodad, a
+## floor enemy, a walkway falling over it, another enemy's lane attack or small attack, a wall-run gap) and the lane on
+## their other side isn't open; it comes up again once they no longer need its lane, room_seconds at the soonest.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var make_room_seconds: float = 1.2
-## DESIGN-TBD: once it has made room (dropped back), it comes up beside the runner again no sooner than this.
+@export_range(0.0, 3.0, 0.05, "suffix:s") var room_seconds: float = 0.4
+## DESIGN-TBD: once it has dropped out of the runner's way behind the camera (its lane shut with no way round or across,
+## by the edge, or between them and its bait as its pillar nears), it comes up beside them again no sooner than this.
 @export_range(0.0, 6.0, 0.1, "suffix:s") var regain_seconds: float = 1.2
-## DESIGN-TBD: where it waits while it makes room (its middle's gap behind the runner: behind the chase camera), and how
-## fast it drops back there (metres a second slower than the runner, at most).
+## DESIGN-TBD: where it waits out of their way (its middle's gap behind the runner: behind the chase camera), and how fast
+## it drops back (metres a second slower than the runner, at most).
 @export_range(4.0, 30.0, 0.5, "suffix:m") var yield_gap: float = 9.0
 @export_range(2.0, 40.0, 0.5, "suffix:m/s") var drop_speed: float = 16.0
 

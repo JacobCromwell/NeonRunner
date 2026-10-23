@@ -42,8 +42,8 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   challenge's Ice Lab weeks, 48 Hunters in 31 builds, every own build calm, one build without one (6 lanes, seed 9002).
   The calm arrival is 1.5 s of run: it keeps every lane clear, and at 3 s it took one of Specimen Vault's decoy jars'
   room at five lanes (task Q5's count of 3 stands).
-- **Behaviour** (`Hunter`, states WAITING, APPROACH, ALONGSIDE, YIELD, LEAVING, DEAD; its slash IDLE, WARNING, FLURRY,
-  RECOVER). Unseen, harmless and not solid until the runner reaches its `at`; then its whine (`hunter_whine`) and it
+- **Behaviour** (`Hunter`, states WAITING, APPROACH, ALONGSIDE, YIELD, SWITCH, LEAVING, DEAD; its slash IDLE, WARNING,
+  FLURRY, RECOVER). Unseen, harmless and not solid until the runner reaches its `at`; then its whine (`hunter_whine`) and it
   comes up from `arrive_gap` behind (out of view it changes lanes at once; it comes into view only into a lane clear
   ahead) into a lane beside the runner's, its middle `alongside_ahead` ahead of theirs; a runner who steps into its lane
   (or the one it's changing to) in front of it keeps it `MIN_GAP_IN_LANE` behind them until its lane change has taken it
@@ -55,17 +55,31 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   the pillar breaks; the walkway catches the runner from 0.95 s). Its side (`_pick_side`, `_bait_side`): the runner's
   far side from the next bait's walkway lane where they could then step out of it away from it onto open floor (the push
   side, or the other where `_out_open` finds it open), else away from the push; with no bait ahead, toward the nearer
-  edge. It never rides between the runner and the next bait's walkway lane two or more lanes off on its side while that
-  bait can still be lined up (`_blocks_bait`: its pillar further than its run-up, and the runner then able to step out
-  of the walkway's lane on that side): coming up it holds back unseen just behind the camera, beside them it drops back
-  (YIELD `bait`), and it comes up on their other side once they're past. Over a bait's run-up it keeps out of the
-  walkway's lane (`_run_up_bait`). It steers (`_lane_clear_ahead`, `blocked_in`): what stands in its lane
-  `steer_ahead_seconds` ahead it goes round in the lane the runner just left, or the lane further out, else it makes
-  room (YIELD: drops to `yield_gap`, behind the camera, and comes up again after `regain_seconds`); it makes room too
-  where the runner's lane holds what they must leave, another enemy's small attack too (its body never takes a dodge
-  away: `_small_attack_on`, any `CyborgGun` charging or firing, the floor and window cyborgs', the barnacle turret's,
-  the Heavy Cyborg's gatling, or an enemy shot reaching their lane within `make_room_seconds`), and their other lane
-  isn't open (`_must_make_room`, `_needs_leaving`, `lane_open`), and before a wall-run gap.
+  edge. Where it would ride between the runner and the next bait's walkway lane two or more lanes off on its side (a
+  runner by the edge on the wrong side), it rides there beside them, its flurries never carrying them further from that
+  lane, until the pillar is `bait_cross_seconds` (5 s) of run ahead (task S2's review: before, it dropped out of view for
+  that whole stretch); from then until its run-up (`_blocks_bait`: the pillar within `bait_cross_seconds` and further
+  than `bait_hold_seconds`, the runner then able to step out of the walkway's lane on that side) it lets them past: it
+  crosses behind them to their other side (SWITCH `bait`), or, with no lane there, drops back (YIELD `bait`; coming up,
+  it holds back unseen just behind the camera), leaving them a window to cross, and comes up on their other side once
+  they're past, or beside them again for the run-up. Over a bait's run-up it keeps out of the walkway's lane
+  (`_run_up_bait`). It steers (`_lane_clear_ahead`, `lane_blocker`, `blocker_in`): what stands in its lane
+  `steer_ahead_seconds` ahead (a doodad, a pillar or a jar, a gapped fence, a teleporter's pad, a ramp, a standing dash
+  wall, a floor enemy) it goes round in the lane the runner just left, or the lane further out; else it crosses behind
+  them to their other side where that lane is clear and they don't need it (`_may_cross`, SWITCH `blocked`: it drops to
+  `cross_gap` behind them, changes lanes there and comes up again with its whine); else it drops out of view (YIELD
+  `blocked`: to `yield_gap`, behind the camera, and comes up again after `regain_seconds`). A full fence (one the runner
+  jumps), live or not, it rises over (`_update_lift`, `lift`; task S2's review: as a flyer over a dash wall): its disc's
+  underside `fence_clearance` over the fence's top as its body reaches it, climbing and settling at `lift_speed`, over
+  the fences in every lane its disc spans. A gapped fence (the runner slides under it) it goes round: risen about 2 m its
+  body would hide the floor ahead of a runner beside it from the camera; beside a runner in an edge lane it goes round
+  every fence for the same reason (`_goes_round`, `_runner_in_edge_lane`; test_hunter's view). It makes room where the
+  runner's lane holds what they must leave, another enemy's small attack too (its body never takes a dodge away:
+  `_small_attack_on`, any `CyborgGun` charging or firing, the floor and window cyborgs', the barnacle turret's, the Heavy
+  Cyborg's gatling, or an enemy shot reaching their lane within `make_room_seconds`), and their other lane isn't open
+  (`_must_make_room`, `_needs_leaving`, `lane_open`), and before a wall-run gap: it drops back only `cross_gap`, still on
+  screen, clear of the lane beside them so they can step into it in front of it, and comes up again as soon as they no
+  longer need it (`room_seconds` at the soonest; task S2's review: it used to drop out of view for `regain_seconds`).
   It hovers over holes, gaps and floor cuts (its place is set from the runner's distance and its gap; nothing makes it
   fall). Below a runner on a ceiling or a wall it waits beside their lane. A teleport (`runner_teleported`;
   `follows_runner` keeps it in play) leaves it behind to catch up from where it was left (`catch_up_gap_max`); one still
@@ -78,7 +92,11 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   gantryway's run-up and calm stretch (`_bait_near`), a teleporter's calm stretch in their lane, a wall-run gap and a
   fenced ceiling's pick (`LevelLayout.fenced_pick_between`, as the heli drone's barrages), never while another enemy's
   small attack is on at them (`_small_attack_on`, their lane or the one they'd step into), never one whose dodge would
-  carry them two lanes or more past the next bait's walkway lane, and finishing before it gives up: its warning (both
+  carry them two lanes or more past the next bait's walkway lane, never one it would be risen over a fence through while
+  its sweep shows and its cuts are live (`_lifted_between`: the sweep is drawn from its hover), and finishing before it
+  gives up (`slash_problem` names the first rule that holds one back, "" when it may: `may_slash`). The first comes
+  `first_slash_seconds` after it settles beside them, the next a seeded `slash_interval_min` to `slash_interval_max`
+  from the last one's warning (1.0 s; 1.8 to 2.3 s: task S2's review, the attack rate). Its warning (both
   blades raised, eyes and blades brighter, `hunter_scrape` from where it is, and the red mark on the locked lane:
   `_update_mark`, widening and pulsing, only widening with Reduced flashing), then `flurry_seconds` of cuts
   (`hunter_slash`; its attack hitbox over the locked lane, `slash_height` high and `slash_depth` long, placed each tick
@@ -87,12 +105,30 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   blades (`_build_trail`, `HunterModel.slash_mesh` and `slash_material`, unlit, both faces) sweeps out across the locked
   lane from a pivot in front of its chest and stays whole through the cuts, and its rig lunges `HunterModel.LUNGE` (0.5
   m) that way (`model.reach`, easing back as it recovers); the fan is built round the hitbox, every corner of it inside
-  with `SLASH_MARGIN` (0.1 m) and `SLASH_ANGLE_PAD` to spare (`slash_fan` reports it to the tests). It's steady (one
+  with `SLASH_MARGIN` (0.1 m) and `SLASH_ANGLE_PAD` to spare, and clipped where it would reach more than `SLASH_MARGIN`
+  past the cut lane's far edge (`x_max`); its mesh is shared by every Hunter with the same numbers
+  (`HunterModel.shared_slash_mesh`), and `slash_fan` reports it to the tests. It's steady (one
   sweep a flurry, no pulse), so Reduced flashing leaves it as it is. It holds its lane through a warning and its cuts. A
   runner who takes a pad, steps onto a wall or teleports calls them off (`_on_player_event` runs before the hazard check
   in the same step; the mark and the sweep go at once). One flurry is one hit: the damage rules' armor and shield take
   the first contact and the invulnerability window the rest. A runner at an edge with it inward has no lane away from
   it, so it never slashes them there (an edge refuge, a question for the owner: `docs/questions/s2.md`).
+- **Its cost** (task S2's review: its per-frame checks had doubled). Its checks run every tick; what they read more than
+  once a frame is kept: whether a runner can step out of a bait's walkway lane to a side (`_out_open`, per bait and side,
+  looked at again every `OUT_OPEN_REFRESH`, 0.25 s), the small attacks at the runner (`_small_attacks`, once a physics
+  frame), whether an enemy type uses the floor (`_type_uses_floor`, once a type), its baits (read from its entry once),
+  the layout's doodads and fences by lane, sorted (`_index_layout`, looked up by bisection). Over Specimen Vault's chases
+  on a cloud container: about 80 µs a tick on average at 5 lanes (65 at 3, 78 at 6; 65, 57 and 77 before the review's
+  changes).
+- **Its chases, measured** (`tools/measure/hunter_chases.gd`, `--seeds=N --runner=dodge|bait --start --levels`): plays
+  Specimen Vault's builds at 3, 5 and 6 lanes (its own seed and 9001 on) with the Hunter's chases on a god-mode runner
+  who grapples, jumps holes and dodges every flurry (or also heads for the bait and dashes it), and prints each chase:
+  how long, beside them, unseen, the runner in an edge lane, flurries warned off the edges, cuts, yields and what shut
+  its lane (`lane_blocker`), the due flurries held back and why (`slash_problem`). With the review's changes (2 seeds):
+  1.3 warned flurries a chase for the dodger, 2.7 for every 25 s off the edges (2.4, 1.9 and 5.2 at 3, 5 and 6 lanes),
+  beside them 53% of the time and unseen 20% (before: 0.6, 1.1, 38%, 39%); the bait runner 0.6 a chase, 1.4 for every
+  25 s off the edges, beside 57%, every bait landed. What holds the rest back is the level and the fairness rules: the
+  edge refuge, a gantryway's run-up and calm stretch, the bait's keep-out, no way out, the runner off the floor.
 - **Declared properties** (CLAUDE.md principle 8). `claw_immune`, not `stompable`, `dash_kills` false, `follows_runner`;
   its body hitbox `harmless` (`DamageRules`: the dash, claws and stomps do nothing, and it hurts no one), its lane
   blocker (`blocker_height`, over a whole jump) solid; `is_major_attack_active` false (it neither waits for the
@@ -124,7 +160,7 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   default chase on Specimen Vault's look (it arrives, a flurry dodged into the walkway's lane, then the bait), with
   `--camera=game|side|behind`, `--stay`, `--mortal`, `--lanes`, `--skin`, `--reduced-flashing`.
 - **Tests.** `test_hunter` (medium) and `test_hunter_baits` (slow: the bait at every lead Specimen Vault's builds give
-  it, every start lane, both ways round, its flurries on, 194 of 194 takes; and the step-out window)
+  it, every start lane, both ways round, its flurries on, 194 of 194 takes; and the step-out window, 0.00 to 0.90 s)
   (`docs/architecture/tests-features.md`), `LayoutChecks.check_hunters` through every suite that checks Specimen Vault's
   builds (test_ice_lab_levels, test_campaign, test_weekly_challenge), `test_campaign`'s feature lists (Specimen Vault
   introduces it), `test_hints`, `test_audio`.

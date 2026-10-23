@@ -5,13 +5,17 @@ extends Node3D
 ##   Render:  godot --path . --resolution 960x540 --write-movie build/hunter/f.png --fixed-fps 10 --quit-after 200
 ##            res://tools/showcase/hunter_showcase.tscn -- [options]
 ##   Options (after --):
-##     --scenario=chase|model
+##     --scenario=chase|fences|model
 ##                           chase (default): it arrives from behind (its whine), comes up beside the runner on the side
 ##                           away from the bait's step out, and warns of its first flurry (both blades up, the scrape, the
 ##                           red mark on the runner's lane); the runner steps away from it (--stay: they don't, and the
 ##                           armor takes the cuts) and it follows into the lane they left. Then the bait: the runner dashes
 ##                           a falling gantryway's pillar in their lane and steps out away from it; it follows into the
 ##                           walkway's lane and the walkway lands on it;
+##                           fences (task S2's review): no bait; it comes up beside a runner in lane 1 on the edge side,
+##                           rises over two full fences in its lane, crosses behind the runner to their other side round a
+##                           crate it can't rise over, rises over a full fence there and goes round a gapped one (the
+##                           runner stays in their lane: god mode takes its flurries);
 ##                           model: three of it side by side on a dark floor, calm, warning (blades raised, eyes and
 ##                           blades bright) and mid-flurry, the camera circling
 ##     --skin=<id>           the look (data/skins/<id>_skin.tres; default ice_lab_lab, Specimen Vault's)
@@ -32,6 +36,12 @@ const ICE_LAB_SPEED: float = 24.8
 ## held by the bait's run-up (HunterTuning.bait_hold_seconds).
 const ARRIVE: float = 40.0
 const PILLAR: float = 250.0
+## The fences scenario (metres): full fences in the lane it comes up in, the crate there it crosses the runner's lane
+## for, and a full fence and a gapped one in the lane it crosses to.
+const FENCES_LEFT: Array[float] = [140.0, 175.0]
+const CRATE: float = 215.0
+const FENCE_RIGHT: float = 275.0
+const GAPPED_RIGHT: float = 320.0
 ## The runner's reaction (seconds) to the warning and to the pillar breaking (the suites' REACTION).
 const REACTION: float = 0.35
 
@@ -48,6 +58,7 @@ var _events: int = 0
 var _stay: bool = false
 var _dodged: bool = false
 var _heading: int = -1
+var _lift_shown: float = 0.0
 
 
 func _ready() -> void:
@@ -84,6 +95,8 @@ func _ready() -> void:
 	if scenario == "model":
 		_build_model(skin)
 		return
+	if scenario == "fences":
+		_stay = true
 	_build_run(skin, lanes, mortal)
 
 
@@ -100,22 +113,36 @@ func _build_run(skin: ZoneSkin, lanes: int, mortal: bool) -> void:
 	# The bait as the gantryways' rules hang one: over the lane the runner will be in after their first dodge, its pillar
 	# pushing (and the runner stepping out) away from the Hunter.
 	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
-	var gt: GantrywayTuning = GantrywayTuning.load_default()
-	var walkway: float = GantrywayRules.walkway_length(gen, gt)
-	var calm: float = GantrywayRules.calm_length(gen, gt)
-	var start: float = PILLAR - GantrywayRules.NEAR_OVERHANG
-	layout.gantryways.append({"id": 0, "lane": walk_lane, "start": start, "end": start + walkway, "pillar": PILLAR,
-		"side": 1, "calm": [PILLAR, PILLAR + calm], "seed": 5, "intro": false, "both": false})
-	var pillar: Vector3 = tuning.doodad_size(Gantryway.PILLAR_SIZE)
-	layout.doodads.append({"lane": walk_lane, "start": PILLAR, "end": PILLAR + pillar.z, "size": Gantryway.PILLAR_SIZE,
-		"side": 1, "seed": 5, LevelLayout.GANTRY_PILLAR: 0})
-	layout.enemies.append({"type": "hunter", "at": ARRIVE, "lane": lane, "side": 0, "seed": 3,
-		"params": {"baits": [{"at": PILLAR, "lane": walk_lane, "side": 1, "id": 0}]}})
-	layout.length = start + walkway + 300.0
 	var pt := load("res://data/tuning/powerups.tres") as PowerupTuning
-	var dashing: float = tuning.run_speed + pt.dash_speed_bonus
-	_pending.append([PILLAR - 0.6 * pt.dash_duration * dashing, &"dash"])
-	_pending.append([PILLAR + REACTION * dashing, &"move_right"])
+	if scenario == "fences":
+		# It comes up on the runner's left (toward the nearer edge, lane 0) and crosses to their right round the crate.
+		for at: float in FENCES_LEFT:
+			layout.fences.append(_fence(lane - 1, at, "full"))
+		var box: Vector3 = tuning.doodad_size(&"medium")
+		layout.doodads.append({"lane": lane - 1, "start": CRATE, "end": CRATE + box.z, "size": &"medium", "side": 1,
+			"seed": 3})
+		layout.fences.append(_fence(lane + 1, FENCE_RIGHT, "full"))
+		layout.fences.append(_fence(lane + 1, GAPPED_RIGHT, "gapped"))
+		layout.enemies.append({"type": "hunter", "at": ARRIVE, "lane": lane, "side": 0, "seed": 3, "params": {}})
+		layout.length = GAPPED_RIGHT + 300.0
+		print("lane %d: full fences at %s m, a crate at %.0f m; lane %d: a full fence at %.0f m, a gapped one at %.0f m" % [
+			lane - 1, FENCES_LEFT, CRATE, lane + 1, FENCE_RIGHT, GAPPED_RIGHT])
+	else:
+		var gt: GantrywayTuning = GantrywayTuning.load_default()
+		var walkway: float = GantrywayRules.walkway_length(gen, gt)
+		var calm: float = GantrywayRules.calm_length(gen, gt)
+		var start: float = PILLAR - GantrywayRules.NEAR_OVERHANG
+		layout.gantryways.append({"id": 0, "lane": walk_lane, "start": start, "end": start + walkway, "pillar": PILLAR,
+			"side": 1, "calm": [PILLAR, PILLAR + calm], "seed": 5, "intro": false, "both": false})
+		var pillar: Vector3 = tuning.doodad_size(Gantryway.PILLAR_SIZE)
+		layout.doodads.append({"lane": walk_lane, "start": PILLAR, "end": PILLAR + pillar.z, "size": Gantryway.PILLAR_SIZE,
+			"side": 1, "seed": 5, LevelLayout.GANTRY_PILLAR: 0})
+		layout.enemies.append({"type": "hunter", "at": ARRIVE, "lane": lane, "side": 0, "seed": 3,
+			"params": {"baits": [{"at": PILLAR, "lane": walk_lane, "side": 1, "id": 0}]}})
+		layout.length = start + walkway + 300.0
+		var dashing: float = tuning.run_speed + pt.dash_speed_bonus
+		_pending.append([PILLAR - 0.6 * pt.dash_duration * dashing, &"dash"])
+		_pending.append([PILLAR + REACTION * dashing, &"move_right"])
 	var loadout := Loadout.new()
 	loadout.tiers[&"dash"] = 4
 	loadout.armor = true
@@ -135,7 +162,11 @@ func _build_run(skin: ZoneSkin, lanes: int, mortal: bool) -> void:
 		print("%5.2f s  %6.1f m  the gantryway landed" % [world.player.elapsed, world.player.distance]))
 	world.director.enemy_defeated.connect(func(e: Enemy, cause: StringName) -> void:
 		print("%5.2f s  %6.1f m  %s defeated (%s)" % [world.player.elapsed, world.player.distance, e.type_id, cause]))
-	print("the Hunter arrives at %.0f m; the bait's pillar at %.0f m in lane %d (step out right)" % [ARRIVE, PILLAR, walk_lane])
+	if scenario == "fences":
+		print("the Hunter arrives at %.0f m" % ARRIVE)
+	else:
+		print("the Hunter arrives at %.0f m; the bait's pillar at %.0f m in lane %d (step out right)" % [ARRIVE, PILLAR,
+			walk_lane])
 	var env := WorldEnvironment.new()
 	env.environment = skin.make_environment()
 	add_child(env)
@@ -179,6 +210,10 @@ func _physics_process(_delta: float) -> void:
 			print("%5.2f s  %6.1f m  the Hunter: %s (lane %d, side %d, gap %.1f m)" % [player.elapsed, player.distance,
 				hunter.history[i][0], hunter.lane, hunter.side, hunter.gap])
 		_events = hunter.history.size()
+	if is_instance_valid(hunter) and hunter.visible and absf(hunter.lift - _lift_shown) >= 0.25:
+		_lift_shown = snappedf(hunter.lift, 0.25)
+		print("%5.2f s  %6.1f m  the Hunter risen %.2f m (lane %d)" % [player.elapsed, player.distance, hunter.lift,
+			hunter.lane])
 	if is_instance_valid(hunter) and hunter.visible and hunter.target_lane != _heading:
 		_heading = hunter.target_lane
 		print("%5.2f s  %6.1f m  the Hunter heads for lane %d (the runner in lane %d)" % [player.elapsed, player.distance,
@@ -191,6 +226,11 @@ func _process(delta: float) -> void:
 		_animate_models(delta)
 	elif world != null and camera_mode != "game":
 		_update_camera()
+
+
+## A fence entry (LevelLayout.fences) in lane `l` at `at`, `variant` full or gapped, live and steady.
+static func _fence(l: int, at: float, variant: String) -> Dictionary:
+	return {"lane": l, "at": at, "variant": variant, "pulsing": false, "pulse_on": 0.0, "pulse_off": 0.0, "phase": 0.0}
 
 
 ## Low beside the track across from it, looking at it and the runner; or high behind it, looking down its lane.

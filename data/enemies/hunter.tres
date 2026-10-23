@@ -28,6 +28,7 @@ fence_clearance = 0.25
 lift_speed = 8.0
 cross_gap = 3.2
 make_room_seconds = 1.2
+room_seconds = 0.4
 regain_seconds = 1.2
 yield_gap = 9.0
 drop_speed = 16.0

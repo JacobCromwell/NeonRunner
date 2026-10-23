@@ -715,6 +715,14 @@ be baits, and what the Hunters' rules and the gantryways', teleporters' and jars
 (`godot --headless -s res://tools/measure/hunters.gd -- [--levels=ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--weekly]
 [--why] [--gantryways=N] [--start=F]`).
 
+`tools/measure/hunter_chases.gd` plays the Hunters' chases on those levels at 3, 5 and 6 lanes (their own seed and
+others) with a god-mode runner who dodges each flurry and, by default, goes for the bait: for each chase, how much of it
+the Hunter spends beside the runner and out of view, the runner's time in an edge lane, the flurries warned and cut,
+why it dropped back and what shut its lane, why a due flurry was held back, and whether its bait landed on it; then the
+flurries for each 25 s the runner spends off the edge lanes (`godot --headless --fixed-fps 60 -s
+res://tools/measure/hunter_chases.gd -- [--levels=ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--runner=bait|dodge]
+[--start=middle|N]`).
+
 `tools/measure/teleporters.gd` builds every campaign level with teleporters (Relay Station, Specimen Vault and the Golden
 Zone's three) on its own seed and others at 3, 5 and 6 lanes, with and without them: where each one stands (its pad's
 front as a share of the level, its lane and output lanes, its kind: one output pad, a fixed light's side, blinking; how
