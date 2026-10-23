@@ -1,6 +1,6 @@
 extends TestSuite
-## The Terminal's outro (TerminalOutro; the owner's beats, October 21, 2026): its slot (after Terminal 2, before the Golden
-## Zone's intro); its nine sounds; the new poses (brace, hands_up); at 3, 5 and 6 lanes the zone's look and lanes; the
+## The Terminal's outro (TerminalOutro; the owner's beats, October 21, 2026): its slot (after Terminal 2, before the Ice
+## Lab's intro); its nine sounds; the new poses (brace, hands_up); at 3, 5 and 6 lanes the zone's look and lanes; the
 ## train (a string of cars, its nose and tail where the numbers put them, in the street, nothing but the runner's lane
 ## beside it); the runner jogging in and stopping short of its tail; the camera never inside the train or out of the
 ## street; at the door the runner's hands on the handle through the shaking, the leaf rattling harder in the violent shake
@@ -8,7 +8,7 @@ extends TestSuite
 ## pops up, then seen through the door's window; the door sliding open and shut, the runner stepping up and in and gone by the
 ## cut; the train's lights (never flickering with Reduced flashing), it standing still until it starts, moving only
 ## forward, and far enough off by the end to be out of sight in the haze; what it costs. Then skipping, and the App's flow
-## (skipping it starts the Golden Zone's intro).
+## (skipping it starts the Ice Lab's intro).
 
 const LANES: Array[int] = [3, 4, 5, 6]
 ## The train's shader copies three functions of the hall's (the work lamps' light), which must stay line for line the same.
@@ -103,7 +103,7 @@ func _test_slot() -> void:
 	var next: CampaignStep = App.campaign.next_step(prev) if prev != null else null
 	check(next != null and next.id == "terminal/outro", "it follows Terminal 2 (the Terminal has no boss)")
 	var after: CampaignStep = App.campaign.next_step(s) if s != null else null
-	check(after != null and after.id == "golden/intro", "the Golden Zone's intro follows it")
+	check(after != null and after.id == "ice_lab/intro", "the Ice Lab's intro follows it")
 	var seq := (load(SCENE) as PackedScene).instantiate()
 	check(seq is TerminalOutro and (seq as TerminalOutro).numbers != null, "its scene is a TerminalOutro with its numbers")
 	seq.free()
@@ -525,8 +525,8 @@ func _test_app_flow() -> void:
 	tree.root.push_input(press)
 	await physics_frames(3)
 	var next_c: Cinematic = App.playing_cinematic()
-	check(App.profile.is_completed("terminal/outro") and next_c != null and next_c.step.id == "golden/intro" and not tree.paused,
-		"the pause action skips it: the Golden Zone's intro starts at once, and nothing is paused")
+	check(App.profile.is_completed("terminal/outro") and next_c != null and next_c.step.id == "ice_lab/intro" and not tree.paused,
+		"the pause action skips it: the Ice Lab's intro starts at once, and nothing is paused")
 	App.show_title()
 	await tree.process_frame
 	App.profile = saved
