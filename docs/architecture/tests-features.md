@@ -628,7 +628,8 @@ zone's fence materials, whose shader honours Reduced flashing; the return pad as
 campaign level's count and LayoutChecks.check_charge_paths at 3, 5 and 6 lanes (a plain floor cyborg, never a
 host; its charger's planned path through it, in view, holding its fire, nothing around it), one before
 Corporate 2's first Enforcer at each lane count, printing what each level got; nothing planted in quick play,
-the prototype level or a boss arena (even asked); Golden 2 the same on every attempt; hand-built encounters
+the prototype level or a boss arena (even asked); Golden 2 the same on every attempt (at the first lane count and
+seed, its own then 9001 to 9005, where it plants one); hand-built encounters
 planned by the placement itself on real physics at 3, 5 and 6 lanes, at quick play's speed and Corporate 2's (an
 Octodog in an outer lane and the middle one, a parked Buzz Overdrive in an outer lane and the middle one): the
 cyborg flattened by the charge (never the player's kill) with the runner in_view_seconds behind it, no burst

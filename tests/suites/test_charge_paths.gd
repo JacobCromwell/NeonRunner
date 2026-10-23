@@ -114,20 +114,27 @@ func _test_off(campaign: Campaign) -> void:
 			"%s asks for none and plants nothing" % ("quick play" if config == quick else "the prototype level"))
 	# Golden 2 (Buzz Overdrive charges, no Octodogs) at a lane count where it plants one: the same on every
 	# attempt. Which lane counts it plants at moves with its layout (6 lanes before the Casino's levels
-	# re-spaced the campaign's curve, task K2; 5 on K2's curve; 3 on task K4's).
-	var planted_at: int = 0
-	for lanes: int in [6, 5, 3]:
-		var g2: LevelConfig = campaign.configure(campaign.step("golden/2"), lanes)
-		var a := LevelGenerator.new()
-		var first: LevelLayout = a.generate(g2, tuning, LevelGenerator.load_for(g2))
-		if ChargePathPlacement.planted_in(first).is_empty():
-			continue
-		var b := LevelGenerator.new()
-		var again: LevelLayout = b.generate(g2, tuning, LevelGenerator.load_for(g2))
-		check(first.to_dict() == again.to_dict(), "Golden 2 plants the same on every attempt (%d lanes)" % lanes)
-		planted_at = lanes
-		break
-	check(planted_at > 0, "Golden 2 plants a cyborg in a charge path at some lane count")
+	# re-spaced the campaign's curve, task K2; 5 on K2's curve; 3 on task K4's; on its own seed at none since task S1's
+	# Heavy Cyborg pattern moved its picks, its Buzz Overdrives' charges standing near other big attacks), so seeds
+	# 9001 to 9005 come after its own (9001 plants at 3 lanes).
+	var planted_at: String = ""
+	for level_seed: int in [0, 9001, 9002, 9003, 9004, 9005]:
+		for lanes: int in [6, 5, 3]:
+			var g2: LevelConfig = campaign.configure(campaign.step("golden/2"), lanes)
+			if level_seed > 0:
+				g2.level_seed = level_seed
+			var a := LevelGenerator.new()
+			var first: LevelLayout = a.generate(g2, tuning, LevelGenerator.load_for(g2))
+			if ChargePathPlacement.planted_in(first).is_empty():
+				continue
+			var b := LevelGenerator.new()
+			var again: LevelLayout = b.generate(g2, tuning, LevelGenerator.load_for(g2))
+			planted_at = "%d lanes, seed %d" % [lanes, g2.level_seed]
+			check(first.to_dict() == again.to_dict(), "Golden 2 plants the same on every attempt (%s)" % planted_at)
+			break
+		if not planted_at.is_empty():
+			break
+	check(not planted_at.is_empty(), "Golden 2 plants a cyborg in a charge path at some lane count and seed")
 
 
 # --- Real physics ------------------------------------------------------------------------------------
