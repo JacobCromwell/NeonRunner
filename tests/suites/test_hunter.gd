@@ -70,6 +70,7 @@ func run() -> void:
 	await _test_no_way_out()
 	await _test_bait()
 	await _test_lineup()
+	await _test_campaign_baits()
 	await _test_encounter()
 	await _test_weapons()
 	await _test_contacts()
@@ -696,6 +697,124 @@ func _test_lineup() -> void:
 			% ["runner's far side from it" if other == "open" else "side away from the push", run_up_lanes, _brief(r), tag])
 		check((r["faults"] as PackedStringArray).is_empty(), "its rules held %s %s" % [r["faults"], tag])
 		await sim.free_world(w)
+
+
+## Every bait of Specimen Vault's Hunters at 3, 5 and 6 lanes, on real physics at the level's speed, on a cut of the level
+## around it (_cut): the runner in the walkway's lane, its flurries held off, it comes up beside them away from the push;
+## they dash the pillar and step out to the push side a reaction later, it follows them into the walkway's lane, and the
+## walkway lands on it (and on the cyborg planted under it), the runner running on.
+func _test_campaign_baits() -> void:
+	var campaign := load(CAMPAIGN_PATH) as Campaign
+	var takes: int = 0
+	for lanes: int in LANE_COUNTS:
+		var config: LevelConfig = campaign.configure(campaign.step("ice_lab/3"), lanes)
+		var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+		for h: Dictionary in HunterRules.hunters_in(gen.layout):
+			for b: Dictionary in (h["params"] as Dictionary).get("baits", []):
+				var g: Dictionary = gen.layout.gantryway_by_id(int(b["id"]))
+				if g.is_empty():
+					check(false, "the bait at %.0f m is a gantryway of the level (%d lanes)" % [float(b["at"]), lanes])
+					continue
+				var tag: String = "(Specimen Vault, %d lanes, the Hunter at %.0f m, its bait at %.0f m over lane %d pushing %s)" % [
+					lanes, float(h["at"]), float(g["pillar"]), int(g["lane"]), "left" if int(g["side"]) < 0 else "right"]
+				var r: Dictionary = await _campaign_take(gen, g)
+				check(bool(r["alive"]) and r["crushed"] == [Gantryway.CRUSH_CAUSE] and int(r["side"]) == -int(g["side"]),
+					"it comes up away from the push, follows the runner who dashes the pillar and steps out into the walkway's lane, and it lands on it %s %s"
+					% [_brief(r), tag])
+				check((r["faults"] as PackedStringArray).is_empty(), "its rules held %s %s" % [r["faults"], tag])
+				takes += 1
+	check(takes >= 4, "Specimen Vault's baits were taken (%d)" % takes)
+
+
+## One take of _test_campaign_baits on a cut of `gen`'s level around gantryway `g` (_cut), its pillar moved to 9 s of run
+## from the start, the Hunter arriving at ARRIVE.
+func _campaign_take(gen: LevelGenerator, g: Dictionary) -> Dictionary:
+	var lmt: MovementTuning = gen.tuning
+	var pillar: float = float(g["pillar"])
+	var front: float = 9.0 * lmt.run_speed
+	var offset: float = front - pillar
+	var lane: int = int(g["lane"])
+	var side: int = int(g["side"])
+	var part: LevelLayout = _cut(gen, g, HunterRules.hunter_lane_window(gen, t, pillar).x - 5.0, float((g["calm"] as Array)[1]), offset)
+	part.enemies.append({"type": "hunter", "at": ARRIVE, "lane": 0, "side": 0, "seed": 7,
+		"params": {"baits": [{"at": front, "lane": lane, "side": side, "id": int(g["id"])}]}})
+	var w: RunWorld = sim.build_world(part, Loadout.new(), lmt, LevelConfig.new())
+	w.player.setup(w.tuning, w.geo, lane)
+	w.player.armor_state.carried = false
+	_no_flurries(w)
+	var crushed: Array = []
+	w.director.enemy_defeated.connect(func(e: Enemy, cause: StringName) -> void:
+		if e is Hunter:
+			crushed.append(cause))
+	var sides: Array = [0]
+	var watch := func(ww: RunWorld) -> void:
+		var hh: Hunter = _hunter(ww)
+		if hh != null and hh.state == Hunter.State.ALONGSIDE and sides[0] == 0:
+			sides[0] = hh.side
+	var dashing: float = lmt.run_speed + pt.dash_speed_bonus
+	var actions: Array = [[front - 0.5 * pt.dash_duration * dashing, &"dash"],
+		[front + REACTION * dashing, &"move_left" if side < 0 else &"move_right"]]
+	var r: Dictionary = await _run(w, (front + 70.0) / lmt.run_speed, actions, watch, func(ww: RunWorld) -> bool:
+		return not crushed.is_empty() and ww.player.distance > front + 40.0)
+	r["crushed"] = crushed
+	r["side"] = sides[0]
+	await sim.free_world(w)
+	return r
+
+
+## A plain track holding the pieces of `gen`'s level (its gaps, fences, pads, speed pads and doodads, its pillar among
+## them) that reach into gantryway `g`'s Hunter lane (the lane beside it away from the push) from `from` to `to`, and into
+## the lanes the runner takes (its walkway's lane and the push side's) from its pillar's front to `to` (the runner gets to
+## the pillar on their own: test_gantryways runs the level's way to it), moved on by `offset`; the gantryway itself, and
+## the cyborg planted under it (holding its fire as it does there), as test_gantryways cuts a level.
+func _cut(gen: LevelGenerator, g: Dictionary, from: float, to: float, offset: float) -> LevelLayout:
+	var layout: LevelLayout = gen.layout
+	var lane: int = int(g["lane"])
+	var side: int = int(g["side"])
+	var part := RunSim.layout(layout.lane_count, to + offset + 160.0)
+	var lists: Dictionary = layout.to_dict()
+	var into: Dictionary = part.to_dict()
+	var extent: Dictionary = {"fences": gen.tuning.fence_depth * 0.5, "pads": gen.tuning.pad_length,
+		"speed_pads": gen.tuning.speed_pad_length}
+	for key: String in ["gaps", "fences", "pads", "speed_pads", "doodads"]:
+		for item: Dictionary in lists.get(key, []):
+			var l: int = int(item.get("lane", -9))
+			if l != lane and l != lane + side and l != lane - side:
+				continue
+			var start: float = float(item.get("start", item.get("at", 0.0)))
+			var end: float = float(item["end"]) if item.has("end") else start + float(extent.get(key, 0.0))
+			if key == "fences":
+				start -= float(extent["fences"])
+			var lo: float = from if l == lane - side else float(g["pillar"]) - 0.5
+			if end < lo or start > to:
+				continue
+			var moved: Dictionary = _moved(item, offset)
+			if key == "doodads":
+				part.doodads.append(moved)
+			else:
+				(into[key] as Array).append(moved)
+	part.gantryways.append(_moved(g, offset))
+	var c: Dictionary = GantrywayRules.planted_under(layout, g)
+	if not c.is_empty():
+		var moved: Dictionary = _moved(c, offset)
+		var params: Dictionary = (c["params"] as Dictionary).duplicate()
+		params["hold_fire"] = (params["hold_fire"] as Vector2) + Vector2(offset, offset)
+		moved["params"] = params
+		part.enemies.append(moved)
+	return part
+
+
+## A copy of layout entry `item` moved on by `offset` along the track (test_gantryways' _moved).
+static func _moved(item: Dictionary, offset: float) -> Dictionary:
+	var moved: Dictionary = item.duplicate()
+	for k: String in ["at", "start", "end", "pillar"]:
+		if moved.has(k):
+			moved[k] = float(moved[k]) + offset
+	for k: String in ["row", "calm"]:
+		if moved.has(k):
+			var stretch: Array = moved[k]
+			moved[k] = [float(stretch[0]) + offset, float(stretch[1]) + offset]
+	return moved
 
 
 ## A whole encounter (the showcase's): 5 lanes, the runner in lane 1; it arrives, comes up on their left (away from the
