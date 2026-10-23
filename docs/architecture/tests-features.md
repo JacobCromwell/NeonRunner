@@ -483,7 +483,8 @@ shots, another enemy's charge, a falling gantryway) and never boarding an Enforc
 prototype level at 3, 5 and 6 lanes, three difficulties and eight seeds the build without the feature but for the cyborgs
 whose places it took, each where one fits, spaced, the same on a second build, most builds with some, none without the
 feature) and the campaign (Relay Station's start after its teleporters, none in Frost Foundry, every own-seed build as
-without it, some in every level at the campaign's lane count, the counts printed); and full levels in god mode, every
+without it, Relay Station's introduction at the campaign's lane count, some in every level at one lane count at least,
+the counts printed); and full levels in god mode, every
 round fair and most Heavy Cyborgs passed firing a stream. About a minute.
 `test_octodog_jars` checks the Octodog jars that break open (task Q5; Octodog jars): the layout's marks (a jar and its dog
 finding each other, `copy` and `to_dict` keeping them, a held dog none of the level's standing Octodogs, a decoy holding
