@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Plans which test suites `tools/godot.sh test --gate|--tier=...` runs (docs/PERFORMANCE_AUDIT.md, 3.2).
 
-    test_plan.py --tier=gate|merge|full [--base=REF] [--paths=a,b] [--root=DIR] [--json]
+    test_plan.py --tier=gate|merge|full [--cap=gate|merge] [--base=REF] [--paths=a,b] [--root=DIR] [--json]
 
 Reads tests/suite_map.json. The plan is the tier's suites plus the suites the changed files map to;
 a changed core file raises the tier. Changed files are the branch's commits since `base`
 (default: the merge base with main, or master), the working tree and untracked files; `--paths`
 replaces that with an explicit list (to ask "what would run if I changed X?"). Prints the suite
 files one per line (the last line is `TIER <tier>`), notes on stderr; `--json` prints everything
-as one object instead.
+as one object instead. `--cap=merge` keeps a raised tier at merge (still with the suites the changed
+files map to): what a cloud container runs locally when the full tier is owed, which then runs as
+shards over several containers (CLAUDE.md, Workflow rules).
 """
 from __future__ import annotations
 
@@ -38,13 +40,26 @@ def changed_paths(root: str, base: str | None) -> tuple[list[str], list[str]]:
         notes.append("not a git checkout: only the tier's own suites run")
         return [], notes
     paths: set[str] = set()
+    merge_base: list[str] = []
     if base is None:
-        for candidate in ("main", "master", "origin/main"):
-            if run_git(root, "rev-parse", "--verify", "--quiet", candidate):
-                base = candidate
-                break
-    if base:
+        # The nearest merge base among the candidates: a cloud container's local main is as old as its
+        # clone (origin/main moves on after a fetch), while a desktop's local main may be ahead of origin.
+        best = None
+        for candidate in ("main", "master", "origin/main", "origin/master"):
+            if not run_git(root, "rev-parse", "--verify", "--quiet", candidate):
+                continue
+            mb = run_git(root, "merge-base", candidate, "HEAD")
+            if not mb:
+                continue
+            ahead = run_git(root, "rev-list", "--count", f"{mb[0]}..HEAD")
+            count = int(ahead[0]) if ahead else 1 << 30
+            if best is None or count < best[0]:
+                best = (count, candidate, mb)
+        if best:
+            base, merge_base = best[1], best[2]
+    elif base:
         merge_base = run_git(root, "merge-base", base, "HEAD")
+    if base:
         if merge_base:
             committed = run_git(root, "diff", "--name-only", f"{merge_base[0]}..HEAD")
             paths.update(committed)
@@ -91,7 +106,7 @@ def token_matches(token: str, suite: str) -> bool:
     return suite == token or suite.startswith(token + "_") or token.startswith(suite + "_")
 
 
-def plan(root: str, tier: str, paths: list[str], suites: list[str], spec: dict) -> dict:
+def plan(root: str, tier: str, paths: list[str], suites: list[str], spec: dict, cap: str = "full") -> dict:
     slow = set(spec.get("slow", []))
     medium = set(spec.get("medium", []))
     rules = spec.get("rules", [])
@@ -133,6 +148,10 @@ def plan(root: str, tier: str, paths: list[str], suites: list[str], spec: dict) 
                 effective = "merge"
                 escalations.append(f"{path} matches no rule or suite name: tier raised to merge")
 
+    owed = effective
+    if TIERS.index(effective) > TIERS.index(cap):
+        escalations.append(f"capped at {cap}: the {effective} tier is still owed (run it as shards)")
+        effective = cap
     if effective == "full":
         chosen = set(suites)
     elif effective == "merge":
@@ -144,6 +163,7 @@ def plan(root: str, tier: str, paths: list[str], suites: list[str], spec: dict) 
     return {
         "tier": effective,
         "requested_tier": tier,
+        "owed_tier": owed,
         "suites": sorted(chosen),
         "mapped": {s: sorted(reasons[s]) for s in sorted(extra)},
         "escalations": escalations,
@@ -154,6 +174,7 @@ def plan(root: str, tier: str, paths: list[str], suites: list[str], spec: dict) 
 
 def main(argv: list[str]) -> int:
     tier = "gate"
+    cap = "full"
     base: str | None = None
     explicit: list[str] | None = None
     root = os.getcwd()
@@ -161,6 +182,8 @@ def main(argv: list[str]) -> int:
     for arg in argv:
         if arg.startswith("--tier="):
             tier = arg.split("=", 1)[1]
+        elif arg.startswith("--cap="):
+            cap = arg.split("=", 1)[1]
         elif arg.startswith("--base="):
             base = arg.split("=", 1)[1]
         elif arg.startswith("--paths="):
@@ -172,8 +195,8 @@ def main(argv: list[str]) -> int:
         else:
             print(f"unknown option {arg}", file=sys.stderr)
             return 2
-    if tier not in TIERS:
-        print(f"unknown tier {tier}; use {', '.join(TIERS)}", file=sys.stderr)
+    if tier not in TIERS or cap not in TIERS:
+        print(f"unknown tier {tier if tier not in TIERS else cap}; use {', '.join(TIERS)}", file=sys.stderr)
         return 2
     with open(os.path.join(root, "tests", "suite_map.json"), encoding="utf-8") as f:
         spec = json.load(f)
@@ -189,7 +212,7 @@ def main(argv: list[str]) -> int:
         paths = []
     else:
         paths, notes = changed_paths(root, base)
-    result = plan(root, tier, paths, suites, spec)
+    result = plan(root, tier, paths, suites, spec, cap)
     result["notes"] = notes
     if as_json:
         print(json.dumps(result, indent=2))

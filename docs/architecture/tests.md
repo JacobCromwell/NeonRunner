@@ -6,7 +6,9 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
 
 `tools/godot.sh test` runs every `tests/suites/test_*.gd` (a `TestSuite`); `--suite=<name>` runs
 one; `--jobs=N` (T-SPEED) splits them across N Godot processes instead, balanced by each suite's
-last measured time (`tests/.suite_times.json`, refreshed by every run and git-ignored), each with its
+measured time (`tools/suite_times.py`: this machine's `tests/.suite_times.json`, refreshed by every run
+and git-ignored, over the committed `tests/suite_times_baseline.json`, which a fresh cloud container
+needs to balance at all; `--shard=K/N` reads the baseline only, so every container splits alike), each with its
 own `user://` folder so their saves never collide; use it on a machine with CPUs to spare, since the
 default (one process) is unchanged. `LayoutCache` (`tests/helpers/layout_cache.gd`, T-SPEED) shares
 one real build of a level across every suite in a run: `LevelGenerator.generate()` is a pure function

@@ -36,8 +36,11 @@ enemy attack needs a visual **and** audio warning before it can hurt (the player
 using the hazard colour language other zones already use.
 
 **Verify before reporting done:** `tools/godot.sh test --gate` (exit code 0). Your work touches core
-files, so expect the gate to raise itself to the full tier (13+ minutes on 3 jobs) — let it run; a
-fairness regression anywhere in the campaign is exactly what that tier exists to catch. Then
+files, so expect the gate to raise itself to the full tier: a fairness regression anywhere in the
+campaign is exactly what that tier exists to catch. On a cloud container it takes an hour or more and a
+restart kills it, so run `tools/godot.sh test --gate --cap=merge` (the merge tier plus every suite your
+files map to) and say in your report that the full tier is owed: the orchestrator runs it as shards
+(`CLAUDE.md`, Workflow rules). On the owner's desktop, let the full tier run. Then
 `tools/godot.sh smoke`. For anything visual, render frames on both the default and
 `--rendering-method gl_compatibility` renderers (`CLAUDE.md`, Commands) and look at them yourself.
 

@@ -23,6 +23,9 @@ Every agent pays for what it reads, on every task, and the owner's weekly usage 
   one of `docs/OPEN_QUESTIONS*.md`: `grep -n "^628\. " docs/OPEN_QUESTIONS*.md`. Never read the `_DEFERRED` or
   `_ANSWERED` files whole. A deferred item's placeholder stands as built.
 - `docs/USER_REQUESTS_DONE.md`, `docs/TASK_PLAN.md`'s finished tasks and `git log` are history: search, don't read.
+- **Code:** every tool call is a round trip to the model, and most of a task's time goes to them. Send independent
+  reads and searches together in one step (several tool calls in the same message), and read a whole function or a
+  150-300 line range rather than a 20-line slice you'll have to extend.
 
 ## Tech stack
 - **Engine:** Godot 4 (pin the exact version in `project.godot`; do not upgrade without approval).
@@ -75,12 +78,17 @@ Every agent pays for what it reads, on every task, and the owner's weekly usage 
     new enemy/boss/skin folder whose name doesn't match its suite.
   - **A change to a core file** (`level_generator.gd`, `track_builder.gd`, `damage_rules.gd`, `run_world.gd`,
     `player.gd`, `level_run.gd`, `enemy.gd`, the boss framework, `tests/helpers/`, or any `data/levels`,
-    `data/patterns`, `data/tuning`, `data/zones`) makes `--gate` run the full tier automatically. Let it.
+    `data/patterns`, `data/tuning`, `data/zones`) makes `--gate` raise itself to the full tier. On a machine where
+    that runs in about 15 minutes (the owner's desktop), let it. **On a cloud container** (an hour or more in one
+    process, and a container restart kills it) run `tools/godot.sh test --gate --cap=merge` instead: the merge
+    tier plus every suite your files map to, so the sweeps covering what you touched still run. Say in your report
+    that the full tier is still owed; it runs as shards (Parallel work, Commands).
   - **Before a merge to `main`:** `tools/godot.sh test --tier=merge` (about 5 minutes), and `--tier=full` after
     a batch of merges or when the merge touched generator or level data. The reviewer checks this, not
     every task.
   - Never report a tier as passed that you didn't run, and never skip a suite the plan selected because it is
-    slow: the slow ones it adds are the ones covering what you touched.
+    slow: the slow ones it adds are the ones covering what you touched. `--cap=merge` keeps those; it only moves
+    the rest of the full tier to the shards.
 - Keep commits small and descriptive. One task per branch or commit series.
 - End every task with a short summary: what changed, what was verified, any `DESIGN-TBD` items, and any risks noticed.
 
@@ -90,6 +98,16 @@ Every agent pays for what it reads, on every task, and the owner's weekly usage 
 - **Questions go in `docs/questions/<task-id>.md`,** never straight into `docs/OPEN_QUESTIONS*.md`, so parallel tasks don't collide on the shared list.
 - **Core files change one task at a time:** `scripts/world/level_generator.gd`, `scripts/world/track_builder.gd`, `scripts/core/damage_rules.gd`, `scripts/run/run_world.gd`, `scripts/player/player.gd`, and the campaign, zone and level data. The task plan marks which tasks are core.
 - **New enemies stay in their own files** (`docs/architecture/enemies.md`). A shared change an enemy needs belongs to a core task.
+- **The orchestrator owns the full tier** (the session that hands out tasks and merges them). When a builder reports
+  a task that owes it, start the shards on the builder's pushed commit right away, alongside the review, so a
+  failure comes back while the reviewer is still reading; run them once more on the final commit before the merge.
+  A builder or reviewer running as a subagent doesn't run the full tier itself.
+- **Task branches cut from a session branch** (not `main`): pass `--base=<session branch>` to `--gate`, or the
+  plan counts the earlier tasks' changes as yours and raises the tier for them.
+- **Before waiting on long work** (subagents, shards, a background test run), the orchestrator arms a check-in
+  with `send_later` (about 30 minutes; it survives a container restart). A restart stops every subagent and
+  background run, and nothing resumes until something wakes the session: one restart left the Ice Lab session idle
+  for 6.5 hours. When a check-in finds the work stopped, resume the subagents and restart what died.
 
 ## Commands
 `tools/godot.sh` finds the pinned Godot (via `$GODOT`, then `godot4`/`godot` on PATH, then the Windows user
@@ -102,8 +120,9 @@ WSLg use the Compatibility renderer on the GPU through Mesa's D3D12 driver; head
   `--plan` prints the chosen suites, `--paths=a,b` plans for those files instead of the branch's changes.
   Plain `tools/godot.sh test [--suite=name] [--jobs=N]` runs every suite or the ones whose file name contains
   `name` (exit code 0 = pass). All of these boot the real game scene. `--jobs=N` splits the suites across N
-  Godot processes, balanced by each suite's last measured time (`tests/.suite_times.json`); the tiers default
-  to half the CPUs (at most 3), plain `test` to 1.
+  Godot processes, balanced by each suite's measured time (this machine's git-ignored `tests/.suite_times.json`
+  over the committed `tests/suite_times_baseline.json`); the tiers default to half the CPUs (at most 3), plain
+  `test` to 1.
 - **Long tiers: shard them over containers.** A tier that takes more than about 10 minutes on one container (the
   full tier is 50+ minutes on 4 CPUs) can hit the "stuck" timer (2400 s) or lose its work to a container restart.
   `tools/godot.sh test --tier=full --shard=K/N` runs only share K of N of the suites (the same balanced split on every
@@ -111,7 +130,10 @@ WSLg use the Compatibility renderer on the GPU through Mesa's D3D12 driver; head
   with `create_session`, one per shard, all on the same commit that is already pushed) and require **every** shard
   to exit 0; a tier counts as passed only when all N shards did. A suite that fails only a frame-time or build-time
   budget while several runs share a machine is rerun alone (`--suite=<name>`) before it is called a failure.
-  Push before a long run, run it in the background with its log in the scratchpad, and poll the log.
+  Push before a long run, run it in the background with its log in the scratchpad, and poll the log. The split
+  balances by `tests/suite_times_baseline.json`: when a full run shows it is off (shards finishing far apart, or
+  new slow suites), have each shard print its `tests/.suite_times.json` and refresh the baseline with
+  `python3 tools/suite_times.py update <each shard's file>`, committed with the next change.
 - Smoke run: `tools/godot.sh smoke [game args]` (prints only problems; exit code 1 if any). Without args it runs quick play.
 - Play: `./play.sh` opens the title screen in a game window on the user's desktop. Quick play and review options
   (debug builds only): `--quick --lanes=6 --seed=4 --difficulty=0.6 --god --nofall --full-loadout
