@@ -62,6 +62,12 @@ extends SceneTree
 ##                        and the screech's friendly squeak
 ##   sfx_bank_centipede.gd  the Cybernetic Centipede: its wake (the warning: a hiss and a clatter of legs), a bite's
 ##                        warning (its mandibles ratcheting open, a rising hiss), the snap, a wound and its death
+##   sfx_bank_gantryway.gd  the falling gantryways: the groan and creak of steel as a pillar goes (the warning) and the
+##                        walkway's crash as it lands
+##   sfx_bank_teleporter.gd  the teleporters: the jump's space-age warp (a chirp shooting up, a shimmer of sparkles, the
+##                        arrival's thump and ping)
+##   sfx_bank_octodog_jar.gd  the Octodog jars: a dog bursting out of its smashed jar (glass shattering, the fluid
+##                        sloshing out, its startled snarl)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -101,6 +107,9 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_casino_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_terminal_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_centipede.gd"),
+	preload("res://tools/asset_gen/sfx_bank_gantryway.gd"),
+	preload("res://tools/asset_gen/sfx_bank_teleporter.gd"),
+	preload("res://tools/asset_gen/sfx_bank_octodog_jar.gd"),
 	preload("res://tools/asset_gen/sfx_bank_terminal_outro.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"

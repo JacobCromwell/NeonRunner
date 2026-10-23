@@ -1,9 +1,9 @@
 extends TestSuite
 ## The Terminal's levels (task O1; the owner, October 20, 2026, GDD §5 Zone 8: an abandoned subway under the city, the
-## campaign's zone 8 between the Dead Zone and the Golden Zone, two levels and no boss). How the campaign configures
-## them off its difficulty curve and leaves every other level as it was, and saves from before it, are test_campaign's.
-## Checked here:
-## - the data: data/zones/terminal.tres between the Dead Zone and the Golden Zone (id terminal, "The Terminal", Rubble
+## campaign's zone 8 between the Dead Zone and the Golden Zone, two levels and no boss; the Ice Lab came in after it,
+## task Q1). How the campaign configures them off its difficulty curve and leaves every other level as it was, and saves
+## from before it, are test_campaign's. Checked here:
+## - the data: data/zones/terminal.tres between the Dead Zone and the Ice Lab (id terminal, "The Terminal", Rubble
 ##   Line and Last Stop, its music track `terminal` still to come, an intro and an outro slot, no boss slot, outside the
 ##   web demo); its levels: off the curve, their own seeds and patterns (data/patterns/terminal/), the arches' numbers
 ##   (data/tuning/terminal_wall_gaps.tres), no wall running, every ceiling one lane wide, two wider gaps, no dash walls,
@@ -32,7 +32,7 @@ const ZONE_PATH: String = "res://data/zones/terminal.tres"
 const ARCHES_PATH: String = "res://data/tuning/terminal_wall_gaps.tres"
 const PATTERNS_PATH: String = "res://data/patterns/terminal/terminal_patterns.json"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
-## The Terminal's steps, in order, after the Dead Zone's outro and before the Golden Zone's intro.
+## The Terminal's steps, in order, after the Dead Zone's outro and before the Ice Lab's intro.
 const STEPS: Array[String] = ["terminal/intro", "terminal/1", "terminal/2", "terminal/outro"]
 const NAMES: Array[String] = ["Rubble Line", "Last Stop"]
 ## Seeds besides each level's own that every check also runs on.
@@ -88,11 +88,12 @@ func run() -> void:
 
 func _test_data() -> void:
 	var at: int = campaign.zones.find(zone)
+	# The Golden Zone followed it until the Ice Lab came in between them (task Q1; the owner, October 21, 2026).
 	check(at > 0 and at + 1 < campaign.zones.size() and campaign.zones[at - 1].id == &"dead_zone"
-		and campaign.zones[at + 1].id == &"golden", "the campaign's zone %d, between the Dead Zone and the Golden Zone" % (at + 1))
+		and campaign.zones[at + 1].id == &"ice_lab", "the campaign's zone %d, between the Dead Zone and the Ice Lab" % (at + 1))
 	check(zone.id == &"terminal" and zone.display_name == "The Terminal" and zone.tagline != "" and zone.music == &"terminal"
 		and not zone.in_demo and not zone.placeholder, "the Terminal's id, name, tagline and music track, outside the web demo")
-	check(zone.boss == null and zone.boss_intro == null, "no boss (owner, October 20, 2026): it leads straight into the Golden Zone")
+	check(zone.boss == null and zone.boss_intro == null, "no boss (owner, October 20, 2026): it leads straight into the next zone (the Ice Lab)")
 	check(zone.intro != null and zone.outro != null and String(zone.intro.id) == "terminal_intro"
 		and String(zone.outro.id) == "terminal_outro" and zone.outro.is_built() and not zone.intro.is_skipped()
 		and not zone.outro.is_skipped(), "an intro slot (the placeholder flyover) and an outro slot (built since task F2l: test_terminal_outro)")
@@ -103,8 +104,8 @@ func _test_data() -> void:
 			ids.append(s.id)
 	var first: CampaignStep = campaign.step(STEPS[0])
 	check(ids == PackedStringArray(STEPS) and first != null and campaign.steps()[first.index - 1].id == "dead_zone/outro"
-		and campaign.next_step(campaign.step(STEPS[-1])) == campaign.step("golden/intro"),
-		"its steps: intro, Rubble Line, Last Stop, outro, from the Dead Zone's outro to the Golden Zone's intro (%s)" % [ids])
+		and campaign.next_step(campaign.step(STEPS[-1])) == campaign.step("ice_lab/intro"),
+		"its steps: intro, Rubble Line, Last Stop, outro, from the Dead Zone's outro to the Ice Lab's intro (%s)" % [ids])
 	check(arches.arches() and is_equal_approx(arches.arch_length, 3.6) and arches.arch_spacing > arches.arch_length * 5.0
 		and arches.arch_spacing < arches.arch_length * 7.0 and arches.arch_stump_share > 0.0 and arches.arch_stump_share < 0.5
 		and not arches.opens_walls(), "the arches: one space long, about six lengths apart, mostly in pairs (DESIGN-TBD)")

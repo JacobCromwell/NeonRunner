@@ -118,6 +118,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
     - Corporate: a steel planter with a trimmed shrub (small), a glass security booth (medium), a military supply container (large).
     - The Dead Zone: a broken concrete column (small), a rubble heap (medium), a burned-out bus (large).
     - The Terminal: debris, lower than other zones' doodads, which stops the runner instead of pushing (owner, October 20, 2026; §5, Zone 8).
+    - The Ice Lab: brain jars and other lab equipment (owner, October 21, 2026), and jars holding a curled-up Octodog that may break out when smashed (§5, Zone 9). *(Proposed)* ice crystal clusters and crates of lab supplies among them.
     - The Golden Zone, outdoors and in the Golden Palace: a robed statue on a plinth or a gilded urn with a shrub (small), a wall fountain (medium), a colonnade with red drapes (large).
   - A doodad doesn't show which way it will push (owner, October 9, 2026: no hint needed).
   - Its outline may dip below the full height at its edges (the rubble heap) as long as its middle stays high, so it still reads as too tall to jump. Doodads are lit like the street around them, with no coloured edge glow.
@@ -160,7 +161,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### Zone roster (decided September 26, 2026)
 **Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
 
-**Nine zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section. The **Casino** was added as Zone 4 by the owner on October 8, 2026, between the Marketplace and Corporate; the zones after it moved down one place. The **Beach** was added by the owner on October 9, 2026, between Corporate and the Dead Zone (zone 6 since the Casino joined). **The Terminal** was added by the owner on October 20, 2026, between the Dead Zone and the Golden Zone, which moved to zone 9.
+**Ten zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section. The **Casino** was added as Zone 4 by the owner on October 8, 2026, between the Marketplace and Corporate; the zones after it moved down one place. The **Beach** was added by the owner on October 9, 2026, between Corporate and the Dead Zone (zone 6 since the Casino joined). **The Terminal** was added by the owner on October 20, 2026, between the Dead Zone and the Golden Zone, which moved to zone 9. **The Ice Lab** was added by the owner on October 21, 2026, between the Terminal and the Golden Zone, which moved to zone 10.
 
 | # | Zone | Mood (reference) | Palette |
 |---|---|---|---|
@@ -172,7 +173,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 6 | **Beach** (owner, October 9, 2026) | A festive cyberpunk party beach: bamboo tiki bars, surf shops and lounges by the sea *(proposed, from the owner's reference image)* | Warm sand, honey bamboo and timber, straw thatch, a turquoise sea, black rust-streaked steel; decorative neon in violet, blue and warm white *(proposed)* |
 | 7 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
 | 8 | **The Terminal** (owner, October 20, 2026) | An abandoned, half-flooded subway station choked with debris: rusted trains overgrown with vines, dripping water, steam, dead departure boards, tangled cables, a few failing orange work lamps (reference: `docs/art/reference/terminal_zone.jpg`) | Rust, verdigris and wet black stone, sodium-orange lamplight through haze and steam, vine green *(proposed, from the reference image)* |
-| 9 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
+| 9 | **The Ice Lab** (owner, October 21, 2026) | A frozen industrial laboratory: icy and crystalline, with steel catwalks, girders and cranes, and lab equipment everywhere, brains floating in specimen jars (reference: `docs/art/reference/ice_lab_zone.webp`) | Ice blue and white snow, frost-crusted black steel, cold fog, small amber machine lamps, the pale glow of the specimen jars *(proposed, from the reference image)* |
+| 10 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
 
 **Zone 1: Neon City.** Floor: roofs of trucks driving toward the player; gaps between trucks. Walls: building facades with signs. Ceilings: undersides of low-flying ships.
 
@@ -225,9 +227,36 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
   - **Mostly symmetrical:** the arches stand in pairs, left and right.
   - **A missing one is a broken stump:** where one side's section is missing, that side shows a section **cut off about halfway up**, as if it had deteriorated over time or fallen in an earthquake, a **crumbled ruin**.
   - **No wall running** (owner, October 20, 2026): the arches and the tunnel wall behind them are a boundary, so the maze can't be bypassed along a wall. *(Proposed)* moving past the outer lane bumps the runner back, like a sign's blocked entry, without damage.
-- **Two levels, no boss** (owner, October 20, 2026): level 1 is **the debris maze**; level 2 is **a normal run with stretches of maze**. The Terminal has **no boss fight**; it leads straight into the Golden Zone. Level names *(proposed, at the owner's request)*: **Rubble Line** and **Last Stop**.
+- **Two levels, no boss** (owner, October 20, 2026): level 1 is **the debris maze**; level 2 is **a normal run with stretches of maze**. The Terminal has **no boss fight**; it leads straight into the next zone (the Ice Lab since October 21, 2026). Level names *(proposed, at the owner's request)*: **Rubble Line** and **Last Stop**.
 
-**Zone 9: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
+**Zone 9: the Ice Lab** (owner, October 21, 2026; reference image `docs/art/reference/ice_lab_zone.webp`). A frozen laboratory, **icy and crystalline**, with **industrial** and **laboratory** elements throughout.
+- **Look:** the reference image: steel catwalks and grated walkways, girders, hanging cranes and chains, pipes and cables, snow drifts and ice crystals, lab consoles and server racks, and specimen jars with brains floating in them. *(Proposed)* an indoor frozen hall with no sky, like the Terminal's vault: cold fog, ice walls behind the machinery, small amber machine lamps.
+- **The levels lean differently** (owner, October 21, 2026): **level 1 leans heavily into the snow and the industrial side**; the **final level leans much more heavily into the laboratory**. *(Proposed)* level 2 sits between them.
+- **Lab pieces** (owner, October 21, 2026): **brain jars and other lab equipment** appear **on the walls**, and **some are doodads** in the lanes (§3, Zone doodads).
+- **Octodog jars** (owner, October 21, 2026): to get extra value from the Octodog (§9.4), **some jars hold a curled-up Octodog** instead of a brain. **Sometimes smashing an Octodog jar doodad releases its Octodog** into the world, and the runner **has to fight it**.
+  - *(Proposed)* A jar doodad is smashed the way every doodad is, by the dash (§3). A jar that will release its Octodog looks the same as one that won't. The freed Octodog tumbles out, runs ahead to its usual distance and starts its usual attack (§9.4) from the first wind-up, with its cue, never a lunge without warning. It is fought and killed like any Octodog. Jars on the walls are scenery only, whatever they hold.
+- **Floor, gaps, walls and ceilings** *(proposed, from the reference image)*: the floor is steel grating catwalks with packed snow and ice; the gaps are drops between catwalks into a frozen depth; the walls are lab machinery, consoles, jar racks and ice; the ceilings are crane gantries and overhead walkways. Wall running and ceilings as in other zones.
+- **Enemies** (owner, October 21, 2026): **cyborg gangsters, Octodogs and heli drones**, plus **two new enemies** that the owner will design in later sessions (the zone's new enemies, §5, Level schedule). *(Proposed)* none of the other earlier enemies (screeches, trucks, turrets, Buzz Overdrives, Tithe Collectors, hosts and Bad Dreams, centipedes); the usual obstacles stay (gaps, electric fences, signs, ceilings and pads, doodads); no dash walls (§9.14), so a dash target in this zone is a pillar or a doodad. Its cyborgs wear an existing zone's look until the owner asks for one of their own.
+- **Falling gantryways** (owner, October 21, 2026; introduced in level 1): a new environmental mechanic.
+  - A **gantryway** is an **upper walkway over one lane only**, looking like a ceiling section, **moderate in length: a little shorter than ceiling sections usually are**.
+  - **Pillars stand in the floor lanes** holding them up. **Dashing through a pillar knocks down its long section of gantryway.**
+  - **It takes about a second to fall.** When it lands, it **destroys any enemy in its path**.
+  - **A runner under it when it lands is hit** (one hit, §4): **armor and the shield block it**, as they block any hit.
+  - *(Proposed)* The pillar stands in the gantryway's own lane, under its near end, so a runner who dashes through it is heading under it: they switch lanes inside that second, or are hit. Before it drops, it warns as every attack must: a groan and a creak of steel, the walkway shuddering, snow and ice shaking loose from it, and its shadow darkening on the lane. Its path is that lane's floor along its whole length (a heli drone low over the lane included). Once down, it lies flat and the runner runs over it harmlessly. Knocking one down is never required.
+  - *(Proposed; the owner left these open)* A gantryway is never walked on: it hangs overhead until it falls. A pillar run into without the dash pushes the runner aside like a doodad, without damage. Gantryways appear in all three levels.
+  - **Only in the Ice Lab** (owner, October 22, 2026): "For now, the Falling Gantryways should only be in the ice lab." The Golden Zone has none.
+- **Teleporters** (owner, October 21, 2026; introduced in level 2, with blinking antennas added in level 3, owner, October 21, 2026): the second new mechanic.
+  - A teleporter is **a square pad with a look all its own**, with a **green, slightly space-age antenna** on it. Touching it **teleports the runner to an output pad further down the track**.
+  - **Think ahead:** the player has to work out where it leads before touching it, or it can put them in harm's way. **The first teleporter is safe**, to teach the mechanic; **later output pads may sit right in front of a gap or an enemy**, and the player has to react quickly.
+  - **Two output pads:** some teleporters have **a left and a right output pad**. **A light on the antenna**, on its **left or its right side**, shows which one the runner lands on.
+  - **Fixed or blinking:** some antennas' light **stays on one side**, always left or always right. Others **blink left and right**, and the side lit when the runner touches the pad decides where they land. Level 2 has fixed antennas; level 3 adds blinking ones.
+  - **Its green** is the owner's choice; the later zones' looser colour rule covers it (§5, Colour rule).
+  - **Also in the Golden Zone** (owner, October 22, 2026): "we should add the teleporters to the golden zone." *(Proposed)* in all three of its levels, fixed and blinking alike with no introduction of their own (the Ice Lab taught them), in the teleporter's own look so the mechanic reads the same in every zone.
+  - *(Proposed)* The pad fills one floor lane and is taken by running onto it; it is never required (the way around it is always survivable). The output pads stand within sight ahead, in the teleporter's look without the antenna, so the player can see where each one leads. The runner keeps their speed and arrives running in the output pad's lane, with a short flash and a sound (honouring Reduced flashing), and skips the track in between and whatever it holds. No protection after landing, but never a landing straight into a hazard: a gap or an enemy in front leaves at least the usual time to react. A blinking light changes side slowly enough to read, about once a second.
+- **Three levels, no boss** (owner, October 21, 2026): the Ice Lab leads straight into the Golden Zone. Level names *(proposed)*: **Frost Foundry**, **Relay Station** and **Specimen Vault**.
+- **Music** *(proposed)*: an earlier zone's song until the owner supplies or approves one.
+
+**Zone 10: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
 - **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
 - **Final level: the Golden Palace.** The player runs **inside** the palace, which is so huge and grand that its interior is basically the size of a city. It plays like any other level; only the skin is an interior (floors, walls and ceilings are the palace's own halls, galleries and arches). The final boss follows it.
 
@@ -265,7 +294,10 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
 | 8. The Terminal | 1 · Rubble Line *(proposed name)* | The **debris maze** and the **cybernetic centipede** (§9.15) (owner, October 20, 2026): doodads stop the runner, and the dash breaks the way through |
 | | 2 · Last Stop *(proposed name)* | A normal run with stretches of the debris maze; centipedes only. **No boss** |
-| 9. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
+| 9. The Ice Lab | 1 · Frost Foundry *(proposed name)* | **Falling gantryways** (owner, October 21, 2026): dash a pillar to drop a one-lane walkway on the enemies below, and get out from under it. Snow and industry; Octodog jars |
+| | 2 · Relay Station *(proposed name)* | **Teleporters** with fixed antennas (owner, October 21, 2026), the first one safe |
+| | 3 · Specimen Vault *(proposed name)* | Teleporters with **blinking antennas**; the laboratory at its fullest. **No boss**. The zone's two new enemies come later (owner, October 21, 2026) |
+| 10. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10); the Ice Lab's teleporters return (owner, October 22, 2026) |
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
 
@@ -279,7 +311,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 - **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's; The House, which follows Casino 2 since the Casino was added, under the Casino's own sky). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
 - **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
 
-**22 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Terminal's two levels have none, owner, October 20, 2026; the Beach's, Mecha Guppy and Captain Cogs, designed on October 10, 2026, §10; the Beach's volleyball match is its second level since October 10, 2026). A flawless run through every level takes about 45 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
+**25 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Terminal's two levels have none, owner, October 20, 2026; nor do the Ice Lab's three, owner, October 21, 2026; the Beach's, Mecha Guppy and Captain Cogs, designed on October 10, 2026, §10; the Beach's volleyball match is its second level since October 10, 2026). A flawless run through every level takes about 45 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes. **A longer game is the goal** (owner, October 22, 2026): "It is okay that the game is getting longer. In fact, that is the goal." A first playthrough should take **on average at least 2 hours**, past Steam's refund window. The Terminal's and the Ice Lab's lengths (about 57 minutes for a flawless run through every level once the Ice Lab joined) stand.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -290,7 +322,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 
 ## 6. Structure, Progression & Replay
 
-- **Zones:** 8 at launch, each with a distinct look (see §5).
+- **Zones:** 10 at launch, each with a distinct look (see §5).
 - **Levels:** 1–3 per zone, each 90–150 seconds (City 1 is shorter; so is the Beach's volleyball match, about a minute for a flawless match).
 - **Bosses:** one at the end of each zone, except the Marketplace, which leads straight into the Casino (owner, October 8, 2026). Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
@@ -549,6 +581,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Baiting it into a gap kills it** (skill bonus). The generator sometimes places Octodogs near gaps for this.
 - **Stomping without claws:** the tentacles grab the player, causing damage.
 - **Armor / shield:** blocks one lunge or grab.
+- **In the Ice Lab's jars** (owner, October 21, 2026): some specimen jars hold a curled-up Octodog, and smashing one sometimes releases it to fight (§5, Zone 9).
 
 ### 9.5 Sewer Screech (first appears in Gangland 1)
 - **Look:** slimy, diseased vermin with **rows of spines** on its back.

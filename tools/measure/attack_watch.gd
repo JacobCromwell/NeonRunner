@@ -52,7 +52,7 @@ var stomp_hosts: bool = false
 ## The lane the runner keeps to: the one it starts in (the middle one). A zone doodad (GDD §3, task G5)
 ## pushes it out, and it steps back once the doodad is behind it, so it keeps to that lane all the
 ## way as it did before doodads stood in lanes (in a level without them it never moves). -1: it stays
-## wherever it's pushed.
+## wherever it's pushed. Either way it goes around every teleporter (task Q6, _go_around): it never takes one.
 var keep_lane: int = -1
 ## Seconds of overlap between types, in all and by the types involved ("drone+hover_truck").
 var overlap: float = 0.0
@@ -119,7 +119,8 @@ func _init(p_world: RunWorld, p_stomp_hosts: bool = false) -> void:
 ## Looks at the run once; call it every physics frame.
 func observe() -> void:
 	var p: Player = world.player
-	_keep_to_lane(p)
+	if not _go_around(p):
+		_keep_to_lane(p)
 	var dt: float = 1.0 / float(Engine.physics_ticks_per_second)
 	var now: float = world.level_time()
 	var open_types: Dictionary = {}
@@ -426,6 +427,29 @@ static func _signature(e: Enemy) -> String:
 			return "%s state=%d volley=%d volleys=%d riders=%d" % [base, int(e.get(&"state")), int(e.get(&"volley")),
 				int(e.get(&"volleys")), int(e.get(&"riders"))]
 	return base
+
+
+## The runner never takes a teleporter (task Q6: the Golden Zone's levels have them, and the campaign's played runs watch
+## those): its jump skips the track to its output pad and whatever the track holds, which is what's watched. On the floor
+## in a teleporter's lane over its approach (its first calm stretch, LevelLayout.teleporters `calm`, up to the pad's
+## front), it switches into the lane beside it on its `side`, the way around, which the generator keeps clear from there
+## to a lane switch's room past the pad (teleporter_rules.gd); _keep_to_lane steps it back once the pad is behind it (the
+## calm stretch counts as a doodad in the pad's lane until then, LevelLayout.doodad_between). One move at a time, through
+## named actions, in either lane-keeping mode. True while it's going around one (_keep_to_lane waits meanwhile).
+func _go_around(p: Player) -> bool:
+	if world.layout.teleporters.is_empty() or not p.alive or not p.running or p.surface != Player.Surface.FLOOR:
+		return false
+	for tp: Dictionary in world.layout.teleporters:
+		var calm: Array = tp.get("calm", [])
+		if calm.is_empty() or p.lane != int(tp["lane"]):
+			continue
+		if p.distance < float((calm[0] as Array)[1]) or p.distance >= float(tp["at"]):
+			continue
+		if world.level_time() >= _next_step:
+			_next_step = world.level_time() + 0.3
+			p.press(&"move_right" if int(tp["side"]) > 0 else &"move_left")
+		return true
+	return false
 
 
 ## Steps the runner back toward keep_lane after a zone doodad pushed it out, once that doodad is no longer

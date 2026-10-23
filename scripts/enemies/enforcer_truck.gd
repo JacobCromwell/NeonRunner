@@ -51,7 +51,9 @@ extends Enemy
 ##   (the escape), never while the runner is off the floor, and never from EnforcerTruckTuning.hold_seconds()
 ##   before one of its baits attacks (an Octodog's wind-up, a Buzz Overdrive's rev) until the attack is over, so
 ##   a volley never meets one, big attacks taking turns or not; nor while a wall-run gap's crossing would come
-##   before its last bolt (task J2, _wall_run_in_reach): it waits until the runner is across. Its volleys are a big
+##   before its last bolt (task J2, _wall_run_in_reach): it waits until the runner is across; nor while a teleporter's
+##   calm stretch lies in the runner's lane before its last bolt (task Q6, _teleporter_in_reach: lining up its pad, or
+##   just landed on an output pad). A teleport leaves it behind (EnemyDirector.runner_teleported). Its volleys are a big
 ##   attack (GDD §9: big attacks take turns): it asks the director before each warning and waits while another
 ##   type's is on.
 ## - Its baits: while an Octodog attacks it closes right up behind the runner (close_gap), so the lunge, which
@@ -1238,7 +1240,8 @@ func _update_volley(delta: float) -> void:
 ## Ready for a volley: chasing at its follow gap (never while it shows itself), its interval over, the runner on
 ## the floor (and past the level's calm start for a truck that arrives in it to show itself there: it stays calm,
 ## task C6e), no bait about to attack before the volley would be over (so it never fires into one's attack, big
-## attacks taking turns or not), and a lane beside the runner's clear to escape into (asked last).
+## attacks taking turns or not), no wall-run gap's crossing nor teleporter's calm stretch in its reach (task Q6), and a
+## lane beside the runner's clear to escape into (asked last).
 func _ready_to_fire() -> bool:
 	if state != State.CHASING or close or show_phase != Show.NONE or absf(gap - tuning.follow_gap) > 1.0 \
 			or next_volley_in() > 0.0:
@@ -1255,9 +1258,23 @@ func _ready_to_fire() -> bool:
 		# its place there never holds an Octodog back.
 		world.director.give_up_turn(self)
 		return false
-	if _wall_run_in_reach(p):
+	if _wall_run_in_reach(p) or _teleporter_in_reach(p):
 		return false
 	return escape_clear(clampi(p.lane, 0, world.geo.lane_count - 1))
+
+
+## Task Q6 (teleporters in the Golden Zone, where it chases; GDD §5, Zone 9): no volley starts whose warning and bolts
+## would come while the runner lines up a teleporter's pad or has just landed on its output pad: no calm stretch of a
+## teleporter (LevelLayout.teleporter_between: its approach in its pad's lane, each landing in its output pad's lane)
+## lies in the runner's lane from now until its last bolt has passed (EnforcerTruckTuning.volley_seconds), as a doodad's
+## stretch holds an attack of every other enemy. The truck chases from behind as long as it lives, so the generator
+## can't keep its chases off them (only its planned showing windows): it holds its volleys for the second or so.
+## DESIGN-TBD (docs/questions/q6.md).
+func _teleporter_in_reach(p: Player) -> bool:
+	if world.layout.teleporters.is_empty():
+		return false
+	var reach: float = p.distance + tuning.volley_seconds() * maxf(p.speed, 1.0) + 2.0
+	return world.layout.teleporter_between(p.distance - 1.0, reach, clampi(p.lane, 0, world.geo.lane_count - 1))
 
 
 ## Task J2 (a wall-run gap, the owner, October 15, 2026: every floor lane a hole, a side wall the only way across): no

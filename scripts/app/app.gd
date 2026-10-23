@@ -279,8 +279,9 @@ func quit() -> void:
 ## done (step_done). The web demo stops after its zone (GDD §2). A step done stays open even when the step
 ## before it isn't: that only happens to a save from before steps were added ahead of it (the Casino's, between
 ## the Marketplace and Corporate: Profile._migrate moves The House's records to the Casino's boss step, done
-## while the Casino's levels before it aren't; and the Terminal's, between the Dead Zone and the Golden Zone: the
-## Golden Zone's steps, done while the Terminal's aren't), and the player keeps every step they had reached.
+## while the Casino's levels before it aren't; the Terminal's, between the Dead Zone and the Golden Zone: the Golden
+## Zone's steps, done while the Terminal's aren't; and the Ice Lab's, between the Terminal and the Golden Zone, the
+## same way), and the player keeps every step they had reached.
 func step_unlocked(s: CampaignStep, difficulty_tier: int = 0) -> bool:
 	if s.index == 0 or profile.is_completed(s.id, difficulty_tier):
 		return true

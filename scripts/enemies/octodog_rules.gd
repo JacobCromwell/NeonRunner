@@ -78,13 +78,33 @@ static func tuning() -> OctodogTuning:
 	return res as OctodogTuning if res is OctodogTuning else OctodogTuning.new()
 
 
-## Every Octodog in the layout, along the track.
+## Every Octodog standing in the layout, along the track: never one held in a jar (task Q5, LevelLayout.is_held), which
+## comes out only if its jar is smashed (octodog_jar_rules.gd plans it; it never stands where a dog is met, so a cyborg
+## planted in its first lunge's path, ChargePathPlacement, or the level's guaranteed dog never counts on it).
 static func dogs_in(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
-		if String(e.get("type", "")) == TYPE:
+		if String(e.get("type", "")) == TYPE and not LevelLayout.is_held(e):
 			out.append(e)
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
+	return out
+
+
+## What the passes after the rules keep off around Octodog entry `e` (LevelGenerator.enemy_keep_out: the fill pass, the
+## danger density pass, the wider gaps, the zone doodads, the wall-run gaps, what keeps off big attacks). A standing
+## dog's is every enemy's, from LevelGenerator.FILL_ENEMY_LEAD_SECONDS before it to the end of the floor its charges
+## use (enemy_floor_span), worked out exactly as LevelGenerator does for a type without a keep_out of its own. A dog
+## held in a jar (task Q5, LevelLayout.is_held) keeps only the floor its charges use: it's harmless until then (it tumbles
+## out, runs ahead and paces), and its jar keeps a doodad's room of its own (octodog_jar_rules.gd, doodad_keep_outs and
+## fill_keep_outs).
+static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var at: float = float(e["at"])
+	var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
+	if LevelLayout.is_held(e):
+		return span
+	var out := Vector2(at - LevelGenerator.FILL_ENEMY_LEAD_SECONDS * gen.speed, at)
+	if span.y >= span.x:
+		out = Vector2(minf(out.x, span.x), maxf(out.y, span.y))
 	return out
 
 
@@ -98,8 +118,8 @@ static func _first_charge_fits(gen: LevelGenerator, t: OctodogTuning, at: float,
 	var a0: float = at - stop
 	return a0 > 0.0 and not Octodog.pad_or_landing_between(gen.layout, a0 - gen.metres(6.0), at + gen.metres(2.0), gen.pace) \
 		and _window_ok(gen, a0, window) \
-		and _off_ceiling_zones(gen, _run_start(gen, a0), a0) \
-		and _off_chases(chases, _run_start(gen, a0), a0 + window + stop)
+		and _off_ceiling_zones(gen, run_start(gen, a0), a0) \
+		and _off_chases(chases, run_start(gen, a0), a0 + window + stop)
 
 
 ## How many charges a dog tries for (charges_range at the level's enemy_scaling).
@@ -121,7 +141,7 @@ static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, want
 	var window: float = t.window_length(gen.speed, scaling, gen.pace)
 	var cycle: float = t.cycle_distance(gen.speed, scaling, gen.pace)
 	var last_ok: float = layout.length - gen.config.end_clear_distance
-	var run_start: float = _run_start(gen, a0)
+	var run_from: float = run_start(gen, a0)
 	var anchors: Array[float] = [a0]
 	var prev: float = a0
 	while anchors.size() < wanted:
@@ -129,7 +149,7 @@ static func _plan_charges(gen: LevelGenerator, t: OctodogTuning, a0: float, want
 		var a: float = prev + cycle
 		while a <= prev + cycle + gen.metres(t.charge_slack):
 			if a + window > last_ok or Octodog.pad_or_landing_between(layout, prev, a + stop + gen.metres(2.0), gen.pace) \
-					or not _off_chases(chases, run_start, a + window + stop):
+					or not _off_chases(chases, run_from, a + window + stop):
 				break
 			if _window_ok(gen, a, window):
 				found = a
@@ -151,7 +171,7 @@ static func _commit(gen: LevelGenerator, t: OctodogTuning, dog: Dictionary, anch
 	var params: Dictionary = dog.get("params", {})
 	params["charges"] = anchors.size()
 	params["charge_at"] = anchors
-	params["floor_span"] = Vector2(_run_start(gen, anchors[0]), _run_end(anchors[-1], window))
+	params["floor_span"] = Vector2(run_start(gen, anchors[0]), _run_end(anchors[-1], window))
 	dog["params"] = params
 	return busy_until
 
@@ -161,7 +181,7 @@ static func _commit(gen: LevelGenerator, t: OctodogTuning, dog: Dictionary, anch
 ## every floor enemy's stretch, CeilingZones) keeps the margins the dog's own rules keep: no pad within
 ## CEILING_LEAD of the stretch from a0 - CEILING_LEAD, no ceiling's end within CEILING_LANDING of it.
 ## The dog keeps the ceilings already there off this stretch too (_off_ceiling_zones).
-static func _run_start(gen: LevelGenerator, a0: float) -> float:
+static func run_start(gen: LevelGenerator, a0: float) -> float:
 	var zones: CeilingZones = gen.zones
 	var lead: float = gen.metres(Octodog.CEILING_LEAD)
 	return a0 - lead - maxf(lead - zones.pad_length, gen.metres(Octodog.CEILING_LANDING) - zones.landing) - 0.001
@@ -185,7 +205,7 @@ static func _off_ceiling_zones(gen: LevelGenerator, from: float, to: float) -> b
 ## The same for the whole floor stretch a dog with wind-ups at `anchors` would use (floor_span).
 static func _run_off_ceiling_zones(gen: LevelGenerator, t: OctodogTuning, anchors: Array[float]) -> bool:
 	var window: float = t.window_length(gen.speed, gen.config.enemy_scaling, gen.pace)
-	return _off_ceiling_zones(gen, _run_start(gen, anchors[0]), _run_end(anchors[-1], window))
+	return _off_ceiling_zones(gen, run_start(gen, anchors[0]), _run_end(anchors[-1], window))
 
 
 ## Where the floor a dog's charges use ends, for a last wind-up at `last`: the end of the player's

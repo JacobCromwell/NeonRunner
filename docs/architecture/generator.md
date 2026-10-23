@@ -28,7 +28,9 @@ native layout through enemy and obstacle hooks around the filler pass. The per-l
 counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15; Gangland
 0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; the Terminal 0.37/0.38
 (task O1: none of the usual enemies and no fillers, so the pass adds nothing there yet; `test_danger_density` checks
-its levels for fairness only, as The Hush's); Golden
+its levels for fairness only, as The Hush's); the Ice Lab 0.38/0.38/0.38 (task Q1: between Terminal 2's and Golden 1's;
+its enemies only cyborgs, Octodogs and heli drones, a mix the bands don't sample, so `test_danger_density` checks its
+levels for fairness only too); Golden
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
 little, `docs/OPEN_QUESTIONS.md` §D, item 521). Merged with the Enforcer Truck's showing windows (task C6e,
@@ -45,7 +47,10 @@ obstacles (33% and 30% without them; 5 and 6 lanes 31-36%), and `test_danger_den
 at 3 lanes (`WALL_RUN_GAP_ROOM`; DESIGN-TBD, `docs/questions/j2.md` item 12), and its rise past the middle band fall
 short by as much there: since task L6's review the zone doodads stand by the side walls more at 3 lanes and take a
 little of the room the wall fences placed after them would have (its obstacles x1.260 against the middle band's
-x1.265; item 976 in `docs/OPEN_QUESTIONS*.md`).
+x1.265; item 976 in `docs/OPEN_QUESTIONS*.md`). The Golden Zone's teleporters (task Q6) take more of it: each keeps
+its pad stretch and landings clear in every lane, so the band at 3 lanes has about 27% more enemies and 23% more
+obstacles, and the suite lets it land 5% lower again there (`TELEPORTER_ROOM`; built without them it keeps the floor
+above; DESIGN-TBD, `docs/questions/q6.md` item 11).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -92,7 +97,9 @@ their margin from the ramp a truck adds; the Octodog rules after the drone's, th
 hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
 nothing clears it afterwards; the Resonator rules after every feature that puts things on the floor or
 plans a big attack, so each pulse is planned on the level's final floor and off every Octodog's run,
-floor cut and Gilded Sentinel's turn). A rules script may also declare `static func after_doodads(gen)`,
+floor cut and Gilded Sentinel's turn; the Ice Lab's set pieces last of all, the falling gantryways and then the
+teleporters, each planned on the level's final rules track: `docs/architecture/gantryways.md`,
+`docs/architecture/teleporters.md`). A rules script may also declare `static func after_doodads(gen)`,
 which runs after the danger density pass's obstacles and the zone doodads, before the wall fences, in the order
 of the features (`LevelGenerator._after_doodad_rules`): what stands in the room the passes before it left, which
 they shouldn't make room for (the dash walls past their introduction, task H7a: Dash walls, below).

@@ -4,7 +4,7 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- the whole campaign structure: seven zones and 17 levels
+- the whole campaign structure: ten zones and 25 levels
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
@@ -60,12 +60,12 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), wall-run gaps (`wall_run_gaps`: the whole street a hole, crossed on its lit side wall), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), wall-run gaps (`wall_run_gaps`: the whole street a hole, crossed on its lit side wall), falling gantryways (`gantryway`: a walkway over a lane held by a pillar; dash through the pillar to drop it on the cyborg under it, and step out from under it; with `--full-loadout` for the dash), teleporters (`teleporter`: a square pad with a green antenna that sends you to its output pad further down the track, the lit side of its antenna choosing between two; add `teleporter_blinking` for antennas whose light blinks left and right), Octodog jars (`octodog_jar`: a specimen jar holding a curled-up Octodog; dash it and the dog breaks out, runs ahead and attacks like any Octodog; two more look the same and let nothing out; with `--skin=ice_lab` for the jar's look and `--full-loadout` for the dash), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
 | `--outfit=rex` | The runner wears an outfit (a cosmetic's id from `data/shop/catalog.json`: `rex`, `camo`, `beach_master`, `centurion`, `party_wolf`; `echo` is his own look) in every run and cinematic, owned or not, without touching the save. Alone it starts quick play. The review scenes `avatar_showcase.tscn` and `avatar_run_review.tscn` (under `tools/showcase/`) take it too |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `casino`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden`, `golden_palace` (Golden 3's interior) or `beach` (the Beach) |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `casino`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden`, `golden_palace` (Golden 3's interior), `beach` (the Beach), `terminal` (the Terminal) or the Ice Lab: `ice_lab` (level 2's look, between), `ice_lab_frost` (level 1's: snow and industry) and `ice_lab_lab` (level 3's: the laboratory) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each spot along the level (`doodad_spot_seconds` apart) with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
@@ -94,7 +94,8 @@ The owner-supplied MP3s are copied unmodified into `assets/music/`:
 | Zone 6 - Beach | Palms at Terminal Speed |
 | Zone 7 - Dead Zone | Beneath the Cracks |
 | Zone 8 - The Terminal | the Dead Zone's song (no new songs are generated; the owner may supply one) |
-| Zone 9 - Golden Zone | View from the Zenith |
+| Zone 9 - The Ice Lab | the Corporate zone's song, Concrete Fever (until the owner supplies or approves one) |
+| Zone 10 - Golden Zone | View from the Zenith |
 | Boss 1 - Floating Head | Apex Combat Maneuver |
 
 Menus, cutscenes (including the Boss 1 intro), and unmatched bosses keep their generated default
@@ -124,11 +125,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** 22 levels in nine zones, about 50 minutes of flawless running: the Neon City (the web demo's
+- **Campaign:** 25 levels in ten zones, about 57 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate and the Dead Zone with two, the
-  Beach with three (its second a volleyball mini-game), the Terminal with two, and the Golden Zone with three.
-  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino, and the Terminal, which
-  leads straight into the Golden Zone; the Beach's is Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
+  Beach with three (its second a volleyball mini-game), the Terminal with two, the Ice Lab with three, and the Golden
+  Zone with three.
+  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino, the Terminal, which leads
+  straight into the Ice Lab, and the Ice Lab, which leads straight into the Golden Zone; the Beach's is Mecha Guppy
+  and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
   (skippable), but Gangland's, the Marketplace's and the Dead Zone's, which play the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
@@ -166,11 +169,40 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       back yet; a few one-lane ceilings are shortcuts over a block's last wall. The Cybernetic Centipede is still to
       come.
       Like the Beach's, its levels sit between their neighbours in difficulty, off the campaign's curve.
-  19. Terminal 2 *Last Stop*: the same rules, a normal run with stretches of the maze, then straight on to the Golden
-      Zone (no boss).
-  20. Golden 1 *Gilded Canals*: the Resonator.
-  21. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
-  22. Golden 3 *The Golden Palace*, then the final boss.
+  19. Terminal 2 *Last Stop*: the same rules, a normal run with stretches of the maze, then straight on to the Ice
+      Lab (no boss).
+  20. Ice Lab 1 *Frost Foundry*: a frozen laboratory (task Q1): the falling gantryways (task Q3). A walkway hangs over
+      a lane, held up by a pillar standing in it: run into the pillar and it pushes you aside like a doodad; dash
+      through it and the walkway groans, shudders and drops onto the lane about a second later, its shadow darkening
+      and the lane lit red under it, crushing the cyborg standing under it (and any enemy in its path). Switch lanes
+      before it lands, or it's one hit (the armor or a shield absorbs it). Once down it lies flat and you run over it.
+      Three a level (placeholder count), never needed. The rest is the earlier set: the cyborgs (window cyborgs too),
+      Octodogs and heli drones, and none of the other earlier enemies; the usual holes, fences, signs, ceilings and
+      pads, the zone doodads (they push, as everywhere but the Terminal) and wall running, and no dash walls. It
+      wears the Ice Lab's look (task Q2: a snow-and-industry lean, level 3 the laboratory, level 2 between), and plays the
+      Corporate zone's song. Octodog jars (task Q5, all three levels): among the specimen jars, some hold a curled-up
+      Octodog, and dashing one may let its dog out. The jar breaks as any doodad, and the dog bursts out, tumbles ahead,
+      runs on to its usual distance and attacks like any Octodog, at least two lunges, each after its wind-up (sidestep or
+      jump it, or dash it to kill it). One jar a level holds one that comes out (placeholder count, usually early on,
+      before the heli drone's pads start, and none in a build where its attack has no room); two or three more hold one
+      that never does, and the rest hold nothing, all looking the same. Its two new enemies are still to come.
+  21. Ice Lab 2 *Relay Station*: the same set, the falling gantryways too, and the teleporters (task Q4). A square pad
+      in a lane, with a green antenna on it: run onto it and you're sent straight to its output pad further down the
+      track (the same pad, without the antenna, a green marker floating over it), keeping your speed, with a flash and
+      a sound; whatever lay in between is skipped. Where it has a left and a right output pad, the light on the left or
+      the right of its antenna shows the one you'll land on. The first one is safe (one output pad, straight ahead, a
+      clear run after it); later ones may land you right in front of a hole, a fence or an enemy, with the usual time to
+      react. Never needed: the lane beside it is clear to go around. Three a level (placeholder count).
+  22. Ice Lab 3 *Specimen Vault*: the same set, the falling gantryways and teleporters too, and teleporters whose antenna's
+      light blinks left and right about once a second: the side lit the moment you touch the pad decides where you land
+      (two of its four, placeholder counts). Then straight on to the Golden Zone (no boss). Like the Terminal's, the
+      Ice Lab's levels sit between their neighbours in difficulty, off the campaign's curve.
+  23. Golden 1 *Gilded Canals*: the Resonator; and the Ice Lab's teleporters return (task Q6), fixed and blinking alike
+      in all three of the zone's levels, with no introduction of their own (three a level, one of them blinking:
+      placeholder counts) and in the teleporter's own look. Where a level is crowded they give way to its wider gaps
+      and dash walls (fewer of them, then). The falling gantryways and the Octodog jars stay in the Ice Lab.
+  24. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  25. Golden 3 *The Golden Palace*, then the final boss.
 
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
@@ -522,7 +554,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - supplied music for every zone (the Terminal plays the Dead Zone's song)
+  - supplied music for every zone (the Terminal plays the Dead Zone's song, the Ice Lab the Corporate zone's)
     and Boss 1 (The House shares the Casino song), generated defaults
     for menus/cutscenes/unmatched bosses
     (music dips when the runner dies), and 76 sound
@@ -610,7 +642,13 @@ jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump
 runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
 armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`),
 wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a still of the lit wall in any zone's
-look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
+look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), a falling gantryway knocked down while the runner steps out
+from under it, staying under it with the armor, its pillar pushing the runner aside, and a still of it standing
+(`gantryway_review`, `--take=drop|stay|push|look`, `--beside` for a camera beside the track), a teleporter taken, gone
+around, or still with its light blinking (`teleporter_review`, `--take=take|around|look --outputs=1|2 --light=-1|1 --blink
+--hazard`), an Octodog jar dashed and its dog breaking out and attacking, staying in line with the armor, the jar pushing
+the runner aside, and a still of it (`octodog_jar_review`, `--take=release|stay|pass|look`, `--close`, `--beside`), side wall
+gaps and what they show behind
 them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), the Terminal's arches (`arch_wall_review`) and
 debris maze seen from the game camera on the way in, stopped at a wall and inside it (`debris_maze_review`,
 `--level=terminal/1 --block=N --out=build/maze`), the Cybernetic Centipede's model in each pose and an encounter with
@@ -661,6 +699,29 @@ minutes; its header lists the options).
 takes), its longest and mean empty stretches in seconds, and its credits; it can also build the levels with another version's data and dump every layout, to prove a change leaves
 the old levels byte for byte as they were: `godot --headless -s res://tools/measure/level_pace.gd -- [--seeds=4]
 [--old-data=DIR] [--dump=FILE] [--set=key:value]` (its header lists the options).
+
+`tools/measure/gantryways.gd` builds every campaign level with falling gantryways (the Ice Lab's) on its own seed and
+others at 3, 5 and 6 lanes, with and without them: where each one hangs (its pillar's front as a share of the level, its
+lane, the introduction, both lanes beside it kept clear, the cyborg planted under it), what the generator's own re-check
+finds (nothing), and what they cost a build (`godot --headless -s res://tools/measure/gantryways.gd -- [--levels=ice_lab/1]
+[--lanes=3,5,6] [--seeds=N] [--why]`).
+
+`tools/measure/teleporters.gd` builds every campaign level with teleporters (Relay Station, Specimen Vault and the Golden
+Zone's three) on its own seed and others at 3, 5 and 6 lanes, with and without them: where each one stands (its pad's
+front as a share of the level, its lane and output lanes, its kind: one output pad, a fixed light's side, blinking; how
+far it leads; the introductions), what the generator's own re-check finds (nothing), and what they cost a build; with
+`--rules`, what the Golden Zone's own features re-check of the same build (the Resonators', the Gilded Sentinels', the
+Enforcer Trucks', the dash walls': nothing) and its wider gaps and dash walls with and without them (`godot --headless -s
+res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,golden/1] [--lanes=3,5,6] [--seeds=N] [--seed-list=a,b]
+[--why] [--rules]`).
+
+`tools/measure/octodog_jars.gd` builds every campaign level with Octodog jars (the Ice Lab's) on its own seed and others
+at 3, 5 and 6 lanes: where each jar that releases an Octodog stands (its front as a share of the level, its lane, the
+charges planned for its dog), how much the rules took out to make room, how many decoys stand and how many of the
+level's other doodads are the skin's empty Octodog jars, what the generator's own re-check finds (nothing), and what
+they cost a build (`godot --headless -s res://tools/measure/octodog_jars.gd -- [--levels=ice_lab/1] [--lanes=3,5,6]
+[--seeds=N] [--seed-base=8800] [--why] [--without] [--start=S] [--max-taken=N] [--max-intro-taken=N]
+[--max-ceilings=N]`; the last three try other caps on what a jar takes out).
 
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, at the City's
 speed (21 m/s) in metres and in seconds: the latest lane switch onto the ramp that still stomps, the stretch of jump

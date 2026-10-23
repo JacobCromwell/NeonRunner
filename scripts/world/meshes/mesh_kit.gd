@@ -311,6 +311,44 @@ const TERMINAL_STRIP_LEFT: int = 1
 const TERMINAL_STRIP_RIGHT: int = 2
 const TERMINAL_GUTTER: int = 4
 
+## The Ice Lab's surface patterns of the solid kit shader (kit_ice_lab.gdshaderinc), ids 110-119 (task Q2): a frozen
+## industrial laboratory (GDD §5, Zone 9). Only the machine lamps (PAT_IL_LAMP, a small amber point, breathing slowly and
+## holding still with Reduced flashing), the screens and the jars' liquid glow, all dimly, over the wall-run band and under the
+## bloom threshold, the last two a pale desaturated blue-white; give every other pattern's vertices COLOR.a = 0 (the panels'
+## status LEDs are paint, never lit).
+## A lane of catwalk grating with packed snow and ice (world position; UV.x -1 to 1 across the lane): param = the lane's
+## half width in centimetres times 8 plus IL_* flags (IceLabFloor.half_width_param).
+const PAT_IL_GRATING: int = 110
+## Everything under the catwalks, seen only through the holes: deep shade darkening with depth (darkens COLOR): param 0 a
+## face across the lane, 1 a face along it, 2 the frozen floor far below.
+const PAT_IL_UNDER: int = 111
+## Frost-crusted black steel: param 0 plating, 1 an underside ridden upside down, 2 a pipe or a bar, 3 a chain, 4 grating
+## seen from below.
+const PAT_IL_STEEL: int = 112
+## Ice: param 0 a wall of ice, 1 a crystal, 2 the frozen floor far below.
+const PAT_IL_ICE: int = 113
+## Lab machinery fronts, flush with the wall (UV in metres from the face's lower left): param = kind (IL_PANEL_*) + 4 * seed.
+const PAT_IL_PANEL: int = 114
+## A console or wall screen, pale and dim (UV in metres from its lower left): param = seed 0-99 + 100 * width in decimetres
+## + 10000 * height in decimetres (IceLabParts.screen_param).
+const PAT_IL_SCREEN: int = 115
+## A small amber machine lamp (param a seed): glows dimly, some breathe slowly.
+const PAT_IL_LAMP: int = 116
+## The liquid behind a specimen (UV.x -1 to 1 across the jar, UV.y 0 to 1 up it): param 0 a brain jar, 1 an Octodog jar.
+const PAT_IL_JAR: int = 117
+## A brain (lit, pink-grey, with folds).
+const PAT_IL_BRAIN: int = 118
+## A drift of packed snow.
+const PAT_IL_SNOW: int = 119
+## PAT_IL_GRATING's flags, and PAT_IL_PANEL's kinds.
+const IL_NEIGHBOUR_LEFT: int = 1
+const IL_NEIGHBOUR_RIGHT: int = 2
+const IL_GUTTER: int = 4
+const IL_PANEL_CABINET: int = 0
+const IL_PANEL_RACK: int = 1
+const IL_PANEL_TILE: int = 2
+const IL_PANEL_DOOR: int = 3
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 ## How far the glow under a ceiling's end band (ceiling_end) reaches back from the band, under the
 ## ceiling. It never reaches past the far end.

@@ -202,6 +202,24 @@ func _first_at(trigger: String) -> float:
 			# Task H7a (GDD §9.14): the first dash wall's face.
 			for dw: Dictionary in layout.dash_walls:
 				found.append(float(dw["start"]))
+		"gantryway":
+			# Task Q3 (GDD §5, Zone 9): the first falling gantryway's pillar. DESIGN-TBD (docs/questions/q3.md 12): the
+			# hint's wording (data/hints/hints.json, "gantryway").
+			for gw: Dictionary in layout.gantryways:
+				found.append(float(gw["pillar"]))
+		"teleporter", "teleporter_blinking":
+			# Task Q4 (GDD §5, Zone 9): the first teleporter's pad, or the first one with a blinking antenna. DESIGN-TBD
+			# (docs/questions/q4.md 12): the hints' wording (data/hints/hints.json, "teleporter", "teleporter_blinking").
+			for tp: Dictionary in layout.teleporters:
+				if trigger == "teleporter" or float(tp.get("blink", 0.0)) > 0.0:
+					found.append(float(tp["at"]))
+		"octodog_jar":
+			# Task Q5 (GDD §5, Zone 9): the first jar holding an Octodog (LevelLayout.HOLDS), whether its dog comes out or
+			# it's a decoy (LevelLayout.DECOY): the hint ("may break out") never tells which jar releases. DESIGN-TBD
+			# (docs/questions/q5.md 9): the hint's wording (data/hints/hints.json, "octodog_jar").
+			for dj: Dictionary in layout.doodads:
+				if LevelLayout.held_type(dj) == "octodog":
+					found.append(float(dj["start"]))
 		"debris_maze":
 			# Task O2 (GDD §5, Zone 8): the debris maze's first wall, where debris first stops the runner.
 			for b: Dictionary in layout.maze:

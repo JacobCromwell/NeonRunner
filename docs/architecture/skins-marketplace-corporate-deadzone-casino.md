@@ -489,3 +489,101 @@ the city: wet black stone, rust and verdigris, vine green, sodium lamplight thro
   open space between as wall gaps, which the track builder draws with `wall_opening`, stumps in `wall_stumps`, holes, one ceiling of each kind, doodads, fences, signs; 19
   shots, `--shot=N`, `--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`) and `skin_review --skin=terminal`, on both
   renderers.
+
+**The Ice Lab** (`scripts/world/skins/ice_lab_skin.gd` and `scripts/world/skins/ice_lab/`; task Q2, GDD §5 Zone 9, the owner's reference image
+`docs/art/reference/ice_lab_zone.webp`; questions in `docs/questions/q2.md`): `IceLabFloor` (the floor), `IceLabWalls` (the wall bays),
+`IceLabHall` (everything over and beyond the walls), `IceLabCeilings`, `IceLabProps` (fences and signs), `IceLabDoodads` (picture cards,
+`tools/asset_gen/doodad_art/ice_lab_art.gd`) and `IceLabParts` (the primitives and props they are built from); its surfaces are the kit's
+patterns 110-119 in `kit_ice_lab.gdshaderinc` (`MeshKit.PAT_IL_*`), drawn with the kit's one solid and one glow material and the drift shader
+(snow, mist and streaks), so the zone adds no shader and `test_zone_shaders` is unchanged. A frozen industrial laboratory: steel catwalks over a
+frozen depth, machinery, consoles, server racks and ice on the walls, specimen jars with brains in them (some with a curled-up Octodog), cranes and
+chains overhead, no sky.
+- *Three leans, one skin* (the owner, October 21, 2026: level 1 heavily into the snow and industry, the last level much more into the
+  laboratory, level 2 between): `lab_share` (0 to 1, `@export_range`) is the one number a level's skin sets: `data/skins/ice_lab_frost_skin.tres`
+  (0.1), `ice_lab_skin.tres` (0.5) and `ice_lab_lab_skin.tres` (0.9), so quick play shows each as `--skin=ice_lab_frost`, `--skin=ice_lab`,
+  `--skin=ice_lab_lab`. It weighs the wall bays (`bay_weights_frost`/`bay_weights_lab`, blended: `IceLabSkin.bay_weight`), the ceiling kinds
+  (`gantry_weight_*`, `walkway_weight_*`), the share of crystal clusters on the far walls, the doodad looks (below), sets how much snow lies on the
+  floor and ledges (`snow_frost`/`snow_lab`: the shader's `il_snow_amount`, which `lab_share` also feeds, with `il_lab`: more clean tread plate in
+  the lab), how many flakes fall, and tints the haze (`fog_color_frost`/`fog_color_lab`). Each lean is its own solid material on the one shader (a
+  material is cached by its parameters), and each builds its own bays, so nothing about a lean is a branch in the builders. `test_ice_lab_skin`'s
+  `_lean`, `_bays`, `_ceilings` and `_doodads` hold all three to the direction the owner asked for. The campaign's zone names `ice_lab_skin.tres`
+  (`data/zones/ice_lab.tres`) and its levels their own leans (`LevelConfig.skin_path`: `ice_lab_1` the frost skin, `ice_lab_2` `ice_lab_skin.tres`,
+  `ice_lab_3` the lab skin; `test_ice_lab_levels` checks they lean further into the laboratory in order).
+- *The floor* (`IceLabFloor`, adapted from `TerminalTrack`): every lane is catwalk grating (`PAT_IL_GRATING`): panels of 1.2 by 2.4 m with a frame,
+  load bars every 5 cm and cross rods every 30 cm over dark slots (the darkest the street is drawn: base x 0.42 with little snow about; deep snow
+  lifts them toward 0.68, and above `il_snow_amount` 0.55 the snow covers more, so level 1's exposed grating is small, frosted mid-grey patches, never
+  black ones that could be taken for holes: only holes are dark), some panels solid tread plate,
+  packed snow in drifts deeper along the lane's edges and in the gutter between the outer lane and the wall (`il_snow_amount`), patches of glossy ice, a dark
+  seam between lanes; all from world position, so lanes and chunk cuts join. **The lane's width is never fixed in the shader**: each piece's
+  parameter carries the half width of what it is drawn on, in centimetres times 8 over `IL_*` flags (`IceLabFloor.half_width_param`, read off the floor
+  box by `half_lane`: the same encoding the Terminal uses). A gap is a drop between catwalks: the orange lip and strip right on the collision
+  edge and the halo on the far side, as in every zone, and below it deep shade (`PAT_IL_UNDER`: truss ribs, hoar furring near the top) to a
+  floor of dark ice 7 m down (`pit_depth`); a floor cut is the same with a few bent plates of grating hanging. `hole_share` is 0.60 of the grating's
+  darkest (limit 0.8).
+- *The walls* (`IceLabWalls`): a wall side is laid out in bays of 5 m from the wall's own distance (a chunk is eight; chunk edges are always bay
+  edges), each picked by hashing (side, bay) against the lean's weights: PIPES, LATTICE pillar, pressure TANK, ICE, CONSOLES, server RACKS, clean-room TILE,
+  a service DOOR, a gallery of JARS (two or three specimen jars, a brain in each), and OCTODOG (the same with an Octodog curled up in the middle
+  jar). **Each bay is built once in wall space** (`IceLabParts`: the wall face is x = 0 and the street at +x, s along the face, built as the left wall's
+  and set on either wall by a transform, a half turn about y for the right: `MeshBatch.append(template, xform)`), so a chunk's walls are sixteen
+  appends of cached meshes **and one gantry rail** along the top (`IceLabWalls.rail`, cached by length: one long strip for a whole wall piece, not one in
+  every bay). A stretch a wall gap leaves short of a whole bay is plain plating built in world space (`_plain`), and so is a bay within 4.7 m of a window
+  cyborg (`note_wall_enemies`; the cyborg draws its own window, so the stretch holds no other opening). **The wall is calm where a runner can touch it,
+  below `calm_top` (6.6 m: wall running reaches about 6 m), as in every wall-running zone** (`ZoneSkin.WALL_RUN_LINE_PROUD`, the Terminal's `PROUD`): nothing
+  stands out of the face more than 4.5 cm (`IceLabParts.PROUD`: pipes half sunk, pilasters, frames, a low fringe of snow at the foot), nothing is recessed
+  into it, nothing glows (the console screens and the racks' status lights down there are dull flush paint, `IceLabParts.screen(lit = false)`) and the suite
+  checks it at `wall - 0.05` like the Corporate, Golden and Beach suites. **The depth and the light are above the band:** the jar galleries (an alcove 0.8 m
+  deep from 6.8 m up to the cornice, which is its lintel: the owner's brain jars, prominent up there), a row of lit bezelled screens over each bank of
+  consoles, the machine lamps (`lamp_min_height` 7.2 m), the cornice at `band_top` (9 m, over every ceiling's top), trunk pipes, ice crust, icicles, and the
+  gantry rail along the top (12 m) with its railing, snow and icicles. The detail is mostly the shader's (`PAT_IL_PANEL`'s louvres, rack units, tiles, vents
+  and status dots, `PAT_IL_STEEL`'s plates, rivets and frost, `PAT_IL_ICE`'s facets) and faces nobody sees are left out (a box on a wall has no back and
+  no bottom), curves have few sides: a bay is 350 to 1350 vertices. Wall gaps keep the base's orange marks and `IceLabWalls.recess`: the cut ends in steel,
+  the frozen floor and the hall's far ice wall across, never the sky (`test_wall_gaps`). No wall-run guide (`show_wall_run_guide` false, task L5).
+- *The hall* (`IceLabHall`, appended to the left wall's mesh like the Dead Zone's `below()`, by every wall piece and by a wall gap's `wall_gap_extras`, with
+  items anchored to a track distance and drawn by the piece that holds it, so each is built exactly once however the walls are cut: `_hall_once`): the
+  frozen floor, the far ice walls 14 m beyond the wall line with now and then a cluster of big pale crystals (a share by the lean), two crane runways a side
+  at 16 m, a cross girder every 20 m with a fringe of icicles, a trolley, a chain down to a hook (never lower than 9.6 m: over every ceiling's top) and sometimes a crate
+  on it, a small amber lamp, steel pillars in the fog up to **the roof** (`roof_height`, 25 m: a dim underside of dark steel and ice across the hall, a truss every 10 m
+  with great icicles hanging from them, so the hall is closed overhead like the Terminal's vault and the dark over the cranes reads as a roof, not a night
+  sky), and the drifting snow, mist and speed streaks (the drift shader: the owner's rule that every still floor gets motion cues). Nothing of it is in
+  the play space.
+- *Light and the colour rule* (GDD §5, looser in the later zones): the only glows are the machine lamps (a small amber point in a cage, from 7.2 m up:
+  over the wall-run band with their halo, never at floor level, never on the walls in the band), the lit screens (a pale blue-white `(0.5, 0.74, 0.84)`, over the band),
+  the jars' liquid (`(0.42, 0.7, 0.78)`, desaturated: nothing like the anti-grav pad's saturated cyan) and the hazards, triggers and the orange ends of gaps and
+  ceilings. Each of the first three is a fraction of a gap edge's glow and under the bloom threshold (which edges are over, so edges bloom and
+  they never do), with the Compatibility renderer's own numbers (`lamp_glow_compat`, `screen_glow_compat`, `liquid_glow_compat`: it scales emissive
+  colours in sRGB space). A lamp is told from a gap edge as the Terminal's are: hue (amber against the edge's red-orange), glow and height. **Reduced
+  flashing**: the lamps' slow breathing (a hashed half of them swell smoothly every 4-7 s) holds still with `reduced_flashing`
+  (`il_lamp_surface`); the jars' bubbles rise slowly and smoothly (motion, never a flash); nothing else moves or flickers. `test_ice_lab_skin` checks each of
+  these in the built meshes (every glowing vertex in a whole level against its pattern, colour and glow; no lamp lower than 6.2 m; nothing lit or recessed
+  or standing out more than 5 cm in the wall-run band) and in the shader's source.
+- *Ceilings* (`IceLabCeilings`): a GANTRY (a crane gantry girder lodged over its lanes: the underside its bottom flange, a web with ribs, a rail with snow, a
+  hoist trolley and its cable drum, an end truck) or a WALKWAY (an overhead grated walkway: the underside grating seen from below, a railing with snow on it, lab
+  cabinets and a lamp on the deck), rods up to the crane runways. Every one builds from the lanes it covers, keeps nothing below its flat underside and the
+  orange end band across its far end, and rises no more than `TOP_LIMIT` (1.9 m) over it (the rods go on up).
+- *Doodads* (`IceLabDoodads`, GDD §3 and §5): picture cards (`DoodadCards.for_zone("ice_lab")`, atlas `assets/sprites/doodads/ice_lab.png`, 2048 square at 80
+  pixels a metre): five looks a size, each with a laboratory affinity (`IceLabDoodads.LOOKS`) the lean's weights follow (a look's weight is 0.15 + 0.85 times
+  the square of its nearness to the lean times its rarity, `look_weight`, `RARITY`), so level 1 is crystals, crates and frozen machinery and level 3 jars,
+  racks and consoles; every picture fills its box to the top (the lab bench stands under a full-height fume hood, so it reads as tall as it is). **The
+  Octodog jar** (small class, look name `octodog_jar`, a jar with the Octodog curled up asleep in it, its own palette, shut eyes, never glowing) is for task Q5
+  (some of them break open; it is rare: one small doodad in 40 at level 1 and one in nine at level 3): `IceLabDoodads.look_seed_for(size_class, name)` finds a
+  look seed that picks it at the skin's lean, `is_octodog_jar` tests one, and every card look's body carries its look's name as the metadata
+  `IceLabDoodads.META_LOOK`; it pushes like any doodad (it is a card look in its box). The generator never calls them (it never learns a zone's theme): task Q5
+  adds an abstract flag to the layout's doodads and a `ZoneSkin` hook that turns it into a look here. The pictures are painted for the standard boxes
+  (`DoodadArtSet.zone_tuning`: the zone's levels' own `doodad_height`, which the Ice Lab's levels do not set): rerun `tools/godot.sh doodads --only=ice_lab` if
+  that changes. The zone is in `DoodadCards.ZONES` and the web demo's export filter leaves out `assets/sprites/doodads/ice_lab.*` (`export_presets.cfg`,
+  `tools/web/update_filter.gd`; `test_web_demo`).
+- *Falling gantryways* (task Q3; Falling gantryways): GantrywayKit's frosted steel catwalk, pillar and wreck (the default look) in the zone's own colours
+  (`gantryway_colors()`: its steel, frame, frost, snow and ice, as its ceilings use them) and its sheen (`gantryway_material()`), so a gantryway reads as
+  one of the WALKWAY ceilings; nothing on the walls. Reviewed with `gantryway_review` (its default zone is the Ice Lab) on both renderers.
+- *Teleporters* (task Q4; Teleporters): TeleporterKit's pad, antenna and output marker (the default look), its plate and rim in the hall's steel and
+  frame (`teleporter_colors()`), its green and lamps its own; `test_ice_lab_skin` leaves a teleporter's parts out of its whole-level scenery checks.
+  Reviewed with `teleporter_review` (its default zone is the Ice Lab) on both renderers.
+- *No dash walls* (GDD §5, §9.14): the base's default look, which no level of the zone asks for; `test_dash_walls` lists the three skin files among the
+  default-look skins. Its cyborgs wear the Dead Zone's burned base (`enemy_variant`, placeholder: GDD §5, "an existing zone's look").
+- *Cost* (`test_ice_lab_skin`, 66 chunks of Ice Lab 1): build mean 2.0-2.4 ms a chunk at 3-6 lanes, 20-33 surfaces and 15-16k vertices a chunk (5 lanes: 26.9
+  surfaces against the budget of 32; 15.5k vertices is 5.2k triangles a chunk, about 41k in view): the heaviest skin, with the Beach's 14.5k next (the Terminal's
+  is 4.0k). What keeps it there: a wall bay is 350 to 1350 vertices, the gantry rail is one 680-vertex strip a wall piece instead of 200 vertices in every bay, snow
+  caps and icicles are one lump or cone every few metres and the roof is a quad, four trusses and a few cones.
+- *Reviewed*: `tools/showcase/ice_lab_review.tscn --skin=ice_lab` (also `ice_lab_frost`, `ice_lab_lab`: close-ups of every bay kind and the
+  jars, the ceilings, a wall gap, the hall from above, a floor cut, fences and signs, and every doodad look; the shot list is printed as it
+  plays), `skin_review --skin=ice_lab`, `doodad_review --skin=ice_lab`, on both renderers.

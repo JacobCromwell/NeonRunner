@@ -1148,8 +1148,10 @@ func _test_safe_floor_every_time() -> void:
 			for d: Dictionary in layout.doodads:
 				# A treasure stash's doodads stand together, under its ceiling (task I4): test_ceiling_scenarios runs them.
 				# A row's (task L3): _test_campaign_rows runs into each row as one (where doodads stop the runner, a row's
-				# first stops them like any: run here).
-				if d.has("stash") or (d.has("row") and not (layout.doodads_stop and _row_first(d))):
+				# first stops them like any: run here). A falling gantryway's pillar (task Q3): test_gantryways runs into
+				# every one of the campaign's, and dashes through it, stepping out from under its walkway.
+				if d.has("stash") or (d.has("row") and not (layout.doodads_stop and _row_first(d))) \
+						or LevelLayout.is_gantry_pillar(d):
 					continue
 				# Where doodads stop the runner, only one whose front a runner in its lane can reach (a maze divider's later
 				# pieces stand right behind its first).
@@ -1431,7 +1433,8 @@ func _run_into(layout: LevelLayout, d: Dictionary, t: MovementTuning, lead: floa
 	var into: Dictionary = part.to_dict()
 	var extent: Dictionary = {"fences": t.fence_depth * 0.5, "pads": t.pad_length, "ramps": t.ramp_length,
 		"speed_pads": t.speed_pad_length}
-	for key: String in ["gaps", "fences", "pads", "hulls", "ramps", "speed_pads", "signs", "doodads"]:
+	# A falling gantryway (task Q3) comes with its pillar, a doodad the track builds with it (TrackBuilder._build_gantryway).
+	for key: String in ["gaps", "fences", "pads", "hulls", "ramps", "speed_pads", "signs", "doodads", "gantryways"]:
 		for item: Dictionary in lists.get(key, []):
 			var start: float = float(item.get("start", item.get("at", 0.0)))
 			var end: float = float(item["end"]) if item.has("end") else start + float(extent.get(key, 0.0))
@@ -1440,15 +1443,19 @@ func _run_into(layout: LevelLayout, d: Dictionary, t: MovementTuning, lead: floa
 			if end < from or start > to:
 				continue
 			var moved: Dictionary = item.duplicate()
-			for k: String in ["at", "start", "end"]:
+			for k: String in ["at", "start", "end", "pillar"]:
 				if moved.has(k):
 					moved[k] = float(moved[k]) + offset
-			# A row's doodad (task L3) carries its row's stretch, which moves with it (LevelLayout.doodad_extent).
-			if moved.has("row"):
-				var stretch: Array = moved["row"]
-				moved["row"] = [float(stretch[0]) + offset, float(stretch[1]) + offset]
+			# A row's doodad (task L3) carries its row's stretch, which moves with it (LevelLayout.doodad_extent), as a
+			# falling gantryway its calm stretch.
+			for k: String in ["row", "calm"]:
+				if moved.has(k):
+					var stretch: Array = moved[k]
+					moved[k] = [float(stretch[0]) + offset, float(stretch[1]) + offset]
 			if key == "doodads":
 				part.doodads.append(moved)
+			elif key == "gantryways":
+				part.gantryways.append(moved)
 			else:
 				(into[key] as Array).append(moved)
 	var placed: Array = []
@@ -2008,8 +2015,9 @@ func _test_dash_campaign() -> void:
 			var tried: int = 0
 			for d: Dictionary in layout.doodads:
 				# A treasure stash's doodads (task I4): test_ceiling_scenarios dashes into one. A row's (task L3):
-				# _test_campaign_rows dashes into each row as one.
-				if d.has("stash") or d.has("row"):
+				# _test_campaign_rows dashes into each row as one. A falling gantryway's pillar (task Q3): its walkway falls
+				# on the lane, so the runner steps out; test_gantryways dashes through every one of the campaign's.
+				if d.has("stash") or d.has("row") or LevelLayout.is_gantry_pillar(d):
 					continue
 				if tried >= DASH_RUNS_PER_LEVEL:
 					break

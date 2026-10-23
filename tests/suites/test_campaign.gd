@@ -1,5 +1,5 @@
 extends TestSuite
-## The campaign data (GDD §5, §6, §10): nine zones in order with 3/3/2/2/2/3/2/2/3 levels, their steps and
+## The campaign data (GDD §5, §6, §10): ten zones in order with 3/3/2/2/2/3/2/2/3/3 levels, their steps and
 ## ids, boss and cinematic slots (the Marketplace has no boss: The House is the Casino's; the Terminal has none), skins, music and
 ## the demo scope; the level-by-level schedule (where each feature first appears, later levels keeping it,
 ## one new thing at a time, late starts, the Casino and the Beach bringing nothing new); the difficulty curve and
@@ -16,14 +16,21 @@ extends TestSuite
 ## zone 8, between the Dead Zone and the Golden Zone (now zone 9), two levels and no boss, off the difficulty curve
 ## between Dead Zone 2's and Golden 1's, none of the earlier features but its ceilings and its walls' open space (its
 ## arches), and every other level and boss configured exactly as in the campaign before it; a save from before it
-## keeps the Golden Zone it had open (Profile version 5). test_terminal_levels checks its levels' own rules.
+## keeps the Golden Zone it had open (Profile version 5). test_terminal_levels checks its levels' own rules. And the Ice
+## Lab (task Q1; the owner, October 21, 2026, GDD §5 Zone 9): zone 9, between the Terminal and the Golden Zone (now zone
+## 10), three levels and no boss, off the difficulty curve between Terminal 2's and Golden 1's, its enemies the cyborgs,
+## the Octodogs and the heli drones, no other earlier enemy and no dash walls (ICE_LAB_LEAVES_OUT), nothing new until its
+## mechanics' tasks (Q3, Q4) and its two new enemies come, and every other level and boss configured exactly as in the
+## campaign before it; a save from before it keeps the Golden Zone it had open (Profile version 6). test_ice_lab_levels
+## checks its levels' own rules. The Golden Zone keeps the Ice Lab's teleporters, fixed and blinking (task Q6; the owner,
+## October 22, 2026), but not its falling gantryways nor its Octodog jars (LEFT_OUT); test_teleporters checks its builds.
 
 ## The zones in order and their level counts (GDD §5; the Casino added as Zone 4 by the owner, October 8,
-## 2026, the Beach as Zone 6, between Corporate and the Dead Zone, October 9, and the Terminal as Zone 8, between the
-## Dead Zone and the Golden Zone, October 20). Other tasks rely on these ids: skins at data/skins/<id>_skin.tres, music
-## tracks named after them.
+## 2026, the Beach as Zone 6, between Corporate and the Dead Zone, October 9, the Terminal as Zone 8, between the
+## Dead Zone and the Golden Zone, October 20, and the Ice Lab as Zone 9, between the Terminal and the Golden Zone, October
+## 21). Other tasks rely on these ids: skins at data/skins/<id>_skin.tres, music tracks named after them.
 const ZONES: Array = [["city", 3], ["gangland", 3], ["marketplace", 2], ["casino", 2], ["corporate", 2], ["beach", 3],
-	["dead_zone", 2], ["terminal", 2], ["golden", 3]]
+	["dead_zone", 2], ["terminal", 2], ["ice_lab", 3], ["golden", 3]]
 ## Zones whose music track isn't made yet (the Music player skips a missing track quietly, ZoneDef.music): none now.
 const MUSIC_TO_COME: Array = []
 ## The Terminal (task O1; GDD §5, Zone 8: none of the usual enemies, no dash walls, no wall running, a couple of
@@ -31,11 +38,19 @@ const MUSIC_TO_COME: Array = []
 ## walls' open space between its narrow arches (the `wall_gaps` feature with its own numbers, WallGapTuning's Arches
 ## group). Every other earlier feature is left out of both its levels.
 const TERMINAL_KEEPS: Array = ["ceilings", "wall_gaps"]
+## The Ice Lab (task Q1; GDD §5, Zone 9: its enemies are "cyborg gangsters, Octodogs and heli drones", (proposed) none of
+## the other earlier enemies, the usual obstacles, no dash walls) leaves these features introduced before it out of all
+## three of its levels: every other earlier enemy, the dash walls and the Terminal's debris maze. It keeps everything else
+## introduced before it (test_ice_lab_levels, KEEPS and LEAVES_OUT: the window cyborgs and the fence generators among what
+## it keeps; DESIGN-TBD, docs/questions/q1.md).
+const ICE_LAB_LEAVES_OUT: Array = ["hover_truck", "screech", "screech_vents", "barnacle_turret", "buzz_overdrive", "dash_wall",
+	"tithe_collector", "enforcer_truck", "host", "debris_maze", "centipede"]
 ## Zone & Levels 1: halve City 1's former 110 s, without retiming any other level. The Casino's two
 ## (task K2, DESIGN-TBD) sit between the Marketplace's and Corporate's, the Beach's two (task D10c, DESIGN-TBD)
 ## between Corporate's and the Dead Zone's, the Terminal's two (task O1, DESIGN-TBD) between the Dead Zone's and the
-## Golden Zone's. The Beach's volleyball match (beach/2, a mini-game) lasts as long as a flawless match (test_volleyball
-## measures it).
+## Golden Zone's, and the Ice Lab's three (task Q1, DESIGN-TBD, docs/questions/q1.md) between the Terminal's and the Golden
+## Zone's, rising through the zone as its neighbours' do. The Beach's volleyball match (beach/2, a mini-game) lasts as long
+## as a flawless match (test_volleyball measures it).
 const LEVEL_DURATIONS: Dictionary[String, float] = {
 	"city/1": 55.0, "city/2": 120.0, "city/3": 130.0,
 	"gangland/1": 135.0, "gangland/2": 140.0, "gangland/3": 145.0,
@@ -45,6 +60,7 @@ const LEVEL_DURATIONS: Dictionary[String, float] = {
 	"beach/1": 145.0, "beach/2": 55.0, "beach/3": 150.0,
 	"dead_zone/1": 145.0, "dead_zone/2": 150.0,
 	"terminal/1": 140.0, "terminal/2": 145.0,
+	"ice_lab/1": 140.0, "ice_lab/2": 145.0, "ice_lab/3": 150.0,
 	"golden/1": 145.0, "golden/2": 150.0, "golden/3": 150.0,
 }
 ## The level each feature first appears in (GDD §5's schedule; `screech_vents`, the shopfront vents
@@ -70,6 +86,14 @@ const FIRST_LEVEL: Dictionary = {
 	"gilded_sentinel": "golden/2",
 	# Task I4 (GDD §3, "Ceiling scenarios": never in zones 1-2; DESIGN-TBD, items 836–845 (docs/OPEN_QUESTIONS*.md)): from the Casino.
 	"treasure_stash": "casino/1", "fenced_ceiling": "casino/2",
+	# Task Q3 (GDD §5, Zone 9, owner, October 21, 2026: "introduced in level 1"): the falling gantryways, from Frost Foundry.
+	"gantryway": "ice_lab/1",
+	# Task Q4 (GDD §5, Zone 9, owner, October 21, 2026: "introduced in level 2, with blinking antennas added in level 3"):
+	# the teleporters, from Relay Station, and their blinking antennas, from Specimen Vault.
+	"teleporter": "ice_lab/2", "teleporter_blinking": "ice_lab/3",
+	# Task Q5 (GDD §5, Zone 9, owner, October 21, 2026; its level schedule lists them for Frost Foundry): the Octodog jars
+	# that break open, from Frost Foundry.
+	"octodog_jar": "ice_lab/1",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
@@ -96,6 +120,14 @@ const LEFT_OUT: Dictionary = {
 	# The owner, October 20, 2026 (task O1): The Hush leaves out the heli drone, whose anti-grav pad every 8 to 10 s left
 	# its extended wall runs no room (LevelConfig.features_left_out; endless mode puts it back).
 	"drone": ["dead_zone/2"],
+	# Task Q3: the falling gantryways stay in the Ice Lab, the zone's own mechanic as the Terminal's maze is the Terminal's
+	# (GDD §5, Zone 9; the owner, October 22, 2026: "For now, the Falling Gantryways should only be in the ice lab").
+	# (The teleporters, task Q4, keep appearing: the owner, October 22, 2026, "we should add the teleporters to the golden
+	# zone", task Q6, all three of its levels, fixed and blinking alike.)
+	"gantryway": ["golden/1", "golden/2", "golden/3"],
+	# Task Q5: the Octodog jars stay in the Ice Lab, its own doodads; the Golden Zone has no Octodogs to hold anyway
+	# (DESIGN-TBD, docs/questions/q5.md 12).
+	"octodog_jar": ["golden/1", "golden/2", "golden/3"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
@@ -108,21 +140,26 @@ const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "
 ## Palace, Terminal 2 a normal run with stretches of the debris maze Terminal 1 brings (GDD §5, Zone 8). (The Beach's
 ## volleyball match, beach/2, places no features at all: the schedule leaves it out. The Casino's two, "the
 ## Marketplace's enemies and mechanics in a new setting" (owner, October 8, 2026), bring the ceiling scenarios since
-## task I4.)
+## task I4. The Ice Lab's three bring its mechanics, NEW_MECHANICS: Frost Foundry the falling gantryways, task Q3, Relay
+## Station the teleporters and Specimen Vault their blinking antennas, task Q4, and the three the Octodog jars, task Q5.)
 const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "terminal/2", "golden/3"]
 ## Zones that introduce no new enemy, the exceptions to GDD §5's rule, and why: the Casino ("every zone introduces
 ## at least one new enemy, except the Casino, which reuses the Marketplace's", owner, October 8, 2026) and the Beach,
-## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"). Neither introduces anything
-## else either (NOTHING_NEW), but for the mechanics in NEW_MECHANICS.
+## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"), and the Ice Lab until its two new
+## enemies are designed (owner, October 21, 2026: they come in later sessions). None of them introduces anything else
+## either (NOTHING_NEW), but for the mechanics in NEW_MECHANICS.
 const NO_NEW_ENEMY: Dictionary = {
 	"casino": "it reuses the Marketplace's (GDD §5, owner)",
 	"beach": "a remix of everything before it (owner, October 9, 2026)",
+	"ice_lab": "its two new enemies come in later sessions (owner, October 21, 2026)",
 }
 ## The mechanics a zone of NO_NEW_ENEMY introduces all the same: the Casino's ceiling scenarios (task I4; GDD §3,
 ## "Ceiling scenarios": never in zones 1-2, sprinkled into later zones; DESIGN-TBD where they start,
-## items 836–845 (docs/OPEN_QUESTIONS*.md)).
+## items 836–845 (docs/OPEN_QUESTIONS*.md)), and the Ice Lab's falling gantryways (task Q3) and teleporters with their
+## blinking antennas (task Q4; GDD §5, Zone 9) and its Octodog jars (task Q5).
 const NEW_MECHANICS: Dictionary = {
 	"casino": ["treasure_stash", "fenced_ceiling"],
+	"ice_lab": ["gantryway", "teleporter", "teleporter_blinking", "octodog_jar"],
 }
 ## The seed sweep: the levels with the most features (the Beach's remix has as many as Corporate 2), The
 ## Hush (paced in bursts) and the Terminal's (task O1: its own patterns, arches and walls without wall running), on
@@ -186,6 +223,7 @@ func run() -> void:
 	_test_no_level_easier(campaign)
 	_test_off_curve(campaign)
 	_test_terminal_off_curve(campaign)
+	_test_ice_lab_off_curve(campaign)
 	_test_skins(campaign)
 	_test_levels_generate(campaign)
 	_test_ceiling_gauntlets(campaign)
@@ -195,10 +233,11 @@ func run() -> void:
 	_test_unlocking()
 
 
-## Nine zones in GDD §5's order (the Casino fourth, owner, October 8, 2026; the Beach sixth, October 9; the Terminal
-## eighth, October 20), each built, with its levels, skin, music and tagline; only the City is in the web demo.
+## Ten zones in GDD §5's order (the Casino fourth, owner, October 8, 2026; the Beach sixth, October 9; the Terminal
+## eighth, October 20; the Ice Lab ninth, October 21), each built, with its levels, skin, music and tagline; only the City
+## is in the web demo.
 func _test_zones(campaign: Campaign) -> void:
-	check(campaign.zones.size() == ZONES.size(), "the campaign has nine zones (GDD §5): %d" % campaign.zones.size())
+	check(campaign.zones.size() == ZONES.size(), "the campaign has ten zones (GDD §5): %d" % campaign.zones.size())
 	var library := load("res://data/audio/music_library.tres") as MusicLibrary
 	for zi: int in mini(campaign.zones.size(), ZONES.size()):
 		var zone: ZoneDef = campaign.zones[zi]
@@ -214,18 +253,23 @@ func _test_zones(campaign: Campaign) -> void:
 		check(zone.music == zone.id, "%s's music track is named after the zone" % id)
 		check(library.has(zone.music) or MUSIC_TO_COME.has(id), "%s's music exists" % id)
 		check(zone.expected_loadout.is_empty(), "%s's expected loadout is still an empty placeholder (GDD §8)" % id)
-	check(campaign.planned_level_count() == 22 and campaign.level_count() == 22, "22 levels (GDD §5): %d, %d planned" % [
+	check(campaign.planned_level_count() == 25 and campaign.level_count() == 25, "25 levels (GDD §5): %d, %d planned" % [
 		campaign.level_count(), campaign.planned_level_count()])
 	# Task D10c: the Beach's levels are off the difficulty curve (its volleyball match too), and so are the Terminal's
-	# (task O1); the curve still spans the other 17.
+	# (task O1) and the Ice Lab's (task Q1); the curve still spans the other 17.
 	check(campaign.curve_level_count() == 17, "the difficulty curve spans the 17 levels on it (%d)" % campaign.curve_level_count())
 	var dead_zone: ZoneDef = _zone(campaign, "dead_zone")
 	var terminal: ZoneDef = _zone(campaign, "terminal")
+	var ice_lab: ZoneDef = _zone(campaign, "ice_lab")
 	var golden: ZoneDef = _zone(campaign, "golden")
 	check(terminal != null and terminal.display_name == "The Terminal" and dead_zone != null and golden != null
 		and terminal.run_speed > dead_zone.run_speed and terminal.run_speed < golden.run_speed,
 		"the Terminal runs between the Dead Zone's speed and the Golden Zone's (%.1f m/s; DESIGN-TBD)"
 		% (terminal.run_speed if terminal != null else 0.0))
+	check(ice_lab != null and ice_lab.display_name == "The Ice Lab" and terminal != null and golden != null
+		and ice_lab.run_speed > terminal.run_speed and ice_lab.run_speed < golden.run_speed,
+		"the Ice Lab runs between the Terminal's speed and the Golden Zone's (%.1f m/s; DESIGN-TBD)"
+		% (ice_lab.run_speed if ice_lab != null else 0.0))
 	var casino: ZoneDef = _zone(campaign, "casino")
 	var market: ZoneDef = _zone(campaign, "marketplace")
 	var corporate: ZoneDef = _zone(campaign, "corporate")
@@ -237,9 +281,10 @@ func _test_zones(campaign: Campaign) -> void:
 
 ## Steps run intro, levels, boss intro, boss, outro per zone; step and level ids stay stable (the
 ## save file keys progress by step id: The House's records moved to casino/boss with the Casino, see
-## _test_old_saves), the Marketplace and the Terminal lead from their levels to their outros with no boss, and Golden 3
-## is the Golden Palace. Each level's place on the difficulty curve (CampaignStep.level_index) counts the levels on it;
-## the Beach's, off it (task D10c), take Corporate 2's, and the Terminal's (task O1) Dead Zone 2's.
+## _test_old_saves), the Marketplace, the Terminal and the Ice Lab lead from their levels to their outros with no boss, and
+## Golden 3 is the Golden Palace. Each level's place on the difficulty curve (CampaignStep.level_index) counts the levels on
+## it; the Beach's, off it (task D10c), take Corporate 2's, and the Terminal's (task O1) and the Ice Lab's (task Q1) Dead
+## Zone 2's.
 func _test_steps(campaign: Campaign) -> void:
 	var expected := PackedStringArray([
 		"city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",
@@ -250,6 +295,7 @@ func _test_steps(campaign: Campaign) -> void:
 		"beach/intro", "beach/1", "beach/2", "beach/3", "beach/boss", "beach/outro",
 		"dead_zone/intro", "dead_zone/1", "dead_zone/2", "dead_zone/boss", "dead_zone/outro",
 		"terminal/intro", "terminal/1", "terminal/2", "terminal/outro",
+		"ice_lab/intro", "ice_lab/1", "ice_lab/2", "ice_lab/3", "ice_lab/outro",
 		"golden/intro", "golden/1", "golden/2", "golden/3", "golden/boss", "golden/outro"])
 	var ids := PackedStringArray()
 	for s: CampaignStep in campaign.steps():
@@ -263,7 +309,7 @@ func _test_steps(campaign: Campaign) -> void:
 		var level_id: String = "%s_%d" % [s.zone.id, s.number_in_zone]
 		check(String(s.level.id) == level_id and s.level.resource_path == "res://data/levels/%s.tres" % level_id,
 			"step %s plays level %s from its own file (%s)" % [s.id, level_id, s.level.resource_path])
-		var off: bool = s.zone.id == &"beach" or s.zone.id == &"terminal"
+		var off: bool = s.zone.id == &"beach" or s.zone.id == &"terminal" or s.zone.id == &"ice_lab"
 		check(s.level.off_curve == off, "%s is %s the difficulty curve" % [s.id, "off" if off else "on"])
 		var at: int = maxi(place - 1, 0) if s.level.off_curve else place
 		check(s.level_index == at, "%s takes place %d on the difficulty curve (%d)" % [s.id, at + 1, s.level_index + 1])
@@ -282,6 +328,13 @@ func _test_steps(campaign: Campaign) -> void:
 	check(campaign.step("terminal/1").level_index == campaign.step("dead_zone/2").level_index
 		and campaign.step("golden/1").level_index == campaign.step("dead_zone/2").level_index + 1,
 		"the Terminal's levels take Dead Zone 2's place on the curve, and Golden 1 keeps its own")
+	check(campaign.step("ice_lab/1").title() == "Frost Foundry" and campaign.step("ice_lab/2").title() == "Relay Station"
+		and campaign.step("ice_lab/3").title() == "Specimen Vault",
+		"the Ice Lab's levels are Frost Foundry, Relay Station and Specimen Vault (GDD §5, proposed)")
+	var at_dz2: bool = true
+	for number: int in [1, 2, 3]:
+		at_dz2 = at_dz2 and campaign.step("ice_lab/%d" % number).level_index == campaign.step("dead_zone/2").level_index
+	check(at_dz2, "the Ice Lab's levels take Dead Zone 2's place on the curve too, the last level on it before them")
 	for st: CampaignStep in campaign.steps():
 		check(st.is_minigame() == (st.id == "beach/2"), "%s %s a mini-game" % [st.id, "plays" if st.id == "beach/2" else "doesn't play"])
 
@@ -293,10 +346,11 @@ func _test_steps(campaign: Campaign) -> void:
 ## test_sewer_swarm_intro and test_dead_zone_intro check them).
 func _test_slots(campaign: Campaign) -> void:
 	# The Beach's boss: Mecha Guppy and Captain Cogs (GDD §10; the owner's title, docs/OPEN_QUESTIONS.md, item 762).
-	# The Terminal has no boss (owner, October 20, 2026; GDD §5, Zone 8): it leads straight into the Golden Zone.
+	# The Terminal has no boss (owner, October 20, 2026; GDD §5, Zone 8): it leads straight into the next zone, the Ice
+	# Lab, which has none either (owner, October 21, 2026; GDD §5, Zone 9) and leads straight into the Golden Zone.
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "",
 		"casino": "The House", "corporate": "Hostile Takeover", "beach": "Mecha Guppy and Captain Cogs", "dead_zone": "Sleep Taker",
-		"terminal": "", "golden": "The Golden Convergence"}
+		"terminal": "", "ice_lab": "", "golden": "The Golden Convergence"}
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
 		check(bosses.has(id), "%s is in GDD §10's roster" % id)
@@ -490,16 +544,22 @@ func _test_schedule(campaign: Campaign) -> void:
 			check(fresh.size() <= 3, "%s brings at most three new things (%s)" % [s.id, fresh])
 			check(fresh.size() >= 1 or NOTHING_NEW.has(s.id), "%s brings something new (GDD §5)" % s.id)
 		# Anything introduced earlier keeps appearing later (GDD §5), bar the documented exceptions: the Terminal keeps
-		# only its ceilings and its walls' open space (TERMINAL_KEEPS).
+		# only its ceilings and its walls' open space (TERMINAL_KEEPS), and the Ice Lab leaves out every earlier enemy but
+		# its cyborgs, Octodogs and heli drones, the dash walls and the Terminal's maze (ICE_LAB_LEAVES_OUT).
 		var terminal: bool = s.zone.id == &"terminal"
+		var ice_lab: bool = s.zone.id == &"ice_lab"
 		for f: String in seen:
 			if not s.level.has_feature(f):
-				check((LEFT_OUT.get(f, []) as Array).has(s.id) or (terminal and FIRST_LEVEL.get(f, "") != "terminal/1"),
-					"%s keeps `%s` (introduced in %s)" % [s.id, f, first_seen[f]])
+				check((LEFT_OUT.get(f, []) as Array).has(s.id) or (terminal and FIRST_LEVEL.get(f, "") != "terminal/1")
+					or (ice_lab and ICE_LAB_LEAVES_OUT.has(f)), "%s keeps `%s` (introduced in %s)" % [s.id, f, first_seen[f]])
 			elif terminal and FIRST_LEVEL.get(f, "") != "terminal/1":
 				check(TERMINAL_KEEPS.has(f), "%s leaves out `%s`: none of the usual enemies, no dash walls, no wall running (GDD §5, Zone 8)"
 					% [s.id, f])
-		if first_seen.has("screech") and s.id != "marketplace/1" and not terminal:
+			elif ice_lab:
+				check(not ICE_LAB_LEAVES_OUT.has(f),
+					"%s leaves out `%s`: its enemies are the cyborgs, the Octodogs and the heli drones, and no dash walls (GDD §5, Zone 9)"
+					% [s.id, f])
+		if first_seen.has("screech") and s.id != "marketplace/1" and not terminal and not ice_lab:
 			check(s.level.has_feature("screech") or s.level.has_feature("screech_vents"),
 				"%s keeps sewer screeches, from manholes or wall vents" % s.id)
 	for f: String in FIRST_LEVEL:
@@ -534,7 +594,7 @@ func _test_schedule(campaign: Campaign) -> void:
 	var city_1: LevelConfig = campaign.step("city/1").level
 	check(city_1.feature_start("cyborg") >= 0.5, "City 1's cyborgs come late in the level (%.2f)" % city_1.feature_start("cyborg"))
 	for id: String in ["marketplace/1", "marketplace/2", "casino/1", "casino/2", "corporate/1", "corporate/2", "beach/1", "beach/3",
-			"terminal/1", "terminal/2", "golden/1", "golden/2", "golden/3"]:
+			"terminal/1", "terminal/2", "ice_lab/1", "ice_lab/2", "ice_lab/3", "golden/1", "golden/2", "golden/3"]:
 		check(not campaign.step(id).level.has_feature("screech"), "no manholes in %s's floor" % id)
 	# GDD §9.9 (corrected): the Buzz Overdrive, from Corporate 1 through the Golden Zone.
 	for s: CampaignStep in levels:
@@ -545,7 +605,8 @@ func _test_schedule(campaign: Campaign) -> void:
 		var has_octodogs: bool = s.level_index >= campaign.step("gangland/2").level_index \
 			and s.zone.id != &"golden" and s.zone.id != &"terminal"
 		check(s.level.has_feature("octodog") == has_octodogs,
-			"%s keeps Octodogs only from Gangland 2 through the Dead Zone (Zone & Levels 2; none in the Terminal, GDD §5)" % s.id)
+			"%s keeps Octodogs only from Gangland 2 through the Dead Zone and in the Ice Lab (Zone & Levels 2; none in the Terminal, GDD §5)"
+			% s.id)
 	# Every level lists its features in the order the campaign introduces them (the generator runs the
 	# rules scripts in that order).
 	var order: PackedStringArray = []
@@ -570,16 +631,16 @@ func _test_schedule(campaign: Campaign) -> void:
 ## campaign without the Casino's zone, and without the Beach's, at exponent 1), City 1 and Golden 3 as they were;
 ## the Marketplace's at least as hard (a little harder is welcome). The curve's exponent
 ## (data/campaign/campaign.tres) lifts the early and middle levels, and leaves enemy scaling linear. (The Beach's
-## levels and the Terminal's, off the curve, change nothing on it: _test_off_curve.)
+## levels, the Terminal's and the Ice Lab's, off the curve, change nothing on it: _test_off_curve.)
 func _test_no_level_easier(campaign: Campaign) -> void:
 	var before := campaign.duplicate() as Campaign
 	var zones: Array[ZoneDef] = []
 	for z: ZoneDef in campaign.zones:
-		if z.id != &"casino" and z.id != &"beach" and z.id != &"terminal":
+		if z.id != &"casino" and z.id != &"beach" and z.id != &"terminal" and z.id != &"ice_lab":
 			zones.append(z)
 	before.zones = zones
 	before.difficulty_curve_exponent = 1.0
-	check(before.level_count() == 15, "the campaign before the Casino, the Beach and the Terminal had 15 levels (%d)"
+	check(before.level_count() == 15, "the campaign before the Casino, the Beach, the Terminal and the Ice Lab had 15 levels (%d)"
 		% before.level_count())
 	check(campaign.difficulty_curve_exponent < 1.0, "the curve is concave: it lifts the early and middle levels (%.2f)"
 		% campaign.difficulty_curve_exponent)
@@ -606,10 +667,10 @@ func _test_no_level_easier(campaign: Campaign) -> void:
 
 ## Each level is slightly harder than the last (GDD §6), up to Golden 2's peak (GDD §5, proposed), the
 ## automatic curve spanning the 17 levels on it; enemy scaling runs 0 → 1 across the campaign; City 1 lasts 55 s
-## (Zone & Levels 1), the other levels keep their durations within 90–150 s, and together take about 50 minutes
-## (GDD §5, with the Casino's, the Beach's and the Terminal's levels). A level off the curve (the Beach's, task D10c;
-## the Terminal's, task O1) lies strictly between the levels on it either side, in difficulty and enemy scaling, and
-## still rises from the level before it.
+## (Zone & Levels 1), the other levels keep their durations within 90–150 s, and together take about 57 minutes
+## (GDD §5, with the Casino's, the Beach's, the Terminal's and the Ice Lab's levels). A level off the curve (the Beach's,
+## task D10c; the Terminal's, task O1; the Ice Lab's, task Q1) lies strictly between the levels on it either side, in
+## difficulty and enemy scaling, and still rises from the level before it.
 func _test_curve_and_lengths(campaign: Campaign) -> void:
 	var last_curve: float = -1.0
 	for i: int in campaign.curve_level_count():
@@ -664,10 +725,11 @@ func _test_curve_and_lengths(campaign: Campaign) -> void:
 		on_curve = i
 	check(peak == difficulties.size() - 2 and difficulties.max() == difficulties[peak], "Golden 2 is the hardest level")
 	check(is_equal_approx(scaling[0], 0.0) and is_equal_approx(scaling[-1], 1.0), "enemy scaling runs 0 → 1 (GDD §6)")
-	# GDD §5 says about 45 minutes; the Terminal's two levels (task O1: 140 and 145 s, like their neighbours') make it
-	# about 50 (DESIGN-TBD, docs/questions/o1.md).
-	check(total >= 47.0 * 60.0 and total <= 52.0 * 60.0,
-		"a flawless run through every level takes about 50 minutes (GDD §5's 45, and the Terminal's two levels): %.1f min"
+	# GDD §5 says about 45 minutes; the Terminal's two levels (task O1: 140 and 145 s, like their neighbours') made it
+	# about 50 (DESIGN-TBD, docs/questions/o1.md, item 1053), and the Ice Lab's three (task Q1: 140, 145 and 150 s) about
+	# 57 (DESIGN-TBD, docs/questions/q1.md).
+	check(total >= 54.0 * 60.0 and total <= 59.0 * 60.0,
+		"a flawless run through every level takes about 57 minutes (GDD §5's 45, the Terminal's two levels and the Ice Lab's three): %.1f min"
 		% (total / 60.0))
 	var first: CampaignStep = campaign.step("city/1")
 	var c1: LevelConfig = campaign.configure(first, 5)
@@ -726,16 +788,19 @@ func _test_off_curve(campaign: Campaign) -> void:
 			and arena.sky == campaign.step("beach/3").level.sky,
 			"the Beach's boss slot fights at Sunset Strip's enemy scaling, the Beach's speed and Sunset Strip's sky (tier %d)" % tier)
 
-	# The campaign before the Beach, built from the same data without it (and without the Terminal, which came after it:
-	# _test_terminal_off_curve).
+	# The campaign before the Beach, built from the same data without it (and without the Terminal and the Ice Lab, which
+	# came after it: _test_terminal_off_curve, _test_ice_lab_off_curve; so its feature ages are compared but the Ice Lab's
+	# own mechanics', _ages_but_ice_lab).
 	var seven := campaign.duplicate() as Campaign
 	var zones: Array[ZoneDef] = []
 	for zone: ZoneDef in campaign.zones:
-		if zone.id != &"beach" and zone.id != &"terminal":
+		if zone.id != &"beach" and zone.id != &"terminal" and zone.id != &"ice_lab":
 			zones.append(zone)
 	seven.zones = zones
-	check(seven.steps().size() == campaign.steps().size() - 6 - 4 and seven.level_count() == 17 and seven.curve_level_count() == 17,
-		"the seven-zone campaign has the Beach's six steps and the Terminal's four less and 17 levels (%d)" % seven.level_count())
+	check(seven.steps().size() == campaign.steps().size() - 6 - 4 - 5 and seven.level_count() == 17
+		and seven.curve_level_count() == 17,
+		"the seven-zone campaign has the Beach's six steps, the Terminal's four and the Ice Lab's five less and 17 levels (%d)"
+		% seven.level_count())
 	var same: int = 0
 	for old: CampaignStep in seven.steps():
 		var now: CampaignStep = campaign.step(old.id)
@@ -750,7 +815,7 @@ func _test_off_curve(campaign: Campaign) -> void:
 				var b: LevelConfig = campaign.configure(now, lanes, tier) if now.is_level() else campaign.configure_boss(now, lanes, tier)
 				ok = ok and a.difficulty == b.difficulty and a.enemy_scaling == b.enemy_scaling and a.run_speed == b.run_speed \
 					and a.lane_count == b.lane_count and a.skin == b.skin and a.sky == b.sky and a.feature_recency == b.feature_recency \
-					and var_to_str(a.feature_ages) == var_to_str(b.feature_ages)
+					and _ages_but_ice_lab(a) == _ages_but_ice_lab(b)
 		if old.is_level():
 			ok = ok and App.rules.completion_bonus(old.level_index) == App.rules.completion_bonus(now.level_index)
 		check(ok, "%s configures exactly as before the Beach, at 3, 5 and 6 lanes and every tier" % old.id)
@@ -769,8 +834,8 @@ func _test_off_curve(campaign: Campaign) -> void:
 	var before_match := campaign.duplicate() as Campaign
 	var with_two: Array[ZoneDef] = []
 	for zone: ZoneDef in campaign.zones:
-		# The Terminal came after the match (task O1): left out here, as it was then.
-		if zone.id != &"terminal":
+		# The Terminal and the Ice Lab came after the match (tasks O1, Q1): left out here, as they were then.
+		if zone.id != &"terminal" and zone.id != &"ice_lab":
 			with_two.append(two_level_beach if zone == beach else zone)
 	before_match.zones = with_two
 	check(before_match.level_count() == 19 and before_match.curve_level_count() == 17
@@ -792,7 +857,7 @@ func _test_off_curve(campaign: Campaign) -> void:
 					else before_match.configure_boss(old, lanes, tier)
 				var b: LevelConfig = campaign.configure(now, lanes, tier) if now.is_level() else campaign.configure_boss(now, lanes, tier)
 				ok = ok and a.difficulty == b.difficulty and a.enemy_scaling == b.enemy_scaling and a.run_speed == b.run_speed \
-					and a.skin == b.skin and a.sky == b.sky and var_to_str(a.feature_ages) == var_to_str(b.feature_ages)
+					and a.skin == b.skin and a.sky == b.sky and _ages_but_ice_lab(a) == _ages_but_ice_lab(b)
 		compared += 1
 		unchanged += 1 if ok else 0
 		if not ok:
@@ -802,21 +867,59 @@ func _test_off_curve(campaign: Campaign) -> void:
 
 
 ## The Terminal joins the campaign off its difficulty curve (task O1, like the Beach; the owner's rule, GDD §6: no level
-## gets easier when levels are added): at 3, 5 and 6 lanes and every difficulty tier its levels play at their own
-## difficulty (plus the tier's bonus) and enemy scaling, strictly between Dead Zone 2's and Golden 1's and rising, at the
-## zone's run speed, between the Dead Zone's and the Golden Zone's; they take Dead Zone 2's place on the curve and its
-## completion bonus. Every other level and boss configures exactly as in the campaign before it (the same data
-## without the Terminal): the same place on the curve, difficulty, enemy scaling, run speed, feature ages, skin, sky and
-## completion bonus, so the Golden Zone and the weekly challenge's Sentinel Row play as they did. DESIGN-TBD
-## (docs/questions/o1.md): the numbers, and whether the curve is later re-spread over every level.
+## gets easier when levels are added): its levels lie strictly between Dead Zone 2's and Golden 1's, at the zone's run
+## speed, between the Dead Zone's and the Golden Zone's, and take Dead Zone 2's place on the curve and its completion
+## bonus; every other level and boss configures exactly as in the campaign before it (the same data without the Terminal,
+## or the Ice Lab, which came after it), so the Golden Zone and the weekly challenge's Sentinel Row play as they did
+## (_check_joins_off_curve). DESIGN-TBD (docs/questions/o1.md): the numbers, and whether the curve is later re-spread over
+## every level.
 func _test_terminal_off_curve(campaign: Campaign) -> void:
-	var before: CampaignStep = campaign.step("dead_zone/2")
-	var after: CampaignStep = campaign.step("golden/1")
+	_check_joins_off_curve(campaign, "terminal", "dead_zone/2", "golden/1", ["terminal", "ice_lab"], 20)
+
+
+## The Ice Lab joins the campaign off its difficulty curve (task Q1, like the Terminal): its three levels lie strictly
+## between Terminal 2's and Golden 1's, rising, at the zone's run speed, between the Terminal's and the Golden Zone's, and
+## take Dead Zone 2's place on the curve (the last level on it before them) and its completion bonus; every other level
+## and boss configures exactly as in the campaign before it (the same data without the Ice Lab), so the Golden Zone and
+## the weekly challenge's Sentinel Row play as they did, and the Terminal as it did (_check_joins_off_curve). DESIGN-TBD
+## (docs/questions/q1.md): the numbers.
+func _test_ice_lab_off_curve(campaign: Campaign) -> void:
+	var ice_lab: ZoneDef = _zone(campaign, "ice_lab")
 	var terminal: ZoneDef = _zone(campaign, "terminal")
+	var golden: ZoneDef = _zone(campaign, "golden")
+	check(ice_lab != null and terminal != null and golden != null and ice_lab.run_speed > terminal.run_speed
+		and ice_lab.run_speed < golden.run_speed, "the Ice Lab runs between the Terminal's speed and the Golden Zone's")
+	_check_joins_off_curve(campaign, "ice_lab", "terminal/2", "golden/1", ["ice_lab"], 22)
+
+
+## Zone `id`, which the campaign plays off its difficulty curve: at 3, 5 and 6 lanes and every difficulty tier each of its
+## levels plays at its own difficulty (plus the tier's bonus) and enemy scaling, each strictly between the level before it
+## (`before`'s, then the zone's own levels') and `after`'s, at the zone's run speed (times the tier's); each takes the
+## place on the curve of the last level on it before the zone, and that level's completion bonus. The campaign before the
+## zone came (the same data without the zones `newer`: it and any that came after it) has `levels` levels, and every step
+## of it but the cinematics, levels and bosses alike, configures exactly as it does now: the same place on the curve,
+## difficulty, enemy scaling, run speed, feature ages (but the Ice Lab's own mechanics, which the Golden Zone's
+## teleporters date from since task Q6: _ages_but_ice_lab), skin, sky and recency curve, and the same completion bonus.
+func _check_joins_off_curve(campaign: Campaign, id: String, before_id: String, after_id: String, newer: Array,
+		levels: int) -> void:
+	var zone: ZoneDef = _zone(campaign, id)
+	var before: CampaignStep = campaign.step(before_id)
+	var after: CampaignStep = campaign.step(after_id)
+	check(zone != null and before != null and after != null, "%s, %s and %s are in the campaign" % [id, before_id, after_id])
+	if zone == null or before == null or after == null:
+		return
+	# The last level on the curve before the zone: the place its levels take.
+	var place: CampaignStep = null
+	for s: CampaignStep in campaign.steps():
+		if s.zone == zone:
+			break
+		if s.is_level() and not s.level.off_curve:
+			place = s
 	var last_difficulty: float = campaign.configure(before, 5).difficulty
 	var last_scaling: float = campaign.configure(before, 5).enemy_scaling
-	for number: int in [1, 2]:
-		var s: CampaignStep = campaign.step("terminal/%d" % number)
+	var tag_before: String = before.title()
+	for number: int in range(1, zone.levels.size() + 1):
+		var s: CampaignStep = campaign.step("%s/%d" % [id, number])
 		for tier: int in campaign.tier_count():
 			for lanes: int in [3, 5, 6]:
 				var tag: String = "%s lanes=%d tier=%d" % [s.id, lanes, tier]
@@ -824,33 +927,42 @@ func _test_terminal_off_curve(campaign: Campaign) -> void:
 				check(config.lane_count == lanes and config.off_curve
 					and is_equal_approx(config.difficulty, clampf(s.level.difficulty + campaign.tier_difficulty_bonus[tier], 0.0, 1.0))
 					and is_equal_approx(config.enemy_scaling, s.level.enemy_scaling),
-					"%s plays at its own difficulty plus the tier's bonus (%.3f) and its own enemy scaling (%.2f)" % [tag,
+					"%s plays at its own difficulty plus the tier's bonus (%.3f) and its own enemy scaling (%.3f)" % [tag,
 						config.difficulty, config.enemy_scaling])
-				check(is_equal_approx(config.run_speed, terminal.run_speed * campaign.speed_multiplier(tier)),
-					"%s runs at the Terminal's speed times the tier's (%.2f)" % [tag, config.run_speed])
+				check(is_equal_approx(config.run_speed, zone.run_speed * campaign.speed_multiplier(tier)),
+					"%s runs at %s's speed times the tier's (%.2f)" % [tag, zone.display_name, config.run_speed])
 		var plain: LevelConfig = campaign.configure(s, 5)
 		check(plain.difficulty > last_difficulty and plain.difficulty < campaign.configure(after, 5).difficulty
 			and plain.enemy_scaling > last_scaling and plain.enemy_scaling < campaign.configure(after, 5).enemy_scaling,
-			"%s lies strictly between Dead Zone 2 and Golden 1, rising (difficulty %.3f, enemy scaling %.3f)" % [s.id,
+			"%s lies strictly between %s and %s, rising (difficulty %.3f, enemy scaling %.3f)" % [s.id, tag_before, after.title(),
 				plain.difficulty, plain.enemy_scaling])
 		last_difficulty = plain.difficulty
 		last_scaling = plain.enemy_scaling
-		check(s.level_index == before.level_index and App.rules.completion_bonus(s.level_index) == App.rules.completion_bonus(before.level_index),
-			"%s takes Dead Zone 2's place on the curve, and its completion bonus (DESIGN-TBD)" % s.id)
+		tag_before = s.title()
+		check(place != null and s.level_index == place.level_index
+			and App.rules.completion_bonus(s.level_index) == App.rules.completion_bonus(place.level_index),
+			"%s takes %s's place on the curve, the last level on it before %s, and its completion bonus (DESIGN-TBD)" % [s.id,
+				place.id if place != null else "?", zone.display_name])
 	var without := campaign.duplicate() as Campaign
 	var zones: Array[ZoneDef] = []
-	for zone: ZoneDef in campaign.zones:
-		if zone != terminal:
-			zones.append(zone)
+	var fewer: int = 0
+	for z: ZoneDef in campaign.zones:
+		if newer.has(String(z.id)):
+			for s: CampaignStep in campaign.steps():
+				fewer += 1 if s.zone == z else 0
+		else:
+			zones.append(z)
 	without.zones = zones
-	check(without.steps().size() == campaign.steps().size() - 4 and without.level_count() == 20
-		and without.curve_level_count() == 17, "the campaign before the Terminal has its four steps less and 20 levels (%d)"
-		% without.level_count())
+	check(without.steps().size() == campaign.steps().size() - fewer and without.level_count() == levels
+		and without.curve_level_count() == 17, "the campaign before %s has %d steps less and %d levels (%d)" % [zone.display_name,
+			fewer, levels, without.level_count()])
 	var same: int = 0
 	var compared: int = 0
+	var bosses: int = 0
 	for old: CampaignStep in without.steps():
 		if old.kind == CampaignStep.Kind.CINEMATIC:
 			continue
+		bosses += 1 if old.kind == CampaignStep.Kind.BOSS else 0
 		var now: CampaignStep = campaign.step(old.id)
 		var ok: bool = now != null and now.kind == old.kind and now.level_index == old.level_index
 		for tier: int in campaign.tier_count():
@@ -861,15 +973,15 @@ func _test_terminal_off_curve(campaign: Campaign) -> void:
 				var b: LevelConfig = campaign.configure(now, lanes, tier) if now.is_level() else campaign.configure_boss(now, lanes, tier)
 				ok = ok and a.difficulty == b.difficulty and a.enemy_scaling == b.enemy_scaling and a.run_speed == b.run_speed \
 					and a.lane_count == b.lane_count and a.skin == b.skin and a.sky == b.sky and a.feature_recency == b.feature_recency \
-					and var_to_str(a.feature_ages) == var_to_str(b.feature_ages)
+					and _ages_but_ice_lab(a) == _ages_but_ice_lab(b)
 		if ok and old.is_level():
 			ok = App.rules.completion_bonus(old.level_index) == App.rules.completion_bonus(now.level_index)
 		compared += 1
 		same += 1 if ok else 0
 		if not ok:
-			check(false, "%s configures exactly as before the Terminal, at 3, 5 and 6 lanes and every tier" % old.id)
-	check(same == compared and compared == 20 + 7, "every level and boss before and after the Terminal is unchanged (%d of %d)"
-		% [same, compared])
+			check(false, "%s configures exactly as before %s, at 3, 5 and 6 lanes and every tier" % [old.id, zone.display_name])
+	check(same == compared and compared == levels + 7 and bosses == 7,
+		"every level and boss before and after %s is unchanged (%d of %d)" % [zone.display_name, same, compared])
 
 
 ## Levels take their zone's skin, the grey box until a zone has its own; a level's own skin wins, and
@@ -1130,7 +1242,8 @@ func _test_recency(campaign: Campaign) -> void:
 		check(s.level.feature_ages.is_empty() and s.level.feature_recency == null, "%s's own file has neither" % s.id)
 		for f: String in s.level.features:
 			var first: CampaignStep = campaign.step(String(FIRST_LEVEL.get(f, "")))
-			# A level on the curve counts the levels on it (their places); one off it (the Beach's, task D10c)
+			# A level on the curve counts the levels on it (their places), and a feature a level off it brought in (the
+			# Ice Lab's teleporters, task Q6) from the place that level takes; one off it (the Beach's, task D10c)
 			# every level before it, in the order they're played.
 			var age: int = -1
 			if first != null:
@@ -1145,6 +1258,12 @@ func _test_recency(campaign: Campaign) -> void:
 		and int(campaign.configure(campaign.step("beach/3"), 3).feature_ages["tithe_collector"]) == 2
 		and int(campaign.configure(campaign.step("dead_zone/1"), 3).feature_ages["buzz_overdrive"]) == 2,
 		"the Beach's Tithe Collectors are 1 and 2 levels old, and the levels after it keep their ages (Dead Zone 1's Buzz Overdrive 2)")
+	# Task Q6: the Golden Zone stands the Ice Lab's teleporters again with no introduction of its own (the Ice Lab, off the
+	# curve, taught them), so its first level dates them from Relay Station's and Specimen Vault's place, not as its own.
+	var golden_ages: Dictionary[String, int] = campaign.configure(campaign.step("golden/1"), 3).feature_ages
+	check(int(golden_ages.get("teleporter", -1)) == 1 and int(golden_ages.get("teleporter_blinking", -1)) == 1
+		and int(golden_ages.get("resonator", -1)) == 0,
+		"Golden 1's teleporters are a level old, the Ice Lab's, and its Resonators its own (%s)" % [golden_ages])
 
 	var intro: Array[int] = [0, 0]
 	var core: Array[int] = [0, 0]
@@ -1156,6 +1275,12 @@ func _test_recency(campaign: Campaign) -> void:
 	for p: Dictionary in LevelGenerator.load_for(load(LEVEL_PATH) as LevelConfig):
 		for need: Variant in p.get("requires", []):
 			with_patterns[String(need)] = true
+	# So those ages date no pick (_ages_but_ice_lab): the Golden Zone builds as it would with Golden 1 bringing them in.
+	var dated: Array[String] = []
+	for f: String in NEW_MECHANICS["ice_lab"]:
+		if with_patterns.has(f):
+			dated.append(f)
+	check(dated.is_empty(), "no pattern requires the Ice Lab's own mechanics, so their ages change no pick (%s)" % [dated])
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level() or s.is_minigame():
 			continue
@@ -1450,12 +1575,12 @@ func _test_unlocking() -> void:
 		"a save from before the Beach keeps the Dead Zone it had open")
 	check(App.step_unlocked(campaign.step("beach/intro")) and App.next_unfinished_step() == campaign.step("beach/intro")
 		and not App.step_unlocked(campaign.step("beach/1")), "and Continue offers it the Beach, from its intro")
-	# The Terminal (task O1), between the Dead Zone and the Golden Zone, with no boss: its last level opens its outro,
-	# and its outro the Golden Zone.
+	# The Terminal (task O1), between the Dead Zone and the Ice Lab (task Q1; the Golden Zone before it), with no boss: its
+	# last level opens its outro, and its outro the Ice Lab.
 	check(campaign.next_step(campaign.step("dead_zone/outro")) == campaign.step("terminal/intro")
 		and campaign.next_step(campaign.step("terminal/2")) == campaign.step("terminal/outro")
-		and campaign.next_step(campaign.step("terminal/outro")) == campaign.step("golden/intro"),
-		"the Terminal comes after the Dead Zone's outro, its outro straight after its last level, and the Golden Zone after it")
+		and campaign.next_step(campaign.step("terminal/outro")) == campaign.step("ice_lab/intro"),
+		"the Terminal comes after the Dead Zone's outro, its outro straight after its last level, and the Ice Lab after it")
 	App.profile = Profile.new()
 	SampleProfiles.complete_until(App.profile, campaign, "terminal/intro")
 	check(App.step_unlocked(campaign.step("terminal/intro")) and App.next_unfinished_step() == campaign.step("terminal/intro")
@@ -1465,11 +1590,30 @@ func _test_unlocking() -> void:
 	check(App.step_unlocked(campaign.step("terminal/outro")) and not App.step_unlocked(campaign.step("golden/intro")),
 		"Last Stop opens the Terminal's outro")
 	App.complete_step(campaign.step("terminal/outro"))
+	check(App.step_unlocked(campaign.step("ice_lab/intro")) and App.next_unfinished_step() == campaign.step("ice_lab/intro")
+		and not App.step_unlocked(campaign.step("ice_lab/1")) and not App.step_unlocked(campaign.step("golden/intro")),
+		"the Terminal's outro opens the Ice Lab, and not the Golden Zone")
+	# The Ice Lab (task Q1), between the Terminal and the Golden Zone, with no boss: its levels one after another, its last
+	# level opens its outro, and its outro the Golden Zone.
+	check(campaign.next_step(campaign.step("ice_lab/3")) == campaign.step("ice_lab/outro")
+		and campaign.next_step(campaign.step("ice_lab/outro")) == campaign.step("golden/intro"),
+		"the Ice Lab's outro comes straight after its last level, and the Golden Zone after it")
+	App.complete_step(campaign.step("ice_lab/intro"))
+	check(App.step_unlocked(campaign.step("ice_lab/1")) and not App.step_unlocked(campaign.step("ice_lab/2"))
+		and App.next_unfinished_step() == campaign.step("ice_lab/1"), "the Ice Lab's intro opens Frost Foundry, and only it")
+	SampleProfiles.complete_until(App.profile, campaign, "ice_lab/3")
+	check(App.step_unlocked(campaign.step("ice_lab/3")) and not App.step_unlocked(campaign.step("ice_lab/outro")),
+		"Relay Station opens Specimen Vault")
+	SampleProfiles.complete_until(App.profile, campaign, "ice_lab/outro")
+	check(App.step_unlocked(campaign.step("ice_lab/outro")) and not App.step_unlocked(campaign.step("golden/intro")),
+		"Specimen Vault opens the Ice Lab's outro")
+	App.complete_step(campaign.step("ice_lab/outro"))
 	check(App.step_unlocked(campaign.step("golden/intro")) and App.next_unfinished_step() == campaign.step("golden/intro"),
-		"the Terminal's outro opens the Golden Zone")
+		"the Ice Lab's outro opens the Golden Zone")
 	App.profile = saved
 	_test_old_saves()
 	_test_saves_before_terminal()
+	_test_saves_before_ice_lab()
 
 
 ## A version 2 save (from before the Casino) that finished every step of the old campaign up to `last`, on
@@ -1497,7 +1641,7 @@ func _test_old_saves() -> void:
 	(deep["records"] as Dictionary)["1/marketplace/boss"] = {"completed": true, "best_score": 5000.0, "stars": 1.0,
 		"best_time": 120.0, "attempts": 1.0}
 	var p: Profile = Profile.from_dict(JSON.parse_string(JSON.stringify(deep)))
-	check(Profile.VERSION == 5 and int(p.to_dict()["version"]) == 5, "saves are version 5")
+	check(Profile.VERSION == 6 and int(p.to_dict()["version"]) == 6, "saves are version 6")
 	check(not p.records.has("0/marketplace/boss") and p.is_completed("casino/boss") and p.stars("casino/boss") == 2
 		and int(p.record("casino/boss").get("best_score", 0)) == 4000 and p.is_completed("casino/boss", 1)
 		and not p.records.has("1/marketplace/boss"),
@@ -1509,7 +1653,7 @@ func _test_old_saves() -> void:
 		"the old Marketplace outro counts as the Casino's outro too; the Casino's levels are new")
 	var again: Profile = Profile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
 	check(again.is_completed("casino/boss") and again.stars("casino/boss") == 2 and again.records.size() == p.records.size(),
-		"a version 5 save loads as it is")
+		"a version 6 save loads as it is")
 	App.profile = p
 	var reached: bool = true
 	for id: String in V2_STEPS:
@@ -1538,11 +1682,12 @@ func _test_old_saves() -> void:
 
 
 ## A version 4 save (from before the Terminal, task O1) that finished every step of the campaign up to `last` but the
-## Terminal's, on the normal tier (and Dead Zone's outro on the Hard tier too, `hard_outro`), as a parsed save file has it.
+## Terminal's and the Ice Lab's (which came after it, task Q1), on the normal tier (and Dead Zone's outro on the Hard tier
+## too, `hard_outro`), as a parsed save file has it.
 func _v4_save(last: String, hard_outro: bool = false) -> Dictionary:
 	var records: Dictionary = {}
 	for s: CampaignStep in App.campaign.steps():
-		if s.zone.id == &"terminal":
+		if s.zone.id == &"terminal" or s.zone.id == &"ice_lab":
 			continue
 		var stars: int = 2 if s.is_level() or s.kind == CampaignStep.Kind.BOSS else 3
 		records["0/" + s.id] = {"completed": true, "best_score": 1000.0, "stars": float(stars), "best_time": 90.0,
@@ -1556,37 +1701,116 @@ func _v4_save(last: String, hard_outro: bool = false) -> Dictionary:
 
 ## Saves from before the Terminal (save version 5, Profile._migrate; task O1): the Golden Zone's step ids are as they
 ## were, so its records stay; the Dead Zone's old outro, which led to the Golden Zone, also counts as the Terminal's
-## outro (on every tier it was finished), so a player who had reached the Golden Zone keeps it open; the Terminal is
-## open from the Dead Zone's outro and Continue leads into it. One who hadn't seen the Dead Zone's outro goes on
-## through it, the Golden Zone shut as before.
+## outro (on every tier it was finished), and that, since the Ice Lab came in after it (save version 6, task Q1), as the
+## Ice Lab's outro too, so a player who had reached the Golden Zone keeps it open; the Terminal is open from the Dead
+## Zone's outro and Continue leads into it. One who hadn't seen the Dead Zone's outro goes on through it, the Golden Zone
+## shut as before.
 func _test_saves_before_terminal() -> void:
 	var saved: Profile = App.profile
 	var campaign: Campaign = App.campaign
 	var p: Profile = Profile.from_dict(JSON.parse_string(JSON.stringify(_v4_save("dead_zone/outro", true))))
 	App.profile = p
-	check(int(p.to_dict()["version"]) == 5 and p.is_completed("dead_zone/outro") and p.is_completed("terminal/outro")
+	check(int(p.to_dict()["version"]) == 6 and p.is_completed("dead_zone/outro") and p.is_completed("terminal/outro")
 		and p.is_completed("terminal/outro", 1) and not p.is_completed("terminal/1") and not p.is_completed("terminal/intro"),
 		"a version 4 save that finished the Dead Zone's outro counts the Terminal's outro done too, on every tier it did")
+	check(p.is_completed("ice_lab/outro") and p.is_completed("ice_lab/outro", 1) and not p.is_completed("ice_lab/intro")
+		and not p.is_completed("ice_lab/1"), "and so the Ice Lab's outro too, which leads to the Golden Zone now, on every tier")
+	# (The Ice Lab's intro is open too, after the Terminal's outro it counts as done, as the Golden Zone's is: such a save
+	# may play either new zone from the level select. DESIGN-TBD, docs/questions/q1.md.)
 	check(App.step_unlocked(campaign.step("golden/intro")) and App.step_unlocked(campaign.step("terminal/intro"))
 		and not App.step_unlocked(campaign.step("terminal/1")) and not App.step_unlocked(campaign.step("golden/1"))
+		and App.step_unlocked(campaign.step("ice_lab/intro")) and not App.step_unlocked(campaign.step("ice_lab/1"))
 		and App.next_unfinished_step() == campaign.step("terminal/intro"),
 		"it keeps the Golden Zone's intro open, and Continue leads into the Terminal")
 	# Deep into the Golden Zone: every step it had reached stays open.
 	App.profile = Profile.from_dict(JSON.parse_string(JSON.stringify(_v4_save("golden/2"))))
 	var reached: bool = true
 	for s: CampaignStep in campaign.steps():
-		if s.zone.id != &"terminal" and s.index <= campaign.step("golden/2").index:
+		if s.zone.id != &"terminal" and s.zone.id != &"ice_lab" and s.index <= campaign.step("golden/2").index:
 			reached = reached and App.step_unlocked(s) and App.profile.is_completed(s.id)
 	check(reached and App.step_unlocked(campaign.step("golden/3")) and not App.step_unlocked(campaign.step("golden/boss"))
 		and App.next_unfinished_step() == campaign.step("terminal/intro"),
 		"a save partway through the Golden Zone keeps every step it reached, and the next; Continue offers the Terminal")
 	# One that beat the Sleep Taker but hadn't seen the Dead Zone's outro: it goes on through it, the Golden Zone shut.
 	App.profile = Profile.from_dict(JSON.parse_string(JSON.stringify(_v4_save("dead_zone/boss"))))
-	check(not App.profile.is_completed("terminal/outro") and App.step_unlocked(campaign.step("dead_zone/outro"))
-		and not App.step_unlocked(campaign.step("terminal/intro")) and not App.step_unlocked(campaign.step("golden/intro"))
-		and App.next_unfinished_step() == campaign.step("dead_zone/outro"),
+	check(not App.profile.is_completed("terminal/outro") and not App.profile.is_completed("ice_lab/outro")
+		and App.step_unlocked(campaign.step("dead_zone/outro")) and not App.step_unlocked(campaign.step("terminal/intro"))
+		and not App.step_unlocked(campaign.step("golden/intro")) and App.next_unfinished_step() == campaign.step("dead_zone/outro"),
 		"a save that beat the Dead Zone's boss goes on through its outro into the Terminal; the Golden Zone stays shut")
 	App.profile = saved
+
+
+## A version 5 save (from before the Ice Lab, task Q1) that finished every step of the campaign up to `last` but the Ice
+## Lab's, on the normal tier (and the Terminal's outro on the Hard tier too, `hard_outro`), as a parsed save file has it.
+func _v5_save(last: String, hard_outro: bool = false) -> Dictionary:
+	var records: Dictionary = {}
+	for s: CampaignStep in App.campaign.steps():
+		if s.zone.id == &"ice_lab":
+			continue
+		var stars: int = 2 if s.is_level() or s.kind == CampaignStep.Kind.BOSS else 3
+		records["0/" + s.id] = {"completed": true, "best_score": 1000.0, "stars": float(stars), "best_time": 90.0,
+			"attempts": 1.0}
+		if s.id == last:
+			break
+	if hard_outro:
+		records["1/terminal/outro"] = {"completed": true, "best_score": 0.0, "stars": 3.0, "best_time": 0.0, "attempts": 1.0}
+	return {"version": 5, "earned": 100.0, "records": records}
+
+
+## Saves from before the Ice Lab (save version 6, Profile._migrate; task Q1): the Golden Zone's step ids are as they were,
+## so its records stay; the Terminal's old outro, which led to the Golden Zone, also counts as the Ice Lab's outro (on
+## every tier it was finished), so a player who had reached the Golden Zone keeps it open and keeps their place; the Ice
+## Lab is open from the Terminal's outro and Continue leads into it. One who hadn't seen the Terminal's outro goes on
+## through it, the Ice Lab next and the Golden Zone shut as before. A save of this version loads as it is.
+func _test_saves_before_ice_lab() -> void:
+	var saved: Profile = App.profile
+	var campaign: Campaign = App.campaign
+	var p: Profile = Profile.from_dict(JSON.parse_string(JSON.stringify(_v5_save("terminal/outro", true))))
+	App.profile = p
+	check(int(p.to_dict()["version"]) == 6 and p.is_completed("terminal/outro") and p.is_completed("ice_lab/outro")
+		and p.is_completed("ice_lab/outro", 1) and not p.is_completed("ice_lab/intro") and not p.is_completed("ice_lab/1")
+		and p.stars("ice_lab/outro") == p.stars("terminal/outro"),
+		"a version 5 save that finished the Terminal's outro counts the Ice Lab's outro done too, on every tier it did")
+	check(App.step_unlocked(campaign.step("golden/intro")) and App.step_unlocked(campaign.step("ice_lab/intro"))
+		and not App.step_unlocked(campaign.step("ice_lab/1")) and not App.step_unlocked(campaign.step("golden/1"))
+		and App.next_unfinished_step() == campaign.step("ice_lab/intro"),
+		"it keeps the Golden Zone's intro open, and Continue leads into the Ice Lab")
+	# Deep into the Golden Zone: every step it had reached stays open, the Terminal's too.
+	App.profile = Profile.from_dict(JSON.parse_string(JSON.stringify(_v5_save("golden/2"))))
+	var reached: bool = true
+	for s: CampaignStep in campaign.steps():
+		if s.zone.id != &"ice_lab" and s.index <= campaign.step("golden/2").index:
+			reached = reached and App.step_unlocked(s) and App.profile.is_completed(s.id)
+	check(reached and App.step_unlocked(campaign.step("golden/3")) and not App.step_unlocked(campaign.step("golden/boss"))
+		and App.next_unfinished_step() == campaign.step("ice_lab/intro"),
+		"a save partway through the Golden Zone keeps every step it reached, and the next; Continue offers the Ice Lab")
+	# One that finished Last Stop but hadn't seen the Terminal's outro: it goes on through it into the Ice Lab, the Golden
+	# Zone shut.
+	App.profile = Profile.from_dict(JSON.parse_string(JSON.stringify(_v5_save("terminal/2"))))
+	check(not App.profile.is_completed("ice_lab/outro") and App.step_unlocked(campaign.step("terminal/outro"))
+		and not App.step_unlocked(campaign.step("ice_lab/intro")) and not App.step_unlocked(campaign.step("golden/intro"))
+		and App.next_unfinished_step() == campaign.step("terminal/outro"),
+		"a save that finished Last Stop goes on through the Terminal's outro into the Ice Lab; the Golden Zone stays shut")
+	# A version 6 save loads as it is: an Ice Lab outro it hasn't finished stays unfinished, whatever the Terminal's.
+	var current: Dictionary = _v5_save("terminal/outro")
+	current["version"] = 6
+	var again: Profile = Profile.from_dict(JSON.parse_string(JSON.stringify(current)))
+	check(not again.is_completed("ice_lab/outro") and again.records.size() == (current["records"] as Dictionary).size(),
+		"a version 6 save loads as it is: nothing is migrated again")
+	App.profile = saved
+
+
+## `config`'s feature ages for a comparison with the campaign before a zone off the curve came in (the Beach, the
+## volleyball match, the Terminal, the Ice Lab), which leaves the Ice Lab out: without the Ice Lab's own mechanics
+## (NEW_MECHANICS), as the Golden Zone's teleporters date from it since task Q6 (Campaign.feature_ages counts a level off
+## the curve played before a level on it), where the campaign without it would have Golden 1 bring them in. They date
+## no pick (no pattern requires them: _test_recency), so the levels still build as before; every other age
+## must match.
+func _ages_but_ice_lab(config: LevelConfig) -> String:
+	var ages: Dictionary[String, int] = config.feature_ages.duplicate()
+	for f: String in NEW_MECHANICS["ice_lab"]:
+		ages.erase(f)
+	return var_to_str(ages)
 
 
 ## Level step `s`'s number in the order the campaign plays its levels (0 for the first), mini-game levels (the

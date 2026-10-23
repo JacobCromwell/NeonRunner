@@ -48,6 +48,8 @@ var camera: RunCamera
 var hud: RunHud
 ## Screen-space speed lines (G2, Speed effects): a thin CanvasLayer, cheap enough to leave running.
 var speed_lines: SpeedLines
+## The teleport's flash (task Q4): one ColorRect, shown only as the runner arrives through a teleporter.
+var teleport_flash: TeleportFlash
 var state: State = State.RUNNING
 var death_cause: String = ""
 ## Debug readout and live tuning, only in debug builds.
@@ -156,6 +158,10 @@ func _build() -> void:
 		speed_lines = SpeedLines.new()
 		add_child(speed_lines)
 	speed_lines.setup(world, world.effects.tuning)
+	if teleport_flash == null:
+		teleport_flash = TeleportFlash.new()
+		add_child(teleport_flash)
+	teleport_flash.setup(world)
 	if hud == null:
 		hud = RunHud.new()
 		add_child(hud)
@@ -484,6 +490,19 @@ func _build_debug_tools() -> void:
 		var dash_walls: DashWallTuning = DashWallTuning.load_default()
 		if dash_walls.resource_path != "":
 			sections.append({"title": "Dash walls", "resource": dash_walls, "path": dash_walls.resource_path})
+	# Task Q3: the falling gantryways' numbers, in a level that has them (how many is the level's LevelConfig.gantryways,
+	# in "Level pacing"): a fall reads them as it happens; Restart level rebuilds where they stand.
+	if context.config.has_feature("gantryway"):
+		var gantryways: GantrywayTuning = GantrywayTuning.load_default()
+		if gantryways.resource_path != "":
+			sections.append({"title": "Gantryways", "resource": gantryways, "path": gantryways.resource_path})
+	# Task Q4: the teleporters' numbers, in a level that has them (how many is the level's LevelConfig.teleporters and
+	# blinking_teleporters, in "Level pacing"): the antennas and the flash read them as they play; Restart level rebuilds
+	# where they stand.
+	if context.config.has_feature("teleporter"):
+		var teleporters: TeleporterTuning = TeleporterTuning.load_default()
+		if teleporters.resource_path != "":
+			sections.append({"title": "Teleporters", "resource": teleporters, "path": teleporters.resource_path})
 	# Task I4: the ceiling scenarios' numbers, in a level that has them (how many is the level's own, in "Level
 	# pacing"; the fences' depth is in "Movement"); Restart rebuilds.
 	if context.config.has_feature(CeilingScenarios.STASH) or context.config.has_feature(CeilingScenarios.FENCED):

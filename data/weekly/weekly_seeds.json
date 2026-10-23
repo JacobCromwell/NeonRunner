@@ -5,8 +5,9 @@
 		"entry was built and checked in advance, at five lanes, by test_weekly_challenge (the campaign levels' fairness checks)",
 		"and test_weekly_fairness (the per-feature checks, a second build).",
 		"HOW THE SEEDS WERE CHOSEN (item 1036): for each zone, in the campaign's order, try the seeds from the",
-		"zone's block upward (9100 for the Neon City, 9200 for Gangland, 9300, ... 9800 for the Terminal, 9900 for the Golden",
-		"Zone; the Terminal came in as zone 8 on October 20, 2026, task O1, and the Golden Zone's seeds moved to its new block)",
+		"zone's block upward (9100 for the Neon City, 9200 for Gangland, 9300, ... 9800 for the Terminal, 9900 for the Ice Lab,",
+		"10000 for the Golden Zone; the Terminal came in as zone 8 on October 20, 2026, task O1, and the Ice Lab as zone 9 on",
+		"October 21, 2026, task Q1, and each time the Golden Zone's seeds moved to its new block)",
 		"and take the first four that pass every check and were built in at most three generator builds (a level the generator needed more builds",
 		"for is slow to load, most of all on a phone). Then go round by round: the first pick of every zone, the second pick of",
 		"every zone, and so on. `tools/measure/weekly_seeds.gd --pick=4` remakes this list; with no --pick it lists every seed",
@@ -23,7 +24,8 @@
 		{"zone": "beach", "seed": 9600},
 		{"zone": "dead_zone", "seed": 9700},
 		{"zone": "terminal", "seed": 9800},
-		{"zone": "golden", "seed": 9900},
+		{"zone": "ice_lab", "seed": 9900},
+		{"zone": "golden", "seed": 10000},
 
 		{"zone": "city", "seed": 9101},
 		{"zone": "gangland", "seed": 9201},
@@ -33,7 +35,8 @@
 		{"zone": "beach", "seed": 9601},
 		{"zone": "dead_zone", "seed": 9701},
 		{"zone": "terminal", "seed": 9801},
-		{"zone": "golden", "seed": 9901},
+		{"zone": "ice_lab", "seed": 9901},
+		{"zone": "golden", "seed": 10001},
 
 		{"zone": "city", "seed": 9102},
 		{"zone": "gangland", "seed": 9202},
@@ -43,7 +46,8 @@
 		{"zone": "beach", "seed": 9604},
 		{"zone": "dead_zone", "seed": 9703},
 		{"zone": "terminal", "seed": 9802},
-		{"zone": "golden", "seed": 9902},
+		{"zone": "ice_lab", "seed": 9902},
+		{"zone": "golden", "seed": 10002},
 
 		{"zone": "city", "seed": 9103},
 		{"zone": "gangland", "seed": 9203},
@@ -53,6 +57,7 @@
 		{"zone": "beach", "seed": 9605},
 		{"zone": "dead_zone", "seed": 9704},
 		{"zone": "terminal", "seed": 9803},
-		{"zone": "golden", "seed": 9903}
+		{"zone": "ice_lab", "seed": 9903},
+		{"zone": "golden", "seed": 10003}
 	]
 }

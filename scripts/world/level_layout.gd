@@ -6,9 +6,29 @@ extends RefCounted
 
 ## A doodad's size classes, smallest first (LevelLayout.doodads `size`; MovementTuning.doodad_size).
 const DOODAD_SIZES: Array[StringName] = [&"small", &"medium", &"large"]
+## The key that marks a gantryway's pillar among the doodads (task Q3: its gantryway's `id`; is_gantry_pillar).
+const GANTRY_PILLAR: String = "gantryway"
 ## The key that marks a hole of a wall-run gap (gaps; wall_run_gaps): it isn't one to jump, so the checks on
 ## jumpable holes and rows of holes leave it out (is_wall_run_hole).
 const WALL_RUN_HOLE: String = "wall_run"
+## The key of a zone doodad that holds an enemy until it's smashed (task Q5; GDD §5, Zone 9, the owner, October 21,
+## 2026: "some jars hold a curled-up Octodog", and "sometimes smashing an Octodog jar doodad releases its Octodog into
+## the world"): the enemy's type. Its entry in `enemies` stands at the doodad's front in its lane, its params marked
+## HELD (held_by, holder_of). Abstract, as every piece here: the skin dresses such a doodad as the zone's container
+## with that enemy inside (ZoneSkin.held_doodad_look: the Ice Lab's Octodog jar), and smashing it (DashBreakable.smash,
+## its entry marked "smashed") lets the enemy out (it watches its doodad: Octodog). Placed by its feature's rules
+## (scripts/enemies/octodog_jar_rules.gd), never by the zone doodads' pass; one marked DECOY too holds an enemy that never
+## comes out (one of the pass's own doodads, or one its rules stand where a zone doodad may). A doodad of the zone's that
+## only looks like such a container (the skin's own variety) holds nothing.
+const HOLDS: String = "holds"
+## The params key of an enemy entry held in a doodad (HOLDS) until that doodad is smashed: true.
+const HELD: String = "held"
+## The key of a doodad marked HOLDS whose enemy never comes out (task Q5: a decoy, true): no entry of `enemies` stands in
+## it (held_by is {}), but the skin dresses it and the dash breaks it exactly as one that releases its enemy, so the two
+## can't be told apart (GDD §5, proposed: "a jar that will release its Octodog looks the same as one that won't").
+## Marked by its feature's rules after the zone doodads' pass (octodog_jar_rules.gd, after_doodads), on doodads of the
+## zone's own, or on new ones where a zone doodad may stand where the level has too few.
+const DECOY: String = "decoy"
 
 var lane_count: int = 3
 var length: float = 0.0
@@ -47,6 +67,8 @@ var enemies: Array[Dictionary] = []
 ## [start, end], the whole row's stretch, from its first one's front to its last one's end, and `look`, the
 ## seed its look is picked by (its first one's `seed`): the row's doodads share its lane, size class, side and
 ## look, each its own entry with a seed of its own (doodad_extent).
+## A doodad that holds an enemy until it's smashed (task Q5: an Octodog's jar) also holds HOLDS, the enemy's type
+## (holds_enemy, held_by), and DECOY where that enemy never comes out (is_decoy).
 var doodads: Array[Dictionary] = []
 ## {lane, start, end, warn, charge, keep, speed}: a floor cut planned in advance (task B4; GDD §9.9,
 ## the Buzz Overdrive's): the floor of `lane` from `start` to `end` turns into a gap during play, run
@@ -147,6 +169,41 @@ var maze: Array[Dictionary] = []
 ## marked WallHopPlacement.LEAD (along the first wall run) and WallHopPlacement.GEM (the high-value ones, left out of
 ## the stars' best score: star_credit_value). The generator places them (WallHopPlacement, in its credit pass).
 var wall_hops: Array[Dictionary] = []
+## {id, lane, start, end, pillar, side, calm, seed}, with `intro` on a level's first where it gives the feature a start,
+## and `both` where both lanes beside it are kept clear for the whole calm stretch (an introduction's: room to step out
+## either way, task Q3's proposal, DESIGN-TBD; GantrywayTuning.intro_both_sides), else only the lane on its `side`: a
+## falling gantryway (task Q3; GDD §5, Zone 9, the owner, October 21, 2026: "an upper walkway over one lane only, looking
+## like a ceiling section"; "pillars stand in the floor lanes holding them up"; "dashing through a pillar knocks down its
+## long section of gantryway"): a walkway hanging at a ceiling's height over `lane` from track distance `start` to `end`,
+## never walked on, held by a pillar standing in that lane under its near end (both GDD §5's proposals), its front at
+## `pillar`. The pillar is an ordinary entry of `doodads` marked GANTRY_PILLAR (its `id`): a runner who meets it without
+## the dash is pushed into the lane on its `side` like by any doodad; the dash smashes it, and the walkway falls on its
+## lane over about a second, crushing every enemy under it and hitting a runner still under it as it lands (Gantryway).
+## `calm` [from, to] is its calm stretch, from the pillar's front to the end of the step out of the lane, which nothing is
+## timed onto (doodad_between counts it in its lane). `seed` varies its look. Marked "fallen" once it fell on an attempt
+## and "landed" once it lay flat (the attempt's own copy, as a smashed doodad is marked). The generator places them
+## (scripts/enemies/gantryway_rules.gd, only where they're fair), the track builder builds each (TrackBuilder, Gantryway)
+## and the skin dresses its walkway and its pillar (ZoneSkin.gantryway, ZoneSkin.gantry_pillar). Sorted by start.
+var gantryways: Array[Dictionary] = []
+## {id, lane, at, end, side, outputs, light, blink, phase, calm, span, seed}, with `intro` on a level's first where it
+## gives the feature a start: a teleporter (task Q4; GDD §5, Zone 9, the owner, October 21, 2026: "a square pad with a
+## look all its own, with a green, slightly space-age antenna on it. Touching it teleports the runner to an output pad
+## further down the track"): its square pad fills `lane` from track distance `at` (its front) to `end`; a runner on the
+## floor whose feet touch it is put on one of its `outputs` ({lane, at, end}: a square pad in the teleporter's look
+## without the antenna, further down the track; one, or a left and a right, the left first: GDD §5, "some teleporters
+## have a left and a right output pad"), the same way past its front as they were past the input's, keeping their speed
+## (Player). Which one: its antenna's light (Teleporter.lit_side): with one output pad, that one (`light` 0); with two,
+## the side lit when the runner touches the pad (-1 left, 1 right): `light` stays on one side where `blink` is 0 (GDD §5:
+## "always left or always right"), and where `blink` is above 0 changes side every `blink` seconds of the level clock,
+## from `light` at `phase` (0–1 of a whole cycle) at the run's start, so every attempt at a seed blinks the same.
+## `side` is the lane beside it kept clear as the way around it (it's never required). `calm` [[lane, from, to], ...] are
+## the stretches no attack is timed onto (teleporter_between, which doodad_between counts): its approach in its lane,
+## each output pad's landing in that pad's lane (lane -1: every lane, an introduction's landing); `span` [from, to] the
+## whole of what it keeps, from its approach to its last landing's end. `seed` varies its look. The generator places
+## them (scripts/enemies/teleporter_rules.gd, only where they're fair), the track builder builds each (TrackBuilder,
+## Teleporter) and the skin dresses its pads and its antenna (ZoneSkin.teleporter_pad, ZoneSkin.teleporter_antenna,
+## ZoneSkin.teleporter_output). Sorted by `at`.
+var teleporters: Array[Dictionary] = []
 
 
 ## Every list of pieces, by name. A level without doodads has no "doodads" key, one without floor
@@ -154,9 +211,10 @@ var wall_hops: Array[Dictionary] = []
 ## "wall_gaps" key, one without dash walls no "dash_walls" key, one without ceiling scenarios (task I4)
 ## no "ceiling_fences", "return_pads" or "stashes" key, one without wall-run gaps (task J2) no "wall_run_gaps" key,
 ## one without wall-hop credits (task N1) no "wall_hops" key, one without wall stumps (task O1) no "wall_stumps" key,
-## one whose walls can be run on (every level but the Terminal's) no "wall_running" key, and one whose doodads push and
-## that has no debris maze (task O2) no "doodads_stop" or "maze" key, so its dictionary (and every hash or dump of it) is
-## the same as before those existed.
+## one whose walls can be run on (every level but the Terminal's) no "wall_running" key, one whose doodads push and
+## that has no debris maze (task O2) no "doodads_stop" or "maze" key, one without falling gantryways (task Q3) no
+## "gantryways" key, and one without teleporters (task Q4) no "teleporters" key, so its dictionary (and every hash or dump
+## of it) is the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -199,14 +257,35 @@ func to_dict() -> Dictionary:
 		out["doodads_stop"] = true
 	if not maze.is_empty():
 		out["maze"] = maze
+	if not gantryways.is_empty():
+		out["gantryways"] = gantryways
+	if not teleporters.is_empty():
+		out["teleporters"] = teleporters
 	return out
 
 
 ## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps,
-## dash walls, the ceiling scenarios' pieces, wall-run gaps, wall-hop lines, wall stumps and the debris maze's blocks
-## included, whether or not this layout has any yet), and moves its end to other's if that's further. Whether its walls
-## can be run on and whether its doodads stop the runner stay this layout's own.
+## dash walls, the ceiling scenarios' pieces, wall-run gaps, wall-hop lines, wall stumps, the debris maze's blocks, the
+## falling gantryways and the teleporters included, whether or not this layout has any yet), and moves its end to other's
+## if that's further. Whether its walls can be run on and whether its doodads stop the runner stay this layout's own. A
+## gantryway's `id` (and its pillar's mark, GANTRY_PILLAR) is renumbered past this layout's own, so each still names its
+## own pillar, and a teleporter's `id` likewise.
 func append_pieces(other: LevelLayout) -> void:
+	var first_gantryway: int = 0
+	for g: Dictionary in gantryways:
+		first_gantryway = maxi(first_gantryway, int(g.get("id", -1)) + 1)
+	if first_gantryway > 0:
+		for g: Dictionary in other.gantryways:
+			g["id"] = int(g.get("id", 0)) + first_gantryway
+		for d: Dictionary in other.doodads:
+			if d.has(GANTRY_PILLAR):
+				d[GANTRY_PILLAR] = int(d[GANTRY_PILLAR]) + first_gantryway
+	var first_teleporter: int = 0
+	for tp: Dictionary in teleporters:
+		first_teleporter = maxi(first_teleporter, int(tp.get("id", -1)) + 1)
+	if first_teleporter > 0:
+		for tp: Dictionary in other.teleporters:
+			tp["id"] = int(tp.get("id", 0)) + first_teleporter
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
 	for key: String in more:
@@ -237,6 +316,10 @@ func append_pieces(other: LevelLayout) -> void:
 		wall_stumps.append_array(other.wall_stumps)
 	if not lists.has("maze"):
 		maze.append_array(other.maze)
+	if not lists.has("gantryways"):
+		gantryways.append_array(other.gantryways)
+	if not lists.has("teleporters"):
+		teleporters.append_array(other.teleporters)
 	length = maxf(length, other.length)
 
 
@@ -267,6 +350,8 @@ func copy() -> LevelLayout:
 	out.wall_stumps = wall_stumps.duplicate(true)
 	out.doodads_stop = doodads_stop
 	out.maze = maze.duplicate(true)
+	out.gantryways = gantryways.duplicate(true)
+	out.teleporters = teleporters.duplicate(true)
 	return out
 
 
@@ -370,12 +455,130 @@ func gapped_between(lane: int, from: float, to: float) -> bool:
 ## still counts, so an attack waits by it the same on every attempt. A row of doodads (task L3) counts
 ## from its first one's front to its last one's end, the space between them too (doodad_extent): no
 ## runner goes into its lane there, between a side that blocks the switch and a front that pushes.
+## A falling gantryway (task Q3) counts its pillar (a doodad) and, in its lane, its whole calm stretch
+## (gantryway_between): a runner who dashed its pillar must leave the lane before the walkway lands, so no attack
+## is timed onto that either, fallen or not. A teleporter (task Q4) counts its calm stretches (teleporter_between): its
+## approach in its lane and each output pad's landing in that pad's lane, so no attack is timed onto a runner lining up
+## its pad or just arrived, and no credit lies on its pad or right where a runner lands.
 func doodad_between(from: float, to: float, lane: int = -1) -> bool:
 	for d: Dictionary in doodads:
 		var span: Vector2 = doodad_extent(d)
 		if span.x <= to and span.y >= from and (lane < 0 or int(d["lane"]) == lane):
 			return true
+	if not gantryways.is_empty() and gantryway_between(from, to, lane):
+		return true
+	if not teleporters.is_empty() and teleporter_between(from, to, lane):
+		return true
 	return dash_wall_between(from, to)
+
+
+## True if a teleporter's calm stretch (teleporters `calm`: [lane, from, to] each, its approach in its lane and each
+## output pad's landing in that pad's lane; task Q4) reaches anywhere into [from, to]: in `lane`, or in any lane with -1.
+## A calm stretch of lane -1 (an introduction's landing) counts in every lane.
+func teleporter_between(from: float, to: float, lane: int = -1) -> bool:
+	for tp: Dictionary in teleporters:
+		var span: Array = tp.get("span", [])
+		if span.size() == 2 and (float(span[0]) > to or float(span[1]) < from):
+			continue
+		for c: Variant in tp.get("calm", []):
+			var calm: Array = c
+			var l: int = int(calm[0])
+			if float(calm[1]) <= to and float(calm[2]) >= from and (lane < 0 or l < 0 or l == lane):
+				return true
+	return false
+
+
+## The teleporter (teleporters) whose `id` is `id`, or {} if there's none.
+func teleporter_by_id(id: int) -> Dictionary:
+	for tp: Dictionary in teleporters:
+		if int(tp.get("id", -1)) == id:
+			return tp
+	return {}
+
+
+## True if a falling gantryway's calm stretch (gantryways `calm`: from its pillar's front to where a runner who dashed
+## the pillar has stepped out of its lane and seen what comes next; task Q3) reaches anywhere into [from, to]: in
+## `lane`, the gantryway's own, or in any lane with -1.
+func gantryway_between(from: float, to: float, lane: int = -1) -> bool:
+	for g: Dictionary in gantryways:
+		var calm: Array = g["calm"]
+		if float(calm[0]) <= to and float(calm[1]) >= from and (lane < 0 or int(g["lane"]) == lane):
+			return true
+	return false
+
+
+## True if doodad entry `d` (one of `doodads`) is a falling gantryway's pillar (task Q3: marked GANTRY_PILLAR): placed
+## by its rules with the gantryway (gantryway_rules.gd), not the zone doodads' pass, and built with it.
+static func is_gantry_pillar(d: Dictionary) -> bool:
+	return d.has(GANTRY_PILLAR)
+
+
+## True if doodad entry `d` (one of `doodads`) holds an enemy until it's smashed (task Q5: marked HOLDS, an Octodog's
+## jar): placed by its feature's rules (octodog_jar_rules.gd), not the zone doodads' pass.
+static func holds_enemy(d: Dictionary) -> bool:
+	return String(d.get(HOLDS, "")) != ""
+
+
+## The type of the enemy doodad entry `d` holds (HOLDS), or "" if it holds none.
+static func held_type(d: Dictionary) -> String:
+	return String(d.get(HOLDS, ""))
+
+
+## True if doodad entry `d` holds an enemy that never comes out (HOLDS and DECOY: a decoy, task Q5).
+static func is_decoy(d: Dictionary) -> bool:
+	return holds_enemy(d) and bool(d.get(DECOY, false))
+
+
+## True if enemy entry `e` (one of `enemies`) is held in a doodad until that doodad is smashed (task Q5: its params
+## marked HELD).
+static func is_held(e: Dictionary) -> bool:
+	return bool((e.get("params", {}) as Dictionary).get(HELD, false))
+
+
+## The doodad (its entry of `doodads`) that holds enemy entry `e` (is_held): in its lane, holding its type, its front at
+## the enemy's `at`; {} if there's none.
+func holder_of(e: Dictionary) -> Dictionary:
+	if not is_held(e):
+		return {}
+	var lane: int = int(e.get("lane", -1))
+	var at: float = float(e.get("at", 0.0))
+	var type: String = String(e.get("type", ""))
+	for d: Dictionary in doodads:
+		if int(d["lane"]) == lane and held_type(d) == type and absf(float(d["start"]) - at) < 0.01:
+			return d
+	return {}
+
+
+## The enemy entry (one of `enemies`) doodad entry `d` holds (holds_enemy): of its type, held, in its lane, standing at
+## its front; {} if there's none.
+func held_by(d: Dictionary) -> Dictionary:
+	if not holds_enemy(d):
+		return {}
+	var lane: int = int(d["lane"])
+	var start: float = float(d["start"])
+	var type: String = held_type(d)
+	for e: Dictionary in enemies:
+		if is_held(e) and String(e.get("type", "")) == type and int(e.get("lane", -1)) == lane \
+				and absf(float(e.get("at", 0.0)) - start) < 0.01:
+			return e
+	return {}
+
+
+## The falling gantryway (gantryways) whose `id` is `id`, or {} if there's none.
+func gantryway_by_id(id: int) -> Dictionary:
+	for g: Dictionary in gantryways:
+		if int(g.get("id", -1)) == id:
+			return g
+	return {}
+
+
+## The pillar (its entry of `doodads`) of falling gantryway `g` (gantryways), or {} if it has none.
+func pillar_of(g: Dictionary) -> Dictionary:
+	var id: int = int(g.get("id", -1))
+	for d: Dictionary in doodads:
+		if d.has(GANTRY_PILLAR) and int(d[GANTRY_PILLAR]) == id:
+			return d
+	return {}
 
 
 ## The stretch doodad entry `d` (one of `doodads`) keeps its lane for: its row's (`row`: from the row's first
