@@ -308,11 +308,26 @@ func _approach(delta: float) -> void:
 	var may_close: bool = _lane_clear_ahead(want, true) and not (world.player.surface == Player.Surface.FLOOR
 		and _must_make_room())
 	var to: float = -tuning.alongside_ahead if may_close else maxf(VIEW_GAP + 0.5, minf(gap, tuning.yield_gap))
+	if _crossing_runner():
+		# The runner stepped into its lane in front of it, or into the one it's changing to: it keeps behind them (as
+		# beside them, _alongside) until its lane change has taken it out of their way, never coming up into their body.
+		to = maxf(to, MIN_GAP_IN_LANE)
 	_ease_gap(to, tuning.approach_speed, delta)
 	if may_close and lane == want and _switch_t >= 1.0 and absf(gap + tuning.alongside_ahead) < 0.35:
 		state = State.ALONGSIDE
 		_next_slash = maxf(_next_slash, chase_time + tuning.first_slash_seconds)
 		_note(&"alongside")
+
+
+## True if the lane the runner is in or heading for (runner_lane) lies across its solid side's way, where it is or along
+## the lane change it's making (the runner's body and its sides reach that far across the track): coming up from behind
+## it keeps MIN_GAP_IN_LANE behind them then (_approach).
+func _crossing_runner() -> bool:
+	if world.player.surface != Player.Surface.FLOOR:
+		return false
+	var reach: float = (world.geo.lane_width * 0.9 + world.tuning.hurtbox_size.x) * 0.5
+	var x: float = world.geo.lane_x(runner_lane())
+	return x > minf(_x, _switch_to) - reach and x < maxf(_x, _switch_to) + reach
 
 
 ## Alongside the runner (see the class doc): following their lane changes a moment late on its side, steering round what

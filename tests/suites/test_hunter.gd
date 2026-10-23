@@ -73,6 +73,7 @@ func run() -> void:
 	await _test_model()
 	_test_view()
 	await _test_arrival()
+	await _test_cut_in()
 	await _test_follow()
 	await _test_flurry()
 	await _test_no_way_out()
@@ -457,6 +458,45 @@ func _test_arrival() -> void:
 			check((before["faults"] as PackedStringArray).is_empty() and (r["faults"] as PackedStringArray).is_empty(),
 				"its rules held %s %s" % [r["faults"], tag])
 			await sim.free_world(w)
+
+
+## Gaps (metres behind the runner) at which the runner of _test_cut_in steps into its lane as it comes up.
+const CUT_IN_GAPS: Array[float] = [6.0, 4.0, 3.0, 2.5, 2.2, 1.8]
+
+## A runner who steps into its lane in front of it as it comes up from behind (in view, CUT_IN_GAPS metres back), and on
+## across the track its way, a lane every 0.3 s: it keeps behind them (MIN_GAP_IN_LANE) until it's out of their way, its
+## body never meeting theirs, then comes up beside them (5 and 6 lanes, from either edge).
+func _test_cut_in() -> void:
+	var takes: int = 0
+	var met: PackedStringArray = []
+	for lanes: int in [5, 6]:
+		for start: int in [0, lanes - 1]:
+			for at_gap: float in CUT_IN_GAPS:
+				var tag: String = "(%d lanes, from lane %d, stepping in %.1f m behind)" % [lanes, start, at_gap]
+				var w: RunWorld = _world(_layout(lanes), start)
+				w.player.god_mode = true
+				_no_flurries(w)
+				var steps: Array = [0, 0.0]
+				var bot := func(ww: RunWorld) -> void:
+					var hh: Hunter = _hunter(ww)
+					if hh == null or hh.state != Hunter.State.APPROACH or not hh.visible or ww.level_time() < float(steps[1]):
+						return
+					if (int(steps[0]) == 0 and hh.gap >= at_gap) or int(steps[0]) >= lanes - 1:
+						return
+					steps[0] = int(steps[0]) + 1
+					steps[1] = ww.level_time() + 0.3
+					RunSim.act(ww.player, &"move_right" if start == 0 else &"move_left")
+				var r: Dictionary = await _run(w, UP_SECONDS, [], bot, func(ww: RunWorld) -> bool:
+					var hh: Hunter = _hunter(ww)
+					return int(steps[0]) > 0 and hh != null and hh.state == Hunter.State.ALONGSIDE)
+				var h: Hunter = r["hunter"]
+				takes += 1
+				if not (int(steps[0]) > 0 and bool(r["done"]) and (r["faults"] as PackedStringArray).is_empty() and h != null
+						and absf(h.lane - w.player.lane) == 1):
+					met.append("%s: %d steps %s" % [tag, steps[0], _brief(r)])
+				await sim.free_world(w)
+	check(takes == 24 and met.is_empty(),
+		"a runner crossing into its lane as it comes up never meets its body, and it comes up beside them (%d takes) %s" % [takes, met])
 
 
 ## Beside the runner it follows into the lane they leave a moment later, on its side; a runner changing lanes into it is
