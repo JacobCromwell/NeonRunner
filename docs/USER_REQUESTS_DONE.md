@@ -448,3 +448,15 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   from about 73% to 60-70%, as far as the escape guarantee allows); ambushes hidden in dividers, breaking out at about
   11 m; rows of holes across every lane between maze blocks (Rubble Line about 3 more, Last Stop 6). Questions in items
   1201-1206 (1201, 1202 and 1206 in `docs/OPEN_QUESTIONS.md`).
+
+## October 23, 2026 (the owner's batch)
+
+- [x] **The Terminal's intro, fixes** (task S2): the runner walks through a big grey block on the way to the sign (move
+  the block or the path so they don't pass through a solid object); the sign's spark sound is poor (remove it, or a
+  longer electrical zap); the rubble climb bends the runner's back about 90 degrees backwards (crawl up on hands and
+  knees instead); no floor under the runner where they land inside the terminal (add floor matching the rest of the
+  terminal's: the train tracks and the rest).
+  DONE (S2): the step along the station's front removed and the rubble kept off the walk (the runner goes back the way
+  they came); a 1.0 s electrical zap, at most one every 0.7 s; a hands-and-knees crawl up the rubble (the bent back was a
+  left-arm mix-up in the pose); the floor under the landing was built but freed a moment before the cut inside, now kept.
+  Questions in items 1207-1212 (all deferred).
