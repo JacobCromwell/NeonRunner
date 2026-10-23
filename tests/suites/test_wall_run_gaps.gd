@@ -38,10 +38,10 @@ const APPROACH_AT: float = 100.0
 ## the hold; the dog's own, OctodogTuning.window_length, is a little longer).
 const DOG_WINDOW: float = 20.0
 ## A build whose one clear stretch its wider gaps and its first wall-run gap both want (_test_wide_gap_room): Golden 2
-## at 3 lanes on seed 9021, the first such build of Golden 2's at 3 lanes on seeds 9000-9029 since task S1's Heavy
-## Cyborg moved its picks (at 5 lanes, seeds 9014 and 9024 are others). Golden 2 at 3 lanes on its own seed, the case
-## since task J2, no longer needs the room. Else re-pin the case.
-const WIDE_GAP_ROOM_CASE: Dictionary = {"id": "golden/2", "lanes": 3, "seed": 9021}
+## at 3 lanes on seed 9023, the first such build of Golden 2's at 3 lanes on seeds 9000-9029 since task S1's Heavy
+## Cyborg moved its picks (9025, and at 5 lanes 9024, are others). Golden 2 at 3 lanes on its own seed, the case since
+## task J2, no longer needs the room. Else re-pin the case.
+const WIDE_GAP_ROOM_CASE: Dictionary = {"id": "golden/2", "lanes": 3, "seed": 9023}
 
 var sim: RunSim
 var campaign: Campaign

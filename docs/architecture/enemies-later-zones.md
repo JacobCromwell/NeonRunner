@@ -476,12 +476,12 @@ behaviour unchanged), and `CyborgSuit.heavy_set()` (every look gets an armour se
     whose builds on seed 9101 (`test_wide_gaps`) and on `test_campaign`'s sweep keep their wider gaps and every other
     check (and Golden 2's builds with Enforcer Trucks and without them differ by the trucks only, `test_enforcer_truck`):
     Relay Station 2.9 (2, 3 and 3 Heavy Cyborgs at 3, 5 and 6 lanes), Specimen Vault 2.5 (6, 3, 2), Golden 1 3.8 (6, 3,
-    2), Golden 2 2 (2, 2, 2), Golden 3 1.8 (2, 3, 2); only the wall-run gaps of Golden 1 at 5 lanes (3 to 2), Golden 2
-    at 6 (2 to 1) and Golden 3 at 3 (3 to 1), which come by frequency, are fewer. The generator takes about as long as
+    2), Golden 2 1.2 (2, 2, 1), Golden 3 1.8 (2, 3, 2); only the wall-run gaps of Golden 1 at 5 lanes (3 to 2),
+    Golden 2 at 6 (2 to 1) and Golden 3 at 3 (3 to 1), which come by frequency, are fewer. The generator takes about as long as
     before. Any change that moves the levels' picks (a new
     pattern, the Hunter's) calls for the weights to be checked again. The Golden Zone dates it from the Ice Lab (a
-    level old in Golden 1), as the teleporters. The danger density pass adds a little less in the Golden Zone
-    (`test_danger_density`'s HEAVY_CYBORG_ROOM).
+    level old in Golden 1), as the teleporters. The danger density pass adds a little less in the Golden Zone at 5
+    lanes (`test_danger_density`'s HEAVY_CYBORG_ROOM); Golden 2's weight is one where its band holds at 3 and 6.
 - **Sounds.** `tools/asset_gen/sfx_bank_heavy_cyborg.gd`: `heavy_cyborg_windup` (the warning: a motor grinding up
   under a ratchet speeding into a rattle and the red charge's hum, lasting the wind-up and 30 ms into the first round;
   lower and heavier than the drone's) and `heavy_cyborg_shot` (a low double crack, 0.2 s).
