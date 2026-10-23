@@ -21,10 +21,12 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   fastest a runner comes through; plain fences there are taken out (`after_fill` too, against the fill pass). For each
   bait in turn it tries arrivals from `bait_after_seconds` to `chase_seconds - bait_before_seconds` before the pillar (a
   seeded spot in the preferred 8 to 14 s first; the level's first one as early as it can after the feature's start: the
-  introduction), keeping a calm arrival (`arrival_calm_seconds` of run from it free of every busy stretch: floor cuts,
-  wall-run gaps, dash walls, the debris maze, picks, Octodog charges, every other rule's every-lane calm keeps:
+  introduction, whose bait, `intro_bait`, the first a Hunter arriving from that start can take, gets its Hunter before
+  the rest, calm where it can, else in a second try clear of every attack all the same; task S2c), keeping a calm
+  arrival (`arrival_calm_seconds` of run from it free of every busy stretch: floor cuts, wall-run gaps, dash walls, the debris maze, picks, Octodog charges, every other rule's every-lane calm keeps:
   `busy_stretches`), never two at once (`chase_span` and `spacing_seconds`), at most `per_level_max`. A level where no
-  arrival is calm takes one where only the calm is missing (a second pass; `problems` flags a level mixing the two). Its
+  arrival is calm takes one where only the calm is missing (a second pass; `problems` flags a level mixing the two, but
+  for an introduction that is not calm only where its bait had no calm arrival). Its
   entry: {type, at (the runner's distance as it arrives), lane, side 0, seed, params {baits: [{at (the pillar's front),
   lane (the walkway's), side (the push), id}], calm: [from, to] when calm}}. It keeps others' doodads out of its calm
   arrival (`doodad_keep_outs`, calm only, no lane keeps: the gantryways', teleporters' and jars' own re-checks count
@@ -34,12 +36,19 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
 - **The introduction's bait** (`gantryway_wanted`, read by `GantrywayRules.wanted`: a feature's rules may ask the
   gantryways' rules for a gantryway in a stretch). Where the level gives the feature a start, the gantryways' rules hang
   one `intro_bait_min_seconds` to `intro_bait_max_seconds` (12 to 18 s) of run past it, both lanes beside it clear where
-  they can (else anywhere 6 to 21 s past it), before spreading the rest; so the first Hunter arrives about as the
+  they can (else anywhere 6 to 21 s past it), before spreading the rest. Among those spots they take first one every
+  wanting feature can take (`GantrywayRules.wanted_taker`, which asks each feature's rules for a `gantryway_taker`; the
+  Hunter's, `HunterRules.gantryway_taker`, takes a spot whose Hunter lane is clear over its window, from each lane's shut
+  stretches gathered once: `_lane_shut_spans`; task S2c: with S1's Heavy Cyborg in Specimen Vault, an Octodog run shut
+  the 6-lane build's introduction bait and it came 0.65 of the way in), else any; so the first Hunter arrives about as the
   feature starts, with time for a flurry before its bait where the runner's lane allows one (none that would carry them
   two lanes past its walkway's lane: The flurry, below). A level whose features want none builds as before.
   `tools/measure/hunters.gd` prints every build's Hunters and baits (`--levels --lanes --seeds --weekly --why
   --gantryways --start`): over Specimen Vault's own builds at 3, 5 and 6 lanes and 8 other seeds each, and the weekly
-  challenge's Ice Lab weeks, 48 Hunters in 31 builds, every own build calm, one build without one (6 lanes, seed 9002).
+  challenge's Ice Lab weeks (task S2c, with S1's Heavy Cyborg), 47 Hunters in 31 builds, every own build's calm but the
+  6-lane build's introduction (no arrival for its bait is calm; one more in the sweep, 6 lanes, seed 9007), one build
+  without one (3 lanes, seed 9008: its gantryways all hang before the feature's start), 3 introductions past
+  test_campaign's reach (none on the levels' own seeds).
   The calm arrival is 1.5 s of run: it keeps every lane clear, and at 3 s it took one of Specimen Vault's decoy jars'
   room at five lanes (task Q5's count of 3 stands).
 - **Behaviour** (`Hunter`, states WAITING, APPROACH, ALONGSIDE, YIELD, SWITCH, LEAVING, DEAD; its slash IDLE, WARNING,
@@ -62,7 +71,8 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   lane where they could then step out of it away from it onto open floor (the push side, or the other where `_out_open`
   finds it open), else away from the push; with no bait ahead, toward the nearer edge. Where it would ride between the
   runner and the next bait's walkway lane two or more lanes off on its side (a runner by the edge on the wrong side), it
-  rides there beside them, its flurries never carrying them further from that lane, until the pillar is
+  rides there beside them, its flurries never carrying them further from that lane once the pillar is within
+  `bait_cross_seconds` and a flurry's length of run (task S2c; before that it slashes as ever), until the pillar is
   `bait_cross_seconds` (5 s) of run ahead (task S2's review: before, it dropped out of view for that whole stretch);
   from then until its run-up (`_blocks_bait`: the pillar within `bait_cross_seconds` and further than
   `bait_hold_seconds`, the runner then able to step out of the walkway's lane on that side) it lets them past: it
@@ -71,7 +81,9 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   they're past, or beside them again for the run-up. Over a bait's run-up it keeps out of the walkway's lane
   (`_run_up_bait`). It steers (`_lane_clear_ahead`, `lane_blocker`, `blocker_in`): what stands in its lane
   `steer_ahead_seconds` ahead (a doodad, a pillar or a jar, a gapped fence, a teleporter's pad, a ramp, a standing dash
-  wall, a floor enemy) it goes round in the lane the runner just left, or the lane further out; else it crosses behind
+  wall, a floor enemy; through a warning and its cuts only as far as they last and `ATTACK_STEER_MARGIN`, 0.3 s, more:
+  what lies past them it steers round once they're over rather than calling them off, task S2c) it goes round in the
+  lane the runner just left, or the lane further out; else it crosses behind
   them to their other side where that lane is clear and they don't need it (`_may_cross`, SWITCH `blocked`: it drops
   straight to `cross_gap` behind them, changes lanes there and comes up again with its whine); else it drops out of view
   (YIELD `blocked`: to `yield_gap`, behind the camera, and comes up again after `regain_seconds`). A full fence (one the
@@ -98,11 +110,15 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   gantryway's run-up and calm stretch (`_bait_near`), a teleporter's calm stretch in their lane, a wall-run gap and a
   fenced ceiling's pick (`LevelLayout.fenced_pick_between`, as the heli drone's barrages), never while another enemy's
   small attack is on at them (`_small_attack_on`, their lane or the one they'd step into), never one whose dodge would
-  carry them two lanes or more past the next bait's walkway lane, never one it would be risen over a fence through while
+  carry them two lanes or more past the next bait's walkway lane as its pillar nears (within `bait_cross_seconds` and a
+  flurry's length of run; task S2c), never one it would be risen over a fence through while
   its sweep shows and its cuts are live (`_lifted_between`: the sweep is drawn from its hover), and finishing before it
   gives up (`slash_problem` names the first rule that holds one back, "" when it may: `may_slash`). The first comes
   `first_slash_seconds` after it settles beside them, the next a seeded `slash_interval_min` to `slash_interval_max`
-  from the last one's warning (1.0 s; 1.8 to 2.3 s: task S2's review, the attack rate). Its warning (both blades raised,
+  from the last one's warning (0.4 s; 1.8 to 2.0 s: task S2c, the owner's "it should attack 2 times more often", with a
+  quicker approach, follow and return, `approach_speed` 16 m/s, `follow_delay_seconds` 0.15 s, `switch_seconds` 0.2 s,
+  `regain_seconds` 0.5 s, `yield_gap` 8 m, and `bait_hold_seconds` 2 s; 1.0 s and 1.8 to 2.3 s from task S2's review,
+  1.4 s and 2.4 to 3.2 s before). Its warning (both blades raised,
   eyes and blades brighter, `hunter_scrape` on its own voice, carried with it, and the red mark on the locked lane:
   `_update_mark`, widening and pulsing, only widening with Reduced flashing), then `flurry_seconds` of cuts
   (`hunter_slash`; its attack hitbox over the locked lane, `slash_height` high and `slash_depth` long, placed each tick
@@ -140,11 +156,15 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   Specimen Vault's builds at 3, 5 and 6 lanes (its own seed and 9001 on) with the Hunter's chases on a god-mode runner
   who grapples, jumps holes and dodges every flurry (or also heads for the bait and dashes it), and prints each chase:
   how long, beside them, unseen, the runner in an edge lane, flurries warned off the edges, cuts, yields and what shut
-  its lane (`lane_blocker`), the due flurries held back and why (`slash_problem`). With the review's changes (2 seeds):
-  1.3 warned flurries a chase for the dodger, 2.7 for every 25 s off the edges (2.4, 1.9 and 5.2 at 3, 5 and 6 lanes),
-  beside them 53% of the time and unseen 20% (before: 0.6, 1.1, 38%, 39%); the bait runner 0.6 a chase, 1.4 for every
-  25 s off the edges, beside 57%, every bait landed. What holds the rest back is the level and the fairness rules: the
-  edge refuge, a gantryway's run-up and calm stretch, the bait's keep-out, no way out, the runner off the floor.
+  its lane (`lane_blocker`), what called its warnings off, the due flurries held back and why (`slash_problem`). With
+  the review's changes (2 seeds): 1.3 warned flurries a chase for the dodger, 2.7 for every 25 s off the edges (2.4, 1.9
+  and 5.2 at 3, 5 and 6 lanes), beside them 53% of the time and unseen 20% (before: 0.6, 1.1, 38%, 39%); the bait
+  runner 0.6 a chase, 1.4 for every 25 s off the edges, beside 57%, every bait landed. Task S2c (the owner: twice as
+  often; 6 seeds, 31 chases, with S1's Heavy Cyborg in the level): the bait runner 0.81 warned a chase (0.30 before),
+  0.65 cut (0.20), 2.3 for every 25 s off the edges (0.8), 29 of 31 baits landed; the dodger 0.94 a chase (0.67), 0.77
+  cut (0.43), 2.7 off the edges (1.7): its dodges take it to the edge, where it spends 65% of its chases
+  (`docs/questions/s2.md` items 20 and 21). What holds the rest back is the level and the fairness rules: the edge
+  refuge, a gantryway's run-up and calm stretch, the bait's keep-out, no way out, the runner off the floor.
 - **Declared properties** (CLAUDE.md principle 8). `claw_immune`, not `stompable`, `dash_kills` false, `follows_runner`;
   its body hitbox `harmless` (`DamageRules`: the dash, claws and stomps do nothing, and it hurts no one), its lane
   blocker (`blocker_height`, over a whole jump) solid; `is_major_attack_active` false (it neither waits for the
@@ -179,7 +199,7 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   Vault's look (it arrives, a flurry dodged into the walkway's lane, then the bait), with `--camera=game|side|behind`,
   `--stay`, `--mortal`, `--lanes`, `--skin`, `--reduced-flashing`.
 - **Tests.** `test_hunter` (medium) and `test_hunter_baits` (slow: the bait at every lead Specimen Vault's builds give
-  it, every start lane, both ways round, its flurries on, 194 of 194 takes; and the step-out window, 0.00 to 0.90 s)
+  it, every start lane, both ways round, its flurries on, 200 of 200 takes; and the step-out window, 0.00 to 0.90 s)
   (`docs/architecture/tests-features.md`), `LayoutChecks.check_hunters` through every suite that checks Specimen Vault's
   builds (test_ice_lab_levels, test_campaign, test_weekly_challenge), `test_campaign`'s feature lists (Specimen Vault
   introduces it), `test_hints`, `test_audio`.

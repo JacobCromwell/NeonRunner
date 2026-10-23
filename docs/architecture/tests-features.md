@@ -414,13 +414,14 @@ its pick, a trap pad's lane never open), a teleport, giving up, the director's t
 Reduced flashing, the sweep of its cuts (on every frame its cuts' box is live, the box inside the drawn sweep, the sweep
 reaching no further than the cut lane's far edge and a margin; only from the warning's end through the cuts, never
 pulsing, the same with Reduced flashing; one mesh shared by two Hunters); its placement on Specimen Vault (a bait in
-every chase, never two at once, the same every build, none elsewhere), its warm-up and its data (hint, sounds).
+every chase, never two at once, its introduction within test_campaign's reach of its start, task S2c, the same every
+build, none elsewhere), its warm-up and its data (hint, sounds).
 `test_hunter_baits` (slow, about 2 minutes) plays the Hunter's bait at every lead Specimen Vault's builds give it (3, 5
 and 6 lanes, the campaign's seed and 9001-9004, re-read from the builds each run), on a plain track with its walkway's
 lane and its push both ways round, the runner starting in every lane, its flurries on; the runner (the review's bait
 runner) dodges each flurry, heads for the walkway's lane once the pillar is in sight, dashes the pillar and steps out
-away from it a reaction after the break: the walkway lands on it in at least 95% of the takes at each lane count (194
-of 194, measured) and the runner lives through every one. And the step-out window: at 3, 5 and 6 lanes, both ways round,
+away from it a reaction after the break: the walkway lands on it in at least 95% of the takes at each lane count (200
+of 200, measured, with 253 flurries dodged on the way: task S2c) and the runner lives through every one. And the step-out window: at 3, 5 and 6 lanes, both ways round,
 every step out after the break that the runner lives through has the walkway land on it (0.00 to 0.90 s; the walkway
 catches the runner from 0.95 s).
 `test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall

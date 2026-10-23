@@ -723,8 +723,8 @@ finds (nothing), and what they cost a build (`godot --headless -s res://tools/me
 [--lanes=3,5,6] [--seeds=N] [--why]`).
 
 `tools/measure/hunters.gd` builds the campaign levels with Hunters (Specimen Vault) on their own seed and others at 3, 5
-and 6 lanes, and with `--weekly` the weekly challenge's Ice Lab weeks: how many Hunters arrive and where, their
-introduction's distance past the feature's start, the falling gantryways in each chase and how many of the level's can
+and 6 lanes, and with `--weekly` the weekly challenge's Ice Lab weeks: how many Hunters arrive and where (and which
+arrive not calm), their introduction's distance past the feature's start, the falling gantryways in each chase and how many of the level's can
 be baits, and what the Hunters' rules and the gantryways', teleporters' and jars' own re-checks find (nothing)
 (`godot --headless -s res://tools/measure/hunters.gd -- [--levels=ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--weekly]
 [--why] [--gantryways=N] [--start=F]`).
@@ -732,8 +732,8 @@ be baits, and what the Hunters' rules and the gantryways', teleporters' and jars
 `tools/measure/hunter_chases.gd` plays the Hunters' chases on those levels at 3, 5 and 6 lanes (their own seed and
 others) with a god-mode runner who dodges each flurry and, by default, goes for the bait: for each chase, how much of it
 the Hunter spends beside the runner and out of view, the runner's time in an edge lane, the flurries warned and cut,
-why it dropped back and what shut its lane, why a due flurry was held back, and whether its bait landed on it; then the
-flurries for each 25 s the runner spends off the edge lanes (`godot --headless --fixed-fps 60 -s
+what called a warning off, why it dropped back and what shut its lane, why a due flurry was held back, and whether its
+bait landed on it; then the flurries for each 25 s the runner spends off the edge lanes (`godot --headless --fixed-fps 60 -s
 res://tools/measure/hunter_chases.gd -- [--levels=ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--runner=bait|dodge]
 [--start=middle|N]`).
 
