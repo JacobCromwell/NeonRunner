@@ -16,8 +16,9 @@ extends SceneTree
 ## Per chase: its arrival, its length (to its giving up or its end), the shares of it beside the runner (ALONGSIDE),
 ## out of view and with the runner in an edge lane, the flurries warned and cut (and how many of the warnings came with
 ## the runner off the edge lanes), its yields by reason and what shut its lane, how long a flurry was due but held back
-## and why (Hunter.slash_problem), its whines, and CRUSHED where its bait landed on it. The totals: flurries warned a
-## chase, a 25 s of chase with the runner off the edge lanes, the shares, the baits landed and the held time by reason.
+## and why (Hunter.slash_problem), what called its warnings off, its whines, and CRUSHED where its bait landed on it. The
+## totals: flurries warned a chase, a 25 s of chase with the runner off the edge lanes, the shares, the baits landed,
+## the flurries warned and cut, the call-offs by cause and the held time by reason.
 
 const HunterRules = preload("res://scripts/enemies/hunter_rules.gd")
 const REACTION: float = 0.35
@@ -218,9 +219,22 @@ func _chase(s: Dictionary) -> Dictionary:
 		if n.begins_with("yield:"):
 			var why: String = n.trim_prefix("yield:")
 			yields[why] = int(yields.get(why, 0)) + 1
+	# What called each warning off before its cuts: its own steering, a yield or a crossing (the event round the call-off),
+	# its giving up, else the runner (off the floor, a pad, a teleport).
+	var calls: Dictionary = {}
+	for i: int in names.size():
+		if names[i] != "called_off":
+			continue
+		var by: String = "runner"
+		if i > 0 and names[i - 1] == "steer":
+			by = "steer"
+		elif i + 1 < names.size() and (names[i + 1].begins_with("yield:") or names[i + 1].begins_with("switch:")
+				or names[i + 1] == "give_up"):
+			by = names[i + 1]
+		calls[by] = int(calls.get(by, 0)) + 1
 	var fps: float = float(Engine.physics_ticks_per_second)
 	var frames: float = maxf(float(s["frames"]), 1.0)
-	return {"at": s["at"], "seconds": frames / fps, "alongside": float(s["alongside"]) / frames,
+	return {"at": s["at"], "seconds": frames / fps, "called_off": calls, "alongside": float(s["alongside"]) / frames,
 		"unseen": float(s["unseen"]) / frames, "edge": float(s["edge"]) / frames,
 		"off_edge_seconds": (frames - float(s["edge"])) / fps, "warned": names.count("warn"), "cut": names.count("cut"),
 		"warned_off_edge": int(s["warns_off_edge"]), "yields": yields, "blockers": s["blockers"], "held": _seconds(s["held"]),
@@ -240,9 +254,9 @@ func _seconds(counts: Dictionary) -> Dictionary:
 
 func _line(c: Dictionary) -> String:
 	return ("%s %d lanes seed %d, Hunter at %.0f m: %.1f s, beside %.0f%%, unseen %.0f%%, runner at an edge %.0f%%; %d warned"
-		+ " (%d off the edges) %d cut; yields %s; shut by %s; held (s) %s; whines %d%s") % [c["level"], c["lanes"], c["seed"],
-		c["at"], c["seconds"], 100.0 * float(c["alongside"]), 100.0 * float(c["unseen"]), 100.0 * float(c["edge"]),
-		c["warned"], c["warned_off_edge"], c["cut"], c["yields"], c["blockers"], c["held"], c["whines"],
+		+ " (%d off the edges) %d cut; called off by %s; yields %s; shut by %s; held (s) %s; whines %d%s") % [c["level"], c["lanes"],
+		c["seed"], c["at"], c["seconds"], 100.0 * float(c["alongside"]), 100.0 * float(c["unseen"]), 100.0 * float(c["edge"]),
+		c["warned"], c["warned_off_edge"], c["cut"], c["called_off"], c["yields"], c["blockers"], c["held"], c["whines"],
 		", CRUSHED" if bool(c["crushed"]) else ""]
 
 
@@ -251,6 +265,8 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 		print("no chases")
 		return
 	var warned: float = 0.0
+	var cut: float = 0.0
+	var calls: Dictionary = {}
 	var warned_off: float = 0.0
 	var off_seconds: float = 0.0
 	var seconds: float = 0.0
@@ -264,6 +280,9 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 			held[why] = snappedf(float(held.get(why, 0.0)) + float(c["held"][why]), 0.1)
 		var s: float = float(c["seconds"])
 		warned += float(c["warned"])
+		cut += float(c["cut"])
+		for by: Variant in (c["called_off"] as Dictionary).keys():
+			calls[by] = int(calls.get(by, 0)) + int(c["called_off"][by])
 		warned_off += float(c["warned_off_edge"])
 		off_seconds += float(c["off_edge_seconds"])
 		seconds += s
@@ -278,6 +297,7 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 	print("\n%d chases (%s runner): %.1f flurries warned a chase, %.1f a 25 s of chase off the edge lanes; beside the runner %.0f%%, out of view %.0f%% of the time; %d baits landed"
 		% [chases.size(), "bait" if _bait else "dodging", warned / chases.size(), 25.0 * warned_off / maxf(off_seconds, 0.01),
 		100.0 * beside / maxf(seconds, 0.01), 100.0 * unseen / maxf(seconds, 0.01), crushed])
+	print("  %d warned, %d cut (%.2f a chase); warnings called off by %s" % [int(warned), int(cut), cut / chases.size(), calls])
 	for lanes: int in by_lanes.keys():
 		var l: Array = by_lanes[lanes]
 		print("  %d lanes: %d chases, %.1f warned a chase, %.1f a 25 s off the edge lanes" % [lanes, l[0],
