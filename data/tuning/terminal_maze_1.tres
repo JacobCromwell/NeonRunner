@@ -21,3 +21,4 @@ escape_blocks = 1
 escape_from = 0.55
 escape_pieces = 4
 centipede_scale = 1.35
+gap_rows = 1

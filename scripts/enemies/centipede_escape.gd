@@ -25,6 +25,9 @@ extends RefCounted
 ##   its acceleration;
 ## - its bite reaches no further than CentipedeTuning.bite_reach in front of its head, and a dash passes through it;
 ## - it gives up once the runner is leave_margin past its block's last wall.
+## An ambush (task O5; spot "ambush", hidden in a divider: CentipedeRules._place_ambushes) breaks out once the runner is
+## within its ambush distance along the track anywhere in its block (its wake), and the debris it lay in ("host") counts
+## as open floor from the start; then it keeps to all of the above.
 ## So at time t after its wake at t_w it can be nowhere further along open floor from its spot than it can run from a
 ## standstill in t - t_w - wake_time. The runner is safe while their distance from its spot (CentipedeMaze.field: along
 ## the track, a lane change costing nothing, which no real way beats) is more than that and its reach, with the grid's
@@ -86,6 +89,15 @@ static func context(layout: LevelLayout, tuning: MovementTuning, index: int) -> 
 	return Context.new(layout, tuning, index)
 
 
+## The debris an ambush spot lies in (its "host": CentipedeRules.ambush_host), as a set of layout entries, open from the
+## start for the proof (it shatters as the ambush breaks out); {} for any other spot.
+static func host_of(spot: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for d: Variant in spot.get("host", []):
+		out[d] = true
+	return out
+
+
 ## The dash's slowest recharge (seconds): its tier I cooldown or an upgrade's, the longest (GDD §8: 8 s).
 static func slowest_recharge() -> float:
 	var pt := load(POWERUPS_PATH) as PowerupTuning
@@ -140,6 +152,7 @@ class Context:
 	var accel: float = 30.0
 	var wake_time: float = 0.6
 	var wake_d: float = 30.0
+	var ambush_d: float = 16.0
 	var reach: float = 3.0
 	var leave_end: float = 0.0
 	## Per stage, its cells (Vector2i(first, last) lanes).
@@ -184,6 +197,7 @@ class Context:
 		accel = t.acceleration
 		wake_time = t.wake_time
 		wake_d = t.wake_distance_at(p_tuning.pace())
+		ambush_d = t.ambush_distance_at(p_tuning.pace())
 		reach = t.bite_reach(CentipedeMaze.HEAD_HALF_LENGTH) + half + 2.0 * CentipedeMaze.BIN + CentipedeEscape.REACH_MARGIN
 		leave_end = float(b["end"]) + t.leave_margin
 		var bl: LevelLayout = maze.block_layout()
@@ -257,10 +271,13 @@ class Context:
 		return int((stage_sections[stage] as Array)[cell])
 
 	## The field from a spot (cached).
+	## An ambush's (spot "ambush", task O5) is taken with the debris it lies in open (its "host": it shatters as it breaks
+	## out).
 	func field_of(spot: Dictionary) -> PackedInt32Array:
-		var key: String = "%d|%.3f" % [int(spot["lane"]), float(spot["at"])]
+		var host: Dictionary = CentipedeEscape.host_of(spot)
+		var key: String = "%d|%.3f|%d" % [int(spot["lane"]), float(spot["at"]), host.size()]
 		if not _fields.has(key):
-			_fields[key] = maze.field(int(spot["lane"]), float(spot["at"]))
+			_fields[key] = maze.field(int(spot["lane"]), float(spot["at"]), host)
 		return _fields[key]
 
 	## The way out past the centipedes at `spots` ({lane, at} each). `options`: recharge (seconds; default the dash's
@@ -280,6 +297,8 @@ class Search:
 	var spots: Array = []
 	var fields: Array = []
 	var homes: PackedInt32Array = PackedInt32Array()
+	## Per spot, true for an ambush (its "ambush": hidden in debris, which opens as it breaks out).
+	var ambush: Array[bool] = []
 	var recharge: float = 8.0
 	var ready0: float = 0.0
 	var forbidden: Dictionary = {}
@@ -293,7 +312,8 @@ class Search:
 		forbidden = (options.get("forbidden", {}) as Dictionary).duplicate()
 		for spot: Dictionary in spots:
 			fields.append(c.field_of(spot))
-			homes.append(c.section_of(int(spot["lane"]), float(spot["at"])))
+			ambush.append(bool(spot.get("ambush", false)))
+			homes.append(-1 if ambush[-1] else c.section_of(int(spot["lane"]), float(spot["at"])))
 
 	func solve() -> Dictionary:
 		for attempt: int in CentipedeEscape.RETRIES + 1:
@@ -631,8 +651,11 @@ class Search:
 	## True if a runner in any of `where` (section ids) wakes spot `i`'s centipede (its own section, or one joined to it
 	## without a dash or by label `n`'s smashes) at track distance `z`.
 	func _wakes_at(n: Dictionary, i: int, z: float, where: Array[int]) -> bool:
-		if absf(z - float((spots[i] as Dictionary)["at"])) > c.wake_d:
+		if absf(z - float((spots[i] as Dictionary)["at"])) > _wake_dist(i):
 			return false
+		# An ambush breaks out for a runner that close, wherever they are in its block.
+		if ambush[i]:
+			return true
 		var home: int = homes[i]
 		if home < 0:
 			return false
@@ -645,6 +668,10 @@ class Search:
 				return true
 		return false
 
+	## How close along the track the runner wakes spot `i`'s centipede: its wake distance, or an ambush's.
+	func _wake_dist(i: int) -> float:
+		return c.ambush_d if ambush[i] else c.wake_d
+
 	## Records on label `n` the wakes the runner sets off from `z0` to `z1` (times `t0` to `t1`) in sections `where`.
 	func _wakes(n: Dictionary, t0: float, t1: float, z0: float, z1: float, where: Array[int]) -> void:
 		var wakes: PackedFloat64Array = n["wakes"]
@@ -654,8 +681,9 @@ class Search:
 				continue
 			# The first moment within its wake distance, if the runner is in a section that wakes it.
 			var at: float = float((spots[i] as Dictionary)["at"])
-			var from_z: float = maxf(z0, at - c.wake_d)
-			if from_z > maxf(z1, z0) + CentipedeEscape.EPS or minf(z0, z1) > at + c.wake_d:
+			var d: float = _wake_dist(i)
+			var from_z: float = maxf(z0, at - d)
+			if from_z > maxf(z1, z0) + CentipedeEscape.EPS or minf(z0, z1) > at + d:
 				continue
 			if not _wakes_at(n, i, clampf(from_z, minf(z0, z1), maxf(z0, z1)), where):
 				continue
@@ -710,7 +738,9 @@ class Search:
 			extra[e] = true
 		var use: Array = []
 		for spot: Dictionary in spots:
-			use.append(c.maze.field(int(spot["lane"]), float(spot["at"]), extra))
+			var open: Dictionary = extra.duplicate()
+			open.merge(CentipedeEscape.host_of(spot))
+			use.append(c.maze.field(int(spot["lane"]), float(spot["at"]), open))
 		var wakes := PackedFloat64Array()
 		for i: int in spots.size():
 			wakes.append(INF)

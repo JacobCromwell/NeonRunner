@@ -294,6 +294,7 @@ static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: Leve
 	var start: float = gen.feature_start(feature)
 	var n: int = layout.lane_count
 	var by_block: Dictionary = {}
+	var ambushes: int = 0
 	for e: Dictionary in mine:
 		var at: float = float(e["at"])
 		var lane: int = int(e["lane"])
@@ -310,13 +311,21 @@ static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: Leve
 		for k: int in rooms.size():
 			if at >= float(rooms[k]["start"]) and at <= float(rooms[k]["end"]):
 				r = k
-		var in_cell: bool = r >= 0
-		if in_cell:
-			var room: Dictionary = rooms[r]
-			in_cell = at >= float(room["start"]) + CentipedeRulesScript.HEAD_MARGIN - 0.01 \
-				and at + Centipede.BODY_LENGTH + CentipedeRulesScript.TAIL_MARGIN <= float(room["end"]) + 0.01 \
-				and not (room["dividers"] as Array).has(lane)
-		suite.check(in_cell, "its head and body lie in an open cell of a room " + x)
+		var in_room: bool = r >= 0 and at >= float(rooms[r]["start"]) + CentipedeRulesScript.HEAD_MARGIN - 0.01 \
+			and at + Centipede.BODY_LENGTH + CentipedeRulesScript.TAIL_MARGIN <= float(rooms[r]["end"]) + 0.01
+		var ambush: bool = CentipedeRulesScript.is_ambush(e)
+		var in_cell: bool = in_room and not ambush and not (rooms[r]["dividers"] as Array).has(lane)
+		if ambush:
+			# An ambush (task O5) lies in a divider of its room, its debris there, in the level's last stretch it may.
+			var hide: Dictionary = params.get("ambush", {})
+			var host: Array[Dictionary] = CentipedeRulesScript.ambush_host(layout, i, r, lane, at)
+			suite.check(in_room and (rooms[r]["dividers"] as Array).has(lane) and int(hide.get("room", -1)) == r
+				and int(hide.get("lane", -1)) == lane and not host.is_empty()
+				and float(b["start"]) >= DebrisMaze.tuning_for(config).ambush_from * layout.length - 0.01,
+				"an ambush lies in a divider of its room, from ambush_from of the level on %s" % x)
+			ambushes += 1
+		else:
+			suite.check(in_cell, "its head and body lie in an open cell of a room " + x)
 		var span: Variant = params.get("floor_span", null)
 		suite.check(span is Vector2 and (span as Vector2).x <= at + 0.01 and (span as Vector2).y >= at + Centipede.BODY_LENGTH,
 			"its floor span covers it (%s) %s" % [span, x])
@@ -340,15 +349,20 @@ static func check_centipedes(suite: TestSuite, layout: LevelLayout, config: Leve
 		var x: String = "(maze block %d at %.0f, %d centipedes) %s" % [i, float(layout.maze[i]["start"]), list.size(), tag]
 		var most: int = CentipedeRulesScript.max_per_block(config)
 		suite.check(list.size() <= most, "at most %d centipedes a block %s" % [most, x])
+		for e: Dictionary in list:
+			suite.check(not CentipedeRulesScript.is_ambush(e) or list.size() == 1,
+				"an ambush's block holds no other centipede %s" % x)
 		var spots: Array = []
 		for e: Dictionary in list:
 			for o: Dictionary in spots:
 				suite.check(absf(float(o["at"]) - float(e["at"])) >= t.min_spacing - 0.01,
 					"two in a block wait %.0f m apart at least %s" % [t.min_spacing, x])
-			spots.append({"lane": int(e["lane"]), "at": float(e["at"])})
+			spots.append(CentipedeRulesScript.spot_of(layout, e))
 		var found: Dictionary = CentipedeEscape.find(layout, tuning, i, spots)
 		suite.check(bool(found["ok"]), "its block stays escapable past its centipedes, the dash at %.0f s (%s) %s"
 			% [float(found["recharge"]), found["reason"], x])
+	suite.check(ambushes <= DebrisMaze.tuning_for(config).ambush_count,
+		"at most %d ambushes in the level (%d) %s" % [DebrisMaze.tuning_for(config).ambush_count, ambushes, tag])
 
 
 ## Block `b`'s (the `index`th) debris, `pieces` every maze piece of the layout (check_debris_maze): exactly its walls'

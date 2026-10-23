@@ -82,3 +82,20 @@ extends Resource
 ## (task O5; the owner, October 22, 2026: Rubble Line about 20 to 30% more, Last Stop about double). 1 places exactly as
 ## the centipede's numbers say.
 @export_range(0.5, 4.0, 0.05) var centipede_scale: float = 1.0
+## Ambush centipedes this level's maze holds (task O5; the owner, October 22, 2026: two in Last Stop, in its last half):
+## each hides inside a divider of a block from ambush_from of the level on (one a block, the block holding no other
+## centipede) and breaks out as the runner comes near (CentipedeTuning.ambush_distance). Counted apart from
+## centipede_scale's.
+@export_range(0, 6) var ambush_count: int = 0
+## Where in the level (a share of its length) the first block an ambush may hide in starts at the earliest.
+@export_range(0.0, 1.0, 0.05) var ambush_from: float = 0.5
+
+@export_group("Gaps between blocks")
+## Rows of holes across every lane, to jump, in the normal track between two blocks (task O5; the owner, October 22,
+## 2026: "add some more gaps to jump over in the sections in between maze portions"): this many in each stretch from one
+## block's keep-out to the next block's run-in, spread along it where they fit (DebrisMaze.place_gaps). They go in after
+## the level's wider gaps and before the fill pass and the doodads, which keep their spacing from them.
+@export_range(0, 4) var gap_rows: int = 0
+## Each row's length along the track, as a share of a full jump at the level's speed (the levels' own rows are 0.4 to
+## 0.55 of one; never more than LevelConfig.max_gap_jump_fraction).
+@export_range(0.2, 0.8, 0.05) var gap_jump_share: float = 0.45

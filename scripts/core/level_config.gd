@@ -211,7 +211,7 @@ var _skin: ZoneSkin
 ## Additive floor-gap pass, after all obstacles: increases encounter count and mean missing lanes
 ## against this build's original gaps. Both targets round up; fairness can limit either. Zero keeps
 ## the original layout and random streams. City 1 alone enables these (approved USER_REQUESTS).
-@export_range(0.0, 1.0, 0.05) var gap_encounter_increase: float = 0.0
+@export_range(0.0, 4.0, 0.05) var gap_encounter_increase: float = 0.0
 @export_range(0.0, 1.0, 0.05) var gap_lane_increase: float = 0.0
 ## Danger density (owner's request, docs/USER_REQUESTS.md: "the algorithm that is used to make sure
 ## that there is always a free open lane is too forgiving"; about 15% more enemies and obstacles in the

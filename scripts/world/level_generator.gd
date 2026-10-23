@@ -277,6 +277,9 @@ var buzz_company_result: Dictionary = {}
 ## The debris maze in the last build (DebrisMaze.place, task O2: its slots, blocks, debris, ceilings, each block's least
 ## dashes, and why a slot got no block or a block no ceiling); empty in a level without the `debris_maze` feature.
 var debris_maze_result: Dictionary = {}
+## The rows of holes between the debris maze's blocks in the last build (DebrisMaze.place_gaps, task O5: how many were
+## asked, placed, and where none fit); empty in a level that asks for none (DebrisMazeTuning.gap_rows).
+var maze_gap_result: Dictionary = {}
 ## Stretches of track (Vector2) no wall-run gap's clear stretch may reach in the build being made (task J2; set only
 ## for the wider gaps' rebuild, _make_wide_gap_room; WallRunGapPlacement.place keeps off them). Empty otherwise.
 var wall_run_gap_reserve: Array[Vector2] = []
@@ -439,6 +442,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	wall_run_gap_result = {}
 	buzz_company_result = {}
 	debris_maze_result = {}
+	maze_gap_result = {}
 	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
@@ -518,6 +522,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	danger_density_result = DangerDensity.apply_enemies(self, patterns)
 	charge_path_result = ChargePathPlacement.place(self)
 	wide_gap_result = WideGapPlacement.place(self)
+	maze_gap_result = DebrisMaze.place_gaps(self)
 	_fill_empty_stretches(patterns)
 	WideGapPlacement.widen_deferred(self)
 	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)

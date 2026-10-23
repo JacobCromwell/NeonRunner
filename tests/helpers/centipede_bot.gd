@@ -26,6 +26,7 @@ extends RefCounted
 ## speed, metres), in_debris (frames its head touched debris), outside (frames its head was out of its block's
 ## stretch), ceiling (true if the runner rode a ceiling on the way: an escape block's pad, task O5)}.
 
+const RulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 ## Metres a step of the independent field's grid, across the track and along it.
 const CELL: float = 0.3
 ## Integer costs of a step along the grid's axes and diagonally (an octile metric), and the most it overstates a straight
@@ -151,7 +152,8 @@ func run(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 			if step > 0.0001 and (float(s["wake"]) == INF or now < float(s["wake"]) + t.wake_time - dt * 0.5):
 				result["early"] = int(result["early"]) + 1
 			s["prev"] = head
-			if not maze.clear_at(head.x, head.y):
+			# A hidden ambush lies in its debris until it breaks out.
+			if not c.hidden and not maze.clear_at(head.x, head.y):
 				result["in_debris"] = int(result["in_debris"]) + 1
 			if head.y < float(b["entry"]) or head.y > float(b["exit"]):
 				result["outside"] = int(result["outside"]) + 1
@@ -234,6 +236,12 @@ func _grid(layout: LevelLayout, index: int, way: Dictionary) -> Dictionary:
 	open.resize(nx * nz)
 	open.fill(1)
 	var gone: Dictionary = _smashes(layout, index, way)
+	# An ambush's debris shatters as it breaks out (task O5): open from the start, as the proof takes it.
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "centipede" and RulesScript.is_ambush(e) and int(e["params"]["block"]) == index:
+			var spot: Dictionary = RulesScript.spot_of(layout, e)
+			for d: Dictionary in spot["host"]:
+				gone[_key(d)] = true
 	for d: Dictionary in layout.doodads:
 		if not LevelLayout.is_maze_debris(d) or int(d["maze"]) != index or gone.has(_key(d)):
 			continue

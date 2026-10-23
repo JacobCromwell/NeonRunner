@@ -87,6 +87,15 @@ extends EnemyTuning
 ## Two in one block wait at least this far apart along the track (metres).
 @export_range(0.0, 80.0, 1.0, "suffix:m") var min_spacing: float = 20.0
 
+@export_group("Ambush")
+## An ambush centipede (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can
+## barely see its body, and when you get close to it, the debris shatters and the centipede is released") hides in a
+## divider of the maze, a sliver of its body showing beside it; it breaks out once the runner, on the floor in its block,
+## is this close along the track (metres at the reference speed), or as soon as a dash smashes debris it lies in.
+@export_range(4.0, 40.0, 0.5, "suffix:m") var ambush_distance: float = 16.0
+## How far its body pokes out beside the debris it hides in (metres): enough to be glimpsed.
+@export_range(0.0, 0.6, 0.05, "suffix:m") var ambush_showing: float = 0.25
+
 
 ## Its top speed (m/s) in a level run at `run_speed`.
 func chase_speed(run_speed: float) -> float:
@@ -96,6 +105,11 @@ func chase_speed(run_speed: float) -> float:
 ## The waking distance (metres) at `pace` (MovementTuning.pace).
 func wake_distance_at(pace: float) -> float:
 	return wake_distance * pace
+
+
+## An ambush's breaking-out distance (metres) at `pace`.
+func ambush_distance_at(pace: float) -> float:
+	return ambush_distance * pace
 
 
 ## The give-up distance (metres) at `pace`.

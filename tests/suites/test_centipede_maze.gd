@@ -31,6 +31,7 @@ extends TestSuite
 ##   goes through it and two kill it, and is picked for Rubble Line, not for a level without one.
 
 ## Seeds besides each level's own the generator sweep builds.
+const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 const OTHER_SEEDS: Array[int] = [9311, 9312, 9313]
 const LEVELS: Array[String] = ["terminal/1", "terminal/2"]
 const LANES: Array[int] = [3, 5, 6]
@@ -292,7 +293,7 @@ func _test_bot() -> void:
 				var i: int = int(e["params"]["block"])
 				if not by_block.has(i):
 					by_block[i] = []
-				(by_block[i] as Array).append({"lane": int(e["lane"]), "at": float(e["at"])})
+				(by_block[i] as Array).append(CentipedeRulesScript.spot_of(layout, e))
 			var runs: int = 0
 			var least: float = INF
 			var woke: int = 0
