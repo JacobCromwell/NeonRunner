@@ -136,7 +136,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Falls:** into gaps between trucks or holes in the street, within a lane. Switching lanes into a lane that has a gap under you = fall. Lane switching itself is safe.
 - **Invulnerability:** after armor or a shield breaks, the player gets about **1 second of invulnerability** (character flashes).
 - **One hit from death** (owner, October 14, 2026): when the player has run out of all armor and shields, an **audio and visual cue** says they are a single hit away from death. The sound is a **two-tone siren**.
-- **Free armor** (owner's playtest, September 30, 2026): every level and boss fight starts with armor, and after it breaks it **comes back 30 seconds later**. The armor in the shop becomes an upgrade to it (§8).
+- **Free armor** (owner's playtest, September 30, 2026): every level and boss fight starts with armor, and after it breaks it **comes back 30 seconds later**. The armor in the shop becomes an upgrade to it (§8). **Any hit starts its wait** (owner, October 23, 2026, a bug fix): armor knocked from 3 hits to 2 starts the wait, and at its end the armor is back whole (3).
 - **No checkpoints.** Levels are short (**90–150 seconds**). Death restarts the level.
 - **On death, and when quitting a level from the pause menu, the player keeps 20%** of credits collected during that attempt (quitting decided September 26, 2026, so deliberately dying never pays better than quitting). Completing a level always pays far more, so deliberate dying is never profitable.
 
@@ -620,7 +620,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Look:** a ghostly apparition, black with purple highlights, a mix of vapor and liquid. A bulbous head with a **circular maw of spiked teeth**, long fingers ending in slashing claws, and no legs.
 - **Origin:**
   - Bursts out of a **host cyborg** when the host is killed.
-  - Hosts are **visibly marked**: their LED visor glitches with purple static and corrupted expressions.
+  - Hosts are **visibly marked**: their LED visor glitches with purple static and corrupted expressions. **Purple smoke rises off a host** (owner, October 23, 2026; a purple glow would also do), so the player can pick it out of a crowd more easily, cheaply enough not to hurt performance.
   - **Weapons hit hosts** (owner, October 8, 2026, replacing the September 26 rule that hosts were immune to all weapon damage): **auto-fire targets hosts** like any other cyborg, and a weapon kill releases the host's Bad Dream. The player who doesn't want that **switches the weapon off** in the shop (the equip toggle), so carrying a weapon into host levels becomes a choice with a cost. Killing a host with a stomp, claws or the dash still earns a big score bonus.
 - **Movement:**
   - **Passes through fences and physical barriers.**
