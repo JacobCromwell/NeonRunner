@@ -95,7 +95,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, the Barnacle Turret, the Enforcer Truck, the wall-run gaps, `wall_run_gaps`, and the Heavy Cyborg, `heavy_cyborg`, have no patterns: see below) |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`, `heavy_cyborg`: its one pattern, see below), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, the Barnacle Turret, the Enforcer Truck and the wall-run gaps, `wall_run_gaps`, have no patterns: see below) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -286,10 +286,12 @@ as a last resort, a sign on the lit wall too. For patterns this means only that 
 for one. See `docs/ARCHITECTURE.md`, The
 generator, Wall-run gaps.
 
-The Heavy Cyborg (`heavy_cyborg`; GDD §9.16, task S1: from Relay Station, in Specimen Vault and Golden 1-3) has no
-patterns, and no pattern should require it: it takes the places of some of the level's cyborgs. Its rules
-(`heavy_cyborg_rules.gd`, after the zone doodads) turn a share of the plain cyborgs past the feature's start (the
-cyborg patterns' own, never a host nor one a rule planted) into Heavy Cyborgs where one fits, so a level is built
-exactly as without it but for those cyborgs' type. A level whose cyborgs leave it no place has none (it is never
-forced). For patterns this means only that a cyborg they place may stand there as a Heavy Cyborg. See
-`docs/ARCHITECTURE.md`, Enemies of the later zones, Heavy Cyborg.
+The Heavy Cyborg (`heavy_cyborg`; GDD §9.16, task S1: from Relay Station, in Specimen Vault and Golden 1-3) has one
+pattern, `heavy_cyborg.json`: a plain `cyborg` alone at 36 m of a 40 m pattern that requires `heavy_cyborg`, so the
+pattern's own empty floor is the two seconds before it that its stream needs clear. Every rule plans around it as a
+cyborg; last of the rules (`heavy_cyborg_rules.gd`) it becomes a Heavy Cyborg where one fits (its stream's zone clear
+of every gap, live fence and doodad in every lane, its margin from every obstacle) and stays a cyborg where none does,
+and a share of the level's other plain cyborgs (the cyborg patterns' own, never a host nor one a rule planted) become
+Heavy Cyborgs too where one fits. Its pick weight is tuned level by level (`feature_weights` in each level's data). For
+other patterns this means only that a cyborg they place may stand there as a Heavy Cyborg. See `docs/ARCHITECTURE.md`,
+Enemies of the later zones, Heavy Cyborg.

@@ -397,22 +397,27 @@ with a drone's barrage in place of the arm cannon's bursts, so it is built on th
 them: `heavy_cyborg.gd` (`HeavyCyborg extends Cyborg`), its gun (`heavy_cyborg_gun.gd`, `HeavyCyborgGun extends
 CyborgGun`), its body (`heavy_cyborg_body.gd`, `HeavyCyborgBody extends CyborgBody`) and armour
 (`cyborg_looks/heavy.gd`), its tuning (`HeavyCyborgTuning extends CyborgTuning`, `data/enemies/heavy_cyborg.tres`) and
-its rules (`heavy_cyborg_rules.gd`). The shared cyborg files carry only hooks: `CyborgGun`'s `shot_interval()`,
-`roll_shots()`, `most_shots()`, `charge_sound_point()`, `min_flight_time()` and `look` (a cyborg's behaviour unchanged), and
-`CyborgSuit.heavy_set()` (every look gets an armour set, worn only by a Heavy Cyborg).
+its rules (`heavy_cyborg_rules.gd`) and pattern (`data/patterns/heavy_cyborg.json`). The shared cyborg files carry only
+hooks: `CyborgGun`'s `shot_interval()`, `roll_shots()`, `most_shots()`, `charge_sound_point()`, `min_flight_time()` and
+`look`, and its static `floor_clear()` (what `path_clear` asks of the floor, which the rules ask too; a cyborg's
+behaviour unchanged), and `CyborgSuit.heavy_set()` (every look gets an armour set, worn only by a Heavy Cyborg).
 - **The stream.** A wind-up (`charge_time`, 1 s: the barrels spin up and turn red-hot, a red ring grows at the muzzle,
   a red aim line runs from the muzzle to the runner and flickers faster as it ends, the `heavy_cyborg_windup` sound,
   played on the way to the runner, no further than `windup_heard_within`, so it's heard as far off as the stream
   starts), then the aim locks and a stream of rounds flies down that line (the drone gatling's red `enemy_bullet`
-  look). Its rounds reach a runner who keeps to the line `bullet_gap` apart (the drone's 0.18 to 0.16 s, the gap a
-  zigzag goes through), so the gatling fires them further apart, by the rounds' speed over the closing speed at the
-  level's run speed (`shot_interval`); and only as many (`barrage_count`, 6) as all arrive within
+  look). Its rounds reach a runner who keeps to the line `bullet_gap` apart (0.18 to 0.16 s, the gap a zigzag goes
+  through; the drone's are 0.18 to 0.15 s), so the gatling fires them further apart, by the rounds' speed over the
+  closing speed at the level's run speed (`shot_interval`); and only as many (`barrage_count`, 6) as all arrive within
   `invulnerability_share` of the hit invulnerability window, so armor or a shield protects through all of it
-  (`most_shots`; every stream is that long, `roll_shots`). Its first round flies `min_warning_time` at least and every
-  later one `later_round_warning_share` of it (`min_flight_time`, a `CyborgGun` hook whose cyborg default asks nothing
-  of later bolts): a stream that would end too close waits. Dodged by switching lanes once it locks; a runner who
-  moves during the wind-up is followed; the line's flicker thickens steadily instead with Reduced flashing, and the
-  muzzle's flash is left out.
+  (`most_shots`). Its first round flies `min_warning_time` at least and every later one `later_round_warning_share` of
+  it (`min_flight_time`, a `CyborgGun` hook whose cyborg default asks nothing of later bolts), measured from the barrels'
+  tips (`HeavyCyborg.MUZZLE_REACH` along the line: the hook adds the time a round takes to get there). A stream that no
+  longer fits whole (it starts late: its place in the air came free, or the path cleared, as the runner closed in)
+  fires as many of its rounds as still do, `min_stream_rounds` (4) at the least, its last ones left out
+  (`HeavyCyborgGun._burst_fair`, planned before the wind-up and again as the aim locks; `roll_shots` fires that many);
+  with fewer it waits. Dodged by switching lanes once it locks; a runner who moves during the wind-up is followed; the
+  line's flicker thickens steadily instead with Reduced flashing, and the muzzle's flash is left out. The barrels'
+  red-hot material is built once and swapped only when the heat crosses `HOT_FROM`.
 - **A cyborg's small attack** (owner: it fires when the other small enemies fire and doesn't wait its turn). It is a
   `CyborgGun`, so its stream takes one of the cyborgs' places in the air from its wind-up until `burst_gap` after its
   last round (The cyborgs' airspace, `docs/architecture/enemies.md`), keeps the crossfire rule (a cyborg's burst that
@@ -435,27 +440,35 @@ its rules (`heavy_cyborg_rules.gd`). The shared cyborg files carry only hooks: `
   its grips (two-bone, `_reach`). Only the face and the gatling's red glow. Its `warm_up` look shows everything at once
   (`show_everything`); the aim line is placed in the world only while it is top-level, so the warm-up stage keeps it
   in its tiny space. `tools/showcase/enemy_showcase.gd` has heavy views (`--camera`).
-- **In the levels.** No pattern of its own: Heavy Cyborgs take the places of some of the level's cyborgs.
-  `HeavyCyborgRules.after_doodads` (after the zone doodads, when every rule and pass but the wall fences, the side wall
-  gaps, the gap density pass and the credits has built the level around its cyborgs) turns a share of the plain
-  cyborgs past the feature's start (no host, no rule's mark, none the danger density pass added) into Heavy Cyborgs
-  where one fits: the cyborgs' margin from every obstacle; its stream's zone (`keep_clear_seconds` of run before it)
-  clear of what holds a stream
-  (`LevelLayout.doodad_between`); what it reaches (that zone, its keep-out, its floor) off every dash wall's
-  footprint, wider gap's zone, wall-run gap's clear stretch and calm stretch a rule keeps in every lane (those let a
-  cyborg stand its margin away, any other enemy only its keep-out away, and their re-checks hold a Heavy Cyborg to
-  the rest's rule); `spacing_seconds` from the one before; never the level's first cyborg (the danger density pass
-  adds its own only past it) nor its last plain one, so the pass's dial changes none of them. The first that fits always
-  does (Relay Station's introduction, from 0.3 of the level); each later one with the chance `share` times the
-  campaign's recency factor for the feature (`LevelConfig.recency_factor`: most in Relay Station, fewer as it gets
-  older), from its own random stream. A Heavy Cyborg keeps a cyborg's keep-out (`keep_out`), so the level is built
-  exactly as without the feature but for those cyborgs' type, on every seed. Never forced (`OCCASIONAL`): a build
-  whose cyborgs leave it no place has none (on the campaign's own seeds at 5 lanes, one or two a level but none in
-  Golden 2, whose one cyborg of its own stands just past a wider gap; Relay Station at 6 lanes has none). The Golden
-  Zone dates it from the Ice Lab (a level old in Golden 1), as the teleporters.
+- **In the levels.** Every Heavy Cyborg stands where its stream gets to fire (`HeavyCyborgRules.fits`): its stream's
+  zone (`keep_clear_seconds`, 2 s, of run before it) holds nothing its gun's `path_clear` holds a stream for, in any
+  lane (`CyborgGun.floor_clear`: a gap, a live fence, a doodad, a falling gantryway's or a teleporter's calm stretch, a
+  dash wall); the cyborgs' margin from every obstacle; what it reaches (that zone, its keep-out, its floor) off every
+  dash wall's footprint, wider gap's zone, wall-run gap's clear stretch and calm stretch a rule keeps in every lane
+  (those let a cyborg stand its margin away, any other enemy only its keep-out away, and their re-checks hold a Heavy
+  Cyborg to the rest's rule); `spacing_seconds` from every other one; never the level's last plain cyborg.
+  - Its own encounters: `data/patterns/heavy_cyborg.json` (weight 1.6, as a single cyborg's; each level's
+    `feature_weights` and the recency curve on top) places a plain cyborg alone at 36 m of 40, the pattern's own empty
+    floor its stream's zone. Every rule plans around it as a cyborg (allowances, make-room and all). Last of the rules
+    (`apply`, `RUN_AFTER` every rule its levels have), each one still standing (`pattern_cyborgs`, found through
+    `LevelGenerator.picks`) becomes a Heavy Cyborg where it fits and stays a cyborg where it doesn't; then a share of
+    the level's other plain cyborgs past the feature's start do too where they fit (the top-up: `share` times the
+    campaign's recency factor, from its own random stream, the first always where the pattern's left none).
+  - The passes after the rules (the danger density pass, the wider gaps, the fill pass, the zone doodads, the dash
+    walls past their introduction) keep off a Heavy Cyborg's keep-out and floor as off any enemy that isn't a cyborg,
+    so its zone stays clear; after the zone doodads (`after_doodads`) one that no longer fits is given back as a plain
+    cyborg, and where none is left the first own plain cyborg that fits becomes one (`_last_resort`; never the last
+    own floor cyborg before the danger density pass's first). A build with none is built again with its pattern's
+    picks forced (`guarantee_features`). It keeps a cyborg's keep-out (`keep_out`).
+  - The pattern moves the levels' other picks, as any new pattern does. Each level's weight for it (`feature_weights`
+    in its data) is one whose own-seed builds at 3, 5 and 6 lanes keep every counted feature their builds had before
+    it (teleporters, blinking ones, dash walls, wider gaps, gantryways, Enforcer Trucks, Octodog jars and decoys,
+    treasure stashes and fenced ceilings) and have two Heavy Cyborgs at least at 5 lanes and one at 3 and 6:
+    COUNTS_TBD. The Golden Zone dates it from the Ice Lab (a level old in Golden 1), as the teleporters.
 - **Sounds.** `tools/asset_gen/sfx_bank_heavy_cyborg.gd`: `heavy_cyborg_windup` (the warning: a motor grinding up
   under a ratchet speeding into a rattle and the red charge's hum, lasting the wind-up and 30 ms into the first round;
   lower and heavier than the drone's) and `heavy_cyborg_shot` (a low double crack, 0.2 s).
-- **Tests.** `test_heavy_cyborg` (Tests, features), `test_ice_lab_levels` (Relay Station brings it in after its
-  teleporters, none in Frost Foundry, none before its start), `test_campaign` (its place in the schedule, the Ice
-  Lab's first new enemy, the Golden Zone's ages), `test_hints`, `test_perf` (its warm-up look) and `test_audio`.
+- **Tests.** `test_heavy_cyborg` and `test_heavy_cyborg_play` (the campaign's own builds played through, every Heavy
+  Cyborg firing; Tests, features), `test_ice_lab_levels` (Relay Station brings it in after its teleporters, none in
+  Frost Foundry, none before its start), `test_campaign` (its place in the schedule, the Ice Lab's first new enemy, the
+  Golden Zone's ages), `test_hints`, `test_perf` (its warm-up look) and `test_audio`.

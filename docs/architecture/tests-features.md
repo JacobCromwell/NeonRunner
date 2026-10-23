@@ -476,16 +476,24 @@ look (bigger and bulkier than its zone's cyborg, its armour in every look, only 
 warm-up look with everything shown and nothing physical); on real physics the stream (it follows the wind-up, the aim
 line and hot barrels, hits a runner who stays on its line, misses one who switches lanes once it fires, follows one who
 moves during the wind-up, lets one zigzag back through it), armor and the shield through a whole stream, no fire at a
-ceiling rider, a teleport calling it off; the cyborgs' airspace (never more than `max_bursts_in_air` bursts with its
-streams; with the limit at one, it and a cyborg take turns), the crossfire rule, no part in the big attacks' turns; its
-kills (a stomp and the dash, not the claws, a claw runner who touches it hit, armor not stopping its body, laser tier 1's
-shots, another enemy's charge, a falling gantryway) and never boarding an Enforcer Truck; the generator (each build on the
-prototype level at 3, 5 and 6 lanes, three difficulties and eight seeds the build without the feature but for the cyborgs
-whose places it took, each where one fits, spaced, the same on a second build, most builds with some, none without the
-feature) and the campaign (Relay Station's start after its teleporters, none in Frost Foundry, every own-seed build as
-without it, Relay Station's introduction at the campaign's lane count, some in every level at one lane count at least,
-the counts printed); and full levels in god mode, every round fair (every later round flying half the minimum warning
-at least) and most Heavy Cyborgs passed firing a stream. About a minute.
+ceiling rider, a teleport calling it off, a stream that starts late firing the rounds that still fit (four at the least,
+each flying its warning from the barrels' tips) and none where fewer fit; the cyborgs' airspace (never more than
+`max_bursts_in_air` bursts with its streams; with the limit at one, it and a cyborg take turns), the crossfire rule, no
+part in the big attacks' turns; its kills (a stomp and the dash, not the claws, a claw runner who touches it hit, armor
+not stopping its body, laser tier 1's shots, another enemy's charge, a falling gantryway) and never boarding an Enforcer
+Truck; the generator (each build on the prototype level at 3, 5 and 6 lanes, three difficulties and eight seeds: every
+Heavy Cyborg where its stream gets to fire, its stream's zone clear of every gap, live fence and doodad in every lane,
+clear of every obstacle by the cyborgs' margin, its reach off every dash wall, wider gap, wall-run gap and calm stretch,
+spaced, the same on a second build, most builds with some, none without the feature) and the campaign (Relay Station's
+start after its teleporters, none in Frost Foundry, every own-seed build at 3, 5 and 6 lanes with two at the least at
+the campaign's lane count and one at 3 and 6, each placed as on the prototype, no warning, the counts printed); and full
+levels in god mode, every round fair (every later round flying half the minimum warning at least) and every Heavy
+Cyborg passed firing a stream. About 45 seconds.
+`test_heavy_cyborg_play` plays the campaign's own builds of the Heavy Cyborg's five levels at 3, 5 and 6 lanes through
+(task S1's review): at each level's pace, in god mode, with everything else in play (heli drones, window cyborgs,
+cyborgs), every Heavy Cyborg winds up and fires a stream of four rounds at the least, Relay Station's introduction
+among them, every round after a whole wind-up, from ahead, with its warning, arriving where the path is clear. About
+two minutes.
 `test_octodog_jars` checks the Octodog jars that break open (task Q5; Octodog jars): the layout's marks (a jar and its dog
 finding each other, `copy` and `to_dict` keeping them, a held dog none of the level's standing Octodogs, a decoy holding
 no dog and never one of the feature's jars); the generator over the Ice Lab's levels at 3, 5 and 6 lanes (up to the count

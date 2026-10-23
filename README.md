@@ -194,8 +194,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       the right of its antenna shows the one you'll land on. The first one is safe (one output pad, straight ahead, a
       clear run after it); later ones may land you right in front of a hole, a fence or an enemy, with the usual time to
       react. Never needed: the lane beside it is clear to go around. Three a level (placeholder count). From about a
-      third of the way in, the Heavy Cyborg (task S1): some of the cyborgs are heavy ones with a gatling (see the
-      enemies below).
+      third of the way in, the Heavy Cyborg (task S1): a heavy cyborg with a gatling, alone on a clear stretch or in
+      the place of one of the cyborgs (see the enemies below).
   22. Ice Lab 3 *Specimen Vault*: the same set, the falling gantryways and teleporters too, and teleporters whose antenna's
       light blinks left and right about once a second: the side lit the moment you touch the pad decides where you land
       (two of its four, placeholder counts). Then straight on to the Golden Zone (no boss). Like the Terminal's, the
@@ -328,13 +328,15 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     showing in every chase that has room for one, wherever you run. It gives up after about 25 s (in quick play,
     `--features=octodog,enforcer_truck`)
   - the Heavy Cyborg (from Ice Lab 2, Relay Station, then Specimen Vault and the Golden Zone; task S1): a bigger,
-    bulkier cyborg in armour plates, carrying a big gatling at the hip, standing in the place of one of the level's
-    cyborgs (one to three a level, placeholder share). When its barrels spin up with a deep grinding whine, glow red
-    and a red line finds you, switch lanes: it locks your spot and fires a stream of rounds down that line, spaced so
-    you can zigzag back through. It fires when the cyborgs do (its stream takes one of their places in the air) and
-    never waits for the big attacks' turns. A stomp on its head or the dash kills it; weapons take twice a cyborg's
-    hits; the claws don't hurt it, and running into it is deadly (in quick play, `--features=cyborg,heavy_cyborg`;
-    a close look in the enemy showcase, `res://tools/showcase/enemy_showcase.tscn`)
+    bulkier cyborg in armour plates, carrying a big gatling at the hip, alone on a clear stretch or in the place of
+    one of the level's cyborgs, always where its stream gets to fire (two to five a level at five lanes, placeholder
+    counts). When its barrels spin up with a deep grinding whine, glow red and a red line finds you, switch lanes: it
+    locks your spot and fires a stream of rounds down that line, spaced so you can zigzag back through (a stream that
+    starts late fires the rounds that still fit, four at the least). It fires when the cyborgs do (its stream takes
+    one of their places in the air) and never waits for the big attacks' turns. A stomp on its head or the dash kills
+    it (a jump can't clear it, only land on its head); weapons take twice a cyborg's hits; the claws don't hurt it,
+    and running into it is deadly (in quick play, `--features=cyborg,heavy_cyborg`; a close look in the enemy
+    showcase, `res://tools/showcase/enemy_showcase.tscn`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,

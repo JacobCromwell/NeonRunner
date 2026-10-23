@@ -9,20 +9,21 @@ extends RefCounted
 ##   showing let it stand as near as a cyborg, and a rule that makes room may take it out): this pattern's picks move
 ##   the level's other picks, as any pattern's do, but where a Heavy Cyborg will stand the rules plan as for a cyborg.
 ## - Last of the rules (apply, RUN_AFTER), each such cyborg still standing becomes a Heavy Cyborg where one fits, and
-##   stays a plain cyborg where none does. The passes after the rules (the danger density pass, the wider gaps, the
-##   fill pass, the zone doodads, the dash walls past their introduction) then keep off its keep-out and floor as off
-##   any enemy that isn't a cyborg, its stream's zone among them.
+##   stays a plain cyborg where none does; then a share of the level's other plain cyborgs from the feature's start on
+##   become Heavy Cyborgs where one fits (the top-up): each with the chance `share` times the campaign's recency factor
+##   for the feature (LevelConfig.recency_factor: most in the level that introduces it, fewer as it gets older), the
+##   first that fits always where the pattern's left none. The passes after the rules (the danger density pass, the
+##   wider gaps, the fill pass, the zone doodads, the dash walls past their introduction) keep off a Heavy Cyborg's
+##   keep-out and floor as off any enemy that isn't a cyborg, its stream's zone among them.
 ## - After the zone doodads (after_doodads), once everything that stands on the floor is placed (nothing after them
 ##   adds a gap, a fence or a doodad in its levels; the gap density pass runs in City 1 only): every Heavy Cyborg that
-##   no longer fits is given back as a plain cyborg (_give_back), and a share of the level's other plain cyborgs from
-##   the feature's start on become Heavy Cyborgs where one fits (the top-up): each with the chance `share` times the
-##   campaign's recency factor for the feature (LevelConfig.recency_factor: most in the level that introduces it, fewer
-##   as it gets older), the first that fits always where the pattern's left none. A build with none at all is built
-##   again with picks of its pattern forced elsewhere (LevelConfig.guarantee_features), as for any feature.
+##   no longer fits is given back as a plain cyborg (_give_back); where none is left, the first of the level's own
+##   plain cyborgs that fits becomes one (_last_resort, saving a build). A build with none at all is built again with
+##   picks of its pattern forced elsewhere (LevelConfig.guarantee_features), as for any feature.
 ## A Heavy Cyborg fits where (fits):
 ## - it stands on the floor where a plain cyborg stood (not a host, no rule's mark in its params: a cyborg planted in
-##   a charge's path, a Buzz Overdrive's company, one planted under a falling gantryway are their rules' own; the
-##   top-up takes none the danger density pass added, its own small threats of the types its tuning lists);
+##   a charge's path, a Buzz Overdrive's company, one planted under a falling gantryway are their rules' own; the last
+##   resort takes none the danger density pass added, its own small threats of the types its tuning lists);
 ## - it keeps the cyborgs' margin from every obstacle (CyborgRules: their rules and its walk keep it), the zone
 ##   doodads' included;
 ## - its stream's zone (stream_zone: keep_clear_seconds of run before it) holds nothing its stream is held for, in any
@@ -37,8 +38,8 @@ extends RefCounted
 ##   rest's rule;
 ## - at least spacing_seconds of run from every other Heavy Cyborg;
 ## - never the level's last plain cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions), nor,
-##   in the top-up, the last of the level's own floor cyborgs before the danger density pass's first (the pass adds its
-##   own only past the level's first).
+##   in the last resort, the last of the level's own floor cyborgs before the danger density pass's first (the pass,
+##   which comes after the rules, adds its own only past the level's first).
 ## A Heavy Cyborg keeps a cyborg's keep-out (keep_out: from two seconds of run before it, its stream's zone, to its
 ## margin after it) and its tuning's floor reach. It is never a panic variant nor a host.
 ## DESIGN-TBD (docs/questions/s1.md): its pattern's weight, the top-up's share, the spacing and the stream's zone.
@@ -63,6 +64,7 @@ static var apply_trace: Array[String] = []  # PROBE-ONLY
 
 ## Last of the rules: the cyborg of each of its pattern's picks still standing becomes a Heavy Cyborg where one fits,
 ## spaced from the one before (never the level's last plain cyborg); one that doesn't stays the plain cyborg it is.
+## Then the top-up (see the header), from its own random stream.
 static func apply(gen: LevelGenerator) -> void:
 	apply_trace.clear()  # PROBE-ONLY
 	var t: HeavyCyborgTuning = tuning_of()
@@ -122,7 +124,7 @@ static func pattern_cyborgs(gen: LevelGenerator) -> Array[Dictionary]:
 
 
 ## After the zone doodads: every Heavy Cyborg that no longer fits (or stands nearer the one before than the spacing) is
-## given back as a plain cyborg, then the top-up (see the header).
+## given back as a plain cyborg; where none is left, the last resort (see the header).
 static func after_doodads(gen: LevelGenerator) -> void:
 	trace.clear()  # PROBE-ONLY
 	if not gen.config.has_feature(TYPE):
@@ -176,7 +178,8 @@ static func _last_resort(gen: LevelGenerator, t: HeavyCyborgTuning, spans: Array
 		var first_kept: bool = at < added_first and _counts_first(e) and before_added <= 1
 		if at >= from - 0.001 and is_plain_cyborg(e) and left > 1 and not first_kept and fits(gen, e, t, spans, taken):
 			trace.append("%.0f:lastresort" % at)  # PROBE-ONLY
-			_take(e, [])
+			var placed: Array[float] = []
+			_take(e, placed)
 			return
 
 

@@ -1815,9 +1815,9 @@ func _test_saves_before_ice_lab() -> void:
 ## volleyball match, the Terminal, the Ice Lab), which leaves the Ice Lab out: without the Ice Lab's own mechanics
 ## (NEW_MECHANICS) and new enemies (ICE_LAB_ENEMIES), as the Golden Zone's teleporters and Heavy Cyborgs date from it since
 ## tasks Q6 and S1 (Campaign.feature_ages counts a level off the curve played before a level on it), where the campaign
-## without it would have Golden 1 bring them in. They date no pick (no pattern requires them: _test_recency; the Heavy
-## Cyborg's share of the cyborgs' places follows its age, HeavyCyborgRules: a level old in Golden 1, as the Ice Lab
-## taught it, DESIGN-TBD, docs/questions/s1.md). Every other age must match.
+## without it would have Golden 1 bring them in. The mechanics date no pick (no pattern requires them: _test_recency);
+## the Heavy Cyborg's pattern and the share of the cyborgs' places it takes follow its age (HeavyCyborgRules: a level old
+## in Golden 1, as the Ice Lab taught it, DESIGN-TBD, docs/questions/s1.md). Every other age must match.
 func _ages_but_ice_lab(config: LevelConfig) -> String:
 	var ages: Dictionary[String, int] = config.feature_ages.duplicate()
 	for f: String in (NEW_MECHANICS["ice_lab"] as Array) + ICE_LAB_ENEMIES:
