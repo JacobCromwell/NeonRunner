@@ -41,9 +41,24 @@ extends TestSuite
 ##   than the lane, with left, right and beacon lamps hidden until lit, and an output pad's marker floating over it within
 ##   its lane above a runner's head, light only and fading out near the camera, all glowing only green or green-white; the
 ##   warm-up draws every part, nothing physical; every number reaches the F6 panel.
+## - The Golden Zone (task Q6; the owner, October 22, 2026: "we should add the teleporters to the golden zone"): Golden 1-3
+##   at 3, 5 and 6 lanes on their own seeds stand their counts, fixed and blinking, none an introduction, each fair, the
+##   Golden Zone's own features keeping their rules beside them (the Resonators', the Gilded Sentinels', the Enforcer
+##   Trucks', the dash walls') and the level its wider gaps and dash walls; endless mode there too; every one of them taken
+##   and passed on real physics (above). The teleporters give way to a crowded level's wider gaps and dash walls
+##   (TeleporterRules.set_aside, put_back), and a blinking one the level asks for stands where its own found no room
+##   (_blink_fixed, _blink_in_place_of). The Golden Zone's enemies hold their attacks by a calm stretch: a Resonator's
+##   pulse (Resonator.pulse_clear; and every planned pulse keeps every teleporter's windows off it, resonator_pulses), an
+##   Enforcer Truck's volley (_teleporter_in_reach) and its showings (EnforcerTruckRoom: a pad and its way around are what
+##   the runner may need); and the campaign's played runs (AttackWatch's runner) go around every teleporter.
 
 const TeleporterRules := preload("res://scripts/enemies/teleporter_rules.gd")
 const GantrywayRules := preload("res://scripts/enemies/gantryway_rules.gd")
+const ResonatorRules := preload("res://scripts/enemies/resonator_rules.gd")
+const SentinelRules := preload("res://scripts/enemies/gilded_sentinel_rules.gd")
+const EnforcerRules := preload("res://scripts/enemies/enforcer_truck_rules.gd")
+const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
+const AttackWatch := preload("res://tools/measure/attack_watch.gd")
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const DUMMY_SCRIPT: String = "res://tests/helpers/dummy_enemy.gd"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
@@ -64,7 +79,10 @@ func run() -> void:
 	_test_generator()
 	_test_wall_run_gaps()
 	_test_gantryways()
+	_test_golden()
+	_test_give_way()
 	_test_endless()
+	await _test_golden_enemies()
 	await _test_track()
 	_test_light()
 	await _test_physics()
@@ -351,14 +369,166 @@ static func _touches(a: Vector2, b: Vector2) -> bool:
 	return absf(a.y - b.x) < 0.02 or absf(a.x - b.y) < 0.02
 
 
-## Endless mode with the Ice Lab as the furthest zone (App.start_endless: the zone's last level, Specimen Vault, made a
-## 20-minute level of everything the zone has from the start, at the zone's speed, on a random seed), here on an
-## arbitrary seed at 5 lanes, as test_gantryways' _test_endless does: it builds without warnings and stands its level's
-## count of teleporters (DESIGN-TBD, docs/questions/q4.md 14: 4 over its 20 minutes, 2 of them blinking) spread along the
-## whole of it, each fair (check_teleporters). No introduction: endless mode gives no feature a start.
+# --- The Golden Zone (task Q6) ------------------------------------------------------------------
+
+## Task Q6 (the owner, October 22, 2026: "we should add the teleporters to the golden zone"; GDD §5, Zone 9, proposed: in
+## all three of its levels, fixed and blinking alike with no introduction of their own): Golden 1-3 list both features with
+## no start of their own, ask for some of each and hang no falling gantryway (the Ice Lab's only); at 3, 5 and 6 lanes on
+## their own seeds each build stands its count, of which its blinking count blink, none an introduction, every one fair
+## (LayoutChecks.check_teleporters), the every-feature checks finding them; the Golden Zone's own features keep their rules
+## beside them (the re-checks of the Resonators' planned pulses, the Gilded Sentinels', the Enforcer Trucks' and the dash
+## walls'), and the level its wider gaps and dash walls; the same teleporters on a second build (at 5 lanes).
+func _test_golden() -> void:
+	var campaign := load(CAMPAIGN_PATH) as Campaign
+	var et := EnemyDirector.tuning_for("enforcer_truck") as EnforcerTruckTuning
+	var stood: int = 0
+	var two: int = 0
+	var blinking: int = 0
+	for n: int in [1, 2, 3]:
+		var step: CampaignStep = campaign.step("golden/%d" % n)
+		var level: LevelConfig = step.level
+		check(level.has_feature(TeleporterRules.FEATURE) and level.has_feature(TeleporterRules.BLINKING)
+			and not level.feature_starts.has(TeleporterRules.FEATURE) and not level.feature_starts.has(TeleporterRules.BLINKING)
+			and level.teleporters >= 1 and level.blinking_teleporters >= 1 and level.blinking_teleporters <= level.teleporters
+			and not level.has_feature(GantrywayRules.FEATURE),
+			"%s stands teleporters, fixed and blinking, with no start of their own (%d, %d blinking), and no falling gantryway"
+			% [step.id, level.teleporters, level.blinking_teleporters])
+		for lanes: int in LANE_COUNTS:
+			var config: LevelConfig = campaign.configure(step, lanes)
+			var tag: String = "%s lanes=%d" % [step.id, lanes]
+			var patterns: Array = LevelGenerator.load_for(config)
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
+			var layout: LevelLayout = gen.layout
+			check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+			var blinks: Array[float] = TeleporterRules.positions_blinking(layout)
+			check(layout.teleporters.size() == config.teleporters and blinks.size() == config.blinking_teleporters,
+				"%d of %d teleporters, %d of %d of them blinking %s" % [layout.teleporters.size(), config.teleporters,
+					blinks.size(), config.blinking_teleporters, tag])
+			var intros: int = 0
+			for tp: Dictionary in layout.teleporters:
+				intros += 1 if tp.has("intro") else 0
+				stood += 1
+				two += 1 if (tp["outputs"] as Array).size() == 2 else 0
+			blinking += blinks.size()
+			check(intros == 0, "no introduction of their own: the Ice Lab taught them %s" % tag)
+			check(TeleporterRules.positions(layout) == LevelGenerator.feature_positions(layout, TeleporterRules.FEATURE)
+				and blinks == LevelGenerator.feature_positions(layout, TeleporterRules.BLINKING),
+				"the every-feature checks find them at their pads " + tag)
+			LayoutChecks.check_teleporters(self, layout, config, tag)
+			# What the Golden Zone's own features re-check of the same build: what they keep holds beside the teleporters
+			# (a calm stretch holds a pulse as a doodad does; what the rules keep in every lane keeps the windows off).
+			var found: PackedStringArray = ResonatorRules.problems(layout, config, tuning)
+			if config.has_feature(SentinelRules.TYPE):
+				found.append_array(SentinelRules.problems(layout, config, tuning))
+			found.append_array(EnforcerRules.problems(gen))
+			found.append_array(DashWallRules.problems(gen))
+			check(found.is_empty(), "the Resonators, the Gilded Sentinels, the Enforcer Trucks and the dash walls keep their rules beside them %s %s"
+				% [tag, found])
+			var movement: MovementTuning = config.movement_for(tuning)
+			var wide: int = WideGapPlacement.wide_rows(layout, movement.jump_distance(movement.run_speed),
+				et.max_hop_jump_fraction).size()
+			check(wide == config.wide_gaps and layout.dash_walls.size() == config.dash_walls,
+				"the level keeps its %d wider gaps (%d) and its %d dash walls (%d) %s" % [config.wide_gaps, wide,
+					config.dash_walls, layout.dash_walls.size(), tag])
+			if lanes == 5:
+				var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(again.teleporters) == JSON.stringify(layout.teleporters),
+					"the same teleporters every attempt " + tag)
+	check(stood >= 25 and two >= 10 and blinking >= 9, "teleporters in the Golden Zone's own builds: %d, %d with two output pads, %d blinking"
+		% [stood, two, blinking])
+	print("  teleporters in the Golden Zone's own builds: %d, %d with two output pads, %d blinking" % [stood, two, blinking])
+
+
+## The teleporters give way (task Q6; TeleporterRules.set_aside, put_back) on a quick-play level of teleporters, fixed and
+## blinking, with room to spare, at 3, 5 and 6 lanes: set aside, every one leaves the layout (with `keep_blinking`, its first
+## blinking one stays); put back with nothing in the way, each stands again exactly as it stood; put back with a zone (what
+## the wider gaps hand over) over one's pad stretch, that one stands at its best fair spot elsewhere, its windows clear of
+## the zone, the others as they stood, every one fair; not moving (the dash walls' way), it doesn't come back. And where the
+## level's blinking one found no room, a fixed one with two output pads blinks instead (_blink_fixed), its light starting
+## on the side it was, fair.
+func _test_give_way() -> void:
+	for lanes: int in LANE_COUNTS:
+		var config := LevelConfig.new()
+		config.lane_count = lanes
+		config.level_seed = 7400 + lanes
+		config.features = PackedStringArray(["ceilings", TeleporterRules.FEATURE, TeleporterRules.BLINKING])
+		config.teleporters = 3
+		config.blinking_teleporters = 1
+		config.guarantee_features = false
+		var tag: String = "(lanes=%d)" % lanes
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		var stood: String = JSON.stringify(layout.teleporters)
+		check(layout.teleporters.size() == 3 and TeleporterRules.positions_blinking(layout).size() == 1 and gen.warnings.is_empty(),
+			"the quick-play level stands its three, one blinking %s" % tag)
+		if layout.teleporters.size() != 3:
+			continue
+		# Set aside and back with nothing in the way.
+		var probe: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout.copy())
+		var aside: Array[Dictionary] = TeleporterRules.set_aside(probe)
+		check(aside.size() == 3 and probe.layout.teleporters.is_empty(), "set aside, every one leaves the layout %s" % tag)
+		TeleporterRules.put_back(probe, aside)
+		check(JSON.stringify(probe.layout.teleporters) == stood and probe.warnings.is_empty(),
+			"put back with nothing in the way, each stands again as it stood %s" % tag)
+		var keeping: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout.copy())
+		var kept: Array[Dictionary] = TeleporterRules.set_aside(keeping, true)
+		check(kept.size() == 2 and keeping.layout.teleporters.size() == 1 and float(keeping.layout.teleporters[0]["blink"]) > 0.0,
+			"set aside keeping its blinking one, that one stays %s" % tag)
+		# A zone over the first one's pad stretch (as the wider gaps hand over): it moves, the others stand as they stood.
+		var first: Dictionary = layout.teleporters[0]
+		var zone := Vector2(float((first["calm"] as Array)[0][1]), float(first["end"]))
+		for move: bool in [true, false]:
+			var moving: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout.copy())
+			TeleporterRules.put_back(moving, TeleporterRules.set_aside(moving), [zone], move)
+			var e: float = TeleporterRules.edge(moving)
+			var clear: bool = true
+			var others_kept: int = 0
+			for tp: Dictionary in moving.layout.teleporters:
+				for w: Vector2 in TeleporterRules.windows_of(moving, tp, tt, pt).get(-1, []):
+					clear = clear and (w.x - e > zone.y or w.y + e < zone.x)
+				for o: Dictionary in layout.teleporters.slice(1):
+					others_kept += 1 if is_equal_approx(float(o["at"]), float(tp["at"])) and int(o["lane"]) == int(tp["lane"]) else 0
+			var problems: PackedStringArray = TeleporterRules.problems(moving)
+			var how: String = "moving" if move else "not moving"
+			check(clear and others_kept == 2 and problems.is_empty() and (moving.layout.teleporters.size() == (3 if move else 2)),
+				"put back with a zone over one's pad stretch, %s it: the others as they stood (%d), %d in all, none reaching the zone, every one fair %s %s"
+				% [how, others_kept, moving.layout.teleporters.size(), problems, tag])
+			check(not TeleporterRules.positions_blinking(moving.layout).is_empty(), "and a blinking one still stands (%s) %s" % [how, tag])
+		# A level whose blinking one found no room: a fixed one with two output pads blinks instead.
+		var fixed_config: LevelConfig = config.duplicate() as LevelConfig
+		fixed_config.blinking_teleporters = 0
+		var fixed_gen := LevelGenerator.new()
+		var fixed: LevelLayout = fixed_gen.generate(fixed_config, tuning, LevelGenerator.load_for(fixed_config))
+		var lights: Dictionary = {}
+		for tp: Dictionary in fixed.teleporters:
+			lights[int(tp["id"])] = int(tp["light"])
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 3
+		TeleporterRules._blink_fixed(fixed, tt, rng, 0.0, 1)
+		var blinked: Array[Dictionary] = []
+		for tp: Dictionary in fixed.teleporters:
+			if float(tp["blink"]) > 0.0:
+				blinked.append(tp)
+		var after := LevelGenerator.for_layout(config, tuning, fixed)
+		check(blinked.size() == 1 and (blinked[0]["outputs"] as Array).size() == 2 and is_equal_approx(float(blinked[0]["blink"]), tt.blink_seconds)
+			and int(blinked[0]["light"]) == int(lights[int(blinked[0]["id"])]) and TeleporterRules.problems(after).is_empty(),
+			"where the blinking one found no room, a fixed one with two output pads blinks instead, from its side, fair %s" % tag)
+
+
+## Endless mode with the Ice Lab, and with the Golden Zone (task Q6), as the furthest zone (App.start_endless: the zone's
+## last level, Specimen Vault or the Golden Palace, made a 20-minute level of everything the zone has from the start, at the
+## zone's speed, on a random seed), here on an arbitrary seed at 5 lanes, as test_gantryways' _test_endless does: it builds
+## without warnings and stands its level's count of teleporters (DESIGN-TBD, docs/questions/q4.md 14: the Ice Lab's 4 over
+## its 20 minutes, 2 of them blinking; docs/questions/q6.md: the Golden Zone's 3, 1 blinking) spread along the whole of
+## it, each fair (check_teleporters). No introduction: endless mode gives no feature a start.
 func _test_endless() -> void:
-	var zone := load("res://data/zones/ice_lab.tres") as ZoneDef
-	for level_seed: int in [7310]:
+	for spec: Array in [["ice_lab", 7310], ["golden", 7320]]:
+		_endless_in(load("res://data/zones/%s.tres" % spec[0]) as ZoneDef, int(spec[1]))
+
+
+## One endless level of _test_endless: `zone`'s last level as App.start_endless makes it, on `level_seed`.
+func _endless_in(zone: ZoneDef, endless_seed: int) -> void:
+	for level_seed: int in [endless_seed]:
 		var config: LevelConfig = (zone.levels[zone.levels.size() - 1] as LevelConfig).duplicate() as LevelConfig
 		# As App.start_endless makes it.
 		config.id = &"endless"
@@ -383,7 +553,7 @@ func _test_endless() -> void:
 		config.sky = null
 		if config.run_speed <= 0.0:
 			config.run_speed = zone.run_speed
-		var tag: String = "(endless in the Ice Lab, seed %d)" % level_seed
+		var tag: String = "(endless in %s, seed %d)" % [zone.display_name, level_seed]
 		var gen := LevelGenerator.new()
 		var spent_before: int = TeleporterRules.spent_usec
 		var started: int = Time.get_ticks_usec()
@@ -401,8 +571,129 @@ func _test_endless() -> void:
 			intros += 1 if tp.has("intro") else 0
 		check(intros == 0, "no introduction in endless mode " + tag)
 		LayoutChecks.check_teleporters(self, layout, config, tag)
-		print("  endless in the Ice Lab, seed %d: %d teleporters in %.0f m, a build %.0f ms (%.0f ms of it the teleporters' rules)"
-			% [level_seed, fronts.size(), layout.length, build_ms, (TeleporterRules.spent_usec - spent_before) / 1000.0])
+		print("  endless in %s, seed %d: %d teleporters in %.0f m, a build %.0f ms (%.0f ms of it the teleporters' rules)"
+			% [zone.display_name, level_seed, fronts.size(), layout.length, build_ms,
+			(TeleporterRules.spent_usec - spent_before) / 1000.0])
+
+
+# --- The Golden Zone's enemies (task Q6) --------------------------------------------------------
+
+## The Golden Zone's enemies the Ice Lab never had hold their attacks by a teleporter's calm stretches (task Q6), on a
+## hand-built track of 5 lanes with one teleporter as its rules make one (its pad in lane 2, the way around in lane 3, its
+## output pads in lanes 0 and 4):
+## - a Resonator's pulse (Resonator.pulse_clear: its rules plan with it, and it asks again just before each warning) isn't
+##   clear while a calm stretch lies in any lane from a metre before its warning to where its wave meets the runner, and
+##   is well before and past them; and every planned pulse keeps every teleporter's windows off it, in every lane
+##   (TeleporterRules.resonator_pulses through every_keeps: each grid spot whose pad stretch or landing would reach one, with
+##   the plan's margin, is blocked, and no other);
+## - an Enforcer Truck holds its volley while a calm stretch lies in the runner's lane before its last bolt
+##   (_teleporter_in_reach): lining up the pad, just landed, but not in the lane beside the pad, nor well before or past;
+##   and it never shows itself in the pad's lane nor its way around over the pad stretch (EnforcerTruckRoom: what the runner
+##   may need, `soft`), but beside them;
+## - the campaign's played runs' runner (AttackWatch, keeping to the pad's lane) goes around the pad and back, never taking
+##   it.
+func _test_golden_enemies() -> void:
+	var lay: LevelLayout = _layout(5, 2, 1, [0, 4], -1)
+	var tp: Dictionary = lay.teleporters[0]
+	var approach: Array = (tp["calm"] as Array)[0]
+	var landing: Array = (tp["calm"] as Array)[1]
+	var config := LevelConfig.new()
+	config.lane_count = 5
+	var zones := CeilingZones.make(config, tuning)
+	var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
+	var v: float = tuning.run_speed
+	var clear_at := func(warn: float) -> bool:
+		return Resonator.pulse_clear(lay, zones, warn, rt.meeting_stretch(warn, false, v, 0.0, 1.0))
+	var meet: Vector2 = rt.meeting_stretch(0.0, false, v, 0.0, 1.0)
+	check(bool(clear_at.call(float(approach[1]) - meet.y - 5.0)) and not bool(clear_at.call(float(approach[1]) + 1.0))
+		and not bool(clear_at.call(float(landing[1]) + 0.5)) and bool(clear_at.call(float(landing[2]) + 2.0)),
+		"a Resonator's pulse waits while a calm stretch lies between its warning and where its wave meets the runner")
+	# Every planned pulse keeps every teleporter's windows off it.
+	var bare := RunSim.layout(5, 1400.0)
+	var rconfig := LevelConfig.new()
+	rconfig.lane_count = 5
+	rconfig.features = PackedStringArray(["resonator", TeleporterRules.FEATURE])
+	bare.enemies.append({"type": "resonator", "at": 760.0, "lane": 2, "side": 0, "seed": 1,
+		"params": {"pulses": 2, "pulse_at": [700.0, 780.0], "double": [false, true]}})
+	var rgen: LevelGenerator = LevelGenerator.for_layout(rconfig, tuning, bare)
+	var pulses: Array[Vector2] = TeleporterRules.resonator_pulses(rgen)
+	var want: Array[Vector2] = []
+	for k: int in 2:
+		var a: float = [700.0, 780.0][k]
+		want.append(Vector2(a - TeleporterRules.PULSE_BACK, rt.meeting_stretch(a, k == 1, rgen.speed, rconfig.enemy_scaling,
+			rgen.pace).y + ResonatorRules.PLAN_MARGIN))
+	var keeps: Array[Vector2] = TeleporterRules.every_keeps(rgen)
+	check(pulses == want and keeps.has(want[0]) and keeps.has(want[1]),
+		"each planned pulse, from a metre before its warning past where its wave meets the runner, is what every lane keeps (%s)"
+		% [pulses])
+	var plan: TeleporterRules.Plan = TeleporterRules.plan_for(rgen, tt)
+	var e: float = plan.margin
+	var wrong: PackedStringArray = []
+	var counts: Array[int] = [0, 0]
+	for i: int in plan.size():
+		var f: float = plan.front_at(i)
+		var near := Vector2(f - plan.approach - e, f + plan.pad + plan.room + e)
+		for h: int in plan.hops.size():
+			var land := Vector2(f + plan.hops[h] - plan.back - e, f + plan.hops[h] + plan.landing + e)
+			var reaches: bool = false
+			var edge: bool = false
+			for w: Vector2 in pulses:
+				reaches = reaches or _overlap(near, w) or _overlap(land, w)
+				edge = edge or _touches(near, w) or _touches(land, w)
+			if edge:
+				continue
+			var blocked: bool = plan.near[i] > 0 or plan.far[h][i] > 0
+			counts[1 if reaches else 0] += 1
+			if reaches != blocked and wrong.size() < 4:
+				wrong.append("%.1f m hop %d (%s)" % [f, h, "free" if reaches else "blocked"])
+	check(wrong.is_empty() and counts[0] > 0 and counts[1] > 0,
+		"every spot whose pad stretch or landing would reach a planned pulse is blocked (%d), and no other (%d): %s"
+		% [counts[1], counts[0], ", ".join(wrong)])
+	# The Enforcer Truck: its volleys and its showings.
+	var sim := RunSim.new(tree, tuning)
+	var world: RunWorld = sim.build_world(lay)
+	world.player.setup(world.tuning, world.geo, 2)
+	var truck := world.director.spawn({"type": "enforcer_truck", "at": 1.0, "lane": 2, "side": 0, "seed": 7, "params": {}}) \
+		as EnforcerTruck
+	check(truck != null, "an Enforcer Truck spawns")
+	if truck != null:
+		var p: Player = world.player
+		p.speed = v
+		var reach: float = truck.tuning.volley_seconds() * v + 2.0
+		var holds := func(d: float, lane: int) -> bool:
+			p.distance = d
+			p.lane = lane
+			return bool(truck.call(&"_teleporter_in_reach", p))
+		check(not bool(holds.call(float(approach[1]) - reach - 5.0, 2)) and bool(holds.call(float(approach[1]) + 1.0, 2))
+			and not bool(holds.call(float(approach[1]) + 1.0, 3)) and bool(holds.call(float(landing[1]) + 1.0, 0))
+			and not bool(holds.call(float(landing[2]) + 2.0, 0)),
+			"an Enforcer Truck holds its volley while the runner lines up the pad or has just landed, not beside it nor past it")
+		var room: EnforcerTruckRoom = EnforcerTruckRoom.build(lay, world.geo, world.tuning, truck.tuning, v)
+		var stretch := Vector2(float(approach[1]), float(tp["end"]))
+		check(EnforcerTruckRoom.hit(room.soft[2], stretch.x, stretch.y) and EnforcerTruckRoom.hit(room.soft[3], stretch.x, stretch.y)
+			and not EnforcerTruckRoom.hit(room.soft[1], stretch.x, stretch.y) and not EnforcerTruckRoom.hit(room.soft[4], stretch.x, stretch.y),
+			"its pad's lane and its way around are what the runner may need over its pad stretch, the other lanes not")
+		var d0: float = stretch.x - 4.0
+		var gap: float = truck.tuning.follow_gap
+		check(not room.lane_clear(3, truck.tuning, d0, gap, truck.tuning.show_seconds, v)
+			and not room.lane_clear(2, truck.tuning, d0, gap, truck.tuning.show_seconds, v)
+			and room.lane_clear(1, truck.tuning, d0, gap, truck.tuning.show_seconds, v),
+			"so an Enforcer Truck never shows itself there, but beside them")
+	await sim.free_world(world)
+	# The played runs' runner goes around it.
+	var w2: RunWorld = sim.build_world(_layout(5, 2, 1, [0, 4], -1))
+	w2.player.setup(w2.tuning, w2.geo, 2)
+	w2.player.god_mode = true
+	var watch := AttackWatch.new(w2)
+	var observe := func() -> void: watch.observe()
+	tree.physics_frame.connect(observe)
+	var span_end: float = float((tp["span"] as Array)[1])
+	var r: Dictionary = await sim.step_world(w2, (span_end + 30.0) / v)
+	tree.physics_frame.disconnect(observe)
+	check(bool(r["alive"]) and w2.player.teleports == 0 and float(r["distance"]) > span_end and w2.player.lane == 2,
+		"the campaign's played runs' runner goes around the pad and back to its lane (teleports %d, lane %d, %.0f m)"
+		% [w2.player.teleports, w2.player.lane, float(r["distance"])])
+	await sim.free_world(w2)
 
 
 # --- The track ----------------------------------------------------------------------------------
@@ -819,8 +1110,9 @@ func _test_flash() -> void:
 
 # --- The campaign's own, on real physics --------------------------------------------------------
 
-## Every teleporter of Relay Station and Specimen Vault at 3, 5 and 6 lanes, at the level's speed, on real physics, on a cut
-## of the level around it (_cut: every piece reaching from its approach to its landings' end; nothing else): run onto,
+## Every teleporter of Relay Station and Specimen Vault, and of the Golden Zone's three levels (task Q6), at 3, 5 and 6 lanes,
+## at the level's speed, on real physics, on a cut of the level around it (_cut: every piece reaching from its approach to
+## its landings' end; nothing else): run onto,
 ## with its light set to each side in turn (either output pad may be taken: a blinking one's both, a fixed one's both
 ## kept fair), the runner lands on that output pad and runs through the landing alive with no input; in the lane beside it
 ## (its way around), and switching out of its lane as its approach begins, the runner passes it alive.
@@ -829,12 +1121,14 @@ func _test_campaign() -> void:
 	var sim := RunSim.new(tree, tuning)
 	var landings: int = 0
 	var arounds: int = 0
-	for n: int in [2, 3]:
-		var step: CampaignStep = campaign.step("ice_lab/%d" % n)
+	var golden: int = 0
+	for id: String in ["ice_lab/2", "ice_lab/3", "golden/1", "golden/2", "golden/3"]:
+		var step: CampaignStep = campaign.step(id)
 		for lanes: int in LANE_COUNTS:
 			var config: LevelConfig = campaign.configure(step, lanes)
 			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
 			for tp: Dictionary in gen.layout.teleporters:
+				golden += 1 if step.zone.id == &"golden" else 0
 				var lane: int = int(tp["lane"])
 				var side: int = int(tp["side"])
 				var tag: String = "(%s lanes=%d, the teleporter at %.0f m in lane %d)" % [step.id, lanes, float(tp["at"]), lane]
@@ -853,8 +1147,11 @@ func _test_campaign() -> void:
 				check(bool(r["alive"]) and int(r["teleports"]) == 0 and bool(r["past"]) and int(r["lane"]) == lane + side,
 					"switching out as its approach begins, the runner passes it %s %s" % [_brief(r), tag])
 				arounds += 2
-	check(landings >= 25 and arounds >= 40, "the campaign's teleporters were taken (%d landings) and passed (%d)" % [landings, arounds])
-	print("  the Ice Lab's teleporters on real physics: %d landings, %d passes" % [landings, arounds])
+	check(landings >= 50 and arounds >= 90 and golden >= 25,
+		"the campaign's teleporters were taken (%d landings) and passed (%d), the Golden Zone's %d among them" % [landings,
+			arounds, golden])
+	print("  the campaign's teleporters on real physics: %d landings, %d passes (%d of the teleporters the Golden Zone's)"
+		% [landings, arounds, golden])
 
 
 ## One take of _test_campaign on a cut of `gen`'s level around teleporter `tp` (_cut), at the level's run speed, the runner

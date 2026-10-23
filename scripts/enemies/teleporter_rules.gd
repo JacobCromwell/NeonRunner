@@ -39,12 +39,14 @@ extends RefCounted
 ##   re-check counts every rule's keep-outs in every lane), falling gantryway (its pillar's lead to past its walkway and its
 ##   calm stretch), fenced ceiling's pick (the I4 "pick the right pad", which plays out alone), Octodog's planned charge,
 ##   nor what the rules keep in every lane (a Bad Dream's chase, a treasure stash's floor, an Enforcer Truck's showing
-##   window): nothing that holds the track around the runner is under way as
-##   they touch the pad or arrive. Every enemy that holds an attack by a doodad holds it by a teleporter's calm stretches
-##   too (LevelLayout.doodad_between, teleporter_between: its approach in P, each landing in its output pad's lane): no
-##   bolt, lunge or barrage is timed onto a runner lining the pad up or just arrived, on every attempt. (What else is in
-##   play as they jump is the run world's to settle: EnemyDirector.runner_teleported leaves behind what's behind the landing,
-##   brings a heli drone along, and calls off any attack whose warning began before the jump.)
+##   window, a Gilded Sentinel's turn), nor a Resonator's planned pulse (from a metre before its warning to where its
+##   wave meets the runner: it holds a pulse by a doodad in any lane, so by a calm stretch; task Q6): nothing that holds
+##   the track around the runner is under way as they touch the pad or arrive. Every enemy that holds an attack by a
+##   teleporter's calm stretches too (LevelLayout.doodad_between, teleporter_between: its approach in P, each landing in
+##   its output pad's lane): no bolt, lunge, barrage, pulse or volley is timed onto a runner lining the pad up or just
+##   arrived, on every attempt. (What else is in play as they jump is the run world's to settle:
+##   EnemyDirector.runner_teleported leaves behind what's behind the landing, brings a heli drone along, and calls off any
+##   attack whose warning began before the jump.)
 ## - Its light (`light`, `blink`, `phase`): one output pad has none to choose (`light` 0); two have a fixed light on one
 ##   side (seeded), or with the `teleporter_blinking` feature a blinking one (blink_seconds a side, from a seeded side and
 ##   phase on the level clock), whose side lit at the touch decides. Either output pad may be taken, so both keep the rules.
@@ -63,10 +65,11 @@ extends RefCounted
 ## `teleporter_blinking`. The introductions first, then the rest spread through the level past them (a part each, a seeded
 ## spot aimed for in the part, the best fair spot there: a blinking one only past the blinking start), then the best of
 ## the rest. Of the fixed ones past the introduction, one is given two output pads (so a level that brings in fixed
-## antennas shows one's light; it stands with one where two find no room), each other one two_output_share. Its own random
-## stream
-## (LevelGenerator.rng_for), after every other feature's rules (RUN_AFTER), so the passes before it place exactly what they
-## did; a level without the feature draws nothing and is built byte for byte as before.
+## antennas shows one's light; it stands with one where two find no room), each other one two_output_share. A blinking one
+## with no room of its own (the Golden Zone's crowded levels, task Q6: a level with no introduction, where the fixed ones
+## took the spots that fit two output pads) has a fixed one with two output pads blink instead (_blink_fixed). Its own
+## random stream (LevelGenerator.rng_for), after every other feature's rules (RUN_AFTER), so the passes before it place
+## exactly what they did; a level without the feature draws nothing and is built byte for byte as before.
 ##
 ## What keeps off them after the rules (doodad_keep_outs, fill_keep_outs): the pad stretch and each landing in every lane
 ## (the danger density pass, the wider gaps, the cyborgs planted in charge paths, the fill pass and the zone doodads), and P,
@@ -87,6 +90,7 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"floor_cutter", "treasure_stash", "fenced_ceiling", "dash_wall", "wall_run_gaps", "debris_maze", "centipede",
 	"gantryway"]
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
+const ResonatorRules = preload("res://scripts/enemies/resonator_rules.gd")
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 const OCTODOG: String = "octodog"
 ## Metres before an output pad's front its landing keeps: the runner arrives as far past it as they were past the input
@@ -97,6 +101,9 @@ const LANDING_BACK: float = 1.0
 const TOUCH: float = 0.05
 ## Fitting spots kept, best first, among which a later one looks for a hazard ahead (prefer_hazard_seconds).
 const BEST_KEPT: int = 24
+## Metres before a Resonator's planned pulse's warning that every lane keeps too (resonator_pulses): a pulse is held by a
+## doodad from a metre before its warning (Resonator.pulse_clear), so by a calm stretch there.
+const PULSE_BACK: float = 1.0
 ## Kinds of teleporter (_kinds, _place).
 const SINGLE: StringName = &"single"
 const FIXED: StringName = &"fixed"
@@ -290,6 +297,17 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 			spot = _best(plan, SINGLE, lo_k, plan.hi, lo_k, fronts, spacing, false)
 		if not spot.is_empty():
 			_place(gen, spot, fronts, rng)
+	# A blinking antenna the level asks for with no room of its own (task Q6: the Golden Zone's crowded levels, where the
+	# fixed ones took the spots that fit two output pads): a fixed one with two output pads past the blinking start
+	# blinks instead.
+	var blink_lo: float = maxf(plan.lo, gen.feature_start(BLINKING))
+	var short: int = blink_count - positions_blinking(gen.layout).size()
+	if short > 0:
+		_blink_fixed(gen.layout, plan.t, rng, blink_lo, short)
+	# Still none (the ones standing have one output pad each): one of them gives way to a blinking one where that finds a
+	# fair spot, and stands again where it can.
+	if blink_count > 0 and positions_blinking(gen.layout).is_empty() and not fronts.is_empty():
+		_blink_in_place_of(gen, plan, rng, blink_lo, spacing, fronts)
 	if fronts.is_empty():
 		gen.warnings.append("teleporters: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
 	elif blink_count > 0 and positions_blinking(gen.layout).is_empty():
@@ -311,6 +329,51 @@ static func _intro(gen: LevelGenerator, t: TeleporterTuning, pt: PowerupTuning, 
 		plan = plan_for(gen, t, pt, false, true, start + window, INF)
 		spot = _best(plan, kind, plan.lo, plan.hi, plan.lo, fronts, spacing, true)
 	return spot
+
+
+## Makes up to `count` of `lay`'s fixed teleporters with two output pads standing from `from` on blink (blink_seconds a
+## side from a seeded phase, starting from the side their light was on), picked with `rng`: where the level's blinking
+## ones found no room of their own (_apply; task Q6). A fixed one's landings keep a blinking one's rules already (either
+## output pad may be taken, the unlit one is in view as well).
+static func _blink_fixed(lay: LevelLayout, t: TeleporterTuning, rng: RandomNumberGenerator, from: float, count: int) -> void:
+	var fixed: Array[Dictionary] = []
+	for tp: Dictionary in lay.teleporters:
+		if (tp["outputs"] as Array).size() == 2 and float(tp["blink"]) <= 0.0 and float(tp["at"]) >= from - 0.01:
+			fixed.append(tp)
+	for k: int in mini(count, fixed.size()):
+		var tp: Dictionary = fixed.pop_at(rng.randi_range(0, fixed.size() - 1))
+		tp["blink"] = t.blink_seconds
+		tp["phase"] = snappedf(rng.randf(), 0.001)
+
+
+## A blinking antenna the level asks for that found no room of its own and no fixed one to blink (_blink_fixed: the ones
+## standing have one output pad each; task Q6, the Golden Zone's crowded levels at three lanes): each one standing but an
+## introduction in turn gives way, and where a blinking one then has a fair spot anywhere from `from` on (on `plan`, the
+## nearest to where that one stood) it stands there, and the one that gave way stands again at its best fair spot of its
+## kind (one output pad where two find no room), else the level has one fewer. True if a blinking one stands.
+static func _blink_in_place_of(gen: LevelGenerator, plan: Plan, rng: RandomNumberGenerator, from: float, spacing: float,
+		fronts: Array[float]) -> bool:
+	var lay: LevelLayout = gen.layout
+	for tp: Dictionary in lay.teleporters.duplicate():
+		if tp.has("intro"):
+			continue
+		var at: float = float(tp["at"])
+		var others: Array[float] = fronts.duplicate()
+		others.erase(at)
+		var spot: Dictionary = _best(plan, BLINK, from, plan.hi, maxf(at, from), others, spacing, false)
+		if spot.is_empty():
+			continue
+		lay.teleporters.erase(tp)
+		fronts.assign(others)
+		_place(gen, spot, fronts, rng)
+		var kind: StringName = FIXED if (tp["outputs"] as Array).size() > 1 else SINGLE
+		var again: Dictionary = _best(plan, kind, plan.lo, plan.hi, at, fronts, spacing, false)
+		if again.is_empty() and kind == FIXED:
+			again = _best(plan, SINGLE, plan.lo, plan.hi, at, fronts, spacing, false)
+		if not again.is_empty():
+			_place(gen, again, fronts, rng)
+		return true
+	return false
 
 
 ## The kinds of the teleporters still to place past the introductions (`placed`), in a seeded order: the blinking ones
@@ -588,6 +651,94 @@ static func _number(lay: LevelLayout) -> void:
 		lay.teleporters[i]["id"] = i
 
 
+## Task Q6 (the Golden Zone's crowded levels): the teleporters give way to what a pass after the rules can't place
+## anywhere else (a level short of its wider gaps, WideGapPlacement, or of its dash walls, DashWallRules.after_doodads,
+## after its wall-run gaps gave way there, WallRunGapPlacement.set_aside): every one but an introduction (and with
+## `keep_blinking`, but the first blinking one) leaves the layout and is returned, in track order, so the pass tries again
+## with their windows free; put_back stands each one again. [] (and nothing changes) in a level without.
+static func set_aside(gen: LevelGenerator, keep_blinking: bool = false) -> Array[Dictionary]:
+	var aside: Array[Dictionary] = []
+	var kept: Array[Dictionary] = []
+	var blinking: bool = false
+	for tp: Dictionary in gen.layout.teleporters:
+		var blinks: bool = float(tp.get("blink", 0.0)) > 0.0
+		if tp.has("intro") or (keep_blinking and blinks and not blinking):
+			kept.append(tp)
+			blinking = blinking or blinks
+		else:
+			aside.append(tp)
+	if not aside.is_empty():
+		gen.layout.teleporters.assign(kept)
+	return aside
+
+
+## Stands each teleporter of `aside` (set_aside) again: where it stood, if it keeps every rule there on the layout as it
+## is now (problems) and none of its windows, `edge` wider, reaches one of `zones` (what the pass that set it aside keeps
+## in every lane and hasn't put in the layout yet: its wider gaps' zones); else, with `move`, at the best fair spot of its
+## kind nearest where it stood (plan_for, `zones` kept in every lane too; one output pad where two find no room), its
+## light drawn from a random stream of its own; else nowhere: the level has one fewer, as a level that leaves no room
+## has. Only a pass before the fill pass and the zone doodads moves one (the wider gaps): those keep off it where it
+## stands then, as they keep off the rules'. A blinking one the level asks for still stands where one can (_blink_fixed;
+## with `move`, _blink_in_place_of), and a level left with none warns.
+static func put_back(gen: LevelGenerator, aside: Array[Dictionary], zones: Array[Vector2] = [], move: bool = true) -> void:
+	if aside.is_empty():
+		return
+	var t: TeleporterTuning = tuning()
+	var pt: PowerupTuning = powerups()
+	var lay: LevelLayout = gen.layout
+	var e: float = edge(gen)
+	var moved: Array[Dictionary] = []
+	for tp: Dictionary in aside:
+		var clear: bool = true
+		for w: Vector2 in windows_of(gen, tp, t, pt).get(-1, []):
+			for z: Vector2 in zones:
+				clear = clear and not (w.x - e <= z.y and w.y + e >= z.x)
+		if clear:
+			lay.teleporters.append(tp)
+			_number(lay)
+			var tag: String = "the teleporter at %.1f m (lane %d)" % [float(tp["at"]), int(tp["lane"])]
+			for why: String in problems(gen):
+				clear = clear and not why.begins_with(tag)
+			if clear:
+				continue
+			lay.teleporters.erase(tp)
+		moved.append(tp)
+	var plan: Plan = null
+	var rng: RandomNumberGenerator = gen.rng_for(FEATURE + "_put_back")
+	var spacing: float = t.spacing_seconds * gen.speed
+	if move and not moved.is_empty():
+		plan = plan_for(gen, t, pt, false, false, -INF, INF, zones)
+		var blink_lo: float = maxf(plan.lo, gen.feature_start(BLINKING))
+		for tp: Dictionary in moved:
+			var fronts: Array[float] = positions(lay)
+			var kind: StringName = SINGLE
+			if float(tp.get("blink", 0.0)) > 0.0:
+				kind = BLINK
+			elif (tp["outputs"] as Array).size() > 1:
+				kind = FIXED
+			var lo: float = blink_lo if kind == BLINK else plan.lo
+			var spot: Dictionary = _best(plan, kind, lo, plan.hi, maxf(float(tp["at"]), lo), fronts, spacing, false)
+			if spot.is_empty() and kind != SINGLE:
+				spot = _best(plan, SINGLE, plan.lo, plan.hi, float(tp["at"]), fronts, spacing, false)
+			if not spot.is_empty():
+				_place(gen, spot, fronts, rng)
+	var blink_count: int = clampi(gen.config.blinking_teleporters, 0, gen.config.teleporters) \
+		if gen.config.has_feature(BLINKING) else 0
+	if blink_count > 0 and positions_blinking(lay).is_empty():
+		var from: float = maxf(plan.lo if plan != null else -INF, gen.feature_start(BLINKING))
+		_blink_fixed(lay, t, rng, from, blink_count)
+		if move and positions_blinking(lay).is_empty() and not lay.teleporters.is_empty():
+			if plan == null:
+				plan = plan_for(gen, t, pt, false, false, -INF, INF, zones)
+			var fronts: Array[float] = positions(lay)
+			_blink_in_place_of(gen, plan, rng, maxf(plan.lo, gen.feature_start(BLINKING)), spacing, fronts)
+	_number(lay)
+	if lay.teleporters.is_empty():
+		gen.warnings.append("teleporters: none stands again after giving way (GDD §5: a feature a level has appears in it)")
+	elif blink_count > 0 and positions_blinking(lay).is_empty():
+		gen.warnings.append("teleporters: no blinking one stands again after giving way (GDD §5: a feature a level has appears in it)")
+
+
 ## True if `span` in `lane` reaches one of `windows` ([lane, Vector2]).
 static func _in_windows(windows: Array[Array], lane: int, span: Vector2) -> bool:
 	for w: Array in windows:
@@ -614,9 +765,10 @@ static func _keep(list: Array[Dictionary], keep: Callable) -> void:
 ## What the level's teleporters keep, and where on its track a pad's front may stand (see the header): from `from` to `to`
 ## (the level's whole room where those are left as they are); with `intro`, an introduction's (its landings longer, and no
 ## enemy using the floor in any lane there); with `checking`, for a finished layout, everything there counts against a
-## spot, plain pieces too (while placing, plain pieces only cost what taking them out costs).
+## spot, plain pieces too (while placing, plain pieces only cost what taking them out costs). `extra`: more stretches
+## every lane keeps, as every_keeps' (put_back: what a pass after the rules is about to add, not in the layout yet).
 static func plan_for(gen: LevelGenerator, t: TeleporterTuning = null, pt: PowerupTuning = null, checking: bool = false,
-		intro: bool = false, from: float = -INF, to: float = INF) -> Plan:
+		intro: bool = false, from: float = -INF, to: float = INF, extra: Array[Vector2] = []) -> Plan:
 	var p := Plan.new()
 	p.gen = gen
 	p.t = t if t != null else tuning()
@@ -686,7 +838,9 @@ static func plan_for(gen: LevelGenerator, t: TeleporterTuning = null, pt: Poweru
 		if bool(piece[4]):
 			(p.hazards[lane] as Array).append(span)
 	# What every lane keeps, over the pad stretch and over each landing.
-	for span: Vector2 in every_keeps(gen, keeps):
+	var every: Array[Vector2] = every_keeps(gen, keeps)
+	every.append_array(extra)
+	for span: Vector2 in every:
 		p.mark(p.near, span, near_a, near_b)
 		for h: int in p.hops.size():
 			var d: float = p.hops[h]
@@ -783,8 +937,9 @@ static func lane_pieces(gen: LevelGenerator, plain_ok: bool, powered: Array[Dict
 ## with its margins (WallRunGapPlacement.keep_out), every falling gantryway (from its pillar's lead to past its walkway and
 ## its calm stretch), every fenced ceiling's pick (task I4, its hull's "pick": from its first pad's run-up to its last safe
 ## pad, where the player reads which pad is the trap; it plays out alone, CeilingScenarios.event_spans), every Octodog's
-## planned charge (its window from a metre before its anchor), and what the rules keep in every lane (`keeps`,
-## LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own).
+## planned charge (its window from a metre before its anchor), what the rules keep in every lane (`keeps`,
+## LevelGenerator.rules_doodad_keep_outs: their calm stretches too; never a teleporter's own), and every Resonator's
+## planned pulse (resonator_pulses; task Q6, the Golden Zone).
 static func every_keeps(gen: LevelGenerator, keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var lay: LevelLayout = gen.layout
 	var out: Array[Vector2] = []
@@ -815,6 +970,32 @@ static func every_keeps(gen: LevelGenerator, keeps: Array[Dictionary] = []) -> A
 				continue
 			for a: Variant in (e.get("params", {}) as Dictionary).get("charge_at", []):
 				out.append(Vector2(float(a) - 1.0, float(a) + window))
+	out.append_array(resonator_pulses(gen))
+	return out
+
+
+## Every planned pulse of `gen`'s Resonators (task Q6, the Golden Zone; params "pulse_at" and "double",
+## resonator_rules.gd), each from PULSE_BACK before its warning to ResonatorRules.PLAN_MARGIN past where its wave meets
+## the runner (ResonatorTuning.meeting_stretch, at the level's run speed, as its rules plan it): a pulse is held while a
+## doodad, and so a teleporter's calm stretch, lies in any lane from a metre before its warning to there
+## (Resonator.pulse_clear), and the Resonators' re-check (ResonatorRules.problems) asks every planned pulse again, so
+## no teleporter's window reaches one. Between its pulses, and before and after its visit, a Resonator holds a pulse
+## that waits moved on until the calm stretch is behind the runner, as it does by a doodad.
+static func resonator_pulses(gen: LevelGenerator) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var resonators: Array[Dictionary] = ResonatorRules.resonators_in(gen.layout)
+	if resonators.is_empty():
+		return out
+	var t: ResonatorTuning = ResonatorRules.tuning()
+	for e: Dictionary in resonators:
+		var params: Dictionary = e.get("params", {})
+		var anchors: Array = params.get("pulse_at", [])
+		var doubles: Array = params.get("double", [])
+		for i: int in anchors.size():
+			var a: float = float(anchors[i])
+			var double: bool = i < doubles.size() and bool(doubles[i])
+			var meet: Vector2 = t.meeting_stretch(a, double, gen.speed, gen.config.enemy_scaling, gen.pace)
+			out.append(Vector2(a - PULSE_BACK, meet.y + ResonatorRules.PLAN_MARGIN))
 	return out
 
 

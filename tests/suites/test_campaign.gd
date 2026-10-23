@@ -22,7 +22,8 @@ extends TestSuite
 ## the Octodogs and the heli drones, no other earlier enemy and no dash walls (ICE_LAB_LEAVES_OUT), nothing new until its
 ## mechanics' tasks (Q3, Q4) and its two new enemies come, and every other level and boss configured exactly as in the
 ## campaign before it; a save from before it keeps the Golden Zone it had open (Profile version 6). test_ice_lab_levels
-## checks its levels' own rules.
+## checks its levels' own rules. The Golden Zone keeps the Ice Lab's teleporters, fixed and blinking (task Q6; the owner,
+## October 22, 2026), but not its falling gantryways nor its Octodog jars (LEFT_OUT); test_teleporters checks its builds.
 
 ## The zones in order and their level counts (GDD §5; the Casino added as Zone 4 by the owner, October 8,
 ## 2026, the Beach as Zone 6, between Corporate and the Dead Zone, October 9, the Terminal as Zone 8, between the
@@ -120,13 +121,10 @@ const LEFT_OUT: Dictionary = {
 	# its extended wall runs no room (LevelConfig.features_left_out; endless mode puts it back).
 	"drone": ["dead_zone/2"],
 	# Task Q3: the falling gantryways stay in the Ice Lab, the zone's own mechanic as the Terminal's maze is the Terminal's
-	# (GDD §5, Zone 9 names them for its three levels; DESIGN-TBD, docs/questions/q3.md: GDD §5 says anything introduced
-	# keeps appearing, so whether the Golden Zone hangs them too is the owner's call).
+	# (GDD §5, Zone 9; the owner, October 22, 2026: "For now, the Falling Gantryways should only be in the ice lab").
+	# (The teleporters, task Q4, keep appearing: the owner, October 22, 2026, "we should add the teleporters to the golden
+	# zone", task Q6, all three of its levels, fixed and blinking alike.)
 	"gantryway": ["golden/1", "golden/2", "golden/3"],
-	# Task Q4: the teleporters stay in the Ice Lab too, as the gantryways do (DESIGN-TBD, docs/questions/q4.md 13: GDD §5 says
-	# anything introduced keeps appearing, so whether the Golden Zone stands them too is the owner's call).
-	"teleporter": ["golden/1", "golden/2", "golden/3"],
-	"teleporter_blinking": ["golden/1", "golden/2", "golden/3"],
 	# Task Q5: the Octodog jars stay in the Ice Lab, its own doodads; the Golden Zone has no Octodogs to hold anyway
 	# (DESIGN-TBD, docs/questions/q5.md 12).
 	"octodog_jar": ["golden/1", "golden/2", "golden/3"],
@@ -788,7 +786,8 @@ func _test_off_curve(campaign: Campaign) -> void:
 			"the Beach's boss slot fights at Sunset Strip's enemy scaling, the Beach's speed and Sunset Strip's sky (tier %d)" % tier)
 
 	# The campaign before the Beach, built from the same data without it (and without the Terminal and the Ice Lab, which
-	# came after it: _test_terminal_off_curve, _test_ice_lab_off_curve).
+	# came after it: _test_terminal_off_curve, _test_ice_lab_off_curve; so its feature ages are compared but the Ice Lab's
+	# own mechanics', _ages_but_ice_lab).
 	var seven := campaign.duplicate() as Campaign
 	var zones: Array[ZoneDef] = []
 	for zone: ZoneDef in campaign.zones:
@@ -813,7 +812,7 @@ func _test_off_curve(campaign: Campaign) -> void:
 				var b: LevelConfig = campaign.configure(now, lanes, tier) if now.is_level() else campaign.configure_boss(now, lanes, tier)
 				ok = ok and a.difficulty == b.difficulty and a.enemy_scaling == b.enemy_scaling and a.run_speed == b.run_speed \
 					and a.lane_count == b.lane_count and a.skin == b.skin and a.sky == b.sky and a.feature_recency == b.feature_recency \
-					and var_to_str(a.feature_ages) == var_to_str(b.feature_ages)
+					and _ages_but_ice_lab(a) == _ages_but_ice_lab(b)
 		if old.is_level():
 			ok = ok and App.rules.completion_bonus(old.level_index) == App.rules.completion_bonus(now.level_index)
 		check(ok, "%s configures exactly as before the Beach, at 3, 5 and 6 lanes and every tier" % old.id)
@@ -855,7 +854,7 @@ func _test_off_curve(campaign: Campaign) -> void:
 					else before_match.configure_boss(old, lanes, tier)
 				var b: LevelConfig = campaign.configure(now, lanes, tier) if now.is_level() else campaign.configure_boss(now, lanes, tier)
 				ok = ok and a.difficulty == b.difficulty and a.enemy_scaling == b.enemy_scaling and a.run_speed == b.run_speed \
-					and a.skin == b.skin and a.sky == b.sky and var_to_str(a.feature_ages) == var_to_str(b.feature_ages)
+					and a.skin == b.skin and a.sky == b.sky and _ages_but_ice_lab(a) == _ages_but_ice_lab(b)
 		compared += 1
 		unchanged += 1 if ok else 0
 		if not ok:
@@ -896,7 +895,8 @@ func _test_ice_lab_off_curve(campaign: Campaign) -> void:
 ## place on the curve of the last level on it before the zone, and that level's completion bonus. The campaign before the
 ## zone came (the same data without the zones `newer`: it and any that came after it) has `levels` levels, and every step
 ## of it but the cinematics, levels and bosses alike, configures exactly as it does now: the same place on the curve,
-## difficulty, enemy scaling, run speed, feature ages, skin, sky and recency curve, and the same completion bonus.
+## difficulty, enemy scaling, run speed, feature ages (but the Ice Lab's own mechanics, which the Golden Zone's
+## teleporters date from since task Q6: _ages_but_ice_lab), skin, sky and recency curve, and the same completion bonus.
 func _check_joins_off_curve(campaign: Campaign, id: String, before_id: String, after_id: String, newer: Array,
 		levels: int) -> void:
 	var zone: ZoneDef = _zone(campaign, id)
@@ -970,7 +970,7 @@ func _check_joins_off_curve(campaign: Campaign, id: String, before_id: String, a
 				var b: LevelConfig = campaign.configure(now, lanes, tier) if now.is_level() else campaign.configure_boss(now, lanes, tier)
 				ok = ok and a.difficulty == b.difficulty and a.enemy_scaling == b.enemy_scaling and a.run_speed == b.run_speed \
 					and a.lane_count == b.lane_count and a.skin == b.skin and a.sky == b.sky and a.feature_recency == b.feature_recency \
-					and var_to_str(a.feature_ages) == var_to_str(b.feature_ages)
+					and _ages_but_ice_lab(a) == _ages_but_ice_lab(b)
 		if ok and old.is_level():
 			ok = App.rules.completion_bonus(old.level_index) == App.rules.completion_bonus(now.level_index)
 		compared += 1
@@ -1239,7 +1239,8 @@ func _test_recency(campaign: Campaign) -> void:
 		check(s.level.feature_ages.is_empty() and s.level.feature_recency == null, "%s's own file has neither" % s.id)
 		for f: String in s.level.features:
 			var first: CampaignStep = campaign.step(String(FIRST_LEVEL.get(f, "")))
-			# A level on the curve counts the levels on it (their places); one off it (the Beach's, task D10c)
+			# A level on the curve counts the levels on it (their places), and a feature a level off it brought in (the
+			# Ice Lab's teleporters, task Q6) from the place that level takes; one off it (the Beach's, task D10c)
 			# every level before it, in the order they're played.
 			var age: int = -1
 			if first != null:
@@ -1254,6 +1255,12 @@ func _test_recency(campaign: Campaign) -> void:
 		and int(campaign.configure(campaign.step("beach/3"), 3).feature_ages["tithe_collector"]) == 2
 		and int(campaign.configure(campaign.step("dead_zone/1"), 3).feature_ages["buzz_overdrive"]) == 2,
 		"the Beach's Tithe Collectors are 1 and 2 levels old, and the levels after it keep their ages (Dead Zone 1's Buzz Overdrive 2)")
+	# Task Q6: the Golden Zone stands the Ice Lab's teleporters again with no introduction of its own (the Ice Lab, off the
+	# curve, taught them), so its first level dates them from Relay Station's and Specimen Vault's place, not as its own.
+	var golden_ages: Dictionary[String, int] = campaign.configure(campaign.step("golden/1"), 3).feature_ages
+	check(int(golden_ages.get("teleporter", -1)) == 1 and int(golden_ages.get("teleporter_blinking", -1)) == 1
+		and int(golden_ages.get("resonator", -1)) == 0,
+		"Golden 1's teleporters are a level old, the Ice Lab's, and its Resonators its own (%s)" % [golden_ages])
 
 	var intro: Array[int] = [0, 0]
 	var core: Array[int] = [0, 0]
@@ -1265,6 +1272,12 @@ func _test_recency(campaign: Campaign) -> void:
 	for p: Dictionary in LevelGenerator.load_for(load(LEVEL_PATH) as LevelConfig):
 		for need: Variant in p.get("requires", []):
 			with_patterns[String(need)] = true
+	# So those ages date no pick (_ages_but_ice_lab): the Golden Zone builds as it would with Golden 1 bringing them in.
+	var dated: Array[String] = []
+	for f: String in NEW_MECHANICS["ice_lab"]:
+		if with_patterns.has(f):
+			dated.append(f)
+	check(dated.is_empty(), "no pattern requires the Ice Lab's own mechanics, so their ages change no pick (%s)" % [dated])
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level() or s.is_minigame():
 			continue
@@ -1782,6 +1795,19 @@ func _test_saves_before_ice_lab() -> void:
 	check(not again.is_completed("ice_lab/outro") and again.records.size() == (current["records"] as Dictionary).size(),
 		"a version 6 save loads as it is: nothing is migrated again")
 	App.profile = saved
+
+
+## `config`'s feature ages for a comparison with the campaign before a zone off the curve came in (the Beach, the
+## volleyball match, the Terminal, the Ice Lab), which leaves the Ice Lab out: without the Ice Lab's own mechanics
+## (NEW_MECHANICS), as the Golden Zone's teleporters date from it since task Q6 (Campaign.feature_ages counts a level off
+## the curve played before a level on it), where the campaign without it would have Golden 1 bring them in. They date
+## no pick (no pattern requires them: _test_recency), so the levels still build as before; every other age
+## must match.
+func _ages_but_ice_lab(config: LevelConfig) -> String:
+	var ages: Dictionary[String, int] = config.feature_ages.duplicate()
+	for f: String in NEW_MECHANICS["ice_lab"]:
+		ages.erase(f)
+	return var_to_str(ages)
 
 
 ## Level step `s`'s number in the order the campaign plays its levels (0 for the first), mini-game levels (the

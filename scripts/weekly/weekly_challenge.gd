@@ -51,8 +51,10 @@ const WEEK_FIELDS: PackedStringArray = [
 ##   zone may lack (a dial for a feature the zone doesn't list does nothing: the generator runs a rules script per feature
 ##   the level lists). The falling gantryways' count is one (task Q3), as the dash walls' is, so an Ice Lab week hangs
 ##   Sentinel Row's (DESIGN-TBD, docs/questions/q3.md 14), and so are the teleporters' counts (task Q4: how many, and how
-##   many of them blink; DESIGN-TBD, docs/questions/q4.md 14) and the Octodog jars' (task Q5: how many jars release
-##   their Octodog, and how many hold one that never comes out; DESIGN-TBD, docs/questions/q5.md 11).
+##   many of them blink; DESIGN-TBD, docs/questions/q4.md 14; since task Q6 the Golden Zone's week stands them too, its
+##   source level being Sentinel Row, and only a zone whose level lists the feature stands any, docs/questions/q6.md 9)
+##   and the Octodog jars' (task Q5: how many jars release their Octodog, and how many hold one that never comes out;
+##   DESIGN-TBD, docs/questions/q5.md 11).
 const GOLDEN_FIELDS: PackedStringArray = [
 	"duration_seconds", "run_speed", "difficulty", "difficulty_bias", "difficulty_ramp", "enemy_scaling",
 	"start_clear_distance", "end_clear_distance", "spacing_seconds_easy", "spacing_seconds_hard", "fill_empty_seconds",

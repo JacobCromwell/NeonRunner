@@ -53,7 +53,8 @@ const SMASH_LANES: Array[int] = [3, 5, 6]
 ## moves with the generator (task L3 put Golden 1's by a side wall; task L6's doodads, placed lane by lane, left none
 ## of the first three one; its review, which keeps both lanes beside a doodad clear past a push's landing, none of them
 ## at 3 or 5 lanes; task N1 found Golden 3's at 5 lanes a treasure stash's, which isn't a zone doodad: Corporate 2's at
-## 6 lanes since), so the next stand in.
+## 6 lanes since; task Q6's teleporters gave Golden 3 at 5 lanes one again, but past others in that lane, which
+## _smash_targets passes over), so the next stand in.
 const SMASH_LEVELS: Array[String] = ["golden/1", "corporate/2", "golden/2", "dead_zone/1", "golden/3"]
 
 var main: Node
@@ -605,19 +606,30 @@ func _test_smashed_stand_again(ids: Array[String]) -> void:
 ## in the runner's starting lane from 20 m past the run-up's end to 120 m before the wall's face (the dash is back by
 ## then), by their indices ({doodad, wall}); {} if there's none. A lone one, not one of a row (task L3), whose
 ## others would meet the runner first or after, nor a treasure stash's (task I4), whose lane has two since task N1
-## (the outer one meets the runner first) and whose walls stand beside the second.
+## (the outer one meets the runner first) and whose walls stand beside the second. Only where the runner, keeping to their
+## lane, meets it in that lane: no other doodad before it there (one would push them out of it: Golden 3's at 5 lanes
+## since task Q6, past a lone one and a treasure stash's two), and no teleporter before the wall (task Q6, the Golden
+## Zone's: a teleport skips the track between its pads and lands them in an output pad's lane).
 func _smash_targets(world: RunWorld) -> Dictionary:
 	var lay: LevelLayout = world.layout
 	if lay.dash_walls.is_empty():
 		return {}
 	var face: float = float(lay.dash_walls[0]["start"])
+	for tp: Dictionary in lay.teleporters:
+		if int(tp["lane"]) == world.player.lane and float(tp["at"]) < float(lay.dash_walls[0]["end"]):
+			return {}
 	var best: int = -1
 	for i: int in lay.doodads.size():
 		var d: Dictionary = lay.doodads[i]
 		if int(d["lane"]) == world.player.lane and not d.has("row") and not d.has("stash") \
 				and float(d["start"]) > world.config.start_clear_distance + 20.0 and float(d["end"]) < face - 120.0:
 			best = i
-	return {} if best < 0 else {"doodad": best, "wall": 0}
+	if best < 0:
+		return {}
+	for d: Dictionary in lay.doodads:
+		if int(d["lane"]) == world.player.lane and float(d["start"]) < float(lay.doodads[best]["start"]):
+			return {}
+	return {"doodad": best, "wall": 0}
 
 
 ## Plays the App's run (begun) until the runner is past the picked dash wall (or out of time), keeping to their lane:

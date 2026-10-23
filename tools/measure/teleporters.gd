@@ -6,18 +6,28 @@ extends SceneTree
 ## GantrywayRules.problems(), which counts every rule's keep-outs (nothing, on every build the suites check). From the
 ## project folder:
 ##   godot --headless -s res://tools/measure/teleporters.gd -- [--levels=ice_lab/2,ice_lab/3] [--lanes=3,5,6] [--seeds=N]
-##     [--seed-list=a,b,c] [--why]
+##     [--seed-list=a,b,c] [--why] [--rules]
 ## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3), --seed-list on its own and the
-## seeds listed. --why prints why an introduction found no spot in its window (TeleporterRules.debug).
+## seeds listed. --why prints why an introduction found no spot in its window (TeleporterRules.debug). --rules (task Q6,
+## the Golden Zone) also runs, on the same build, the re-checks of the other features whose rules read a teleporter's
+## calm stretches or its keep-outs (LevelLayout.doodad_between, LevelGenerator.rules_doodad_keep_outs): the Resonators'
+## pulses, the Gilded Sentinels', the Enforcer Trucks' and the dash walls', and the level's wider gaps against its count,
+## and prints what each finds, and what the same level without its teleporters has (wider gaps, dash walls).
 
 const TeleporterRules = preload("res://scripts/enemies/teleporter_rules.gd")
 const GantrywayRules = preload("res://scripts/enemies/gantryway_rules.gd")
+const ResonatorRules = preload("res://scripts/enemies/resonator_rules.gd")
+const SentinelRules = preload("res://scripts/enemies/gilded_sentinel_rules.gd")
+const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
+const DashWallRules = preload("res://scripts/enemies/dash_wall_rules.gd")
 
 var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
 var _seeds: int = 3
 ## --seed-list=a,b: these seeds instead of 9001, 9002, ...
 var _seed_list: Array[int] = []
+## --rules: the other features' re-checks of each build (_other_rules).
+var _rules: bool = false
 
 
 func _initialize() -> void:
@@ -39,6 +49,8 @@ func _run() -> void:
 				_seed_list.append(int(v))
 		elif arg == "--why":
 			TeleporterRules.debug = true
+		elif arg == "--rules":
+			_rules = true
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var builds: int = 0
@@ -82,6 +94,7 @@ func _run() -> void:
 				var bare_gen := LevelGenerator.new()
 				bare_gen.generate(bare, tuning, patterns)
 				var bare_ms: float = (Time.get_ticks_usec() - t1) / 1000.0
+				var others: String = _other_rules(gen, bare_gen, tuning) if _rules else ""
 				slowest = maxf(slowest, ms)
 				builds += 1
 				wanted += config.teleporters
@@ -114,11 +127,43 @@ func _run() -> void:
 						kind = "fixed %s" % ("L" if int(tp["light"]) < 0 else "R")
 					parts.append("%.2f L%d>%s %s +%.0fm%s" % [float(tp["at"]) / layout.length, int(tp["lane"]), "/".join(outs),
 						kind, float((tp["outputs"] as Array)[0]["at"]) - float(tp["at"]), " intro" if tp.has("intro") else ""])
-				print("%s lanes=%d seed=%d: %d of %d [%s] %.0f ms (%.0f in the rules, %.0f without), %d builds (%d without)%s%s"
+				print("%s lanes=%d seed=%d: %d of %d [%s] %.0f ms (%.0f in the rules, %.0f without), %d builds (%d without)%s%s%s"
 					% [s.id, lanes, config.level_seed, layout.teleporters.size(), config.teleporters, ", ".join(parts), ms,
 					rules_ms, bare_ms, gen.attempts, bare_gen.attempts,
 					"" if gen.warnings.is_empty() else " WARNINGS %s" % [gen.warnings],
-					"" if found.is_empty() else " PROBLEMS %s" % [found]])
+					"" if found.is_empty() else " PROBLEMS %s" % [found], others])
+				if _rules and others.contains("PROBLEMS"):
+					problems += 1
 	print("builds %d: %d of %d teleporters stand, %d of %d blinking; %d problems; slowest build %.0f ms; the rules %.0f ms a build on average, %.0f at most"
 		% [builds, placed, wanted, blinking, blink_wanted, problems, slowest, rules_total / maxf(builds, 1), rules_most])
 	quit()
+
+
+## --rules: what the other features' own re-checks find in `gen`'s build (the Resonators' pulses, the Gilded Sentinels',
+## the Enforcer Trucks', the dash walls'), and its wider gaps and dash walls against the level's counts and against the
+## same level built without its teleporters (`bare`), as a line to print.
+func _other_rules(gen: LevelGenerator, bare: LevelGenerator, tuning: MovementTuning) -> String:
+	var config: LevelConfig = gen.config
+	var layout: LevelLayout = gen.layout
+	var found: PackedStringArray = []
+	if config.has_feature("resonator"):
+		for p: String in ResonatorRules.problems(layout, config, tuning):
+			found.append("resonator: " + p)
+	if config.has_feature("gilded_sentinel"):
+		for p: String in SentinelRules.problems(layout, config, tuning):
+			found.append("sentinel: " + p)
+	if config.has_feature("enforcer_truck"):
+		for p: String in EnforcerRules.problems(gen):
+			found.append("enforcer truck: " + p)
+	if config.has_feature(DashWallRules.FEATURE):
+		for p: String in DashWallRules.problems(gen):
+			found.append("dash wall: " + p)
+	var jump: float = gen.tuning.jump_distance(gen.speed)
+	var et := EnemyDirector.tuning_for("enforcer_truck") as EnforcerTruckTuning
+	var hop: float = et.max_hop_jump_fraction if et != null else 0.6
+	var wide: int = WideGapPlacement.wide_rows(layout, jump, hop).size()
+	var bare_wide: int = WideGapPlacement.wide_rows(bare.layout, jump, hop).size()
+	return " | wide gaps %d of %d (%d without), dash walls %d of %d (%d without), resonators %d (%d without)%s" % [wide,
+		config.wide_gaps, bare_wide, layout.dash_walls.size(), config.dash_walls if config.has_feature(DashWallRules.FEATURE) else 0,
+		bare.layout.dash_walls.size(), ResonatorRules.resonators_in(layout).size(),
+		ResonatorRules.resonators_in(bare.layout).size(), "" if found.is_empty() else " PROBLEMS %s" % [found]]
