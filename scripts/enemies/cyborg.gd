@@ -9,11 +9,11 @@ extends Enemy
 ##   face when the player comes near, then runs away ahead of them, firing wildly over its shoulder,
 ##   and cowers once it runs out of room.
 ## - Host (params.host, feature `host`, GDD §9.7): its screen glitches purple, purple veins glow
-##   along its neck and arms and purple smoke rises off it (HostSmoke: visual only, its numbers
-##   CyborgTuning's "Host smoke" group, gone when it dies). Weapons hit it like any other cyborg
-##   (owner, October 8, 2026: auto-fire targets it, shots and splash hurt it); killing it, by any
-##   means, releases the Bad Dream, and a stomp, the claws or the dash also earn the big host bonus
-##   (_release_bad_dream). It never panics.
+##   along its neck and arms, its body glows purple and pale smoke rises off it (CyborgBody, HostSmoke:
+##   visual only, their numbers CyborgTuning's "Host look" group, gone when it dies). Weapons hit it
+##   like any other cyborg (owner, October 8, 2026: auto-fire targets it, shots and splash hurt it);
+##   killing it, by any means, releases the Bad Dream, and a stomp, the claws or the dash also earn the
+##   big host bonus (_release_bad_dream). It never panics.
 ## Killed by a stomp on the head, weapons, claws or the dash: a stompable top over the head and a
 ## solid body (both slightly smaller than the visuals, and the body stops below the stomp line, so a
 ## player dropping onto the head only ever touches the head).
@@ -115,8 +115,7 @@ func _build() -> void:
 	body.name = "Body"
 	add_child(body)
 	body.build(world.skin.enemy_variant, is_host, false, int(spawn.get("seed", 0)))
-	if body.smoke != null:
-		body.smoke.configure(tuning)
+	body.apply_host_tuning(tuning)
 	# Drawn bigger in some zones (ZoneSkin.cyborg_draw_scale), from its feet; the hitboxes and the gun's
 	# muzzle point (CyborgGun.muzzle_offset) are gameplay's and stay as they are.
 	body.scale = Vector3.ONE * CyborgSuit.draw_scale(world.skin)

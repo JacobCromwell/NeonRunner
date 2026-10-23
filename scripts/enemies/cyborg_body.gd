@@ -5,8 +5,8 @@ extends GunModel
 ## the ragged "Static TV Head" base or one of its zone variants, CyborgSuit.look_for), the screen's
 ## face (on the look's screen, in its face set), the host's purple glitch and veins (GDD §9.7) and the
 ## weapon's charge glow all drawn by one material per cyborg (cyborg_body.gdshader): 11 draw calls for
-## a whole cyborg, 7 for a window cyborg's upper body. A host also has purple smoke rising off it
-## (HostSmoke, task S1: one more draw call, on its own node). Visual only: it never touches collision
+## a whole cyborg, 7 for a window cyborg's upper body. A host also glows purple (the same material's rim glow)
+## and has pale smoke rising off it (HostSmoke, task S1: one more draw call, on its own node). Visual only: it never touches collision
 ## or gameplay, and its randomness never uses the enemy's gameplay random stream.
 ##
 ## It poses the rig itself (HumanoidRig.apply_pose with HumanoidPoses and CyborgPoses, blended), so
@@ -135,6 +135,7 @@ func build(p_variant: StringName, p_host: bool = false, p_upper_body_only: bool 
 		for joint: int in LEG_JOINTS:
 			parts[joint].visible = false
 	elif host:
+		# DESIGN-TBD (docs/questions/s1.md 3): the Dead Zone intro's host (a CineActorNode body) smokes too.
 		smoke = HostSmoke.new()
 		smoke.build(visual_seed)
 		rig.joint(&"chest").add_child(smoke)
@@ -142,6 +143,16 @@ func build(p_variant: StringName, p_host: bool = false, p_upper_body_only: bool 
 	set_expression(Kit.Face.NEUTRAL)
 	_snap = true
 	_animate(0.0)
+
+
+## A host's look from the cyborg tuning (CyborgTuning's "Host look" group): its body glow and its smoke. Any other
+## cyborg ignores it.
+func apply_host_tuning(tuning: CyborgTuning) -> void:
+	if not host or material == null:
+		return
+	material.set_shader_parameter(&"rim_energy", tuning.host_glow_energy)
+	if smoke != null:
+		smoke.configure(tuning)
 
 
 func set_pose(p: Pose) -> void:

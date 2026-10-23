@@ -20,7 +20,7 @@ extends RefCounted
 ## steel and gunmetal, dull and unlit (the sheet's brass arm is rusted steel here). Nothing on it
 ## glows but the screen's cold white face, the cannon's red charge-up (the emitter ring and orb,
 ## unchanged), and on hosts only the purple glitching screen and purple veins along the neck and arms
-## (the &"host" set; a host's purple smoke is HostSmoke's, its own node). Nothing glows copper (Razor
+## (the &"host" set; a host's body glow is the shader's `host_rim`, its smoke HostSmoke's own node). Nothing glows copper (Razor
 ## Echo's signature, GDD §11); no hazard or "safe" colour anywhere else. test_cyborg_body.gd pins these
 ## rules.
 ##
@@ -228,6 +228,7 @@ static func new_material(look: StringName, host: bool, visual_seed: int) -> Shad
 	m.set_shader_parameter(&"led_color", Kit.LED_COLOR)
 	m.set_shader_parameter(&"glitch_color", Kit.GLITCH_COLOR)
 	m.set_shader_parameter(&"glitch", 1.0 if host else 0.0)
+	m.set_shader_parameter(&"host_rim", 1.0 if host else 0.0)
 	m.set_shader_parameter(&"seed", float(visual_seed % 997))
 	m.set_shader_parameter(&"charge_color", Kit.CHARGE_COLOR)
 	m.set_shader_parameter(&"orb_center", MUZZLE)

@@ -1,7 +1,9 @@
 class_name HostSmoke
 extends MeshInstance3D
-## A host cyborg's purple smoke (GDD §9.7, task S1): soft columns of smoke rising off its shoulders, so
-## the player can pick the host out of a crowd of cyborgs at a glance at running distance.
+## A host cyborg's smoke (GDD §9.7, task S1): soft columns of pale lilac smoke rising off its shoulders, a
+## faint beacon over the host that helps the player pick it out of a crowd of cyborgs at running distance.
+## The host's body also glows purple (cyborg_body.gdshader's `host_rim`), which carries most of the "this one
+## is a host" read: the smoke can only be thin (see below).
 ##
 ## One mesh of three quads (a wide middle column and a thinner one to each side) drawn with one shader
 ## (host_smoke.gdshader, which turns each quad into a camera-facing column and animates its billows):
@@ -11,33 +13,49 @@ extends MeshInstance3D
 ## fade when it is defeated). It hangs off the host's chest joint, so it follows its pose (crouched,
 ## lying, leaning) while the shader keeps it rising straight up.
 ##
-## The Bad Dream's own violet (BadDreamModel.PURPLE, leaning blue: pink is the fences' colour), a
-## shade off the glitching screen's and the veins' purple: on a cyborg, purple always and only means
-## "host". It is a soft veil, never a hazard colour, and it never flickers (so there is
-## nothing for Settings > Reduced flashing to turn off). Visual only: it has no body, no hitbox and
-## no part in any gameplay rule. Its numbers (opacity, density, rise speed, size) are CyborgTuning's
-## "Host smoke" group (data/enemies/cyborg.tres).
+## **The trade-off** (found in review, task S1): the run camera shows everything further down a host's
+## lane (a cyborg charging its cannon, a fence) inside the host's column on screen, so the smoke is a veil
+## over exactly the things the player must read. A saturated violet veil turns the red charge-up pink, the
+## fences' colour, from an opacity of about 0.1 up (and a fence purple, the host's). So the smoke is pale
+## lilac (SMOKE_COLOR: the host purple lightened towards white, which keeps the veiled red and the veiled
+## fence apart on the hue and saturation wheel) at no more than MAX_STRENGTH opacity, fades out within a
+## stomp's reach of the camera (CyborgTuning.host_smoke_near_gone / near_full), and thins above the head.
+## test_cyborg_body blends the red charge, the Bad Dream's red telegraph and the fence pink under it
+## at every opacity up to MAX_STRENGTH on both renderers' blending (the Compatibility lift included).
+## It never flickers (it only drifts: at the fastest climb allowed no billow passes a point more than about
+## 1.3 times a second, a little slower with Settings > Reduced flashing). Visual only: it has no body, no
+## hitbox and no part in any gameplay rule. Its numbers are CyborgTuning's "Host smoke" group
+## (data/enemies/cyborg.tres).
 
 const SHADER: Shader = preload("res://scripts/enemies/host_smoke.gdshader")
 
+## The smoke's colour at its brightest (the shader darkens it to 78% in the thick of it, never more
+## saturated): pale lilac, hsv about (270 degrees, 0.24, 1.0). DESIGN-TBD (docs/questions/s1.md 2): which purple.
+const SMOKE_COLOR := Color(0.88, 0.76, 1.0)
+## The most opaque the smoke may ever be, whatever the resource says (test_cyborg_body checks the
+## veiled warnings at this opacity). The Compatibility renderer, blending in sRGB, lifts a thin veil
+## to alpha ^ COMPAT_LIFT (host_smoke.gdshader).
+const MAX_STRENGTH: float = 0.4
+const COMPAT_LIFT: float = 0.85
 ## How long a defeated host's smoke takes to clear (s): the Bad Dream bursts out at that moment.
 const CLEAR_TIME: float = 0.3
-## The fastest the billows may climb (m/s): at this the finest pass a point about 2.3 times a second.
+## The fastest the billows may climb (m/s): at this the finest pass a point about 1.3 times a second.
 const MAX_RISE_SPEED: float = 1.0
 
 ## The columns, each [base in the chest joint's space (the rig faces -z, so +z is behind the host),
 ## width and height as a share of the tuned size, phase 0-1, opacity share]. The chest joint sits at
 ## the waist (0.79 m up, before a zone draws its cyborgs bigger); the middle column starts just above
-## it at the spine (0.89 m), 2.2 m tall by default: thickest from the shoulders to just over the head
+## it at the spine (0.89 m), 1.8 m tall by default: thickest from the shoulders to just over the head
 ## (top of the head 1.5 m) and thinning toward its top, about 3 m up.
 const COLUMNS: Array = [
 	[Vector3(0.0, 0.1, 0.14), Vector2(1.0, 1.0), 0.0, 1.0],
 	[Vector3(0.17, 0.12, 0.1), Vector2(0.62, 0.78), 0.37, 0.8],
 	[Vector3(-0.17, 0.1, 0.1), Vector2(0.55, 0.68), 0.71, 0.7],
 ]
-## The mesh's bounds (its vertices all sit at the columns' bases; the shader spreads them): a generous
-## box about the chest, in the joint's space, which turns with the pose.
-const BOUNDS := AABB(Vector3(-2.6, -2.6, -2.6), Vector3(5.2, 5.2, 5.2))
+## How much wider a column gets at its top than at its base (host_smoke.gdshader's `spread`), and the room
+## beyond the tuned size the culling box leaves for the columns' offsets and sway (m).
+const SPREAD: float = 1.4
+const CULL_MARGIN: float = 0.6
 
 static var _mesh: ArrayMesh
 
@@ -52,26 +70,31 @@ var _clear_tween: Tween
 func build(visual_seed: int, tuning: CyborgTuning = null) -> void:
 	name = "HostSmoke"
 	mesh = shared_mesh()
-	custom_aabb = BOUNDS
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	material = ShaderMaterial.new()
 	material.shader = SHADER
-	# DESIGN-TBD (docs/questions/s1.md 2): the violet and its flat veil (no glowing core).
-	material.set_shader_parameter(&"smoke_color", BadDreamModel.PURPLE)
+	material.set_shader_parameter(&"smoke_color", SMOKE_COLOR)
 	material.set_shader_parameter(&"seed", float(visual_seed % 997))
 	material.set_shader_parameter(&"fade", 0.0)
 	material_override = material
 	configure(tuning if tuning != null else CyborgTuning.new())
 
 
-## Takes the numbers of `tuning` (CyborgTuning's "Host smoke" group). An opacity of 0 draws nothing.
+## Takes the numbers of `tuning` (CyborgTuning's "Host smoke" group), within the limits the veil needs (see the
+## header): an opacity above MAX_STRENGTH counts as MAX_STRENGTH, a climb above MAX_RISE_SPEED as that. An opacity
+## of 0 draws nothing. The culling box is sized from the tuned size, so a tall column is not culled early.
 func configure(tuning: CyborgTuning) -> void:
-	material.set_shader_parameter(&"strength", tuning.host_smoke_strength)
+	var strength: float = clampf(tuning.host_smoke_strength, 0.0, MAX_STRENGTH)
+	material.set_shader_parameter(&"strength", strength)
 	material.set_shader_parameter(&"density", tuning.host_smoke_density)
-	# Never faster than MAX_RISE_SPEED, whatever the resource says: past it the billows would flicker.
-	material.set_shader_parameter(&"rise_speed", minf(tuning.host_smoke_rise_speed, MAX_RISE_SPEED))
+	material.set_shader_parameter(&"rise_speed", clampf(tuning.host_smoke_rise_speed, 0.0, MAX_RISE_SPEED))
 	material.set_shader_parameter(&"size", Vector2(tuning.host_smoke_width, tuning.host_smoke_height))
-	visible = tuning.host_smoke_strength > 0.0 and not _cleared()
+	material.set_shader_parameter(&"spread", SPREAD)
+	var near_full: float = maxf(tuning.host_smoke_near_full, tuning.host_smoke_near_gone + 0.1)
+	material.set_shader_parameter(&"near_fade", Vector2(tuning.host_smoke_near_gone, near_full))
+	var reach: float = maxf(tuning.host_smoke_height, tuning.host_smoke_width * SPREAD) + CULL_MARGIN
+	custom_aabb = AABB(Vector3.ONE * -reach, Vector3.ONE * (2.0 * reach))
+	visible = strength > 0.0 and not _cleared()
 
 
 ## A defeated host's smoke clears over CLEAR_TIME, then it is hidden (no draw call at all).
@@ -118,7 +141,7 @@ static func shared_mesh() -> ArrayMesh:
 	arrays[Mesh.ARRAY_TEX_UV2] = uv2s
 	_mesh = ArrayMesh.new()
 	_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	_mesh.custom_aabb = BOUNDS
+	_mesh.custom_aabb = AABB(Vector3(-1.0, -1.0, -1.0), Vector3(2.0, 2.0, 2.0))  # each host's own box (configure) wins
 	return _mesh
 
 
