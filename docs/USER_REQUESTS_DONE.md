@@ -431,3 +431,29 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   DONE (Q6): Gilded Canals, Sentinel Row and the Golden Palace each stand 3 teleporters, 1 blinking, in the teleporter's
   own look, with no introduction (the hints remind); gantryways and Octodog jars stay in the Ice Lab. Questions in items
   1184-1194 (all deferred).
+
+## October 23, 2026
+
+- [x] **The Heavy Cyborg** (the owner, October 23, 2026; GDD §9.16): a bigger, bulkier, beefier cyborg with much bigger
+  arms, body and legs and a big gatling gun with an attack like the heli drone's. It counts as a cyborg, so it fires when
+  the other small enemies fire and doesn't wait its turn as the larger enemies do. It takes twice a cyborg's laser hits,
+  the claws don't kill it, and a dash or a jump on its head does. In the Ice Lab, and also in the Golden Zone. Task S1
+  in `docs/TASK_PLAN.md`.
+  DONE (S1): feature `heavy_cyborg` from Relay Station (0.3), in Specimen Vault and Golden 1-3; a 1 s warned wind-up
+  (red-hot barrels, red aim line, sound) then a 6-round stream down the locked line, in the cyborgs' airspace with no
+  turn-taking; a stomp or the dash kills it, twice a cyborg's shots, the claws don't; its own pattern plus a share of
+  plain cyborgs, each only where its stream can fire (2-6 a level at 5 lanes on the own seeds). Owner playtested: good.
+  Questions in items 1195-1207 (1207 in the open list).
+- [x] **The Hunter** (the owner, October 23, 2026; GDD §9.17; reference image in the design session): a fast lab
+  creation, a torso grafted into a hovering circular platform that replaces its legs, with large red scimitars on its
+  arms reaching past the elbow and the hand. It comes up alongside the runner and slashes rapidly, staying at their
+  side, so the dash and the laser hardly reach it; 25 laser hits for now. It doesn't wait for other big enemies. The way
+  to beat it is to drop a falling gantryway on it (like the Enforcer and the Buzz Overdrive, but the player triggers
+  it); it follows about as long as the Enforcer, so teleports and ceiling escapes can outlast it. It hovers, so it
+  never falls into a gap. Task S2 in `docs/TASK_PLAN.md`.
+  DONE (S2, S2c): feature `hunter` from Specimen Vault (0.4), brought in only where a falling gantryway can be its bait;
+  rides beside the runner on one side and follows into the lane they leave, so a dashed pillar's walkway lands on it
+  (200 of 200 test takes); warned flurries (raised red blades, scrape, red lane mark, a red sweep) dodged one lane away;
+  makes room for other enemies' shots; hovers over gaps and fences; gives up after 25 s; auto-fire skips it beside the
+  runner. After the owner's playtest it attacks more often (2.7x for a bait runner, 1.4x for a dodger, held by the
+  edge lanes). Questions in items 1208-1228 (1208, 1227, 1228 in the open list).

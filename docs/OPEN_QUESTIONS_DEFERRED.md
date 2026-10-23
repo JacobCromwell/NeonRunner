@@ -6752,3 +6752,293 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     own seed and 9001-9003, base against Q6 (the Q6 review): enemies −1.6% to −3.5%, floor pieces 0 to −3.3%, wall fences
     −8% to −25% (Golden 1 37→34, Golden 2 52→42, Golden 3 57→43). The suite's 3-lane floor (×1.21) sits only 0.017 under
     the measured ×1.227.
+
+### Folded on October 23, 2026 (tasks S1 and S2, the Ice Lab's new enemies)
+
+**S1, the Heavy Cyborg** (task S1, October 23, 2026; from `docs/questions/s1.md`, whose item n is 1194 + n here; GDD §9.16; numbers in `data/enemies/heavy_cyborg.tres`, F6)
+1195. **How many, and where they come from** (§9.16 "Where", §5's level schedule). Placeholder (`heavy_cyborg_rules.gd`,
+   `data/patterns/heavy_cyborg.json`, DESIGN-TBD; the review's fix round): every Heavy Cyborg stands where its stream
+   gets to fire: its stream's zone (`keep_clear_seconds`, 2 s of run before it) clear of every gap, live fence and
+   doodad in every lane (what the gatling's path_clear holds a stream for), its margin from every obstacle, no cyborg or
+   window cyborg within `rival_clear_seconds` (1 s) of run of it (item 12), spaced `spacing_seconds` (3 s) from the
+   others. Its own encounters come from its pattern (a cyborg alone, weight 1.6 as a single cyborg's, the recency curve
+   on top, and a weight of its own in each level's data, `feature_weights`), which becomes a Heavy Cyborg last of the
+   rules where it fits and stays a plain cyborg where it doesn't; then a share of the level's other plain cyborgs become
+   ones where they fit (`share`, 0.2, times the recency factor: 0.8 in Relay Station, 0.5 in Specimen Vault and Golden
+   1, 0.35 in Golden 2, 0.25 in Golden 3). Every level guarantees one. On the campaign's own seeds: Relay Station 2, 3
+   and 3 (3, 5 and 6 lanes; weight 2.9), Specimen Vault 6, 3 and 2 (2.5), Golden 1 6, 3 and 2 (3.8), Golden 2 2, 2 and 1
+   (1.2) and Golden 3 2, 3 and 2 (1.8), every one where its stream gets to fire (test_heavy_cyborg_play plays them all
+   through), the generator taking about as long as before (19.4 s for the fifteen builds, 22.7 s before; 41 builds, 37
+   before). No later pass moves a Heavy Cyborg (the wider gaps and the dash walls keep its whole keep-out off, as any
+   enemy's but a cyborg's), and the danger density pass may add enemies near it, but no cyborg or window cyborg within
+   its rivals' clearance (item 13). The pattern moves each level's other picks (as any new pattern does), so each
+   level's weight was chosen where its own builds at 3, 5 and 6 lanes keep every counted feature their builds had before
+   (teleporters, blinking ones, dash walls, wider gaps, gantryways, Enforcer Trucks, Octodog jars and decoys, treasure
+   stashes, fenced ceilings) with two Heavy Cyborgs at least at 5 lanes and one at 3 and 6, and where their builds on
+   seed 9101 (test_wide_gaps) and on test_campaign's sweep (seeds 9001 to 9008) keep their wider gaps and every other
+   check, and test_danger_density's final band holds but at 5 lanes (item 13); the one difference is the wall-run gaps
+   of Golden 1 at 5 lanes (3 to 2), Golden 2 at 6 (2 to 1) and Golden 3 at 3 (3 to 1), which come by frequency rather
+   than count, and which no weight kept. Are two or three a level at 5 lanes (one to six at 3 and 6) the right amount,
+   and should they come more as their own encounters or as some of the cyborgs?
+
+1196. **When Relay Station brings it in** (§5: "then the Heavy Cyborg", proposed level). Placeholder
+   (`data/levels/ice_lab_2.tres`, `feature_starts`): from 0.3 of the level, after the teleporters' start (0.15) and
+   their introduction; its pattern is picked from there, and its first is the level's first Heavy Cyborg.
+
+1197. **The Golden Zone's share** (§5: "in all three levels with no introduction of their own"). Placeholder: the Golden
+   Zone dates it from the Ice Lab, as it does the teleporters (a level old in Golden 1: its pattern's weight and the
+   top-up's share times 2.5 there, not the introduced × 4), DESIGN-TBD in `tests/suites/test_campaign.gd`
+   (`_ages_but_ice_lab`), with each level's own weight on top (item 1).
+
+1198. **The stream's numbers** (§9.16 "Attack", §9.6). Placeholders: a 1 s wind-up (`charge_time`); 6 rounds
+   (`bullets_*`), reaching a runner on the line 0.18 s apart early and 0.16 s late (`bullet_gap_*`; the drone's are 0.18
+   and 0.15 s), all within 0.9 of the hit invulnerability window (`invulnerability_share`); rounds at 18 to 22 m/s
+   (`bolt_speed_*`), 2.4 to 1.8 s to reload, engaging from 70 m (`engage_distance`, so a whole stream fits before the
+   runner reaches it); the first round flying at least `min_warning_time` (0.75 s, a cyborg's) and every later one at
+   least half of it (`later_round_warning_share`), measured from the barrels' tips; a stream that no longer fits whole
+   (it starts late, its place in the air or its path clear only as the runner closes in) fires the rounds that still
+   fit, 4 at the least (`min_stream_rounds`), else it waits.
+
+1199. **Its walk** (§9.16 "Movement", proposed: "a cyborg's, heavier"). Placeholder: 0.9 m/s toward the runner
+   (`walk_speed`), up to 6 m (`walk_max`), dropping back at 6 m/s once passed, keeping the cyborgs' 10 m margin from
+   obstacles.
+
+1200. **Its build** (§9.16 "Look", proposed: about 1.4 times a cyborg's build). Placeholder (`heavy_cyborg_body.gd`,
+   `cyborg_looks/heavy.gd`, `model_scale`): drawn 1.15 times its zone's cyborg, each segment 1.3 to 1.5 times wider and
+   deeper (never longer, so the poses and walk keep their reach), shoulders and hips 1.3 times wider apart, and armour
+   plates over the clothes (breastplate, belly bands, tasset, pauldrons, upper-arm plates, bracers, thigh plates, knee
+   and shin guards) in each look's own dull metal. The gatling (six barrels, a drum of ammunition on its left, a carry
+   handle) hangs at the hip from the chest, the left hand on the handle and the cyber arm's cannon plugged into a
+   coupling at its back, which hides the cannon's emitter ring (on a Heavy Cyborg only the face and the gatling glow).
+
+1201. **Its hitboxes.** Placeholder (`heavy_cyborg.gd`): a solid body 0.7 × 1.12 × 0.45 m (below the stomp line) and a
+   stompable top 0.9 m wide from 1.18 to 1.6 m (above a standing runner, its top at a jump's highest feet): smaller than
+   its drawn body, as every hitbox is.
+
+1202. **The warning's look and sound** (§9.16 "Attack", proposed: the barrels spin up and glow red, a red aim line on the
+   runner). Placeholders: the barrels turn red-hot from 45% of the wind-up and a red ring grows at the muzzle; the red
+   aim line (0.06 m) flickers faster as the wind-up ends (with Reduced flashing it thickens steadily instead) and stays
+   steady on the locked line while it fires; a short muzzle flash with each round (none with Reduced flashing). The
+   wind-up's sound plays on the way from the gatling to the runner, no further than 24 m from them
+   (`windup_heard_within`), so it is heard from as far off as the stream starts (a positional sound fades from 20 m).
+
+1203. **Its sounds** (`tools/asset_gen/sfx_bank_heavy_cyborg.gd`). Placeholders: `heavy_cyborg_windup` (a motor grinding
+   up under a ratchet speeding into a rattle and a rising hum, 1 s, lower and heavier than the drone's wind-up) and
+   `heavy_cyborg_shot` (a low double crack, 0.2 s).
+
+1204. **Its first-encounter hint** (`data/hints/hints.json`, `heavy_cyborg`): "A Heavy Cyborg! When its gatling spins up
+    and a red line finds you, switch lanes: its stream follows that line. It soaks up twice a cyborg's shots and claws
+    can't hurt it, but a stomp on its head or the dash brings it down."
+
+1205. **No jumping clear over it** (the review's O3; kept as built, for the owner). Its stompable top reaches a jump's
+    highest feet (1.6 m; a cyborg's head ends at 1.5 m, so a well-timed jump clears a cyborg), so a jump at a Heavy
+    Cyborg either lands on its head (a stomp, which kills it) or, timed wrong, meets its body: the answers are the
+    stomp, the dash or a lane switch, never a jump over it. Should a jump be able to clear it (a lower top), or is
+    stomp-or-dash the point of its build?
+
+1206. **Where its stream must get to fire** (the review's B1). Placeholder (`HeavyCyborgRules.fits`): a Heavy Cyborg
+    stands only where its stream's zone, `keep_clear_seconds` (2 s) of run before it, holds no gap, live fence or doodad
+    in any lane: where a whole stream lands, but for its earliest starts (whose first rounds land a little further back,
+    so a gap just past the zone puts the start off a moment); a stream started later lands nearer, whole or as many
+    rounds as still fit (item 4). Nor does a cyborg or a window cyborg stand within `rival_clear_seconds` (1 s) of run
+    of it (HeavyCyborgRules.rivals_clear): one that near engages when it does, from a little further (72 m against its
+    70), and its burst's place in the air or the crossfire rule (from an outer lane, where the wall beside the runner is
+    a move the rule counts) held the stream's start through its whole window, about a second between its engage distance
+    and where the first round would no longer warn in time, in four builds the play suite played (the danger density
+    pass had added them). A runner riding a ceiling over its window isn't shot at (as by a cyborg).
+    `test_heavy_cyborg_play` plays the campaign's own builds with a runner on the floor and finds every Heavy Cyborg
+    firing a whole stream. Should it rather engage from further than the cyborgs (it would start first among them, its
+    stream's longer flights taking a place in the air for longer)?
+
+(1207 is in `docs/OPEN_QUESTIONS.md`.)
+
+**S2, the Hunter** (task S2 with its review rounds and S2c, October 23, 2026; from `docs/questions/s2.md`, whose item n is 1207 + n here; GDD §9.17; numbers in `data/enemies/hunter.tres`, F6 "Enemy: hunter"; notes in `docs/architecture/enemy-hunter.md`)
+1209. **The dash and its solid side.** GDD §9.17 (proposed): "the dash passes through it safely ... and does it no harm".
+   As built, its body's hitbox is harmless (`Hazard.harmless`: the dash, the claws and a stomp do nothing to it, and it
+   does nothing to the runner), but its solid side (a lane blocker, as the hover truck's) bumps back a lane change into
+   it whether or not the runner is dashing (`Player._lane_blocked` lets a dash through only a breakable doodad). Should
+   a dashing runner pass through its side into its lane? Placeholder: bumped back, unharmed.
+
+1210. **Arriving and riding beside the runner.** Placeholder: it arrives where its entry's `at` says, from `arrive_gap` (30
+   m) behind, closing at up to `approach_speed` (16 m/s faster than the runner; 14 before task S2c, 11 before task S2's
+   second review: item 21), into a lane beside theirs, its middle
+   `alongside_ahead` (0.6 m) ahead of theirs (its front level with them, on screen: test_hunter checks every lane and
+   side at 3, 5 and 6 lanes through the chase camera's resting view), its torso facing ahead (turned toward the lane it
+   cuts only as it warns and cuts: item 17). Its hover whine (`hunter_whine`) rises as it arrives and each time it comes
+   up again. A runner who steps into its lane in front of it as it comes up keeps it `cross_gap` (5 m) behind them until
+   it has changed lanes out of their way (`_crossing_runner`; its body is harmless, but it never comes up into theirs,
+   nor stands between them and the chase camera: item 8).
+
+1211. **Following a moment later, and under the walkway.** Placeholder: it takes the lane beside the runner's on its side
+   `follow_delay_seconds` (0.15 s; 0.25 s before task S2c, item 21) after they change lanes, its own lane change taking
+   `switch_seconds` (0.2 s; 0.25 s before). The
+   Enforcer Truck's delay is 0.8 s; the Hunter's must be shorter for the bait. A runner who steps out from under a
+   falling walkway (task S2's review: any step out that keeps them alive should get it crushed) has it follow into the
+   walkway's lane at once, with no delay, its lane change taking `walkway_switch_seconds` (0.12 s). Measured
+   (test_hunter_baits, 3, 5 and 6 lanes, both ways round): the walkway lands on it for every step out from 0.00 to 0.90
+   s after the pillar breaks; from 0.95 s the walkway catches the runner (the same with task S2c's quicker follow). Is a
+   follow that quick right for it?
+
+1212. **Which side it rides on, and lining up the bait.** Placeholder (`Hunter._pick_side`, `_bait_side`, `_run_up_bait`):
+   it comes up on the runner's far side from the next planned bait's walkway lane (so they reach that lane stepping away
+   from it), where they could then step out of the walkway's lane away from it onto open floor (the pillar's push side,
+   kept clear by the gantryways' rules, or the other side where it's open); otherwise, and with the runner already in
+   the walkway's lane, on the side away from the push; with no bait ahead, toward the nearer edge (the runner keeps the
+   most lanes on their other side); otherwise seeded. Over a bait's run-up (`bait_hold_seconds`, 2 s before its
+   pillar; 2.5 s before task S2c) it keeps out of the walkway's lane, riding one lane further out, so a runner it followed past that lane can
+   step back in. Where it would ride between a runner and the next bait's walkway lane two or more lanes off on its
+   side (a runner by the edge on the wrong side), it rides there beside them, no flurry of its carrying them further
+   from that lane once the pillar nears (item 7), until the pillar is `bait_cross_seconds` (5 s) of run ahead (task S2's second review, its
+   default); from then until the run-up (`_blocks_bait`) it lets them past: it crosses behind them to their other side,
+   or, with no lane there, drops back out of view (coming up, it holds back just behind the camera), leaving them a
+   window to cross, and comes up on their other side once they're past, or beside them again for the run-up. Measured
+   (the review's hold-back probe: 5 lanes, the runner holding an edge lane on the wrong side, the walkway in the middle
+   lane): unseen 3.8 s of the run before the pillar at leads of 8, 14 and 19.5 s (its 2.3 s approach and the window),
+   where the first review's build hid it from its arrival to the run-up. Measured (test_hunter_baits):
+   at every lead Specimen Vault's builds give it (6 to 21 s from its arrival to its pillar, the campaign's seed and four
+   others at 3, 5 and 6 lanes), the walkway's push both ways round, the runner starting in every lane, its flurries on,
+   a runner who dodges each flurry and heads for the walkway's lane once the pillar is in sight dropped it on the Hunter
+   in 194 of 194 takes (200 of 200 after task S2c, with 253 flurries dodged on the way). Is letting the runner past (5 s before the pillar, and its time unseen meanwhile) the right way
+   to keep the bait open?
+
+1213. **The flurry.** Placeholder: its warning `warning_seconds` (0.85 s): both blades raised over its head, its eyes and
+   blades brightening, a steel scrape (`hunter_scrape`, as long as the warning) and a red mark on the runner's lane from
+   2 m behind them to 6 m ahead (`mark_behind`, `mark_ahead`), widening and pulsing (only widening with Reduced
+   flashing); then `cuts` (4) quick cuts over `flurry_seconds` (0.5 s) into that lane (`hunter_slash`; the cuts' box is
+   the lane less `side_margin`, 0.25 m, each side, `slash_height` 3.0 m high, over a whole jump and under any ceiling
+   rider, and `slash_depth` 2.2 m long around the runner); then `recover_seconds` (0.4 s). Its first flurry
+   `first_slash_seconds` (0.4 s) after it comes up beside the runner, each next one a seeded 1.8 to 2.0 s after the last
+   one's warning (`slash_interval_min`, `slash_interval_max`; 1.0 s and 1.8 to 2.3 s before task S2c, 1.4 s and 2.4 to
+   3.2 s before task S2's second review: item 21). One flurry is one hit: armor or the shield takes the first contact and the 1 s invulnerability covers
+   the rest. It holds its lane through a warning, its cuts and (task S2's third review) its recovery, following only
+   once its blades are down: following with them up beside a runner its dodge took to the edge, under that runner's
+   chase camera, they hid the runner's lane ahead. A warning called off stops its scrape. Through a warning and its
+   cuts it looks ahead in its lane only as far as they last and 0.3 s more (`ATTACK_STEER_MARGIN`, task S2c), steering
+   round what lies past them once they're over rather than calling them off. What its cuts reach is drawn (task S2's review, CLAUDE.md
+   principle 4): over the warning's last 0.12 s a see-through red fan of its blades sweeps out across the lane it cuts
+   and stays through the cuts, its rig lunging 0.5 m that way; the cuts' box lies inside the fan with 0.1 m to spare,
+   and the fan reaches no further than 0.1 m past the cut lane's far edge.
+   The fan is steady (one sweep a flurry, no pulse), so Reduced flashing leaves it as it is.
+
+1214. **When it may slash.** Placeholder (`Hunter.may_slash`): only at a runner on the floor in the middle of their lane,
+   with it settled beside them and the lane on their other side open to step into (no hole, floor cut, doodad, live
+   fence, floor enemy, solid side, or trap pad: a pad that lifts them onto a fenced ceiling's fence) from
+   `escape_reaction_seconds` (0.3 s) after its warning to its last cut; never in the level's calm start, from
+   `bait_hold_seconds` (2 s; 2.5 s before task S2c) before a standing gantryway's pillar in any lane until its calm stretch is over (the bait
+   stays clean), in a teleporter's calm stretch in the runner's lane, a wall-run gap's crossing or a fenced ceiling's
+   pick (as the heli drone's barrages), nor a flurry that wouldn't end before it gives up. Task S2's review added: never
+   while another enemy's small attack is on at the runner (a cyborg's gun charging or firing, an enemy shot on its way
+   to their lane or the one they'd step into: one dodge can't answer both), and never one whose dodge would carry them
+   two lanes or more past the next bait's walkway lane (task S2c: once its pillar is within `bait_cross_seconds` and a
+   flurry's length of run; before, whenever a bait was planned in its chase). Task S2's second review added: never one it would be risen over
+   a fence through (item 8) while its sweep shows and its cuts are live. A runner who takes a pad onto a ceiling, steps
+   onto a wall or teleports during a warning or the cuts calls them off.
+
+1215. **Steering and making room.** Placeholder: it looks `steer_ahead_seconds` (0.6 s) ahead in its lane for what its body
+   must go round (a doodad, a gantryway's pillar, a jar, a gapped fence, a teleporter's pad, a ramp, a standing dash
+   wall, another enemy on the floor): it takes the lane the runner has just left at once, else the lane further out;
+   else (task S2's second review) it crosses behind them to their other side where that lane is clear and they don't
+   need it (it drops to `cross_gap` behind them, changes lanes there and comes up again with its whine); else it
+   drops out of view (to `yield_gap`, 8 m, just behind the camera, at up to `drop_speed`, 16 m/s, and comes up again
+   no sooner than `regain_seconds`, 0.5 s; 9 m and 1.2 s before task S2c). It makes room where the runner's lane holds what they must leave within
+   `make_room_seconds` (1.2 s: a doodad, a floor enemy, a walkway falling on them, another enemy's lane attack a jump
+   doesn't dodge, and, task S2's review, another enemy's small attack: any cyborg-type gun charging or firing, the Heavy
+   Cyborg's gatling too, or an enemy shot reaching their lane) and the lane on their other side isn't open, so its body
+   never takes their dodge away; and before a wall-run gap's crossing. Making room it drops back only `cross_gap`,
+   still on screen, and comes up again as soon as they no longer need its lane, `room_seconds` (0.4 s) at the soonest
+   (task S2's second review: it used to drop out of view for `regain_seconds`). `cross_gap` is 5 m (task S2's third
+   review; 3.2 m before): anywhere in the runner's way behind them (their lane, or crossing it) it keeps that far back,
+   moving straight through the nearer stretch at `drop_speed`, because nearer it stands between them and the chase
+   camera, hiding them or their lane ahead; from 5 m back, level, it hides nothing (the worst case measured is 4.85 m,
+   crossing with its disc rolled into the lane change). Over the review's 12 chases it now hides the runner 0.23 s and
+   their lane ahead 0.16 s in all (3.37 s and 3.74 s before). It hovers over holes, gaps and floor
+   cuts, and (task S2's second review, as a flyer over a dash wall) rises over a full fence (one the runner jumps) in
+   its lane rather than going round: its disc's underside `fence_clearance` (0.25 m) over the fence's top as it reaches
+   it, climbing and settling at `lift_speed` (8 m/s). It goes round a gapped fence (risen about 2 m it would hide the
+   floor ahead of the runner beside it from the chase camera), and every fence beside a runner in an edge lane (the
+   same: test_hunter's view). The doodads it goes round are all 2.6 m tall, so none is low enough to rise over without
+   hiding the runner's lane. Should it rise over fences, and should it cross behind the runner when its lane is shut?
+
+1216. **Ceilings, walls and teleports.** Placeholder: below a runner on a ceiling or a wall it waits beside their lane (the
+   outer lane under a wall), changing sides at an edge, never cutting. A teleport leaves it behind: it catches up from
+   where the jump left it, but from no further back than `catch_up_gap_max` (70 m) and no nearer than `arrive_gap`, its
+   time running on (GDD §9.17, proposed). One still waiting for the runner whose spot the jump skipped never comes.
+
+1217. **Giving up.** The owner: about 25 s, as the Enforcer Truck. Placeholder: counted from its arrival whatever happens
+    (teleports, ceilings, waiting behind), a warning or cuts on called off; it drops back at `leave_speed` (9 m/s slower
+    than the runner), its turbine winding down (`hunter_give_up`), and leaves play `gone_gap` (40 m) behind.
+
+1218. **Turns and other enemies.** The owner: it doesn't wait for other big enemies. Placeholder (GDD §9.17, proposed):
+    nor do they wait for it (`is_major_attack_active` stays false), and other enemies' charges pass it by
+    (`charge_can_hurt`).
+
+1219. **Where it comes in.** GDD §9.17 (proposed): only where at least one falling gantryway comes during its chase; never
+    two at once. Placeholder (`hunter_rules.gd`, the numbers in the tuning's Placement group): at most `per_level_max`
+    (2) a level, each chase's end and drop back `spacing_seconds` (6 s) before the next arrival; its bait's pillar from
+    `bait_after_seconds` (6 s) after its arrival to `bait_before_seconds` (4 s) before it gives up, a seeded 8 to 14 s
+    after where it can; the bait's Hunter lane (beside the walkway away from the push) clear of doodads, live fences,
+    teleporter pads, ramps and floor enemies from the pillar's lead to `bait_lane_after_seconds` (0.9 s) past it at the
+    fastest, plain fences there taken out; a calm arrival (the brief): no other attack planned in the
+    `arrival_calm_seconds` (1.5 s, item 14) from its arrival, the busy stretches being floor cuts, wall-run gaps, dash
+    walls, the debris maze, picks, Octodog charges and every rule's every-lane calm keeps. A level with no calm arrival
+    for any bait still gets one, arriving where only the calm is missing (on Specimen Vault's own builds it never comes
+    to that). Task S2c: the introduction (item 13) gets its Hunter before the rest, calm where it can, else arriving where
+    only the calm is missing, so it lands right after the feature's start; on Specimen Vault's own 6-lane build its bait
+    has no calm arrival and it comes so (and on 6 lanes, seed 9007). Is an introduction that isn't calm (but never during
+    another attack) acceptable, or should the calm win and the introduction come later?
+
+1220. **Its introduction.** The brief: Specimen Vault, the feature's start after the blinking teleporters' (0.15).
+    Placeholder: `feature_starts` "hunter": 0.4 in `data/levels/ice_lab_3.tres`, and the gantryways' rules hang the
+    first Hunter's bait `intro_bait_min_seconds` to `intro_bait_max_seconds` (12 to 18 s) of run past that start (task
+    S2's hook, `GantrywayRules.wanted`, both lanes beside it clear where it can; else anywhere 6 to 21 s past it; task
+    S2c: first where its Hunter lane is clear, `GantrywayRules.wanted_taker`), so
+    the first one arrives about as the feature starts, with time to show a flurry before the bait where the runner's
+    lane allows one (a runner two lanes or more from the walkway's lane sees none that would carry them further: item
+    7). Specimen Vault keeps 3 gantryways (3 or 4, starts of 0.33 or 0.4 measured alike). Over its own builds at 3, 5
+    and 6 lanes and 8 other seeds each, and the weekly challenge's Ice Lab weeks (`tools/measure/hunters.gd --seeds=8
+    --weekly`, with the 1.5 s calm arrival): 48 Hunters in 31 builds; one build (6 lanes, seed 9002) has none (its only
+    usable bait has no arrival free of attacks), 4 introductions come later than test_campaign's introduction reach.
+    Task S2c: with S1's Heavy Cyborg merged, the 6-lane build's introduction came 0.65 of the way in (an Octodog run shut
+    its first bait's Hunter lane, and the next had no calm arrival): test_campaign's ninth late introduction of 87, where
+    8 are allowed. Now the gantryways' rules hang the introduction's gantryway where its Hunter lane is clear
+    (`GantrywayRules.wanted_taker`, `HunterRules.gantryway_taker`) and its bait gets its Hunter first (item 12): it comes
+    at 0.45, 190 m past its start (the reach is 289 m there), and test_campaign counts 8. Over the same sweep: 47 Hunters
+    in 31 builds (2 not calm: that introduction and 6 lanes, seed 9007's), one build without one (3 lanes, seed 9008: its
+    gantryways all hang before the feature's start), 3 introductions past the reach, none on the levels' own seeds.
+
+1221. **The calm arrival's length.** Its calm arrival keeps every lane clear, so the zone doodads keep off it too; at 3 s
+    of run, Specimen Vault's own 5-lane build had room for only two of its three decoy jars, where task Q5 asks for all
+    of the level's count at five lanes (test_octodog_jars). Task S2's review: the decoys keep task Q5's count (3), and
+    the Hunter's own placeholder gives way. Placeholder: `arrival_calm_seconds` 1.5 s (3 before), which leaves room for
+    all three. Is 1.5 s of nothing else as it comes up calm enough?
+
+1222. **Endless mode and the weekly challenge.** Endless is one 20-minute level with Specimen Vault's features and no
+    feature starts, so it gets at most `per_level_max` (2) Hunters, wherever its rules find a bait, the first possibly
+    early. The weekly challenge's Ice Lab weeks use Specimen Vault's features with Sentinel Row's counts (3 gantryways):
+    1 or 2 Hunters a week. Should endless allow more (a count per minute)?
+
+1223. **Its health and weapons.** The owner: 25 laser hits. Placeholder: `health_early` / `health_late` 23, which laser
+    tier 1 stretches to 25 shots (`PowerupTuning.tier1_extra_shots`); 17, 12 and 8 shots at tiers 2 to 4, the proportion
+    every other enemy keeps (GDD §8). A falling gantryway destroys it whatever its health (the crush sees its chest,
+    `aim_point`, with `hit_radius` 0.85 m: from under its disc to over its head).
+
+1224. **Its look.** Placeholder (`hunter_model.gd`, from the reference image): grey skin, a riveted black vest, a gas mask
+    with three orange-red eyes, hoses, a thick riveted dark-steel disc with frost, worn patches and a thruster pod each
+    side, four blue-white jets under it, and long serrated blades in the hazard red on bracers, from past the elbow to
+    well past the fist. Only the eyes, blades and jets glow. Its death: sparks, steel debris and a small fireball. Its
+    cuts (task S2's review): its rig lunges 0.5 m toward the lane it cuts and a see-through red fan of its blades sweeps
+    over that lane (item 6). Its torso faces ahead and turns toward the lane it cuts as it warns (task S2's third review:
+    turned toward the runner all along, its blades swung across the lane ahead of a runner by the edge as it turned, and
+    the turn now reads as part of the warning). Is the sweep the right way to show their reach, or should the blades
+    themselves reach further?
+
+1225. **Its sounds** (`sfx_bank_hunter.gd`): the hover whine rising (arrival), the steel scrape (the warning), the
+    flurry's swishes, the turbine winding down (giving up) and a crunch with a failing turbine and a small blast
+    (death).
+
+1226. **The hint** (`hunter` in `data/hints/hints.json`): "The Hunter rides up beside you on its hover disc and stays
+    there. When it raises its red blades with a scrape and your lane lights red, step one lane away from it: a jump
+    won't clear its cuts. It follows into the lane you leave. Lead it under a gantryway: dash the pillar, step out away
+    from it, and the walkway lands on it. Teleporters and ceilings shake it off until it tires."
+
+(1208, 1227 and 1228 are in `docs/OPEN_QUESTIONS.md`.)

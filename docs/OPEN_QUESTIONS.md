@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**1195** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, the Terminal's O1–O4 and F2k, and the Ice Lab's Q1–Q6, so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**1229** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, the Terminal's O1–O4 and F2k, and the Ice Lab's Q1–Q6, S1 and S2, so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -35,6 +35,10 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
 | 1061 | The Terminal pays about half of what its neighbours do, yet the Heavy missile (line 15,800) now first fits at Terminal 1, a level earlier than the Golden Zone it was placed for, so Golden 1 gets easier for buyers. Raise the missile's price (8,000 puts it back), or let the Terminal pay like its neighbours? |
 | 1072 | A bot taking the quickest way through Rubble Line's maze finishes in 140 to 159 s (4 to 23 s of it waiting for the dash) on 138 s of track, so a run can outlast the level by up to 21 s. Are 1 or 2 breaks a block right, or should they scale with depth, difficulty or lane count? |
+| 1207 | The Heavy Cyborg's placement leaves the Golden Zone's final stretch about x1.27 more dangerous at 5 lanes, below the approved 30-40%. Accept, raise the Golden levels' danger density, or rework the placement (a count rule, S1b, was started and stopped unmerged at the owner's word)? |
+| 1208 | The Hunter's 25 laser hits: auto-fire never aims at it beside the runner, so only stray shots hurt it. Keep, give it low-priority targeting beside the runner, or a smaller `target_ahead`? |
+| 1227 | The Hunter never slashes a runner in an edge lane (no lane to step away into), so the edges are a refuge for its whole chase. Keep, or obstacles in the edge lanes while it rides, or another rule? |
+| 1228 | The Hunter's attack rate after the owner's "2× more often": 2.7× for a runner going for the bait, 1.4× for one who only dodges (held by the edge refuge, 1227). Enough? |
 
 ## The items in full
 
@@ -144,3 +148,110 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    quickest way with that dash (test_debris_maze) runs Rubble Line's 138 s of track in 140, 151 and 159 s at 3, 5 and 6
    lanes (4, 15 and 23 s of it waiting for the dash), and Last Stop's 143 s in about 141 s (its dashes make up for its
    stops). Should blocks need more breaks further into a level, or with the difficulty, or fewer at 6 lanes?
+
+**S1, the Heavy Cyborg** (task S1, October 23, 2026; from `docs/questions/s1.md`, whose item n is 1194 + n here; GDD §9.16; numbers in `data/enemies/heavy_cyborg.tres`, F6)
+1207. **The danger density pass in the Golden Zone** (the owner's danger density request against the Heavy Cyborg). Each
+    Heavy Cyborg keeps two seconds of clear floor before it, which the pass's rows keep off as off any big attack's
+    window, and the pass adds no cyborg or window cyborg within a second of run of one (other enemies, and those further
+    off, it may add near one), so in the Golden Zone it adds a little less: over test_danger_density's sample the final
+    band lands at about x1.27 for enemies at 5 lanes (x1.30 at the least before; x1.26 at 3 lanes, x1.27 built without
+    its teleporters, and x1.32 at 6, which keep their floors). Placeholder: the suite's floor is 0.04 lower there at 5
+    lanes (HEAVY_CYBORG_ROOM), as for the wall-run gaps and the teleporters at 3. The band moves a few hundredths with
+    each level's weight for the pattern (Golden 2's was chosen where it holds at 3 and 6 lanes). Which request gives
+    way?
+
+**S2, the Hunter** (task S2 with its review rounds and S2c, October 23, 2026; from `docs/questions/s2.md`, whose item n is 1207 + n here; GDD §9.17; numbers in `data/enemies/hunter.tres`, F6 "Enemy: hunter"; notes in `docs/architecture/enemy-hunter.md`)
+1208. **The laser beside the runner: can its 25 laser hits ever be dealt?** The owner: it "stays on the player's side when
+   it does its slashing attacks, making it difficult for the player to damage it with dashes or with laser attacks", and
+   its health is 25 laser hits. Built so (the placeholder, "not while alongside"): auto-fire, the laser and the missiles
+   alike, never picks it while it rides alongside (`Hunter.targetable`), only while it's seen and its middle
+   `target_ahead` (3 m) or more in front of the runner's. It never rides that far ahead in this build (it comes from
+   behind and rides with its middle 0.6 m ahead), so in play weapons never aim at it, and its 25 laser hits can only
+   come from shots meant for something else that pass through it. Measured (test_hunter): over a whole 25 s chase beside
+   a runner auto-firing laser tier 1 at cyborgs ahead in the other lanes, 40 shots, none at the Hunter, none reaching
+   it; it gave up whole. Before this, auto-fire picked it beside the runner and laser tier 1 destroyed it in about 8 s
+   of its chase. Which does the owner want: (a) as built, weapons in effect never hurt it (the gantryway is the only
+   way); (b) auto-fire picks it beside the runner only when nothing else is ahead (a lower priority), so the laser wears
+   it down slowly; (c) a smaller `target_ahead` (it's picked while it rides a little ahead, as it does while it warns
+   and cuts)?
+
+1227. **The edge refuge.** A runner in an edge lane with the Hunter beside them has no lane away from it to step into, so
+    it never slashes them there (no flurry without a way out, item 7); a runner can ride out its chase by the edge, only
+    the level and other enemies moving them. Kept as built (task S2's review, and task S2c: item 21 has what changing it
+    would take). Is the edge meant to be a way to escape
+    it, like teleporters and ceilings, or should something move the runner off it (the level's obstacles in the edge
+    lanes while a Hunter rides, say)?
+
+1228. **How often it attacks** (task S2's second review: "aim for something like 3+ warned flurries per chase where the
+    runner isn't in an edge lane"). Placeholder: the shorter rest and quicker approach (items 3 and 6), its rising over
+    full fences and crossing behind the runner rather than dropping out of view, and its short make-room (item 8).
+    Measured (`tools/measure/hunter_chases.gd --seeds=2`: Specimen Vault's builds at 3, 5 and 6 lanes, its own seed,
+    9001 and 9002, 12 chases; a god-mode runner who dodges each flurry, or who also goes for the bait), flurries warned
+    for each 25 s of chase the runner spends off the edge lanes, then a chase, beside the runner, unseen:
+
+    | Runner | Lanes | Before (abd091b) | After |
+    |---|---|---|---|
+    | Dodges | 3 | 1.0 (0.2 a chase) | 2.4 (0.5 a chase) |
+    | Dodges | 5 | 0.7 (0.4) | 1.9 (1.4) |
+    | Dodges | 6 | 1.8 (1.3) | 5.2 (2.3) |
+    | Dodges | all | 1.1 (0.6), beside 38%, unseen 39% | 2.7 (1.3), beside 53%, unseen 20% |
+    | Goes for the bait | all | 0.8 (0.3), beside 41%, unseen 42% | 1.4 (0.6), beside 57%, unseen 24%; 12 of 12 baits |
+
+    What holds back the flurries that are due is the level and the fairness rules (seconds over the dodger's 12 chases):
+    the edge refuge 25.7 (item 20), a gantryway's run-up and calm stretch 20.1 (the level's own every-lane calm), not
+    yet settled beside them 17.8 (following a moment late, steering round, over a run-up), the runner off the floor 8.6,
+    no way out 8.4, a fence it would be risen over 3.2, a teleporter's calm 2.8, a small attack 2.3, a fenced pick 2.2.
+    At 3 lanes a runner who dodges ends up by the edge most of the time (53 to 100% of a chase). Is this rate what the
+    owner wants, and if more: should the edge refuge go (item 20), or flurries come during a gantryway's calm stretch
+    (the level keeps every lane quiet there)? Task S2's third review: a few warnings end without cuts, called off as its
+    lane shuts ahead (it steers, crosses or drops back) or as it makes room. Holding a warning back whenever its own lane
+    would shut before its last cut (its lane clear through the whole attack and its steering's look ahead past it) cost
+    a fifth of the flurries: over 31 chases (its own seed and 9001 to 9006), 25 warned and 22 cut without it, 18 and 18
+    with it (0.8 and 0.6 warned a chase, 1.8 and 1.3 for each 25 s off the edge lanes), so it isn't built. Are a few
+    warnings with no cuts acceptable (they stop their scrape), or worth that rate?
+
+    Task S2c (the owner, playtesting the session branch: "it doesn't attack often enough, it should attack 2 times more
+    often than it does currently"). Built: its first flurry 0.4 s after it settles beside the runner (1.0 s) and each
+    next 1.8 to 2.0 s after the last one's warning (2.3 s at most; a flurry's warning, cuts and recovery take 1.75 s);
+    back beside them sooner: `approach_speed` 16 m/s (14), `follow_delay_seconds` 0.15 s (0.25), `switch_seconds` 0.2 s
+    (0.25), `regain_seconds` 0.5 s (1.2), `yield_gap` 8 m (9); fewer warnings called off: through a warning and its cuts
+    it looks ahead in its lane only as far as they last and 0.3 s more, steering round what lies past them afterwards
+    (item 6); and its own holds shorter: no flurry from `bait_hold_seconds` 2 s before a gantryway's pillar (2.5 s), and
+    the bait-lane hold (item 7) only once the pillar is within `bait_cross_seconds` and a flurry's length of run (before,
+    whenever a bait was planned in its chase). The fairness rules stand (the 0.85 s warning seen and heard, a lane to
+    step into, one flurry one hit, no flurry risen over a fence or in a fenced pick, test_hunter's view checks), and so
+    do the edge refuge (item 20) and a gantryway's calm stretch. Measured (`tools/measure/hunter_chases.gd --seeds=6`:
+    Specimen Vault at 3, 5 and 6 lanes, its own seed and 9001 to 9006; before, the session branch with S1's Heavy
+    Cyborg, 30 chases; after, 31: the 6-lane introduction now lands, item 13):
+
+    | Runner | | Before (9b40d3f) | After |
+    |---|---|---|---|
+    | Dodges | flurries warned a chase (cut) | 0.67 (0.43) | 0.94 (0.77) |
+    | Dodges | warned a chase at 3 / 5 / 6 lanes | 0.11 / 0.82 / 1.00 | 0.22 / 1.27 / 1.18 |
+    | Dodges | warned a 25 s off the edge lanes | 1.7 | 2.7 |
+    | Dodges | beside, unseen | 49%, 22% | 51%, 20% |
+    | Goes for the bait | flurries warned a chase (cut) | 0.30 (0.20) | 0.81 (0.65) |
+    | Goes for the bait | warned a chase at 3 / 5 / 6 lanes | 0.22 / 0.18 / 0.50 | 0.44 / 0.82 / 1.09 |
+    | Goes for the bait | warned a 25 s off the edge lanes | 0.8 | 2.3 |
+    | Goes for the bait | beside, unseen | 51%, 23% | 54%, 19% |
+    | Goes for the bait | baits landed | 28 of 30 | 29 of 31 |
+
+    test_hunter_baits: 200 of 200 takes, with 253 flurries dodged on the way (166 before), and the step-out window as
+    before (0.00 to 0.90 s). The runner who goes for the bait (back toward the middle for the walkway's lane, as a player
+    playing the level does) gets 2.7 times the warned flurries a chase. The runner who dodges each flurry gets 1.4 times
+    (1.6 for each 25 s off the edge lanes): it never steps back toward the middle, so its dodges take it to the edge (one
+    from the middle at 3 lanes, two or three at 5 and 6), and it is in an edge lane 65% of its chase time, where the edge
+    refuge holds 154 s of its flurries over the 31 chases (72% of the time at 3 lanes). Its flurries a chase can't double
+    unless the edge refuge goes. What could change there, and why none is built:
+    (a) Reaching across: by a runner in an edge lane it rides two lanes in and cuts their lane over the empty lane
+        between, dodged into that lane, toward it. Not fair as it stands: the dodge is toward it, against GDD §9.17's
+        proposal ("it slashes into the runner's lane from the lane beside it ... dodged by stepping one lane away from
+        it"), and its blades would sweep over the lane the runner must step into (safe things must look safe).
+    (b) Crossing to the runner's other side before a dodge takes them into an edge lane, so the next flurry carries them
+        back toward the middle: built and measured in this task, then taken out. It goes against "keeps to the side it
+        came up on" (GDD §9.17, proposed; 26 of test_hunter's checks), it cost baits (22 of 31 landed), and the dodging
+        runner got no more flurries (24 warned against 26).
+    (c) The level moving the runner off the edge (obstacles in the edge lanes while a Hunter rides: item 20's question):
+        fair (the usual obstacles and their warnings) but level design for the owner, and the measure's god-mode runner
+        doesn't move for obstacles.
+    Is this rate what the owner wants, and should the edge stay a refuge?
