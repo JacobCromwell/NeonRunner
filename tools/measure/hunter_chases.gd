@@ -15,9 +15,9 @@ extends SceneTree
 ## the Hunter a reaction after the pillar breaks). Each run ends once the level's last Hunter has left play.
 ## Per chase: its arrival, its length (to its giving up or its end), the shares of it beside the runner (ALONGSIDE),
 ## out of view and with the runner in an edge lane, the flurries warned and cut (and how many of the warnings came with
-## the runner off the edge lanes), its yields by reason and what shut its lane, its whines, and CRUSHED where its bait
-## landed on it. The totals: flurries warned a chase, a 25 s of chase with the runner off the edge lanes, the shares,
-## and the baits landed.
+## the runner off the edge lanes), its yields by reason and what shut its lane, how long a flurry was due but held back
+## and why (Hunter.slash_problem), its whines, and CRUSHED where its bait landed on it. The totals: flurries warned a
+## chase, a 25 s of chase with the runner off the edge lanes, the shares, the baits landed and the held time by reason.
 
 const HunterRules = preload("res://scripts/enemies/hunter_rules.gd")
 const REACTION: float = 0.35
@@ -178,7 +178,7 @@ func _observe(world: RunWorld, h: Hunter, stats: Dictionary, order: Array[int]) 
 		order.append(id)
 		stats[id] = {"at": float(h.spawn.get("at", 0.0)), "frames": 0, "alongside": 0, "unseen": 0, "edge": 0,
 			"warns_off_edge": 0, "history": h.history, "sounds": h.sounds_played, "seen": 0, "blockers": {},
-			"last_flurries": 0}
+			"last_flurries": 0, "held": {}}
 	var s: Dictionary = stats[id]
 	var p: Player = world.player
 	var n: int = world.geo.lane_count
@@ -198,6 +198,12 @@ func _observe(world: RunWorld, h: Hunter, stats: Dictionary, order: Array[int]) 
 	s["seen"] = hist.size()
 	if h.state == Hunter.State.LEAVING:
 		return
+	# A flurry due but held back: why (Hunter.slash_problem).
+	if h.state == Hunter.State.ALONGSIDE and h.slash == Hunter.Slash.IDLE and h.chase_time >= float(h.get(&"_next_slash")):
+		var why: String = h.slash_problem()
+		if why != "":
+			var held: Dictionary = s["held"]
+			held[why] = int(held.get(why, 0)) + 1
 	s["frames"] = int(s["frames"]) + 1
 	s["alongside"] = int(s["alongside"]) + (1 if h.state == Hunter.State.ALONGSIDE else 0)
 	s["unseen"] = int(s["unseen"]) + (1 if h.gap > Hunter.VIEW_GAP else 0)
@@ -217,16 +223,27 @@ func _chase(s: Dictionary) -> Dictionary:
 	return {"at": s["at"], "seconds": frames / fps, "alongside": float(s["alongside"]) / frames,
 		"unseen": float(s["unseen"]) / frames, "edge": float(s["edge"]) / frames,
 		"off_edge_seconds": (frames - float(s["edge"])) / fps, "warned": names.count("warn"), "cut": names.count("cut"),
-		"warned_off_edge": int(s["warns_off_edge"]), "yields": yields, "blockers": s["blockers"],
+		"warned_off_edge": int(s["warns_off_edge"]), "yields": yields, "blockers": s["blockers"], "held": _seconds(s["held"]),
 		"whines": (s["sounds"] as Array).filter(func(x: Array) -> bool: return x[0] == &"hunter_whine").size(),
 		"crushed": names.has("defeat:gantryway")}
 
 
+## Frame counts by key as seconds (one decimal), the largest first.
+func _seconds(counts: Dictionary) -> Dictionary:
+	var keys: Array = counts.keys()
+	keys.sort_custom(func(a: Variant, b: Variant) -> bool: return int(counts[a]) > int(counts[b]))
+	var out: Dictionary = {}
+	for k: Variant in keys:
+		out[k] = snappedf(float(counts[k]) / float(Engine.physics_ticks_per_second), 0.1)
+	return out
+
+
 func _line(c: Dictionary) -> String:
 	return ("%s %d lanes seed %d, Hunter at %.0f m: %.1f s, beside %.0f%%, unseen %.0f%%, runner at an edge %.0f%%; %d warned"
-		+ " (%d off the edges) %d cut; yields %s; shut by %s; whines %d%s") % [c["level"], c["lanes"], c["seed"], c["at"],
-		c["seconds"], 100.0 * float(c["alongside"]), 100.0 * float(c["unseen"]), 100.0 * float(c["edge"]), c["warned"],
-		c["warned_off_edge"], c["cut"], c["yields"], c["blockers"], c["whines"], ", CRUSHED" if bool(c["crushed"]) else ""]
+		+ " (%d off the edges) %d cut; yields %s; shut by %s; held (s) %s; whines %d%s") % [c["level"], c["lanes"], c["seed"],
+		c["at"], c["seconds"], 100.0 * float(c["alongside"]), 100.0 * float(c["unseen"]), 100.0 * float(c["edge"]),
+		c["warned"], c["warned_off_edge"], c["cut"], c["yields"], c["blockers"], c["held"], c["whines"],
+		", CRUSHED" if bool(c["crushed"]) else ""]
 
 
 func _print_totals(chases: Array[Dictionary]) -> void:
@@ -241,7 +258,10 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 	var unseen: float = 0.0
 	var crushed: int = 0
 	var by_lanes: Dictionary = {}
+	var held: Dictionary = {}
 	for c: Dictionary in chases:
+		for why: Variant in (c["held"] as Dictionary).keys():
+			held[why] = snappedf(float(held.get(why, 0.0)) + float(c["held"][why]), 0.1)
 		var s: float = float(c["seconds"])
 		warned += float(c["warned"])
 		warned_off += float(c["warned_off_edge"])
@@ -262,6 +282,7 @@ func _print_totals(chases: Array[Dictionary]) -> void:
 		var l: Array = by_lanes[lanes]
 		print("  %d lanes: %d chases, %.1f warned a chase, %.1f a 25 s off the edge lanes" % [lanes, l[0],
 			float(l[1]) / float(l[0]), 25.0 * float(l[2]) / maxf(float(l[3]), 0.01)])
+	print("  a flurry due but held (seconds, all chases): %s" % [held])
 
 
 func _jump_holes(world: RunWorld, jump: float) -> void:

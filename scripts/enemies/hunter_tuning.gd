@@ -18,7 +18,7 @@ extends EnemyTuning
 ## DESIGN-TBD: where it comes in from behind as it arrives (its middle's gap behind the runner, plain metres), and how fast
 ## it closes in (metres a second faster than the runner, at most; it eases in over the last few metres, gap_rate).
 @export_range(10.0, 80.0, 1.0, "suffix:m") var arrive_gap: float = 30.0
-@export_range(2.0, 30.0, 0.5, "suffix:m/s") var approach_speed: float = 11.0
+@export_range(2.0, 30.0, 0.5, "suffix:m/s") var approach_speed: float = 14.0
 ## How fast its gap eases toward the one it wants (per second).
 @export_range(1.0, 20.0, 0.5) var gap_rate: float = 6.0
 ## DESIGN-TBD: alongside, its middle this far ahead of the runner's (metres): its front a little ahead of them, so the chase
@@ -43,9 +43,20 @@ extends EnemyTuning
 ## walkway as it lands): a runner who steps out of a lane a falling walkway is coming down on, it follows into that lane at
 ## once (no follow_delay_seconds), its lane change this quick.
 @export_range(0.05, 0.5, 0.01, "suffix:s") var walkway_switch_seconds: float = 0.12
-## DESIGN-TBD: how far ahead it looks in its lane for what it must go round (a doodad, a gantryway's pillar, a fence, a
-## teleporter's pad, a ramp, another enemy on the floor): seconds of run past its front.
+## DESIGN-TBD: how far ahead it looks in its lane for what it must go round (a doodad, a gantryway's pillar, a gapped
+## fence, a teleporter's pad and antenna, a ramp, a standing dash wall, another enemy on the floor): seconds of run past
+## its front.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var steer_ahead_seconds: float = 0.6
+## DESIGN-TBD (task S2's review: more of its chase beside the runner): a hover disc, it rises over a full fence in its lane
+## (one the runner jumps) rather than going round it, its disc's underside this far over the fence's top, climbing and
+## settling back at lift_speed (metres a second). It goes round a gapped fence (the runner slides under it), and every
+## fence beside a runner in an edge lane: risen there it would hide their lane ahead from the camera.
+@export_range(0.05, 1.0, 0.05, "suffix:m") var fence_clearance: float = 0.25
+@export_range(2.0, 15.0, 0.5, "suffix:m/s") var lift_speed: float = 8.0
+## DESIGN-TBD (task S2's review): its lane shut ahead by something it can't rise over, with no lane further out, it crosses
+## to the runner's other side rather than making room: it drops back behind them, crosses their lane at least this far
+## behind them (its middle's gap, metres), and comes up beside them there.
+@export_range(2.6, 6.0, 0.1, "suffix:m") var cross_gap: float = 3.2
 ## DESIGN-TBD: it never takes the runner's only way out (CLAUDE.md: the player dies in one hit): it makes room (drops back
 ## behind them) when their lane holds what they must leave it for within this many seconds of run (a doodad, a floor enemy,
 ## a walkway falling over it, another enemy's lane attack, a wall-run gap) and the lane on their other side isn't open.
@@ -68,9 +79,9 @@ extends EnemyTuning
 @export_range(0.1, 1.5, 0.05, "suffix:s") var recover_seconds: float = 0.4
 ## DESIGN-TBD (GDD §9.17, the owner: "slashing rapidly"): its first flurry's warning starts this long after it has come up
 ## beside the runner, and each later one a seeded interval from the last one's warning.
-@export_range(0.3, 6.0, 0.1, "suffix:s") var first_slash_seconds: float = 1.4
-@export_range(1.0, 8.0, 0.1, "suffix:s") var slash_interval_min: float = 2.4
-@export_range(1.0, 8.0, 0.1, "suffix:s") var slash_interval_max: float = 3.2
+@export_range(0.3, 6.0, 0.1, "suffix:s") var first_slash_seconds: float = 1.0
+@export_range(1.0, 8.0, 0.1, "suffix:s") var slash_interval_min: float = 1.8
+@export_range(1.0, 8.0, 0.1, "suffix:s") var slash_interval_max: float = 2.3
 ## A flurry starts only when the lane on the runner's other side is open to step into (no hole, fence, doodad, floor cut,
 ## floor enemy or solid side) from this many seconds of run after its warning starts until its last cut.
 @export_range(0.0, 1.0, 0.05, "suffix:s") var escape_reaction_seconds: float = 0.3
@@ -82,6 +93,10 @@ extends EnemyTuning
 ## DESIGN-TBD: no flurry from this many seconds of run before a standing gantryway's pillar (in any lane) until its calm
 ## stretch is over: the runner lines up the bait and steps out under no cuts.
 @export_range(0.0, 6.0, 0.1, "suffix:s") var bait_hold_seconds: float = 2.5
+## DESIGN-TBD (task S2's review, its default): riding between the runner and its bait's walkway lane two lanes or more off
+## (a runner by the edge on the wrong side), it stays beside them, never slashing them further from that lane, until the
+## pillar is this many seconds of run ahead; then it crosses to their other side or drops back, so they can cross to it.
+@export_range(2.5, 12.0, 0.5, "suffix:s") var bait_cross_seconds: float = 5.0
 ## The red mark on the runner's lane during a warning: from this far behind them to this far ahead.
 @export_range(0.0, 6.0, 0.1, "suffix:m") var mark_behind: float = 2.0
 @export_range(2.0, 20.0, 0.5, "suffix:m") var mark_ahead: float = 6.0

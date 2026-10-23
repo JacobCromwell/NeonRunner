@@ -62,6 +62,8 @@ const SLASH := Color(1.0, 0.1, 0.06)
 static var _meshes: Dictionary = {}
 ## Materials made once: the body's matte vertex-colour material; the eyes', blades' and jets' glows by state.
 static var _materials: Dictionary = {}
+## The sweeps of its cuts made so far, by their shape (shared_slash_mesh).
+static var _slash_meshes: Dictionary = {}
 static var _prims: Dictionary = {}
 
 var rig: Node3D
@@ -256,35 +258,46 @@ static func slash_material() -> StandardMaterial3D:
 
 ## The sweep of its blades through the lane it cuts (Hunter's slash fan, task S2's review: what its cuts' hitbox reaches
 ## is drawn): a fan in the x-y plane round its pivot, from `low` to `high` radians (0 along +x, toward the lane), from
-## radius `inner` to `outer`, as two sheets `half_depth` each side of z = 0 and the band joining their outer arcs, in
-## `segments` steps.
-static func slash_mesh(inner: float, outer: float, low: float, high: float, half_depth: float, segments: int = 24) -> ArrayMesh:
+## radius `inner` to `outer` and no further along x than `x_max` (the cut lane's far side: it never reaches into the lane
+## past it), as two sheets `half_depth` each side of z = 0 and the band joining their outer edges, in `segments` steps.
+static func slash_mesh(inner: float, outer: float, low: float, high: float, half_depth: float, x_max: float = INF,
+		segments: int = 24) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_normal(Vector3.BACK)
 	var point := func(a: float, r: float, z: float) -> Vector3: return Vector3(cos(a) * r, sin(a) * r, z)
+	var rim := func(a: float) -> float: return minf(outer, x_max / maxf(cos(a), 0.01))
 	for z: float in [-half_depth, half_depth]:
 		for i: int in segments:
 			var a0: float = lerpf(low, high, float(i) / segments)
 			var a1: float = lerpf(low, high, float(i + 1) / segments)
 			st.add_vertex(point.call(a0, inner, z))
-			st.add_vertex(point.call(a0, outer, z))
-			st.add_vertex(point.call(a1, outer, z))
+			st.add_vertex(point.call(a0, rim.call(a0), z))
+			st.add_vertex(point.call(a1, rim.call(a1), z))
 			st.add_vertex(point.call(a0, inner, z))
-			st.add_vertex(point.call(a1, outer, z))
+			st.add_vertex(point.call(a1, rim.call(a1), z))
 			st.add_vertex(point.call(a1, inner, z))
 	for i: int in segments:
 		var a0: float = lerpf(low, high, float(i) / segments)
 		var a1: float = lerpf(low, high, float(i + 1) / segments)
-		st.add_vertex(point.call(a0, outer, -half_depth))
-		st.add_vertex(point.call(a0, outer, half_depth))
-		st.add_vertex(point.call(a1, outer, half_depth))
-		st.add_vertex(point.call(a0, outer, -half_depth))
-		st.add_vertex(point.call(a1, outer, half_depth))
-		st.add_vertex(point.call(a1, outer, -half_depth))
+		st.add_vertex(point.call(a0, rim.call(a0), -half_depth))
+		st.add_vertex(point.call(a0, rim.call(a0), half_depth))
+		st.add_vertex(point.call(a1, rim.call(a1), half_depth))
+		st.add_vertex(point.call(a0, rim.call(a0), -half_depth))
+		st.add_vertex(point.call(a1, rim.call(a1), half_depth))
+		st.add_vertex(point.call(a1, rim.call(a1), -half_depth))
 	var mesh: ArrayMesh = st.commit()
 	mesh.surface_set_material(0, slash_material())
 	return mesh
+
+
+## slash_mesh built once for its shape and shared by every Hunter with that shape (task S2's review: its cost).
+static func shared_slash_mesh(inner: float, outer: float, low: float, high: float, half_depth: float,
+		x_max: float) -> ArrayMesh:
+	var key: String = "%.4f:%.4f:%.4f:%.4f:%.4f:%.4f" % [inner, outer, low, high, half_depth, x_max]
+	if not _slash_meshes.has(key):
+		_slash_meshes[key] = slash_mesh(inner, outer, low, high, half_depth, x_max)
+	return _slash_meshes[key]
 
 
 # --- Meshes ------------------------------------------------------------------------------------------

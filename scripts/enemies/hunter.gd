@@ -57,10 +57,10 @@ extends Enemy
 ## (_blocks_bait); and over a bait's run-up (bait_hold_seconds before its pillar) it keeps out of the walkway's lane, one
 ## lane further out, so a runner it followed past that lane can step back in (_run_up_bait).
 
-enum State { WAITING, APPROACH, ALONGSIDE, YIELD, LEAVING, DEAD }
+enum State { WAITING, APPROACH, ALONGSIDE, YIELD, LEAVING, DEAD, SWITCH }
 enum Slash { IDLE, WARNING, FLURRY, RECOVER }
 
-const STATE_NAMES: PackedStringArray = ["waiting", "approach", "alongside", "yield", "leaving", "dead"]
+const STATE_NAMES: PackedStringArray = ["waiting", "approach", "alongside", "yield", "leaving", "dead", "switch"]
 ## What a runner its blades cut is told (Hazard.hazard_name).
 const SLASH_NAME: String = "Hunter's blades"
 ## Further behind the runner than this (its middle, metres) it's out of the chase camera's view (MovementTuning's camera
@@ -85,6 +85,10 @@ const SLASH_ANGLE_PAD: float = 0.08
 ## The enemy types whose lane attack makes a runner need a lane (_must_make_room): a big attack on (is_major_attack_active)
 ## of any type but these, whose attacks a jump dodges (the Octodog's lunge).
 const JUMPABLE_ATTACKS: Array[StringName] = [&"octodog"]
+## Seconds a stepping-out check (_out_open) stays good before it's looked at again (task S2's review: its cost).
+const OUT_OPEN_REFRESH: float = 0.25
+## Making room (_start_yield), it stays back at least this long (seconds) before coming up again.
+const ROOM_SECONDS: float = 0.4
 
 var tuning: HunterTuning
 var state: State = State.WAITING
@@ -108,6 +112,8 @@ var history: Array = []
 ## Every sound it asked for, as [sound, level time] (tests: each warning is heard; silent headless runs ask all the same).
 var sounds_played: Array = []
 var model: HunterModel
+## Metres it has risen over hover_height to clear a live fence in its way (_update_lift).
+var lift: float = 0.0
 
 var _x: float = 0.0
 var _switch_from: float = 0.0
@@ -122,7 +128,18 @@ var _lane_log: Array = []
 var _slash_t: float = 0.0
 var _next_slash: float = 0.0
 var _yield_t: float = 0.0
+## Its yield is making room for the runner (a short drop back: _start_yield).
+var _yield_room: bool = false
+## The side of the runner it's crossing to (SWITCH: _switch_side).
+var _cross_side: int = 0
 var _approach_whined: bool = false
+## _out_open's answers by bait and side ("<id>:<side>": [level time, answer]), each good for OUT_OPEN_REFRESH.
+var _out_open_memo: Dictionary = {}
+## _small_attacks's answer for the physics frame `_small_frame`: whether a cyborg-type gun is on, and the lanes enemy
+## shots are on their way to (a bit each).
+var _small_frame: int = -1
+var _small_gun_on: bool = false
+var _small_shot_lanes: int = 0
 var _body: Hazard
 var _slash_box: Hazard
 var _slash_root: Node3D
@@ -137,7 +154,9 @@ var _blocker_query := PhysicsShapeQueryParameters3D.new()
 ## by start; and the longest one's length (a row of doodads counts whole: LevelLayout.doodad_extent).
 var _lane_doodads: Array = []
 var _doodad_reach: float = 0.0
+## The layout's fences by lane, sorted by `at`, and their `at`s (for a search).
 var _lane_fences: Array = []
+var _lane_fence_ats: Array = []
 var _run_speed: float = 18.0
 
 
@@ -250,9 +269,12 @@ func _tick(delta: float) -> void:
 			_alongside(delta)
 		State.YIELD:
 			_yield(delta)
+		State.SWITCH:
+			_switch_side(delta)
 		State.LEAVING:
 			gap += tuning.leave_speed * delta
 	_update_lane(delta)
+	_update_lift(delta)
 	_update_slash(delta)
 	_place(delta)
 
@@ -345,9 +367,13 @@ func _alongside(delta: float) -> void:
 	var off_floor: bool = p.surface != Player.Surface.FLOOR
 	var idle: bool = slash != Slash.WARNING and slash != Slash.FLURRY
 	if not off_floor and idle and _blocks_bait(side, r):
-		# It rides between the runner and its bait's walkway lane: it drops back out of their way, and comes up on their
-		# other side once they're past (_pick_side).
-		_start_yield(&"bait")
+		# It rides between the runner and its bait's walkway lane with the pillar bait_cross_seconds ahead: it crosses to
+		# their other side, or, by the edge, drops back out of their way and comes up on their other side once they're past
+		# (_pick_side), so they can cross to that lane.
+		if _may_cross(r):
+			_start_switch(&"bait")
+		else:
+			_start_yield(&"bait")
 		return
 	var want: int = _follow_lane() + side
 	var quick: bool = false
@@ -382,7 +408,7 @@ func _alongside(delta: float) -> void:
 	var steer: int = want
 	if not _lane_clear_ahead(want, false):
 		# Its lane is shut ahead: the lane the runner has just left (when they stepped away from it), at once, rather than a
-		# moment later; else the lane further out; else it makes room.
+		# moment later; else the lane further out; else it crosses to their other side; else it makes room.
 		var left_lane: int = r + side
 		var out: int = want + signi(want - r) if want != r else want + side
 		if not off_floor and (slash == Slash.IDLE or slash == Slash.RECOVER):
@@ -392,6 +418,9 @@ func _alongside(delta: float) -> void:
 			steer = out
 			if target_lane != out:
 				_note(&"steer")
+		elif not off_floor and _may_cross(r):
+			_start_switch(&"blocked")
+			return
 		else:
 			_start_yield(&"blocked")
 			return
@@ -407,11 +436,14 @@ func _alongside(delta: float) -> void:
 	_ease_gap(maxf(-tuning.alongside_ahead, least), tuning.approach_speed, delta)
 
 
-## It makes room (or can't stay beside the runner): it drops back behind the camera, its cuts called off, and comes up again
-## once it may.
+## It can't stay beside the runner: it drops back behind the camera, its cuts called off, and comes up again once it may.
+## Making room for them (`why` make_room: the runner needs its lane), it drops back only cross_gap (DESIGN-TBD, task S2's
+## review: still on screen, with them), clear of the lane beside them so they can step into it in front of it, and comes
+## up again as soon as they no longer need it.
 func _start_yield(why: StringName) -> void:
 	state = State.YIELD
 	_yield_t = 0.0
+	_yield_room = why == &"make_room"
 	_call_off_slash()
 	_note(StringName("yield:" + String(why)))
 
@@ -419,6 +451,17 @@ func _start_yield(why: StringName) -> void:
 func _yield(delta: float) -> void:
 	_yield_t += delta
 	var r: int = runner_lane()
+	if _yield_room:
+		var behind: float = MIN_GAP_IN_LANE if lane == r else -INF
+		_ease_gap(maxf(tuning.cross_gap, behind), tuning.drop_speed, delta)
+		if _yield_t >= ROOM_SECONDS and gap >= MIN_GAP_IN_LANE and world.player.surface == Player.Surface.FLOOR \
+				and not _must_make_room():
+			var s: int = side if r + side >= 0 and r + side < world.geo.lane_count and _lane_clear_ahead(r + side, true) \
+				and not _blocks_bait(side, r) else _pick_side(false)
+			if s != 0:
+				side = s
+				_begin_approach()
+		return
 	if gap < VIEW_GAP and not _lane_clear_ahead(lane, false):
 		# Its own lane is shut ahead and it can't go round: once it's behind the runner it takes their lane behind them.
 		if gap >= tuning.blocker_length * 0.5 + 0.6 and world.player.surface == Player.Surface.FLOOR:
@@ -430,6 +473,46 @@ func _yield(delta: float) -> void:
 		if s != 0:
 			side = s
 			_begin_approach()
+
+
+## True if it may cross from its side of a runner in lane `r` (on the floor) to their other side (_start_switch): that
+## side's lane is on the track and clear ahead, it wouldn't stand there between them and its bait's walkway lane, and they
+## need no lane beside theirs now (_needs_leaving: it never takes their way out).
+func _may_cross(r: int) -> bool:
+	var to: int = r - side
+	if to < 0 or to >= world.geo.lane_count or not _lane_clear_ahead(to, false) or _blocks_bait(-side, r):
+		return false
+	var p: Player = world.player
+	var v: float = maxf(p.speed, _run_speed)
+	var need: Vector2 = _needs_leaving(r, p.distance, p.distance + tuning.make_room_seconds * v, v)
+	return need.y < need.x
+
+
+## It crosses to the runner's other side (DESIGN-TBD, task S2's review: rather than making room, it stays with them): its
+## warning or cuts called off, it drops back behind them, crosses their lane at least cross_gap behind them, and comes up
+## beside them there with its whine (_begin_approach).
+func _start_switch(why: StringName) -> void:
+	state = State.SWITCH
+	_cross_side = -side
+	_call_off_slash()
+	_note(StringName("switch:" + String(why)))
+
+
+func _switch_side(delta: float) -> void:
+	var n: int = world.geo.lane_count
+	var r: int = runner_lane()
+	var to: int = r + _cross_side
+	if world.player.surface != Player.Surface.FLOOR or to < 0 or to >= n or not _lane_clear_ahead(to, false):
+		# The runner left the floor, or the lane it was crossing to is gone or shut: it makes room instead.
+		_start_yield(&"crossing")
+		return
+	_ease_gap(tuning.cross_gap, tuning.drop_speed, delta)
+	if gap >= MIN_GAP_IN_LANE or target_lane == to:
+		# Far enough behind them: across their lane, behind them, to their other side.
+		_set_target(to)
+	if lane == to and _switch_t >= 1.0:
+		side = _cross_side
+		_begin_approach()
 
 
 ## It gives up (GDD §9.17: after about as long as the Enforcer Truck, chase_seconds) whatever it's doing: a warning or a
@@ -529,6 +612,87 @@ func _update_lane(delta: float) -> void:
 	lane = world.geo.lane_at(_x)
 
 
+## Rises over a fence in its way and settles back once past it (DESIGN-TBD, task S2's review: a hover disc, it stays with
+## the runner rather than going round; as a flyer over a dash wall, Enemy.dash_wall_lift): its disc's underside
+## fence_clearance over the fence's top as its body reaches it, climbing and settling at lift_speed, over the fences in
+## every lane its disc reaches across (it may be between two). Beside the runner it meets only full fences (it goes round
+## the rest: blocker_in); any other it ends up over (coming up from behind, dropping back) it clears all the same.
+func _update_lift(delta: float) -> void:
+	if state == State.WAITING or state == State.DEAD:
+		return
+	var geo: TrackGeometry = world.geo
+	var mid: float = world.player_distance() - gap
+	var near: int = geo.lane_at(_x - HunterModel.DISC_RADIUS)
+	var far: int = geo.lane_at(_x + HunterModel.DISC_RADIUS)
+	var need: float = maxf(_fence_lift_at(near, mid), _fence_lift_at(far, mid) if far != near else 0.0)
+	lift = move_toward(lift, need, tuning.lift_speed * delta)
+
+
+## The lift its body needs with its middle at track distance `mid` in lane `l` to clear the fences there (live or
+## switched off: the fence stands either way): from the moment it must start climbing at lift_speed to be over a fence's
+## top (and fence_clearance) as its front reaches it, until its rear is past it. 0 for none.
+func _fence_lift_at(l: int, mid: float) -> float:
+	if l < 0 or l >= _lane_fences.size():
+		return 0.0
+	var t: MovementTuning = world.tuning
+	var half: float = HunterModel.DISC_RADIUS
+	var depth: float = t.fence_depth * 0.5
+	var v: float = maxf(world.player.speed, _run_speed)
+	var most: float = maxf(t.fence_gapped_top, t.fence_full_top) + tuning.fence_clearance - tuning.hover_height
+	var reach: float = mid + half + maxf(most, 0.0) / maxf(tuning.lift_speed, 0.1) * v
+	var fences: Array = _lane_fences[l]
+	var need: float = 0.0
+	for i: int in range((_lane_fence_ats[l] as PackedFloat32Array).bsearch(mid - half - depth), fences.size()):
+		var f: Dictionary = fences[i]
+		var at: float = float(f["at"])
+		if at - depth > reach:
+			break
+		if at + depth < mid - half:
+			continue
+		var top: float = (t.fence_gapped_top if String(f.get("variant", "full")) == "gapped" else t.fence_full_top) \
+			+ tuning.fence_clearance - tuning.hover_height
+		if top > 0.0 and mid + half + top / maxf(tuning.lift_speed, 0.1) * v >= at - depth:
+			need = maxf(need, top)
+	return need
+
+
+## True if it would be risen over a fence at any point with its middle between track distances `from` and `to` in lane
+## `l` (_update_lift's climb before a fence and its settling after, at the runner's speed).
+func _lifted_between(l: int, from: float, to: float) -> bool:
+	if l < 0 or l >= _lane_fences.size():
+		return false
+	var t: MovementTuning = world.tuning
+	var half: float = HunterModel.DISC_RADIUS
+	var depth: float = t.fence_depth * 0.5
+	var v: float = maxf(world.player.speed, _run_speed)
+	var most: float = maxf(t.fence_gapped_top, t.fence_full_top) + tuning.fence_clearance - tuning.hover_height
+	var lead_most: float = maxf(most, 0.0) / maxf(tuning.lift_speed, 0.1) * v
+	var fences: Array = _lane_fences[l]
+	for i: int in range((_lane_fence_ats[l] as PackedFloat32Array).bsearch(from - depth - half - lead_most), fences.size()):
+		var f: Dictionary = fences[i]
+		var at: float = float(f["at"])
+		if at - depth - half - lead_most > to:
+			break
+		var top: float = (t.fence_gapped_top if String(f.get("variant", "full")) == "gapped" else t.fence_full_top) \
+			+ tuning.fence_clearance - tuning.hover_height
+		if top <= 0.0:
+			continue
+		var lead: float = top / maxf(tuning.lift_speed, 0.1) * v
+		if at - depth - half - lead <= to and at + depth + half + lead >= from:
+			return true
+	return false
+
+
+## True if a fence stands in lane `l` between track distances `from` and `to` (it would rise over it there).
+func fence_between(l: int, from: float, to: float) -> bool:
+	if l < 0 or l >= _lane_fences.size():
+		return false
+	var depth: float = world.tuning.fence_depth * 0.5
+	var ats: PackedFloat32Array = _lane_fence_ats[l]
+	var i: int = ats.bsearch(from - depth)
+	return i < ats.size() and ats[i] - depth <= to
+
+
 ## Eases its gap toward `want`, at most `top` metres a second.
 func _ease_gap(want: float, top: float, delta: float) -> void:
 	var eased: float = want + (gap - want) * exp(-tuning.gap_rate * delta)
@@ -583,10 +747,12 @@ func _bait_side(b: Dictionary, r: int) -> int:
 
 
 ## True if riding on side `s` of a runner in lane `r` would stand between them and the next planned bait's walkway lane
-## (two lanes or more from them on that side, so they can't reach it stepping away from it) while that bait can still be
-## lined up: its pillar further ahead than its run-up (bait_hold_seconds of run), and the runner then able to step out of
-## the walkway's lane on that side (away from it, once it has come up on their other side): the push side, or the other
-## where it's open (_out_open). It lets them past first (task S2's review: _approach holds back, _alongside drops back).
+## (two lanes or more from them on that side, so they can't reach it stepping away from it) once that bait is near and
+## can still be lined up: its pillar within bait_cross_seconds of run and further than its run-up (bait_hold_seconds),
+## and the runner then able to step out of the walkway's lane on that side (away from it, once it has come up on their
+## other side): the push side, or the other where it's open (_out_open). Before that it rides there, beside them (its
+## flurries never carry them further from that lane: may_slash); then it lets them past (task S2's review: _alongside
+## crosses to their other side or drops back, _approach holds back, _pick_side takes the other side).
 func _blocks_bait(s: int, r: int) -> bool:
 	if s == 0:
 		return false
@@ -594,15 +760,29 @@ func _blocks_bait(s: int, r: int) -> bool:
 	if b.is_empty() or (int(b.get("lane", r)) - r) * s < 2:
 		return false
 	var v: float = maxf(world.player.speed, _run_speed)
-	if float(b.get("at", -INF)) - world.player_distance() < tuning.bait_hold_seconds * v:
+	var ahead: float = float(b.get("at", -INF)) - world.player_distance()
+	if ahead < tuning.bait_hold_seconds * v or ahead > tuning.bait_cross_seconds * v:
 		return false
 	return s == int(b.get("side", 0)) or _out_open(b, s)
+
+
+## _out_open_now for bait `b` and side `out`, looked at again only every OUT_OPEN_REFRESH (task S2's review: it reads the
+## layout and the enemies in play, and its callers ask several times a frame).
+func _out_open(b: Dictionary, out: int) -> bool:
+	var key: String = "%d:%d" % [int(b.get("id", -1)), out]
+	var now: float = world.level_time()
+	var memo: Variant = _out_open_memo.get(key)
+	if memo is Array and now - float((memo as Array)[0]) < OUT_OPEN_REFRESH and now >= float((memo as Array)[0]):
+		return bool((memo as Array)[1])
+	var open: bool = _out_open_now(b, out)
+	_out_open_memo[key] = [now, open]
+	return open
 
 
 ## True if a runner who dashes bait `b`'s pillar can step out of its walkway's lane to side `out` onto open floor until
 ## its calm stretch is over (no hole, floor cut, doodad, live fence, floor enemy, planned or in play, or solid side there:
 ## lane_open), with a lane on the walkway's other side for it to ride in meanwhile.
-func _out_open(b: Dictionary, out: int) -> bool:
+func _out_open_now(b: Dictionary, out: int) -> bool:
 	var n: int = world.geo.lane_count
 	var l: int = int(b.get("lane", -1))
 	var lane: int = l + out
@@ -654,6 +834,7 @@ func _index_layout() -> void:
 	var n: int = world.geo.lane_count
 	_lane_doodads.clear()
 	_lane_fences.clear()
+	_lane_fence_ats.clear()
 	_doodad_reach = 0.0
 	for l: int in n:
 		var spans: Array = []
@@ -677,13 +858,18 @@ func _index_layout() -> void:
 				fences.append(f)
 		fences.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 		_lane_fences.append(fences)
+		var ats := PackedFloat32Array()
+		for f: Dictionary in fences:
+			ats.append(float(f["at"]))
+		_lane_fence_ats.append(ats)
 
 
 ## True if its body can ride lane `l` from its rear to steer_ahead_seconds past its front (at the runner's speed): no
-## standing doodad (a gantryway's pillar, a jar, a row: doodad_extent), live fence, teleporter's pad, ramp, standing dash
-## wall, nor another enemy on the floor there. With `to_runner`, from where it is up to the runner's front and on (as it
-## comes into view from behind). It hovers over holes, gaps and floor cuts. A floor enemy under a walkway falling on that
-## lane doesn't count: the walkway is about to crush it.
+## standing doodad (a gantryway's pillar, a jar, a row: doodad_extent), gapped fence, teleporter's pad, ramp, standing
+## dash wall, nor another enemy on the floor there. With `to_runner`, from where it is up to the runner's front and on (as
+## it comes into view from behind). It hovers over holes, gaps and floor cuts, and rises over full fences (_update_lift;
+## not beside a runner in an edge lane: _runner_in_edge_lane). A floor enemy under a walkway falling on that lane doesn't
+## count: the walkway is about to crush it.
 func _lane_clear_ahead(l: int, to_runner: bool) -> bool:
 	return lane_blocker(l, to_runner) == ""
 
@@ -711,8 +897,9 @@ func blocked_in(l: int, from: float, to: float) -> bool:
 
 
 ## What its body must go round in lane `l` between track distances `from` and `to` (see _lane_clear_ahead), the first
-## found: "pillar" (a gantryway's), "jar" (an Octodog's, a decoy's), "doodad", "fence" (a live one), "teleporter" (its
-## pad and antenna), "ramp", "dash_wall" (a standing one) or "enemy" (on the floor); "" for nothing.
+## found: "pillar" (a gantryway's), "jar" (an Octodog's, a decoy's), "doodad", "fence" (a gapped one, or any while the
+## runner is in an edge lane: _goes_round), "teleporter" (its pad and antenna), "ramp", "dash_wall" (a standing one) or
+## "enemy" (on the floor); "" for nothing. A full fence it rises over (_update_lift).
 func blocker_in(l: int, from: float, to: float) -> String:
 	var dd: Dictionary = _doodad_entry_in(l, from, to)
 	if not dd.is_empty():
@@ -720,11 +907,13 @@ func blocker_in(l: int, from: float, to: float) -> String:
 			return "pillar"
 		return "jar" if dd.has(LevelLayout.HOLDS) else "doodad"
 	var half: float = world.tuning.fence_depth * 0.5 + 0.4
-	for f: Dictionary in _lane_fences[l]:
-		var at: float = float(f["at"])
-		if at - half > to:
+	var fences: Array = _lane_fences[l]
+	var round_any: bool = _runner_in_edge_lane()
+	for i: int in range((_lane_fence_ats[l] as PackedFloat32Array).bsearch(from - half), fences.size()):
+		var f: Dictionary = fences[i]
+		if float(f["at"]) - half > to:
 			break
-		if at + half >= from and not bool(f.get("disabled", false)):
+		if round_any or _goes_round(f):
 			return "fence"
 	var lay: LevelLayout = world.layout
 	for tp: Dictionary in lay.teleporters:
@@ -738,6 +927,20 @@ func blocker_in(l: int, from: float, to: float) -> String:
 		if not bool(w.get("smashed", false)) and float(w["start"]) <= to and float(w["end"]) >= from:
 			return "dash_wall"
 	return "enemy" if _floor_enemy_in(l, from - ENEMY_ROOM, to + ENEMY_ROOM, true) else ""
+
+
+## True if it goes round fence `f` rather than rising over it (DESIGN-TBD, task S2's review): a gapped one (the runner
+## slides under it), whose top it would have to rise about 2 m to clear, its body then hiding the floor ahead of a runner
+## beside it from the chase camera (test_hunter's view). It rises over a full one.
+static func _goes_round(f: Dictionary) -> bool:
+	return String(f.get("variant", "full")) == "gapped"
+
+
+## True if the runner is in an edge lane on the floor: risen over a fence beside them there, its body would hide their lane
+## ahead from the chase camera, so it goes round every fence then (it never slashes them there anyway: may_slash).
+func _runner_in_edge_lane() -> bool:
+	var r: int = runner_lane()
+	return world.player.surface == Player.Surface.FLOOR and (r == 0 or r == world.geo.lane_count - 1)
 
 
 ## A standing doodad in lane `l` reaching into [from, to].
@@ -845,15 +1048,32 @@ func _needs_leaving(r: int, from: float, to: float, v: float) -> Vector2:
 ## gun (CyborgGun: a floor or window cyborg's, or any enemy's built on it, as a `gun`) charging or firing at them, or an
 ## enemy's shot on its way to their lane within make_room_seconds.
 func _small_attack_on(r: int) -> bool:
+	_small_attacks()
+	return _small_gun_on or (r >= 0 and r < 31 and (_small_shot_lanes >> r) & 1 == 1)
+
+
+## Looks at the small attacks once a physics frame (task S2's review: its cost): whether a cyborg-type gun is charging or
+## firing, and which lanes enemy shots are on their way to within make_room_seconds (a bit each).
+func _small_attacks() -> void:
+	var frame: int = Engine.get_physics_frames()
+	if frame == _small_frame:
+		return
+	_small_frame = frame
+	_small_gun_on = false
+	_small_shot_lanes = 0
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e) or not e.alive or e == self:
 			continue
 		var g: Variant = e.get(&"gun")
 		if g is CyborgGun and (g as CyborgGun).is_attacking():
-			return true
+			_small_gun_on = true
+			break
+	if world.projectiles.live_count() == 0:
+		return
 	var p: Player = world.player
 	var v: float = maxf(p.speed, _run_speed)
-	var x: float = world.geo.lane_x(r)
+	var geo: TrackGeometry = world.geo
+	var reach: float = geo.lane_width * 0.5 + 0.3
 	for shot: Projectile in world.projectiles.live_shots():
 		if shot.friendly or not shot.in_use:
 			continue
@@ -863,9 +1083,12 @@ func _small_attack_on(r: int) -> bool:
 		if ahead < -1.0 or closing <= 0.1:
 			continue
 		var t: float = maxf(ahead, 0.0) / closing
-		if t <= tuning.make_room_seconds and absf(shot.position.x + shot.velocity.x * t - x) <= world.geo.lane_width * 0.5 + 0.3:
-			return true
-	return false
+		if t > tuning.make_room_seconds:
+			continue
+		var x: float = shot.position.x + shot.velocity.x * t
+		for l: int in geo.lane_count:
+			if absf(x - geo.lane_x(l)) <= reach:
+				_small_shot_lanes |= 1 << l
 
 
 ## The front of the first standing doodad in lane `l` reaching into [from, to] (INF: none).
@@ -974,38 +1197,64 @@ func _update_slash(delta: float) -> void:
 ## teleporter's calm stretch in their lane, a wall-run gap's crossing or a fenced ceiling's pick (where they read which pad
 ## is the trap: LevelLayout.fenced_pick_between, as a heli drone's barrage); not while another enemy's small attack is on
 ## at them (_small_attack_on); never one whose dodge would take them two lanes or more past the next bait's walkway lane;
-## and over before it gives up.
+## never one it would be risen over a fence through while its sweep shows and its cuts are live (_lifted_between); and
+## over before it gives up.
 func may_slash() -> bool:
+	return slash_problem() == ""
+
+
+## Why a flurry may not begin now (may_slash's rules, in its order), "" when it may: "off the floor" (the runner),
+## "not beside" (not in the lane beside theirs on its side, or heading elsewhere), "changing lanes", "not level" (its
+## gap), "between lanes" (the runner), "by the edge" (no lane away from it), "chase ending", "calm start", "bait
+## lane" (two lanes past its bait's walkway lane), "gantryway" (a run-up or calm stretch), "teleporter", "wall-run gap",
+## "fenced pick", "fence" (it would be risen through it), "small attack", "no way out" (their other lane not open)
+## (tools/measure/hunter_chases.gd tallies them).
+func slash_problem() -> String:
 	var p: Player = world.player
 	if not p.alive or not p.running or p.surface != Player.Surface.FLOOR or p.in_pit:
-		return false
+		return "off the floor"
 	var n: int = world.geo.lane_count
 	var r: int = runner_lane()
-	if lane != r + side or target_lane != lane or _switch_t < 1.0 or absf(gap + tuning.alongside_ahead) > 0.4:
-		return false
+	if lane != r + side or target_lane != lane:
+		return "not beside"
+	if _switch_t < 1.0:
+		return "changing lanes"
+	if absf(gap + tuning.alongside_ahead) > 0.4:
+		return "not level"
 	if absf(p.position.x - world.geo.lane_x(r)) > 0.15:
-		return false
+		return "between lanes"
 	var f: int = r - side
 	if f < 0 or f >= n:
-		return false
+		return "by the edge"
 	if chase_time + tuning.attack_seconds() > tuning.chase_seconds:
-		return false
+		return "chase ending"
 	if world.config != null and p.distance < world.config.start_clear_distance:
-		return false
+		return "calm start"
 	# Once a bait is planned in its chase, a flurry never carries the runner two lanes or more past its walkway's lane: it
 	# would follow and ride between them and it (task S2's review).
 	var bait: Dictionary = _next_bait()
 	if not bait.is_empty() and (f - int(bait.get("lane", f))) * -side >= 2:
-		return false
+		return "bait lane"
 	var v: float = maxf(p.speed, 1.0)
 	var to: float = p.distance + tuning.attack_seconds() * v + 2.0
-	if _bait_near(p.distance - 1.0, to) or world.layout.teleporter_between(p.distance - 1.0, to, r) \
-			or world.layout.wall_run_between(p.distance - 1.0, to) or world.layout.fenced_pick_between(p.distance - 1.0, to):
-		return false
+	if _bait_near(p.distance - 1.0, to):
+		return "gantryway"
+	if world.layout.teleporter_between(p.distance - 1.0, to, r):
+		return "teleporter"
+	if world.layout.wall_run_between(p.distance - 1.0, to):
+		return "wall-run gap"
+	if world.layout.fenced_pick_between(p.distance - 1.0, to):
+		return "fenced pick"
+	# Never risen over a fence while its sweep shows and its cuts are live (the sweep is drawn from its hover: _build_trail).
+	var mid: float = p.distance - gap
+	if _lifted_between(lane, mid + (tuning.warning_seconds - TRAIL_IN) * v, mid + tuning.attack_seconds() * v):
+		return "fence"
 	# Not while another enemy's small attack is on at them (a cyborg's burst: its dodge and the flurry's are one move).
 	if _small_attack_on(r) or _small_attack_on(f):
-		return false
-	return lane_open(f, p.distance + tuning.escape_reaction_seconds * v, to, true)
+		return "small attack"
+	if not lane_open(f, p.distance + tuning.escape_reaction_seconds * v, to, true):
+		return "no way out"
+	return ""
 
 
 ## True if a gantryway's run-up (bait_hold_seconds of run before its pillar) or its calm stretch, in any lane, reaches
@@ -1082,8 +1331,10 @@ func _place_slash_box() -> void:
 ## The sweep of its blades through the lane it cuts (task S2's review, CLAUDE.md principle 4: its cuts' box reaches no
 ## further than what's drawn): a red see-through fan (HunterModel.slash_mesh) round a pivot PIVOT_FORWARD in front of its
 ## chest as it lunges (HunterModel.LUNGE) at its shoulders' height, from its cuts' box's near edge at the top of the box to
-## its near edge at the floor, out to past the box's far corners, two sheets each side of the runner along the track, the
-## whole box inside it with SLASH_MARGIN (and SLASH_ANGLE_PAD) to spare. Built once for the lane width.
+## its near edge at the floor, out to past the box's far corners but no further across than its far side and SLASH_MARGIN
+## (inside the cut lane: x_max), two sheets each side of the runner along the track, the whole box inside it with
+## SLASH_MARGIN (and SLASH_ANGLE_PAD) to spare. Its mesh is shared by every Hunter on that lane width
+## (HunterModel.shared_slash_mesh).
 func _build_trail() -> void:
 	var lw: float = world.geo.lane_width
 	var half: float = lw * 0.5 - tuning.side_margin
@@ -1100,11 +1351,14 @@ func _build_trail() -> void:
 		"low": atan2(-sy, near) - SLASH_ANGLE_PAD,
 		"high": atan2(top - sy, near) + SLASH_ANGLE_PAD,
 		"half_depth": tuning.slash_depth * 0.5 + SLASH_MARGIN,
+		# Clipped short of the cut lane's far side (the box's far edge and SLASH_MARGIN): it never reaches into the lane
+		# the runner steps into.
+		"x_max": far + SLASH_MARGIN,
 	}
 	_trail = MeshInstance3D.new()
 	_trail.name = "SlashSweep"
-	_trail.mesh = HunterModel.slash_mesh(float(_fan["inner"]), float(_fan["outer"]), float(_fan["low"]), float(_fan["high"]),
-		float(_fan["half_depth"]))
+	_trail.mesh = HunterModel.shared_slash_mesh(float(_fan["inner"]), float(_fan["outer"]), float(_fan["low"]),
+		float(_fan["high"]), float(_fan["half_depth"]), float(_fan["x_max"]))
 	_trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_trail.top_level = true
 	_trail.visible = false
@@ -1137,8 +1391,8 @@ func _update_trail() -> void:
 
 
 ## The sweep its cuts' box lies in while it shows (tests): {pivot (world), dir (-1, 1: across toward the lane it cuts),
-## share (how far out, 0-1), inner, outer, low, high (radians from across, up positive), half_depth}; {} while it shows
-## none.
+## share (how far out, 0-1), inner, outer, low, high (radians from across, up positive), half_depth, x_max (its reach
+## across from the pivot)}; {} while it shows none.
 func slash_fan() -> Dictionary:
 	if _trail == null or not _trail.visible:
 		return {}
@@ -1233,7 +1487,7 @@ func _set_blocker(on: bool) -> void:
 
 ## Where weapons aim and effects appear: its chest.
 func aim_point() -> Vector3:
-	return global_position + Vector3(0.0, tuning.hover_height + 1.0, 0.0)
+	return global_position + Vector3(0.0, tuning.hover_height + lift + 1.0, 0.0)
 
 
 func hit_radius() -> float:
@@ -1268,7 +1522,7 @@ func _place(delta: float) -> void:
 	if model == null:
 		return
 	var yaw: float = 0.0
-	if state == State.ALONGSIDE or (state == State.APPROACH and gap < VIEW_GAP):
+	if state == State.ALONGSIDE or state == State.SWITCH or (state == State.APPROACH and gap < VIEW_GAP):
 		var dx: float = p.position.x - _x
 		var dz: float = p.position.z - position.z
 		yaw = atan2(-dx, -dz)
@@ -1290,6 +1544,9 @@ func _place(delta: float) -> void:
 	model.cut = cut
 	model.lean = lerpf(model.lean, lean, 1.0 - exp(-12.0 * delta))
 	model.alert = slash == Slash.WARNING or slash == Slash.FLURRY
+	# Risen over a fence (_update_lift): its disc and its body's box with it.
+	model.hover = tuning.hover_height + lift
+	_body.position.y = tuning.hover_height + lift + tuning.hitbox_size.y * 0.5
 	# Its lunge toward the lane it cuts, with the sweep of its blades (_update_trail), easing back as it recovers.
 	model.reach = _sweep_share() if slash != Slash.RECOVER \
 		else minf(model.reach, 1.0 - clampf(_slash_t / maxf(tuning.recover_seconds, 0.05), 0.0, 1.0))
