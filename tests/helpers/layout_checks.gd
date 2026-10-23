@@ -44,6 +44,7 @@ const CentipedeRulesScript = preload("res://scripts/enemies/centipede_rules.gd")
 const GantrywayRulesScript = preload("res://scripts/enemies/gantryway_rules.gd")
 const TeleporterRulesScript = preload("res://scripts/enemies/teleporter_rules.gd")
 const OctodogJarRulesScript = preload("res://scripts/enemies/octodog_jar_rules.gd")
+const HunterRulesScript = preload("res://scripts/enemies/hunter_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
@@ -101,6 +102,27 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_gantryways(suite, layout, config, tag)
 	check_teleporters(suite, layout, config, tag)
 	check_octodog_jars(suite, layout, config, tag)
+	check_hunters(suite, layout, config, tag)
+
+
+## The Hunters (task S2; GDD §9.17, the owner, October 23, 2026; scripts/enemies/hunter_rules.gd), wherever the generator
+## brings one in: only in a level with the feature and the falling gantryways, never before the feature's start, and the
+## generator's own re-check finds nothing (HunterRules.problems: at most per_level_max, never two at once, an arrival off
+## every planned attack (a calm one off every set piece too), and every bait it names a gantryway of the level in its chase
+## whose Hunter lane holds nothing it must go round).
+static func check_hunters(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var hunters: Array[Dictionary] = HunterRulesScript.hunters_in(layout)
+	if hunters.is_empty():
+		return
+	suite.check(config.has_feature(HunterRulesScript.TYPE) and config.has_feature(GantrywayRulesScript.FEATURE),
+		"Hunters only in a level with the feature and the falling gantryways " + tag)
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var start: float = gen.feature_start(HunterRulesScript.TYPE)
+	for e: Dictionary in hunters:
+		suite.check(float(e["at"]) >= start - 0.01, "the Hunter at %.1f m comes after its feature's start (%.0f m) %s"
+			% [float(e["at"]), start, tag])
+	var problems: PackedStringArray = HunterRulesScript.problems(gen)
+	suite.check(problems.is_empty(), "the Hunters keep every placement rule %s %s" % [tag, problems])
 
 
 ## Jars holding an Octodog (task Q5; GDD §5, Zone 9, the owner, October 21, 2026; scripts/enemies/octodog_jar_rules.gd),

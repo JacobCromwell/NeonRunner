@@ -124,6 +124,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   room, and none in a build without room: an occasional feature; the dog's numbers in data/enemies/octodog.tres,
 ##   Jars). `octodog_jar_decoys` of the level's small doodads are dressed and broken the same but hold a dog that never
 ##   comes out (LevelLayout.DECOY), and the zone's other Octodog jars are its skin's look only (IceLabDoodads).
+## - hunter: the Hunter (task S2; GDD §9.17, owner, October 23, 2026), from Specimen Vault: a torso on a hover disc with red
+##   blades that comes up beside the runner from behind and slashes into their lane, follows them into the lane they leave,
+##   and dies under a falling gantryway the runner drops on it (no patterns: its rules, hunter_rules.gd, bring one in only
+##   where a falling gantryway it can be lured under comes during its chase, so it needs the gantryway feature; numbers in
+##   data/enemies/hunter.tres)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.

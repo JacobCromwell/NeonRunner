@@ -1,0 +1,58 @@
+[gd_resource type="Resource" script_class="HunterTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/hunter_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+spawn_lead = 40.0
+score_value = 1000
+health_early = 23.0
+health_late = 23.0
+uses_floor = false
+floor_reach_before = 0.0
+floor_reach_after = 0.0
+behind_runner = true
+chase_seconds = 25.0
+arrive_gap = 30.0
+approach_speed = 11.0
+gap_rate = 6.0
+alongside_ahead = 0.6
+catch_up_gap_max = 70.0
+leave_speed = 9.0
+gone_gap = 40.0
+follow_delay_seconds = 0.25
+switch_seconds = 0.25
+steer_ahead_seconds = 0.6
+make_room_seconds = 1.2
+regain_seconds = 1.2
+yield_gap = 9.0
+drop_speed = 16.0
+warning_seconds = 0.85
+flurry_seconds = 0.5
+cuts = 4
+recover_seconds = 0.4
+first_slash_seconds = 1.4
+slash_interval_min = 2.4
+slash_interval_max = 3.2
+escape_reaction_seconds = 0.3
+slash_height = 3.0
+slash_depth = 2.2
+side_margin = 0.25
+bait_hold_seconds = 2.5
+mark_behind = 2.0
+mark_ahead = 6.0
+blocker_height = 2.95
+blocker_length = 2.0
+hitbox_size = Vector3(1.2, 2, 1.3)
+hover_height = 0.38
+per_level_max = 2
+spacing_seconds = 6.0
+bait_after_seconds = 6.0
+bait_before_seconds = 4.0
+bait_prefer_min_seconds = 8.0
+bait_prefer_max_seconds = 14.0
+bait_lane_before_seconds = 0.0
+bait_lane_after_seconds = 0.9
+arrival_calm_seconds = 3.0
+intro_bait_min_seconds = 12.0
+intro_bait_max_seconds = 18.0

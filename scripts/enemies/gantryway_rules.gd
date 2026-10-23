@@ -320,6 +320,20 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 			_place(gen, plan, spot, fronts)
 			# Nothing of it before its introduction: the rest stand past it.
 			from = float(spot["front"]) + spacing
+	# Task S2: where another feature's rules want a gantryway (wanted(): the Hunter's introduction, which comes only where
+	# one falls in its chase), the best fair spot in that stretch, nearest its middle, both lanes beside it clear if it
+	# can (else the one its pillar pushes into), unless one hangs there already: first of the rest. A level whose features
+	# want none is built as before.
+	for want: Vector2 in wanted(gen):
+		var a: float = maxf(want.x, from)
+		var b: float = minf(want.y, plan.hi)
+		if fronts.size() >= count or b < a or _any_between(fronts, a, b):
+			continue
+		var wanted_spot: Dictionary = _best(plan, a, b, (a + b) * 0.5, fronts, spacing, true, false)
+		if wanted_spot.is_empty():
+			wanted_spot = _best(plan, a, b, (a + b) * 0.5, fronts, spacing, false, false)
+		if not wanted_spot.is_empty():
+			_place(gen, plan, wanted_spot, fronts)
 	var left: int = count - fronts.size()
 	if left > 0 and from <= plan.hi:
 		var part: float = (plan.hi - from) / float(left)
@@ -341,6 +355,30 @@ static func _apply(gen: LevelGenerator, count: int) -> void:
 	if fronts.is_empty():
 		gen.warnings.append("gantryways: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
 	_number(gen.layout)
+
+
+## The stretches the level's other features' rules want a falling gantryway in (task S2: `static func
+## gantryway_wanted(gen: LevelGenerator) -> Array[Vector2]` on a feature's rules script; the Hunter's introduction,
+## hunter_rules.gd), in the order of the features: apply() hangs one in each where it can.
+static func wanted(gen: LevelGenerator) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for feature: String in gen.config.features:
+		var path: String = LevelGenerator.RULES_DIR.path_join("%s_rules.gd" % feature)
+		if feature == FEATURE or not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("gantryway_wanted"):
+			for w: Vector2 in script.call("gantryway_wanted", gen):
+				out.append(w)
+	return out
+
+
+## True if a front of `fronts` lies in [a, b].
+static func _any_between(fronts: Array[float], a: float, b: float) -> bool:
+	for f: float in fronts:
+		if f >= a - 0.001 and f <= b + 0.001:
+			return true
+	return false
 
 
 ## The best spot in fronts [a, b] (the grid's), as {lane, side, front, cost, both}: one that fits (Plan.fits; both lanes
