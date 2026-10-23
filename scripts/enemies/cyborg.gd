@@ -10,9 +10,10 @@ extends Enemy
 ##   and cowers once it runs out of room.
 ## - Host (params.host, feature `host`, GDD §9.7): its screen glitches purple, purple veins glow
 ##   along its neck and arms and purple smoke rises off it (HostSmoke: visual only, its numbers
-##   CyborgTuning's "Host smoke" group, gone when it dies). Weapons hit it like any other cyborg (owner, October 8, 2026: auto-fire
-##   targets it, shots and splash hurt it); killing it, by any means, releases the Bad Dream, and a
-##   stomp, the claws or the dash also earn the big host bonus (_release_bad_dream). It never panics.
+##   CyborgTuning's "Host smoke" group, gone when it dies). Weapons hit it like any other cyborg
+##   (owner, October 8, 2026: auto-fire targets it, shots and splash hurt it); killing it, by any
+##   means, releases the Bad Dream, and a stomp, the claws or the dash also earn the big host bonus
+##   (_release_bad_dream). It never panics.
 ## Killed by a stomp on the head, weapons, claws or the dash: a stompable top over the head and a
 ## solid body (both slightly smaller than the visuals, and the body stops below the stomp line, so a
 ## player dropping onto the head only ever touches the head).
