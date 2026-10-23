@@ -6752,3 +6752,50 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     own seed and 9001-9003, base against Q6 (the Q6 review): enemies −1.6% to −3.5%, floor pieces 0 to −3.3%, wall fences
     −8% to −25% (Golden 1 37→34, Golden 2 52→42, Golden 3 57→43). The suite's 3-lane floor (×1.21) sits only 0.017 under
     the measured ×1.227.
+
+### Folded on October 23, 2026 (task O5, the Terminal: more centipedes, the pad escape, ambushes and gaps; items 1195, 1201, 1202 and 1206 went to `docs/OPEN_QUESTIONS.md`, 1205 to `docs/OPEN_QUESTIONS_ANSWERED.md`)
+
+**The Terminal: more centipedes, the pad escape, ambushes and gaps** (task O5 of the Terminal workstream, the owner's requests of October 22, 2026; from `docs/questions/o5.md`; GDD §5, Zone 8 and §9.15)
+1196. **How many escape sections, and where.** Placeholder: one in each Terminal level (`escape_blocks` 1), in the first
+   maze block that starts at 55% of Rubble Line or later (`escape_from` 0.55, after the centipedes come in at 35%), and
+   the first at 50% or later in Last Stop; a slot with no room for one owes it to the next. More, or somewhere else?
+
+1197. **The escape section's shape.** Placeholder: an ordinary maze block (walls, rooms, dashes, centipedes) whose last
+   wall opens onto an open room (no dividers) with the pad in it, then the barrier, then the block's breather. The pad's
+   lane comes from the level's seed (the sketch has it in the middle); it lies as late as lets its lift carry the rider
+   over the barrier, with room before it for a lane switch and to see it after a dash through the wall before it. The
+   sketch's `.****` row and double wall aren't built as drawn: the maze before the room is the usual random maze.
+   Should the room have dividers, or the walls before it a fixed shape?
+
+1198. **A longer one-lane ceiling for the escape.** The Terminal's one-lane ceilings last at most 1.6 s from their pad
+   (`LevelConfig.one_lane_ceiling_seconds`); the escape's reaches over the barrier, about 1.9 s from its pad at the
+   Terminal's speed (to 1 m past the barrier's back). OK for the escape only?
+
+1199. **Centipedes in the escape section.** Placeholder: they may wait in its maze before the pad's room (as in the
+   sketch), never in the pad's room itself; the escape proof takes the pad as the way out (a centipede gives up on a
+   runner on a ceiling). Over 12 seeds at 5 lanes Rubble Line's escape block holds one in 8 builds, nearly all walled
+   in; Last Stop's always holds its ambush. Should the escape section always have a centipede in play?
+
+1200. **The first round's counts** (superseded by 1201's). Placeholder then: `centipede_scale` 1.35 and 2.3; at 5 lanes
+   over 12 seeds Rubble Line about 6.75 a level before and 8.4 after, Last Stop about 4.4 before and 8.8 after. Kept for
+   the record: Rubble Line still sits about 25-30% over its first count.
+
+1203. **The ambush's look and reach.** ("Resting inside of one of the debris doodads, and you can barely see its body,
+   and when you get close to it, the debris shatters and the centipede is released.") Placeholder: it lies in a divider
+   (the debris along a lane inside a room) set to one side, so its body pokes out toward the open lane beside it
+   (`ambush_showing` 0.25 m, measured from its body's hitbox: up close its head and one lens show more than that), its
+   legs folded and its lenses glowing as any sleeping centipede's: at the game camera's distance a small green glint is
+   what gives it away. It breaks out when the runner, on the floor in its block, is within `ambush_distance` (8 m at the
+   reference speed, about 11 m at the Terminal's) along the track, or at once when a dash smashes debris it lies in: the
+   debris shatters (the dash's rubble and crunch), then it wakes as any other (its hiss, rearing, 0.6 s still) and
+   chases. At 16 m it was awake before the runner drew level, and the escape proof turned down nearly every spot near
+   the way. Two in Last Stop (`ambush_count` 2) in blocks from half the level on (`ambush_from` 0.5), one a block; other
+   centipedes may share its block; at 3 lanes only one fits on the level's own seed. Should it show less (darker lenses,
+   though the glint is its only warning before it breaks out), more, or something else (a crack of light, a twitch)?
+
+1204. **The rows of holes between maze sections.** ("Some more gaps to jump over in the sections in between maze
+   portions.") Placeholder: rows across every lane (a jump), 0.45 of a full jump long, one in each stretch between two
+   blocks of Rubble Line (`gap_rows` 1: about 3 more rows a level, most stretches there being short or holding a wider
+   gap) and two in Last Stop's (`gap_rows` 2: 6 more), each with the level's hard spacing clear around it. GDD §5, Zone 8
+   still says "a couple of holes, not many": to be updated with this decision. Rows across every lane but one (like
+   other zones' added rows) would be easier. Right length and number?

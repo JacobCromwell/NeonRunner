@@ -1750,3 +1750,8 @@ Captain Cogs).
    Ice Lab's mechanic.) Placeholder: the Golden Zone's levels don't list them (`test_campaign`, LEFT_OUT), as the falling
    gantryways and the Terminal's maze stay in their zones. Should the Golden Zone stand teleporters too?
    **Answered (owner, October 22, 2026):** add the teleporters to the Golden Zone (task Q6). Recorded in GDD §5, Zone 9.
+
+**The Terminal: more centipedes, the pad escape, ambushes and gaps** (task O5 of the Terminal workstream, the owner's requests of October 22, 2026; from `docs/questions/o5.md`; GDD §5, Zone 8 and §9.15)
+1205. **A fix to the escape proof** (a note, no question). Its wake check was asked exactly at the wake distance's edge,
+   where rounding could put it outside, so a wake could be counted a stretch late (found with the ambush). It now has a
+   hair of tolerance: the proof is a little stricter.

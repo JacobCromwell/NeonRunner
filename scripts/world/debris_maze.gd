@@ -41,7 +41,7 @@ extends RefCounted
 ## then a barrier: a last wall several large pieces deep in every lane, no opening, more than one dash deep
 ## (escape_pieces), under a one-lane ceiling from the pad to just past its back (_add_escape_ceiling). A runner who
 ## misses the pad stops at the barrier and needs a second dash, and the wait for it: never stuck. maze_part() is such a
-## block without its pad room and barrier: its breaks are the maze's own. DESIGN-TBD (docs/questions/o5.md).
+## block without its pad room and barrier: its breaks are the maze's own. DESIGN-TBD (items 1195-1199 in docs/OPEN_QUESTIONS*.md).
 ##
 ## What it adds to the layout: each block's record (LevelLayout.maze: {entry, start, end, exit, walls, rooms, breaks, and an
 ## escape block's `escape` {lane, at}; a barrier wall's `pieces`}),
@@ -163,7 +163,8 @@ static func keep_outs(gen: LevelGenerator) -> Array[Vector2]:
 
 ## Builds the level's maze (see the header) into `gen`'s layout. Returns its report (LevelGenerator.debris_maze_result):
 ## {} without the feature; else {slots, blocks, debris, ceilings, ceilings_out (the patterns' ceilings taken out of the
-## blocks' way), breaks (each block's least dashes), constraints (why a slot has no block, or a block no ceiling)}.
+## blocks' way), breaks (each block's least dashes), escapes (escape blocks with their pad), constraints (why a slot has
+## no block, a block no ceiling, or an escape went to a later slot)}.
 static func place(gen: LevelGenerator) -> Dictionary:
 	var config: LevelConfig = gen.config
 	var lay: LevelLayout = gen.layout
@@ -197,43 +198,40 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		var start: float = slot_end - (t.breather_seconds + block_seconds) * v
 		var entry: float = start - t.run_in_seconds * v
 		var end_by: float = slot_end - t.breather_seconds * v
-		var escape: bool = escapes.has(k)
-		var block: Dictionary = _plan_escape_block(gen, t, rng, start, end_by) if escape else {}
-		if escape and block.is_empty():
-			(report["constraints"] as Array).append("slot %d: no room for an escape block" % k)
+		var block: Dictionary = {}
+		if escapes.has(k):
+			block = _plan_escape_block(gen, t, rng, start, end_by)
+			if block.is_empty():
+				# Too tight for one: a plain block takes the slot and the escape is owed to the next.
+				(report["constraints"] as Array).append("slot %d: no room for an escape block" % k)
+				_owe_escape(escapes, k, count)
 		if block.is_empty():
 			block = _plan_block(gen, t, rng, start, end_by)
 		if block.is_empty():
 			(report["constraints"] as Array).append("slot %d: no room for %d rooms" % [k, t.min_rooms])
-			_owe_escape(escapes, k, count, escape)
 			continue
-		block["entry"] = entry
-		# Its breather is what every later pass keeps clear past it (keep_out), within its slot.
-		block["exit"] = minf(slot_end, float(block["end"]) + keep_more)
-		var in_way: String = _in_way(gen, entry, float(block["end"]) + keep_more)
-		if in_way != "":
-			(report["constraints"] as Array).append("slot %d: %s in the way" % [k, in_way])
-			_owe_escape(escapes, k, count, escape)
+		var pieces: int = _try_block(gen, block, entry, slot_end, keep_more, k, report)
+		if pieces < 0:
+			if block.has("escape"):
+				_owe_escape(escapes, k, count)
 			continue
-		report["ceilings_out"] = int(report["ceilings_out"]) + _clear_ceilings(gen, entry, float(block["end"]) + keep_more)
-		var debris_before: int = lay.doodads.size()
-		var pieces: int = _add_block(gen, block)
 		if block.has("escape"):
 			var why: String = _add_escape_ceiling(gen, lay.maze.size() - 1, slot_end)
 			if why == "":
 				report["escapes"] = int(report["escapes"]) + 1
 			else:
-				# No pad fits: the block goes, and a plain one takes its slot; the escape is owed to the next slot.
+				# No pad fits: the block goes, and a plain one takes its slot (checked over its own stretch as any
+				# block); the escape is owed to the next slot.
 				(report["constraints"] as Array).append("slot %d: no escape (%s)" % [k, why])
-				lay.doodads.resize(debris_before)
+				lay.doodads.resize(lay.doodads.size() - pieces)
 				lay.maze.pop_back()
-				_owe_escape(escapes, k, count, true)
+				_owe_escape(escapes, k, count)
 				block = _plan_block(gen, t, rng, start, end_by)
 				if block.is_empty():
 					continue
-				block["entry"] = entry
-				block["exit"] = minf(slot_end, float(block["end"]) + keep_more)
-				pieces = _add_block(gen, block)
+				pieces = _try_block(gen, block, entry, slot_end, keep_more, k, report)
+				if pieces < 0:
+					continue
 		report["debris"] = int(report["debris"]) + pieces
 		(report["breaks"] as Array).append(int(block["breaks"]))
 	report["blocks"] = lay.maze.size()
@@ -262,10 +260,25 @@ static func _escape_slots(gen: LevelGenerator, t: DebrisMazeTuning, from: float,
 	return out
 
 
-## Slot `k` was to end in an escape (`escape`) and won't: the next slot that has none takes it, if there is one.
-static func _owe_escape(escapes: Array[int], k: int, count: int, escape: bool) -> void:
-	if not escape:
-		return
+## Block `block` (a plan: _plan_block or _plan_escape_block) in slot `k`, from its run-in at `entry`, its breather within
+## the slot ending at `slot_end` (`keep_more` past its last wall, keep_out): added with its debris unless something of
+## the level's own is in its way (_in_way), the patterns' ceilings in its way taken out. Returns how many pieces it
+## added, or -1 (why, in the report's constraints).
+static func _try_block(gen: LevelGenerator, block: Dictionary, entry: float, slot_end: float, keep_more: float, k: int,
+		report: Dictionary) -> int:
+	block["entry"] = entry
+	# Its breather is what every later pass keeps clear past it (keep_out), within its slot.
+	block["exit"] = minf(slot_end, float(block["end"]) + keep_more)
+	var in_way: String = _in_way(gen, entry, float(block["end"]) + keep_more)
+	if in_way != "":
+		(report["constraints"] as Array).append("slot %d: %s in the way" % [k, in_way])
+		return -1
+	report["ceilings_out"] = int(report["ceilings_out"]) + _clear_ceilings(gen, entry, float(block["end"]) + keep_more)
+	return _add_block(gen, block)
+
+
+## Slot `k` was to end in an escape and won't: the next slot that has none takes it, if there is one.
+static func _owe_escape(escapes: Array[int], k: int, count: int) -> void:
 	for next: int in range(k + 1, count):
 		if not escapes.has(next):
 			escapes.append(next)
@@ -281,7 +294,7 @@ static func _owe_escape(escapes: Array[int], k: int, count: int, escape: bool) -
 ## wider gaps' zones and the maze's own keep-outs), so its take-off and landing are clear floor. It runs after the wider
 ## gaps and before the fill pass and the doodads (LevelGenerator.generate), which keep their spacing from it. Returns
 ## {target, rows, constraints} (LevelGenerator.maze_gap_result); {} without the feature or rows asked. DESIGN-TBD
-## (docs/questions/o5.md).
+## (item 1204 in docs/OPEN_QUESTIONS*.md).
 static func place_gaps(gen: LevelGenerator) -> Dictionary:
 	var lay: LevelLayout = gen.layout
 	var t: DebrisMazeTuning = tuning_for(gen.config)
@@ -878,7 +891,7 @@ static func _add_ceiling(gen: LevelGenerator, rng: RandomNumberGenerator, index:
 ## (pad_rise), under a one-lane ceiling from it to ESCAPE_HULL_PAST and the body's depth past the barrier's back, its
 ## rider's drop clear of debris by `limit` (the slot's end: the next block's run-in comes after it), and everything
 ## add_hull_with_pad asks. Its ceiling is longer than LevelConfig.one_lane_ceiling_seconds where the barrier needs it
-## (DESIGN-TBD, docs/questions/o5.md). Records {lane, at} in the block's `escape` and marks the hull `maze` and
+## (DESIGN-TBD, item 1198 in docs/OPEN_QUESTIONS*.md). Records {lane, at} in the block's `escape` and marks the hull `maze` and
 ## `escape`. "" once it's added.
 static func _add_escape_ceiling(gen: LevelGenerator, index: int, limit: float) -> String:
 	var lay: LevelLayout = gen.layout

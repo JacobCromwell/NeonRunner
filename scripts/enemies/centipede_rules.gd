@@ -25,11 +25,13 @@ extends RefCounted
 ## about double): DebrisMazeTuning.centipede_scale multiplies each block's drawn count (its fraction drawn) and the most a
 ## block holds (count_scale, max_per_block). An escape block's pad room (DebrisMaze.is_escape) holds none: its pad is the
 ## way out. Spots in open cells ("near", "way") are tried many at a time (OPEN_SPOTS a cell, OPEN_TRIES), so fewer end up
-## walled in (the owner: they "should not be always separated from the player").
+## walled in (the owner: they "should not be always separated from the player"). DESIGN-TBD (items 1201 and 1202 in
+## docs/OPEN_QUESTIONS*.md): Last Stop's count, and how far the escape guarantee keeps them walled in.
 ## Ambushes (DebrisMazeTuning.ambush_count; the owner, October 22, 2026: "resting inside of one of the debris doodads ...
 ## when you get close to it, the debris shatters and the centipede is released"; two in Last Stop's last half): placed
 ## first, one a block, each hidden in a divider (_place_ambushes), situation "ambush", params.ambush {room, lane, peek,
-## from, to}; the others placed in its block after it keep the block escapable with it.
+## from, to}; the others placed in its block after it keep the block escapable with it. DESIGN-TBD (item 1203 in
+## docs/OPEN_QUESTIONS*.md).
 
 const FEATURE: String = "centipede"
 
@@ -54,7 +56,10 @@ const FLOOR_AFTER: float = 1.0
 ## keeps the block escapable), many in an open one ("near" or "way", where the proof turns most spots down: task O5, the
 ## owner, October 22, 2026: the centipedes "should not be always separated from the player").
 const TRIES: int = 5
-const OPEN_TRIES: int = 16
+const OPEN_TRIES: int = 8
+## Spots tried for an ambush in a block before the next block (_place_ambushes): there are only a couple of blocks to
+## hide its two in.
+const AMBUSH_TRIES: int = 16
 ## Spots each open cell offers (a random lane and place each); a walled-in cell offers one.
 const OPEN_SPOTS: int = 4
 
@@ -135,7 +140,7 @@ static func _place_ambushes(gen: LevelGenerator, t: CentipedeTuning, start: floa
 		var ctx: CentipedeEscape.Context = CentipedeEscape.context(lay, gen.tuning, i)
 		var spots: Array[Dictionary] = ambush_candidates(lay, gen.tuning, i, start, rng)
 		_shuffle(spots, rng)
-		for j: int in mini(spots.size(), OPEN_TRIES):
+		for j: int in mini(spots.size(), AMBUSH_TRIES):
 			var c: Dictionary = spots[j]
 			var entry: Dictionary = ambush_entry(i, c)
 			if not gen.zones.enemy_clear(lay, entry):

@@ -63,6 +63,8 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var ceiling_share: float = 0.35
 
 @export_group("Escape")
+## DESIGN-TBD (items 1195-1199 in docs/OPEN_QUESTIONS*.md): this group's numbers and the escape's model; the Centipedes
+## group's, items 1201 and 1203; the Gaps group's, item 1204 (task O5).
 ## How many of the level's blocks end in an escape (task O5; the owner, October 22, 2026: "a section of maze that will
 ## make it so the player needs to escape using the anti-grav pad"): the block's last maze wall opens onto an open room
 ## with an anti-grav pad in it, and past that room a barrier of debris too deep for one dash, with a one-lane ceiling over
@@ -73,7 +75,8 @@ extends Resource
 ## Where in the level (a share of its length) the first escape block may come at the earliest.
 @export_range(0.0, 1.0, 0.05) var escape_from: float = 0.5
 ## The barrier's depth along the track, in large pieces of debris a sliver apart in every lane (the owner's sketch: four
-## rows). Never fewer than make it more than one dash deep at the level's speed (DebrisMaze.escape_pieces).
+## rows; the Terminal's levels 5, as at their speed one dash smashes up to four). Never fewer than make it more than one
+## dash deep at the level's speed (DebrisMaze.escape_pieces).
 @export_range(2, 8) var escape_pieces: int = 4
 
 @export_group("Centipedes")

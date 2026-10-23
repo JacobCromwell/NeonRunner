@@ -36,9 +36,11 @@ extends Enemy
 ## An ambush (task O5; the owner, October 22, 2026: "resting inside of one of the debris doodads, and you can barely see
 ## its body, and when you get close to it, the debris shatters and the centipede is released"; params.ambush, placed by
 ## centipede_rules.gd in a divider of the maze) lies inside the divider's debris, set to one side so a sliver of its body
-## shows beside it (CentipedeTuning.ambush_showing), its lenses dark. Once the runner is on the floor in its block within
+## shows beside it (CentipedeTuning.ambush_showing), its legs folded and its lenses glowing as any sleeping one's (the
+## glint that gives it away). Once the runner is on the floor in its block within
 ## ambush_distance along the track, or a dash smashes debris it lies in, the debris it lies in shatters (rubble and the
 ## smash's crunch) and it wakes as any other (its warning, then wake_time still), then keeps to every rule above.
+## DESIGN-TBD (item 1203 in docs/OPEN_QUESTIONS*.md): its look while hidden, how close it breaks out.
 ## It isn't a big attack (the Terminal has no other enemy to take turns with: is_major_attack_active). Its look:
 ## CentipedeModel.
 

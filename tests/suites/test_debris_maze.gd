@@ -62,6 +62,7 @@ func run() -> void:
 	_test_generator()
 	_test_endless()
 	_test_without_feature()
+	_test_escape_fallback()
 	await _test_bot()
 	await _test_bot_levels()
 	_test_hint()
@@ -902,6 +903,39 @@ func _test_without_feature() -> void:
 			pieces += 1 if LevelLayout.is_maze_debris(d) else 0
 		check(layout.maze.is_empty() and pieces == 0 and not layout.doodads_stop and not layout.to_dict().has("maze")
 			and not layout.to_dict().has("doodads_stop"), "%s has no maze, and its doodads push as before" % id)
+
+
+## Task O5: an escape block whose pad finds no room gives way. With a breather too short for its rider's drop before the
+## next block, no escape's pad fits, so every slot owed an escape tries one, takes it out again and puts a plain block
+## in its place (checked over its own stretch as any block: DebrisMaze._try_block), owing the escape on to the next
+## slot: no escape block, every block a plain one, each try reported, and the layout passing every check (against a copy
+## of the level that asks for no escape, which it has none of).
+func _test_escape_fallback() -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	# Rubble Line: Last Stop's slots keep room for a wider gap after each block, which its escape's drop fits in anyway.
+	for id: String in ["terminal/1"]:
+		var config: LevelConfig = campaign.configure(campaign.step(id), 5)
+		var mt: DebrisMazeTuning = DebrisMaze.tuning_for(config).duplicate()
+		mt.breather_seconds = 0.3
+		config.debris_maze_tuning = mt
+		var tag: String = "(%s, a breather too short for an escape's drop)" % id
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+		var escapes: int = 0
+		for b: Dictionary in layout.maze:
+			escapes += 1 if DebrisMaze.is_escape(b) else 0
+		var tried: int = 0
+		for c: Variant in gen.debris_maze_result.get("constraints", []):
+			tried += 1 if String(c).contains("no escape") else 0
+		check(escapes == 0 and tried >= 2 and layout.maze.size() >= 2,
+			"an escape with no room for its pad gives way to a plain block, owed on (%d escapes, %d tries, %d blocks) %s"
+			% [escapes, tried, layout.maze.size(), tag])
+		var none: LevelConfig = config.duplicate()
+		var none_mt: DebrisMazeTuning = mt.duplicate()
+		none_mt.escape_blocks = 0
+		none.debris_maze_tuning = none_mt
+		LayoutChecks.check_layout(self, layout, none, tag)
 
 
 # --- The bot on real physics --------------------------------------------------------------------

@@ -99,6 +99,15 @@ static func host_of(spot: Dictionary) -> Dictionary:
 	return out
 
 
+## A key naming a set of debris pieces (layout entries, as host_of gives them): their lanes and starts, in order.
+static func pieces_key(pieces: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for d: Variant in pieces:
+		parts.append("%d@%.3f" % [int((d as Dictionary)["lane"]), float((d as Dictionary)["start"])])
+	parts.sort()
+	return ",".join(parts)
+
+
 ## The dash's slowest recharge (seconds): its tier I cooldown or an upgrade's, the longest (GDD §8: 8 s).
 static func slowest_recharge() -> float:
 	var pt := load(POWERUPS_PATH) as PowerupTuning
@@ -170,8 +179,11 @@ class Context:
 	## An escape block's pad (DebrisMaze.is_escape): its lane (-1 for any other block) and track distance.
 	var escape_lane: int = -1
 	var escape_at: float = 0.0
-	## Each spot's field (CentipedeMaze.field), by "lane|at".
+	## Each spot's field (CentipedeMaze.field), by "lane|at|the debris taken as open" (pieces_key).
 	var _fields: Dictionary = {}
+	## The joins the ambushes' shattered debris makes (Search._host_joins), by pieces_key: the same for every search with
+	## the same ambushes (the rules try many spots beside one).
+	var host_joins: Dictionary = {}
 
 	func _init(p_layout: LevelLayout, p_tuning: MovementTuning, p_index: int) -> void:
 		layout = p_layout
@@ -274,9 +286,10 @@ class Context:
 	## The field from a spot (cached).
 	## An ambush's (spot "ambush", task O5) is taken with the debris it lies in open (its "host": it shatters as it breaks
 	## out).
-	func field_of(spot: Dictionary) -> PackedInt32Array:
-		var host: Dictionary = CentipedeEscape.host_of(spot)
-		var key: String = "%d|%.3f|%d" % [int(spot["lane"]), float(spot["at"]), host.size()]
+	## With `open` (layout entries: every ambush's debris among the spots searched together), that debris too.
+	func field_of(spot: Dictionary, open: Dictionary = {}) -> PackedInt32Array:
+		var host: Dictionary = CentipedeEscape.host_of(spot) if open.is_empty() else open
+		var key: String = "%d|%.3f|%s" % [int(spot["lane"]), float(spot["at"]), CentipedeEscape.pieces_key(host)]
 		if not _fields.has(key):
 			_fields[key] = maze.field(int(spot["lane"]), float(spot["at"]), host)
 		return _fields[key]
@@ -319,10 +332,13 @@ class Search:
 			hosts.merge(CentipedeEscape.host_of(spot))
 		for spot: Dictionary in spots:
 			# With an ambush in the block, every centipede's reach takes its debris as open (it shatters).
-			fields.append(c.field_of(spot) if hosts.is_empty() else c.maze.field(int(spot["lane"]), float(spot["at"]), hosts))
+			fields.append(c.field_of(spot, hosts))
 			ambush.append(bool(spot.get("ambush", false)))
 			homes.append(-1 if ambush[-1] else c.section_of(int(spot["lane"]), float(spot["at"])))
-		joins0 = _host_joins()
+		var key: String = CentipedeEscape.pieces_key(hosts)
+		if not c.host_joins.has(key):
+			c.host_joins[key] = _host_joins()
+		joins0 = c.host_joins[key]
 
 	func solve() -> Dictionary:
 		for attempt: int in CentipedeEscape.RETRIES + 1:

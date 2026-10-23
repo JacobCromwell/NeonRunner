@@ -43,6 +43,7 @@ class _Entry:
 	var wall_run_gap_result: Dictionary
 	var buzz_company_result: Dictionary
 	var debris_maze_result: Dictionary
+	var maze_gap_result: Dictionary
 
 
 static var _cache: Dictionary = {}  ## String signature (_key) -> _Entry
@@ -92,6 +93,7 @@ static func generator(config: LevelConfig, tuning: MovementTuning, patterns: Arr
 	gen.wall_run_gap_result = entry.wall_run_gap_result.duplicate(true)
 	gen.buzz_company_result = entry.buzz_company_result.duplicate(true)
 	gen.debris_maze_result = entry.debris_maze_result.duplicate(true)
+	gen.maze_gap_result = entry.maze_gap_result.duplicate(true)
 	return gen
 
 
@@ -125,6 +127,7 @@ static func _build(config: LevelConfig, tuning: MovementTuning, patterns: Array)
 	e.wall_run_gap_result = gen.wall_run_gap_result.duplicate(true)
 	e.buzz_company_result = gen.buzz_company_result.duplicate(true)
 	e.debris_maze_result = gen.debris_maze_result.duplicate(true)
+	e.maze_gap_result = gen.maze_gap_result.duplicate(true)
 	return e
 
 

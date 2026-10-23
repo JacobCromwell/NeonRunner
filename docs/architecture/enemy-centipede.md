@@ -24,7 +24,7 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   more, Last Stop about double): its maze tuning's `centipede_scale` (1.35, 2.3) multiplies each block's drawn count, the
   fraction drawn (`_scaled`; none at 1), and the most a block holds (`max_per_block(config)`). Second round (the owner,
   October 22, 2026: Last Stop to 12, and "not always separated from the player"): scales 1.45 and 3.25, the place
-  weights 0.65, 0.3 and 0.05 (near, way, trapped), and each open cell offering `OPEN_SPOTS` spots tried `OPEN_TRIES` at a
+  weights 0.65, 0.3 and 0.05 (near, way, trapped), and each open cell offering `OPEN_SPOTS` spots tried `OPEN_TRIES` (8) at a
   time; at 5 lanes over 12 seeds Rubble Line about 8.7 a level (6.75 at first), Last Stop about 11 plus its two ambushes
   (4.4 at first), walled-in ones about 60% and 70% (73% at first: most open spots fail the proof). An escape block's
   pad room (`DebrisMaze.is_escape`) takes none.
@@ -36,7 +36,8 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   from `AMBUSH_HOST_BEFORE` before its head to `AMBUSH_HOST_AFTER` past its tail) its "host"; the others of its block are
   placed after it, keeping it in their proof. Entry: situation "ambush", params.ambush {room, lane, peek, from, to};
   `spot_of(layout, e)` is the proof's spot for any entry. `Centipede`: `ambush`, `hidden`, `host`; hidden, it lies set to
-  its side so `ambush_showing` of its body pokes out past the debris, lenses dark; it breaks out (`_breaks_out`,
+  its side so `ambush_showing` of its body pokes out past the debris (from its body's hitbox: its head shows a little more), legs folded, lenses glowing as
+  any sleeping one's (a small green glint at the game camera's distance, its only cue); it breaks out (`_breaks_out`,
   `_break_out`) once the runner is on the floor in its block within `ambush_distance_at(pace)` (8 m at the reference
   speed) or debris of it is smashed: its host's pieces are smashed (`DashBreakable.smash(&"ambush")`, the run's rubble,
   `doodad_smash`), the maze refreshes (its neighbours' sections too), and it wakes as any other. The proof
@@ -48,7 +49,8 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   `test_centipede` (`_test_ambush`: hidden, the sliver showing, out at its distance with the crunch then the hiss,
   chasing; out at once when its debris is smashed), `test_centipede_maze` (each level's own seed holds its ambushes at 5
   and 6 lanes, one at least at 3), `LayoutChecks.check_centipedes` (in a divider of its room, from `ambush_from` on, no
-  more than the count). DESIGN-TBD (`docs/questions/o5.md` 7-9).
+  more than the count). DESIGN-TBD (items 1201-1203 in `docs/OPEN_QUESTIONS*.md`; endless mode and the weekly week
+  copy Last Stop's numbers, item 1206).
 - **The proof** (`CentipedeEscape.find`; `LayoutChecks.check_centipedes` runs it again on every built level). Escapable:
   from the block's run-in (any lane) to `leave_margin` past its last wall, a way on the Player's moves (MazeRoute's
   model: lining up while running, stops at debris, the dash from a stop when it's ready, waiting for it otherwise; the
@@ -72,9 +74,11 @@ Last Stop's maze and endless mode's copy of it). `centipede.gd`
   above any bite; on the ceiling it gives up). test_centipede_maze runs each level's escape block on physics with
   `CentipedeBot` (its `ceiling`: the runner rode it). Over test_centipede_maze's sweep, two
   blocks in three get a centipede; at 5 and 6 lanes about a fifth wait near the way, a quarter in it and over half
-  walled in; at 3 lanes most are walled in (there's little room to pass one in the open). It adds about 0.08 s to a
-  Terminal level's generation (about 0.24 s here, from 0.16 s), and nothing measurable to endless mode's 20-minute copy
-  of Last Stop (its maze's own cost).
+  walled in; at 3 lanes most are walled in (there's little room to pass one in the open). Generation cost (task O5's
+  counts, single-threaded on a 4-CPU cloud container): the centipede rules are 70-85% of a Terminal level's build,
+  which went from about 0.4 s to 0.8-1.1 s on average (2 to 3 s on the slowest seeds), most of it escape proofs on open
+  spots that fail (`OPEN_TRIES` 8 halves the cost of 16 for the same counts; the fields and ambush joins are cached per
+  block, `Context.field_of`, `host_joins`); endless mode's 20-minute Terminal build from 30-35 s to 33-43 s.
 - **Its maze** (`CentipedeMaze`, from the block's record and its debris entries, rebuilt when a dash smashes some:
   `refresh()`). One model so they never disagree: merged pieces per lane and `clear_at()` (the head's footprint, every
   piece as wide as the widest); an `open` grid (1 m bins, no debris touches) for `find_path()` (A* on Dial's buckets,
