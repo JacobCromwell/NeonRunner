@@ -236,7 +236,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Octodog jars** (owner, October 21, 2026): to get extra value from the Octodog (§9.4), **some jars hold a curled-up Octodog** instead of a brain. **Sometimes smashing an Octodog jar doodad releases its Octodog** into the world, and the runner **has to fight it**.
   - *(Proposed)* A jar doodad is smashed the way every doodad is, by the dash (§3). A jar that will release its Octodog looks the same as one that won't. The freed Octodog tumbles out, runs ahead to its usual distance and starts its usual attack (§9.4) from the first wind-up, with its cue, never a lunge without warning. It is fought and killed like any Octodog. Jars on the walls are scenery only, whatever they hold.
 - **Floor, gaps, walls and ceilings** *(proposed, from the reference image)*: the floor is steel grating catwalks with packed snow and ice; the gaps are drops between catwalks into a frozen depth; the walls are lab machinery, consoles, jar racks and ice; the ceilings are crane gantries and overhead walkways. Wall running and ceilings as in other zones.
-- **Enemies** (owner, October 21, 2026): **cyborg gangsters, Octodogs and heli drones**, plus **two new enemies** that the owner will design in later sessions (the zone's new enemies, §5, Level schedule). *(Proposed)* none of the other earlier enemies (screeches, trucks, turrets, Buzz Overdrives, Tithe Collectors, hosts and Bad Dreams, centipedes); the usual obstacles stay (gaps, electric fences, signs, ceilings and pads, doodads); no dash walls (§9.14), so a dash target in this zone is a pillar or a doodad. Its cyborgs wear an existing zone's look until the owner asks for one of their own.
+- **Enemies** (owner, October 21, 2026): **cyborg gangsters, Octodogs and heli drones**, plus **two new enemies**, designed by the owner on October 23, 2026: the **Heavy Cyborg** (§9.16) and **the Hunter** (§9.17). *(Proposed)* none of the other earlier enemies (screeches, trucks, turrets, Buzz Overdrives, Tithe Collectors, hosts and Bad Dreams, centipedes); the usual obstacles stay (gaps, electric fences, signs, ceilings and pads, doodads); no dash walls (§9.14), so a dash target in this zone is a pillar or a doodad. Its cyborgs wear an existing zone's look until the owner asks for one of their own.
 - **Falling gantryways** (owner, October 21, 2026; introduced in level 1): a new environmental mechanic.
   - A **gantryway** is an **upper walkway over one lane only**, looking like a ceiling section, **moderate in length: a little shorter than ceiling sections usually are**.
   - **Pillars stand in the floor lanes** holding them up. **Dashing through a pillar knocks down its long section of gantryway.**
@@ -295,9 +295,9 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 8. The Terminal | 1 · Rubble Line *(proposed name)* | The **debris maze** and the **cybernetic centipede** (§9.15) (owner, October 20, 2026): doodads stop the runner, and the dash breaks the way through |
 | | 2 · Last Stop *(proposed name)* | A normal run with stretches of the debris maze; centipedes only. **No boss** |
 | 9. The Ice Lab | 1 · Frost Foundry *(proposed name)* | **Falling gantryways** (owner, October 21, 2026): dash a pillar to drop a one-lane walkway on the enemies below, and get out from under it. Snow and industry; Octodog jars |
-| | 2 · Relay Station *(proposed name)* | **Teleporters** with fixed antennas (owner, October 21, 2026), the first one safe |
-| | 3 · Specimen Vault *(proposed name)* | Teleporters with **blinking antennas**; the laboratory at its fullest. **No boss**. The zone's two new enemies come later (owner, October 21, 2026) |
-| 10. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10); the Ice Lab's teleporters return (owner, October 22, 2026) |
+| | 2 · Relay Station *(proposed name)* | **Teleporters** with fixed antennas (owner, October 21, 2026), the first one safe; then the **Heavy Cyborg** (§9.16) *(proposed level)* |
+| | 3 · Specimen Vault *(proposed name)* | Teleporters with **blinking antennas**; the laboratory at its fullest. **No boss**. Then **the Hunter** (§9.17) *(proposed level)*, beaten by dropping a gantryway on it |
+| 10. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10); the Ice Lab's teleporters return (owner, October 22, 2026); **Heavy Cyborgs** in all three levels (owner, October 23, 2026) |
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
 
@@ -480,12 +480,14 @@ Looks for the runner that the player **buys in the shop or wins** *(how cosmetic
 | Octodog | 7 | *(scale)* |
 | Sewer screech | 1 | 1 |
 | Cyborg | *(open)* | *(open)* |
+| Heavy Cyborg (§9.16) | twice a cyborg's (owner, October 23, 2026) | *(proposed: twice a cyborg's)* |
+| The Hunter (§9.17) | 25 (owner, October 23, 2026, "for now") | *(proposed: in proportion)* |
 
 ---
 
 ## 9. Enemies & Obstacles
 
-**Big attacks take turns** (decided September 26, 2026): the major attacks of different enemy types never overlap (for example, a drone barrage never lands during a hover truck's lurch or cannon shot), so the player never has to dodge two big attacks at once. The owner found early playtests not very challenging, so this may be reverted after playtesting.
+**Big attacks take turns** (decided September 26, 2026): the major attacks of different enemy types never overlap (for example, a drone barrage never lands during a hover truck's lurch or cannon shot), so the player never has to dodge two big attacks at once. The owner found early playtests not very challenging, so this may be reverted after playtesting. **Two exceptions** (owner, October 23, 2026): the **Heavy Cyborg**'s gatling counts as a cyborg's small attack (§9.16), and **the Hunter** attacks while other enemies attack (§9.17).
 
 Shared interaction rules apply unless stated otherwise:
 - Armor blocks enemy attacks and electrical hazards, and takes one hit from a sign.
@@ -745,6 +747,35 @@ Shared interaction rules apply unless stated otherwise:
 - **Attack: a bite.** It hurts only on **contact**. **One bite is one hit** (owner, October 20, 2026): armor or a shield absorbs it, with the usual invulnerability after; with neither, it kills. *(Proposed)* a hiss and a clatter of legs when it wakes, and the head rearing with its mandibles opening just before each bite, so every bite is seen and heard first. **Only the bite hurts** (owner, October 21, 2026, after task O3's review): touching its body does nothing. **Seen from behind** (same day): a bite from behind keeps its warning as built (the hiss and the head rising), and the reared head may hide the runner while it bites; the owner chose to leave it.
 - **Tough: two dashes kill it** (owner, October 20, 2026). A trapped runner will likely take two or more bites before killing it with dashes alone. **A dash passes through it safely** and wounds it; met head-on in a path, the runner dashes through it, and it **turns and chases from behind** (owner, October 20, 2026). *(Proposed)* a wounded centipede shows it: a cracked tube leaking green, sparks.
 - **Only the dash hurts it** (owner, October 20, 2026): **immune to weapons, claws and stomps**. Auto-fire ignores it *(proposed)*, and claws give no contact kill (a claw runner is bitten like anyone).
+
+### 9.16 Heavy Cyborg (owner, October 23, 2026; one of the Ice Lab's two new enemies, also in the Golden Zone)
+- **Look:** **a bigger, bulkier, beefier cyborg** (§9.2), with **much bigger arms, body and legs**, carrying **a big gatling gun**. *(Proposed)* the zone's cyborg variant (the same CRT screen head and cold white LED face, the same clothes and colours, with heavy armour plates over them), about 1.4 times a cyborg's build, the gatling held at the hip in both hands with a drum of ammunition; its only glows are the face and the gatling's **red** charge-up, like the arm cannon's.
+- **Counts as a cyborg** (owner): it **fires when the other small enemies fire** and **doesn't wait its turn** as the bigger enemies' attacks do (§9, "Big attacks take turns"). *(Proposed)* its barrage takes one of the cyborgs' places in the air (§9.2, "Up to two bursts in the air at once") and keeps their crossfire rule, so the runner always keeps a way out; the bigger enemies don't wait for it either.
+- **Attack:** **the gatling, an attack like the heli drone's** (§9.6). *(Proposed)* it stands on the floor ahead like a cyborg, and each barrage is warned the drone's way: an audible **wind-up** (the barrels spin up and glow red, a red aim line on the runner), then it locks the runner's place and fires a stream down that line, spaced so the runner can **zigzag** through, dodged by switching lanes. It holds its fire at a runner riding a ceiling, as the cyborgs do.
+- **Movement** *(proposed)*: a cyborg's, heavier: it stands in a lane on the floor and steps slowly toward the runner, dropping behind once passed. No panic variant; never a host; no window version.
+- **Kill:**
+  - **A stomp on its head or the dash kills it** (owner).
+  - **Weapons take twice a cyborg's laser hits** (owner). *(Proposed)* twice a cyborg's missile hits too.
+  - **The claws don't kill it** (owner). *(Proposed)* a claw runner who touches it is hit like anyone.
+  - *(Proposed)* touching it hurts as touching a cyborg does; a falling gantryway, an Octodog's lunge and a Buzz Overdrive's charge destroy it as they destroy a cyborg; it pays twice a cyborg's score.
+- **Where** *(proposed)*: introduced in the Ice Lab's **Relay Station** (level 2), after its teleporters, so one new thing comes at a time, then in Specimen Vault. **Also in the Golden Zone** (owner, October 23, 2026), in all three of its levels with no introduction of its own.
+
+### 9.17 The Hunter (owner, October 23, 2026; one of the Ice Lab's two new enemies; reference image supplied in the design session, to be saved as `docs/art/reference/hunter.webp`)
+- **What:** **a fast-moving lab creation** that gets around on **a hovering circular platform**.
+- **Look** (owner and the reference image): **the platform replaces its legs**: it is **a torso coming out of its cybernetically grafted hover platform**. **Large slashing red scimitars are attached to its arms**, extending **beyond the elbow and beyond the hand**. From the reference image: a muscular grey-skinned torso in a riveted black armour vest, a gas-mask face with three glowing orange-red eyes, breathing hoses running from the mask and the disc into its body; the disc is thick, round, riveted dark steel, frosted and worn, with a thruster pod on each side and blue-white hover jets glowing underneath; the blades are long serrated cleavers fixed to bracers on the forearms. *(Proposed)* the blades are red (deadly parts look deadly) and the hover jets' blue-white stays a small glow under the disc.
+- **Attack** (owner): it **comes up alongside the runner and slashes rapidly at them**, and it **stays at the runner's side while it slashes**, which makes it hard to damage with the dash or the laser.
+  - *(Proposed)* it slashes into the runner's lane from the lane beside it. Each flurry is warned (both blades raised and a steel scrape, a red mark on the runner's lane beside it), then several quick cuts follow; it is dodged by stepping one lane away from it, by riding a ceiling, or by a teleport, not by a jump. One flurry is one hit: armor or the shield absorbs it, with the usual invulnerability after. It slashes only when the runner has a lane away from it to step into, and never at a runner on a ceiling or a wall (it waits below).
+- **Doesn't wait its turn** (owner): **it does not wait for the other big enemies to attack**, so it can attack while other enemies attack. *(Proposed)* nor do the others wait for it.
+- **Movement:**
+  - **It hovers, so it never falls into a gap** (owner).
+  - **It follows the runner about as long as the Enforcer Truck does** (owner; about 25 seconds, §9.13), then tires and gives up.
+  - *(Proposed)* it arrives from behind with a rising hover whine, pulls up beside the runner in a neighbouring lane, its front level with them so it stays on screen, and **keeps to the side it came up on**: when the runner steps away it follows into the lane they left, a moment later. It never enters the runner's lane; its body is safe but solid (a runner switching into it is bumped back, like the hover truck's sides); only the blades hurt. It hovers over gaps and holes and goes around doodads, pillars and other enemies.
+- **Kill:**
+  - **The way to deal with it: drop a falling gantryway on it** (§5, Zone 9; owner): a pillar dashed while it is alongside, and the runner steps out from under the walkway away from it, so it follows into the lane the walkway falls on. **Like the Enforcer Truck and the Buzz Overdrive, but this time the player triggers it.**
+  - **Weapons: 25 laser hits** (owner, "for now"). *(Proposed)* laser tier 1; the other tiers and the missiles in the same proportion as the other enemies'.
+  - **Escape:** a runner who can't kill it **avoids it with teleports and ceiling escapes until it tires out** (owner). *(Proposed)* a teleport leaves it behind to catch up, and its time runs while the runner is out of its reach.
+  - *(Proposed)* immune to the claws and stomps; the dash passes through it safely (it rarely can reach it, keeping beside the runner) and does it no harm; other enemies' charges pass it by.
+- **Where** *(proposed)*: introduced in **Specimen Vault** (level 3), after its blinking teleporters, where the runner has learned both the gantryways and the teleporters that beat it. The rules bring one in only where **at least one falling gantryway comes during its chase**, so it always has a chance to be destroyed (as the Enforcer Truck's baits); never two at once. Ice Lab only for now.
 
 ---
 

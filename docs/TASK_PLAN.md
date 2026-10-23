@@ -775,6 +775,17 @@ in later sessions. Core tasks run one at a time: Q1 → Q3 → Q4 → Q5 → Q6;
 | Q6 | **Done.** **Teleporters in the Golden Zone** (owner, October 22, 2026; GDD §5 Zone 9, "Also in the Golden Zone"): Q4's teleporters in Golden 1-3, fixed and blinking, no introduction of their own, the teleporter's own look; the weekly Golden week; remove the Golden Zone from the tests' left-out lists. Gantryways stay Ice Lab only. **Core** (Golden level data, generator). | Q5 | M | T1 |
 | Q5 | **Done.** **Octodog jars that break open** (GDD §5 Zone 9, §9.4): some Ice Lab jar doodads hold an Octodog; smashing one sometimes frees it to run ahead and attack as usual, cue first; the generator leaves it room. Its own files plus a **core** hook (generator). | Q2, Q4 | M | T1 |
 
+### S. The Ice Lab's new enemies (owner, October 23, 2026)
+
+From `docs/USER_REQUESTS.md` (October 23, 2026): the Ice Lab's two new enemies, GDD §9.16 and §9.17. Both bring in
+their own files plus a **core** hook (level data, and the Hunter's generator rules), so they build in parallel on
+branches of their own and merge one at a time (S1, then S2 with S1 merged in and its tests run again).
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| S1 | **The Heavy Cyborg** (GDD §9.16): a bigger, bulkier cyborg with a gatling; a drone-like barrage (wind-up, lock, a stream to zigzag through) that counts as a cyborg's small attack (the cyborgs' airspace, no turn-taking); a stomp or the dash kills it, twice a cyborg's laser hits, not the claws. Feature `heavy_cyborg` from Relay Station, in Specimen Vault and in Golden 1-3. Its own files plus a **core** hook (Ice Lab and Golden level data). | – | L | T1 |
+| S2 | **The Hunter** (GDD §9.17): a torso on a hover disc with red scimitars; arrives from behind, keeps beside the runner and slashes into their lane (warned, dodged one lane away), follows them into the lane they leave, hovers over gaps, never waits its turn, tires after about 25 s; a falling gantryway destroys it, 25 laser hits; teleports and ceilings escape it. Feature `hunter` from Specimen Vault; rules that bring it in only where a gantryway comes during its chase. Its own files plus a **core** hook (generator rules, Specimen Vault's data). | – (merges after S1) | L | T1 |
+
 ## Order at a glance
 
 **Wave 1 (start now):**
