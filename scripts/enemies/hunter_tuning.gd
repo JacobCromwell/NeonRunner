@@ -56,8 +56,10 @@ extends EnemyTuning
 ## DESIGN-TBD (task S2's review): its lane shut ahead by something it can't rise over, with no lane further out, it crosses
 ## to the runner's other side rather than dropping out of view: it drops back behind them, crosses their lane at least
 ## this far behind them (its middle's gap, metres), and comes up beside them there. Making room (make_room_seconds) it
-## drops back this far too, still on screen.
-@export_range(2.6, 6.0, 0.1, "suffix:m") var cross_gap: float = 3.2
+## drops back this far too, still on screen, and anywhere in their way behind them (their lane or crossing it) it keeps
+## at least this far back: nearer, it stands between them and the chase camera (MovementTuning's camera), hiding them or
+## their lane ahead; from here back, level, it hides nothing (test_hunter's view checks every lane at 3, 5 and 6 lanes).
+@export_range(4.9, 7.0, 0.1, "suffix:m") var cross_gap: float = 5.0
 ## DESIGN-TBD: it never takes the runner's only way out (CLAUDE.md: the player dies in one hit): it makes room (drops back
 ## cross_gap behind them) when their lane holds what they must leave it for within this many seconds of run (a doodad, a
 ## floor enemy, a walkway falling over it, another enemy's lane attack or small attack, a wall-run gap) and the lane on

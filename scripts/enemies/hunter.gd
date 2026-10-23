@@ -73,7 +73,8 @@ const SLASH_NAME: String = "Hunter's blades"
 ## Further behind the runner than this (its middle, metres) it's out of the chase camera's view (MovementTuning's camera
 ## sits about 7.5 m behind them): it steers by nothing there, and comes into view only into a lane clear ahead.
 const VIEW_GAP: float = 7.0
-## In the runner's lane it stays at least this far behind them (its middle, metres): it never touches them.
+## In the runner's lane it stays at least this far behind them (its middle, metres): it never touches them. (In their
+## way it keeps cross_gap back, further than this: from there it hides nothing of them from the chase camera.)
 const MIN_GAP_IN_LANE: float = 2.6
 ## Metres round a floor enemy it keeps clear of (half its body's length and a little).
 const ENEMY_ROOM: float = 1.3
@@ -351,10 +352,11 @@ func _approach(delta: float) -> void:
 		and _must_make_room())
 	var to: float = -tuning.alongside_ahead if may_close else maxf(VIEW_GAP + 0.5, minf(gap, tuning.yield_gap))
 	if _crossing_runner():
-		# The runner stepped into its lane in front of it, or into the one it's changing to: it keeps behind them (as
-		# beside them, _alongside) until its lane change has taken it out of their way, never coming up into their body.
-		to = maxf(to, MIN_GAP_IN_LANE)
-	_ease_gap(to, tuning.approach_speed, delta)
+		# The runner stepped into its lane in front of it, or into the one it's changing to: it keeps cross_gap behind them
+		# until its lane change has taken it out of their way, never coming up into their body nor standing between them
+		# and the chase camera (_move_gap).
+		to = maxf(to, tuning.cross_gap)
+	_move_gap(to, tuning.approach_speed, delta)
 	if may_close and lane == want and _switch_t >= 1.0 and absf(gap + tuning.alongside_ahead) < 0.35:
 		state = State.ALONGSIDE
 		_next_slash = maxf(_next_slash, chase_time + tuning.first_slash_seconds)
@@ -362,8 +364,8 @@ func _approach(delta: float) -> void:
 
 
 ## True if the lane the runner is in or heading for (runner_lane) lies across its solid side's way, where it is or along
-## the lane change it's making (the runner's body and its sides reach that far across the track): coming up from behind
-## it keeps MIN_GAP_IN_LANE behind them then (_approach).
+## the lane change it's making (the runner's body and its sides reach that far across the track): it's in their way, and
+## keeps cross_gap behind them (_move_gap).
 func _crossing_runner() -> bool:
 	if world.player.surface != Player.Surface.FLOOR:
 		return false
@@ -444,10 +446,11 @@ func _alongside(delta: float) -> void:
 	if steer != target_lane and (slash == Slash.WARNING or slash == Slash.FLURRY):
 		_call_off_slash()
 	_set_target(steer, quick and steer == want)
-	var least: float = -INF
 	if lane == r and not off_floor:
-		least = MIN_GAP_IN_LANE
-	_ease_gap(maxf(-tuning.alongside_ahead, least), tuning.approach_speed, delta)
+		# In their lane (they came down into it from a ceiling or a wall): back out of the camera's way behind them.
+		_move_gap(tuning.cross_gap, tuning.approach_speed, delta)
+	else:
+		_ease_gap(-tuning.alongside_ahead, tuning.approach_speed, delta)
 
 
 ## It can't stay beside the runner: it drops back behind the camera, its cuts called off, and comes up again once it may
@@ -466,9 +469,10 @@ func _yield(delta: float) -> void:
 	_yield_t += delta
 	var r: int = runner_lane()
 	if _yield_room:
-		var behind: float = MIN_GAP_IN_LANE if lane == r else -INF
-		_ease_gap(maxf(tuning.cross_gap, behind), tuning.drop_speed, delta)
-		if _yield_t >= tuning.room_seconds and gap >= MIN_GAP_IN_LANE and world.player.surface == Player.Surface.FLOOR \
+		# Straight back to cross_gap (no easing in where it would stand between them and the camera once they step into
+		# its lane, which is why it makes room), and it waits there.
+		_drop_to(tuning.cross_gap, delta)
+		if _yield_t >= tuning.room_seconds and gap >= tuning.cross_gap - 0.05 and world.player.surface == Player.Surface.FLOOR \
 				and not _must_make_room():
 			var s: int = side if r + side >= 0 and r + side < world.geo.lane_count and _lane_clear_ahead(r + side, true) \
 				and not _blocks_bait(side, r) else _pick_side(false)
@@ -477,11 +481,11 @@ func _yield(delta: float) -> void:
 				_begin_approach()
 		return
 	if gap < VIEW_GAP and not _lane_clear_ahead(lane, false):
-		# Its own lane is shut ahead and it can't go round: once it's behind the runner it takes their lane behind them.
-		if gap >= tuning.blocker_length * 0.5 + 0.6 and world.player.surface == Player.Surface.FLOOR:
+		# Its own lane is shut ahead and it can't go round: once it's cross_gap behind the runner (out of the camera's way)
+		# it takes their lane behind them.
+		if gap >= tuning.cross_gap and world.player.surface == Player.Surface.FLOOR:
 			_set_target(r)
-	var least: float = MIN_GAP_IN_LANE if lane == r else -INF
-	_ease_gap(maxf(tuning.yield_gap, least), tuning.drop_speed, delta)
+	_move_gap(tuning.yield_gap, tuning.drop_speed, delta)
 	if _yield_t >= tuning.regain_seconds and gap >= VIEW_GAP:
 		var s: int = _pick_side(false)
 		if s != 0:
@@ -520,9 +524,10 @@ func _switch_side(delta: float) -> void:
 		# The runner left the floor, or the lane it was crossing to is gone or shut: it makes room instead.
 		_start_yield(&"crossing")
 		return
-	_ease_gap(tuning.cross_gap, tuning.drop_speed, delta)
-	if gap >= MIN_GAP_IN_LANE or target_lane == to:
-		# Far enough behind them: across their lane, behind them, to their other side.
+	_drop_to(tuning.cross_gap, delta)
+	if gap >= tuning.cross_gap - 0.05 or target_lane == to:
+		# Far enough behind them (cross_gap: it hides nothing of them from the camera): across their lane to their other
+		# side.
 		_set_target(to)
 	if lane == to and _switch_t >= 1.0:
 		side = _cross_side
@@ -712,6 +717,25 @@ func _ease_gap(want: float, top: float, delta: float) -> void:
 	var eased: float = want + (gap - want) * exp(-tuning.gap_rate * delta)
 	var step: float = top * delta
 	gap = clampf(eased, gap - step, gap + step)
+
+
+## _ease_gap toward `want`, but in the runner's way behind them (their lane or crossing it: _crossing_runner) and short of
+## cross_gap, straight back at drop_speed to cross_gap at least first (task S2's review: nearer, it stands between them
+## and the chase camera, hiding them or their lane ahead; from cross_gap back it hides nothing, test_hunter's view).
+func _move_gap(want: float, top: float, delta: float) -> void:
+	if gap < tuning.cross_gap and _crossing_runner():
+		_drop_to(maxf(want, tuning.cross_gap), delta)
+		return
+	_ease_gap(want, top, delta)
+
+
+## Straight to `want` at drop_speed where it's nearer the runner than that (no easing in: it never lingers short of it),
+## else eased there.
+func _drop_to(want: float, delta: float) -> void:
+	if gap < want:
+		gap = minf(want, gap + tuning.drop_speed * delta)
+	else:
+		_ease_gap(want, tuning.drop_speed, delta)
 
 
 ## The side it comes up on beside the runner (-1 left, 1 right; 0: none has room now): one whose lane is on the track and
@@ -1539,8 +1563,10 @@ func _place(delta: float) -> void:
 	if model == null:
 		return
 	var yaw: float = 0.0
-	if state == State.ALONGSIDE or state == State.SWITCH or (state == State.APPROACH and gap < VIEW_GAP):
-		var dx: float = p.position.x - _x
+	if (slash == Slash.WARNING or slash == Slash.FLURRY) and slash_lane >= 0:
+		# Turned toward the lane it cuts through its warning and its cuts, facing ahead otherwise (task S2's review:
+		# turning toward a runner by the edge, under whose chase camera it rides, its blades swung across their lane ahead).
+		var dx: float = world.geo.lane_x(slash_lane) - _x
 		var dz: float = p.position.z - position.z
 		yaw = atan2(-dx, -dz)
 	model.face_yaw = lerp_angle(model.face_yaw, yaw, 1.0 - exp(-10.0 * delta))

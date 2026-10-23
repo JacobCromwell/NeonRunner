@@ -358,11 +358,11 @@ static func _blades_top(m: HunterModel) -> float:
 
 
 ## Beside the runner its whole look is on screen in the chase camera's resting view (EnforcerTruckView: the run
-## camera's arithmetic), calm, warning, cutting (lunging toward them) or risen over a full fence (never beside a runner in
-## an edge lane), its torso turned toward them, at 3, 5 and 6 lanes, every runner lane and either side (each of its parts
-## as a box round it); it never
-## hides the runner; calm or risen, it hides nothing of the floor of their lane and of their other lane (the one they'd
-## step into) from them to 20 m ahead, and warning or cutting nothing of their other lane's.
+## camera's arithmetic), calm (facing ahead), warning or cutting (turned toward the lane it cuts, lunging toward it as it
+## cuts) or risen over a full fence (never beside a runner in an edge lane), at 3, 5 and 6 lanes, every runner lane and
+## either side (each of its parts as a box round it); it never hides the runner; calm or risen, it hides nothing of the
+## floor of their lane and of their other lane (the one they'd step into) from them to 20 m ahead, and warning or cutting
+## nothing of their other lane's. Where else it rides near them: _test_view_near.
 func _test_view() -> void:
 	var m := HunterModel.new()
 	tree.root.add_child(m)
@@ -381,8 +381,8 @@ func _test_view() -> void:
 			# Cutting, it lunges toward the runner's lane (the lane it cuts: Hunter._place).
 			m.reach = 1.0 if pose == 2 else 0.0
 			m.reach_dir = float(-side)
-			# Its torso turned back toward the runner beside it (Hunter._place).
-			m.face_yaw = atan2(side * 2.4, -t.alongside_ahead)
+			# Warning and cutting, its torso turned back toward the lane it cuts, the runner's (Hunter._place); calm, ahead.
+			m.face_yaw = atan2(side * 2.4, -t.alongside_ahead) if pose == 1 or pose == 2 else 0.0
 			m.animate(0.0)
 			var boxes: Array[AABB] = []
 			for mi: MeshInstance3D in m.mesh_nodes():
@@ -428,6 +428,79 @@ func _test_view() -> void:
 								faults.append("%s, pose %d: it hides lane %d's floor %.0f m ahead" % [tag, pose, lane, ahead])
 	check(faults.is_empty(), "beside the runner its whole look is on screen (its furthest corner %.0f%% of the way to the edge), hiding nothing of them or the floor they need (%s)"
 		% [worst * 100.0, faults])
+	_test_view_near()
+
+
+## Where else it rides near the runner (task S2's review), through the chase camera's resting view as _test_view: coming
+## up or dropping back in a lane beside theirs (calm, facing ahead, from level with them to VIEW_GAP behind) and in their
+## way behind them (in their lane or crossing it, its disc rolled into the lane change, cross_gap back); it hides nothing
+## of the runner or their lane from them to 20 m ahead in either.
+func _test_view_near() -> void:
+	var m := HunterModel.new()
+	tree.root.add_child(m)
+	m.build()
+	var faults: PackedStringArray = []
+	var takes: int = 0
+	for lanes: int in LANE_COUNTS:
+		var geo := TrackGeometry.new(lanes, mt)
+		for r: int in lanes:
+			var d: float = 300.0
+			var view := EnforcerTruckView.of_runner(mt, geo, r, d)
+			var hides := func(x: float, gap: float) -> String:
+				var at := Vector3(x, 0.0, TrackGeometry.world_z(d - gap))
+				var boxes: Array[AABB] = []
+				for mi: MeshInstance3D in m.mesh_nodes():
+					var b: AABB = mi.global_transform * mi.mesh.get_aabb()
+					boxes.append(AABB(b.position + at, b.size))
+				for p: Vector3 in EnforcerTruckView.runner_points(mt, geo.lane_x(r), d):
+					if view.hidden(boxes, p):
+						return "the runner"
+				for ahead: float in [2.0, 5.0, 10.0, 20.0]:
+					if view.hidden(boxes, Vector3(geo.lane_x(r), 0.05, TrackGeometry.world_z(d + ahead))):
+						return "their lane %.0f m ahead" % ahead
+				return ""
+			var tag: String = "%d lanes, runner %d" % [lanes, r]
+			# Calm, level, facing ahead (Hunter._place), bobbing at its highest.
+			m.raise = 0.0
+			m.cut = -1.0
+			m.lean = 0.0
+			m.alert = false
+			m.reach = 0.0
+			m.face_yaw = 0.0
+			m.hover = t.hover_height + 0.035
+			m.roll = 0.0
+			m.animate(0.0)
+			# Coming up or dropping back in a lane beside theirs: from level with them to out of view.
+			for side: int in [-1, 1]:
+				if r + side < 0 or r + side >= lanes:
+					continue
+				var g: float = -t.alongside_ahead
+				while g <= Hunter.VIEW_GAP:
+					var what: String = hides.call(geo.lane_x(r + side), g)
+					takes += 1
+					if what != "":
+						faults.append("%s: coming up in lane %d %.2f m back it hides %s" % [tag, r + side, g, what])
+						break
+					g += 0.25
+			# In their way behind them, cross_gap back: in their lane, and crossing it toward either lane beside it, its
+			# disc rolled into the lane change either way.
+			for step: int in range(-10, 11):
+				var x: float = geo.lane_x(r) + geo.lane_width * float(step) / 10.0
+				if x < geo.lane_x(0) - 0.01 or x > geo.lane_x(lanes - 1) + 0.01:
+					continue
+				for roll: float in ([0.0] if step == 0 else [-0.2, 0.0, 0.2]):
+					m.roll = roll
+					m.animate(0.0)
+					var what2: String = hides.call(x, t.cross_gap)
+					takes += 1
+					if what2 != "":
+						faults.append("%s: in their way %.2f m across, %.1f m back, rolled %.1f, it hides %s" % [tag,
+							x - geo.lane_x(r), t.cross_gap, roll, what2])
+			m.roll = 0.0
+	m.free()
+	check(takes > 1000 and faults.is_empty(),
+		"coming up or dropping back beside them and in their way behind them, it hides nothing of the runner or their lane ahead (%d poses) %s"
+		% [takes, faults])
 
 
 # --- Arrival and following ------------------------------------------------------------------------
@@ -1422,7 +1495,7 @@ func _test_cross_sides() -> void:
 		if not needs:
 			check(first_side == -1 and h != null and _events(r["history"], "switch:blocked").size() == 1
 				and _events(r["history"], "yield:blocked").is_empty() and h.side == 1 and h.lane == w.player.lane + 1
-				and h.state == Hunter.State.ALONGSIDE and float(crossing[0]) >= Hunter.MIN_GAP_IN_LANE - 0.05 and whines >= 2,
+				and h.state == Hunter.State.ALONGSIDE and float(crossing[0]) >= t.cross_gap - 0.05 and whines >= 2,
 				"it crosses to the runner's other side %.2f m behind them and comes up there, its whine rising %s %s"
 				% [crossing[0], _brief(r), tag])
 		else:
