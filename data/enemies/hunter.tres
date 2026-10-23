@@ -45,6 +45,7 @@ blocker_height = 2.95
 blocker_length = 2.0
 hitbox_size = Vector3(1.2, 1.4, 1.3)
 hover_height = 0.38
+target_ahead = 3.0
 per_level_max = 2
 spacing_seconds = 6.0
 bait_after_seconds = 6.0

@@ -21,8 +21,11 @@ extends TestSuite
 ##   - the gantryway bait at 3, 5 and 6 lanes, both ways round: the runner dashes the pillar and steps out away from it,
 ##     it follows into the walkway's lane and the walkway lands on it (the runner's kill); and a whole encounter: its
 ##     flurry dodged into the walkway's lane, then the bait;
-##   - weapons: 25 laser tier 1 shots (23 health, PowerupTuning.tier1_extra_shots), the other tiers in proportion; auto-fire
-##     picks it, it shows a health bar; the claws, a stomp, the dash and other enemies' charges never defeat it;
+##   - weapons (the owner: its staying beside the runner makes it "difficult ... to damage ... with laser attacks"): auto-fire,
+##     laser and missiles, never picks it beside the runner, only clearly ahead (target_ahead), and over a whole chase beside
+##     a runner auto-firing laser tier 1 it's never picked; 25 laser tier 1 shots (23 health,
+##     PowerupTuning.tier1_extra_shots), the other tiers in proportion, a shot that reaches it hitting it and its health bar
+##     showing; the claws, a stomp, the dash and other enemies' charges never defeat it;
 ##   - it steers round a doodad and a standing enemy in its lane, never into the runner's lane;
 ##   - a runner on a ceiling: a warning on as the pad lifts them is called off, and it waits below, never cutting;
 ##   - a teleport leaves it behind: it catches up, its time running on; one whose arrival a teleport skips never comes;
@@ -73,6 +76,7 @@ func run() -> void:
 	await _test_campaign_baits()
 	await _test_encounter()
 	await _test_weapons()
+	await _test_laser_chase()
 	await _test_contacts()
 	await _test_steering()
 	await _test_ceiling()
@@ -844,9 +848,11 @@ func _test_encounter() -> void:
 
 # --- Weapons and contacts -------------------------------------------------------------------------
 
-## 25 laser tier 1 shots (GDD §8, the owner: "25 for now"): 24 leave it going, the 25th destroys it; the other tiers and
-## the missiles in proportion (23 health over their plain damage). Auto-fire picks it beside the runner; it shows a
-## health bar; a real shot hits it.
+## GDD §9.17 (the owner): staying at the runner's side makes it "difficult for the player to damage it with dashes or with
+## laser attacks": auto-fire, the laser and the missiles alike, never picks it beside the runner, only clearly ahead of
+## them (target_ahead). Its health: 25 laser tier 1 shots (GDD §8, the owner: "25 for now"): 24 leave it going, the 25th
+## destroys it; the other tiers and the missiles in proportion (23 health over their plain damage). A shot that reaches it
+## hits it, and it shows a health bar once hurt.
 func _test_weapons() -> void:
 	var loadout := Loadout.new()
 	loadout.tiers[&"weapon"] = 1
@@ -866,8 +872,26 @@ func _test_weapons() -> void:
 		check(false, "a Hunter beside a runner with the laser")
 		await sim.free_world(w)
 		return
-	check(h.targetable() and c.weapon.pick_target() == h and is_equal_approx(h.health, h.max_health),
-		"auto-fire picks it beside the runner")
+	var picks: Array = []
+	for tier: int in [1, 2, 3, 4]:
+		c.weapon.tier = tier
+		picks.append(c.weapon.pick_target())
+	check(not h.targetable() and picks == [null, null, null, null] and is_equal_approx(h.health, h.max_health),
+		"beside the runner auto-fire never picks it, the laser nor the missiles (%s)" % [picks])
+	# Clearly ahead of the runner it's a target like any other.
+	var beside: float = h.gap
+	for ahead: float in [t.target_ahead - 0.5, t.target_ahead + 2.0]:
+		h.gap = -ahead
+		h.call(&"_place", 0.0)
+		picks.clear()
+		for tier: int in [1, 4]:
+			c.weapon.tier = tier
+			picks.append(c.weapon.pick_target())
+		var wanted: bool = ahead >= t.target_ahead
+		check(h.targetable() == wanted and picks == ([h, h] if wanted else [null, null]),
+			"%.1f m ahead of the runner auto-fire %s it" % [ahead, "picks" if wanted else "still doesn't pick"])
+	h.gap = beside
+	h.call(&"_place", 0.0)
 	var counts: Array[int] = []
 	for tier: int in [1, 2, 3, 4]:
 		c.weapon.tier = tier
@@ -893,6 +917,44 @@ func _test_weapons() -> void:
 	h.take_damage(dmg, &"weapon")
 	check(not h.alive and h.state == Hunter.State.DEAD and h.sounds_played.any(func(s: Array) -> bool: return s[0] == &"hunter_death"),
 		"the 25th destroys it, in its death's crunch and blast")
+	await sim.free_world(w)
+
+
+## A whole chase beside a runner auto-firing laser tier 1 (god mode, standing still in their lane), standing cyborgs ahead
+## in the lanes on their other side to shoot at: auto-fire never picks the Hunter, and it gives up alive and whole. Prints
+## what the laser did meanwhile (the stray shots that reach it are counted, none expected).
+func _test_laser_chase() -> void:
+	var loadout := Loadout.new()
+	loadout.tiers[&"weapon"] = 1
+	var layout: LevelLayout = _layout(5, {"baits": [{"at": 560.0, "lane": 2, "side": 1, "id": 0}]})
+	for k: int in 8:
+		layout.enemies.append({"type": "cyborg", "at": 200.0 + 60.0 * k, "lane": 3 + k % 2, "side": 0, "seed": 20 + k,
+			"params": {"stand": true, "fires": false, "panic": false, "host": false}})
+	var w: RunWorld = _world(layout, 2, loadout)
+	w.player.god_mode = true
+	var c := w.powerups as PowerupController
+	var fired: Array[int] = [0, 0]
+	var hits: Array[int] = [0]
+	c.fired.connect(func(_tier: int) -> void:
+		fired[0] += 1
+		fired[1] += 1 if c.weapon.last_target is Hunter else 0)
+	w.projectiles.enemy_hit.connect(func(e: Enemy, _d: float, _s: bool) -> void:
+		hits[0] += 1 if e is Hunter else 0)
+	var health: Array[float] = [-1.0, -1.0]
+	var r: Dictionary = await _run(w, t.chase_seconds + 8.0, [], Callable(), func(ww: RunWorld) -> bool:
+		var hh: Hunter = _hunter(ww)
+		if hh != null and hh.alive:
+			health[0] = hh.health
+			health[1] = hh.max_health
+		return hh != null and hh.state == Hunter.State.LEAVING)
+	var h: Hunter = r["hunter"]
+	var kills: int = w.score.kills
+	check(bool(r["done"]) and h != null and h.alive and fired[0] >= 8 and fired[1] == 0 and hits[0] == 0
+		and is_equal_approx(health[0], health[1]),
+		"over a whole chase beside a runner auto-firing laser tier 1 it's never picked and gives up whole (%d shots, %d at it, %d hits on it) %s"
+		% [fired[0], fired[1], hits[0], _brief(r)])
+	print("  laser tier 1 over a whole chase (%.0f s): %d shots fired, %d kills ahead, %d at the Hunter, %d hits on it, its health %.1f of %.1f"
+		% [t.chase_seconds, fired[0], kills, fired[1], hits[0], health[0], health[1]])
 	await sim.free_world(w)
 
 

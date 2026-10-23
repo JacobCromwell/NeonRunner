@@ -41,7 +41,8 @@ extends Enemy
 ## - After chase_seconds it gives up whatever it's doing (a flurry is called off), its whine falling (hunter_give_up), and
 ##   drops back out of play.
 ## - Immune to the claws and stomps; the dash passes through it and does it no harm; other enemies' charges pass it by
-##   (charge_can_hurt). Weapons hurt it.
+##   (charge_can_hurt). Weapons hurt it, but auto-fire never picks it beside the runner (targetable: the owner's "difficult
+##   for the player to damage it with dashes or with laser attacks"), only clearly ahead of them (target_ahead).
 ## Numbers: HunterTuning (data/enemies/hunter.tres). Its entry's params: {"baits": [{at, lane, side, id}]}: the falling
 ## gantryways its rules planned in its chase (its pillar's front, its walkway's lane, its pillar's push side, where its
 ## rules keep the floor clear for a step out). The bait shapes how it rides (task S2's placeholder, DESIGN-TBD): it comes
@@ -957,6 +958,15 @@ func is_major_attack_active() -> bool:
 ## hurt it.
 func charge_can_hurt() -> bool:
 	return false
+
+
+## Auto-fire may pick it (the laser and the missiles alike: EnemyDirector.targets_ahead) only while it's seen and clearly
+## ahead of the runner, its middle target_ahead or more in front of theirs (GDD §9.17, the owner: staying at their side
+## makes it "difficult for the player to damage it with dashes or with laser attacks"): never while it rides alongside,
+## comes up from behind, drops back or waits unseen. A shot meant for something else still hits it on the way
+## (ProjectilePool hits whatever a shot passes through), and its health stays 25 laser tier 1 shots.
+func targetable() -> bool:
+	return super.targetable() and visible and gap <= -tuning.target_ahead
 
 
 ## True while its cuts' box is live.

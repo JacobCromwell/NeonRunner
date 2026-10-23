@@ -93,6 +93,14 @@ extends EnemyTuning
 ## How high its disc's underside hovers over the floor (it hovers over gaps and holes alike).
 @export_range(0.2, 1.0, 0.01, "suffix:m") var hover_height: float = 0.38
 
+@export_group("Weapons")
+## GDD §9.17 (the owner): staying at the runner's side makes it "difficult for the player to damage it with dashes or with
+## laser attacks". Auto-fire (the laser and the missiles alike: WeaponPowerup.pick_target) picks it only while its middle is
+## at least this far ahead of the runner's (Hunter.targetable): never while it rides alongside (alongside_ahead), comes up
+## from behind or drops back. A shot meant for something else still hits it on the way. Its health stays 25 laser tier 1
+## shots (health_*).
+@export_range(1.0, 20.0, 0.5, "suffix:m") var target_ahead: float = 3.0
+
 @export_group("Placement")
 ## DESIGN-TBD: at most this many a level, never two at once (GDD §9.17, proposed), each chase's end (and its drop back)
 ## spacing_seconds from the next one's arrival.

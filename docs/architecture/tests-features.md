@@ -396,8 +396,9 @@ floor, cuts only the lane it warned of a whole warning later): its arrival, foll
 (and bumping them back unharmed, dashing too), its flurries (dodged one lane away; a runner who stays or jumps cut down;
 the armor and the shield taking one hit for a whole flurry), no flurry without a way out (an edge, a hole in the other
 lane) and hovering over holes, the gantryway bait at 3, 5 and 6 lanes both ways round, the bait lined up from the push
-side, every bait of Specimen Vault's own builds on a cut of the level, a whole encounter, weapons (25 shots, the other
-tiers in proportion), contacts and charges, steering round a doodad and a standing enemy, a ceiling, a teleport, giving
+side, every bait of Specimen Vault's own builds on a cut of the level, a whole encounter, weapons (auto-fire never picking
+it beside the runner, only clearly ahead, nor over a whole chase beside a runner auto-firing laser tier 1; 25 shots, the
+other tiers in proportion), contacts and charges, steering round a doodad and a standing enemy, a ceiling, a teleport, giving
 up, the director's turns, its warning mark with and without Reduced flashing; its placement on Specimen Vault (a bait in
 every chase, never two at once, the same every build, none elsewhere), its warm-up and its data (hint, sounds).
 `test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall

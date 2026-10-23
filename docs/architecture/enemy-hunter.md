@@ -70,8 +70,12 @@ rules (`hunter_rules.gd`), with one hook in the gantryways' rules (`GantrywayRul
   its body hitbox `harmless` (`DamageRules`: the dash, claws and stomps do nothing, and it hurts no one), its lane blocker
   (`blocker_height`, over a whole jump) solid; `is_major_attack_active` false (it neither waits for the director's turns
   nor holds anyone else's: the owner's "it does not wait for other big enemies"); `charge_can_hurt` false (other enemies'
-  charges pass it by). Weapons hurt it: `health` 23, so 25 laser tier 1 shots (`PowerupTuning.tier1_extra_shots`) and
-  17, 12 and 8 at tiers 2 to 4. `aim_point` (its chest) and `hit_radius` are what shots and a falling walkway's crush
+  charges pass it by). Weapons hurt it (`health` 23, so 25 laser tier 1 shots, `PowerupTuning.tier1_extra_shots`, and
+  17, 12 and 8 at tiers 2 to 4), but auto-fire, the laser and the missiles alike, never picks it beside the runner
+  (`targetable`: only while it's seen and its middle `target_ahead` or more ahead of theirs; the owner: its staying at the
+  runner's side makes it "difficult for the player to damage it with dashes or with laser attacks"). It never rides that
+  far ahead, so shots reach it only on their way to something else: over a whole chase beside a runner auto-firing laser
+  tier 1, none did (test_hunter). `aim_point` (its chest) and `hit_radius` are what shots and a falling walkway's crush
   (`Gantryway.crushes`, RunWorld: `defeat(&"gantryway")`, the runner's kill) see. Its death (`_on_defeated`): its blades
   and solid side off at once, sparks, steel debris and a small shared fireball (GDD §11), `hunter_death`.
 - **Its look** (`HunterModel`). Built in code from boxes, cylinders, domes and spikes, each moving part one mesh in vertex
