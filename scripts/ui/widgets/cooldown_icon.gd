@@ -28,6 +28,8 @@ signal became_ready
 ## task S3): the icon stays lit and unshaded, and only the ring's progress shows the wait.
 @export var lit_while_cooling: bool = false:
 	set(v):
+		if v == lit_while_cooling:
+			return
 		lit_while_cooling = v
 		queue_redraw()
 ## The power-up is working right now (a dash in progress, slow time on): a pulsing ring.
