@@ -43,8 +43,9 @@ extends Enemy
 ##   the runner's lane, a wall-run gap's crossing or a fenced ceiling's pick, while another enemy's small attack is on at
 ##   them, one whose dodge would take them two lanes past the next bait's walkway lane, or one it would be risen over a
 ##   fence through as it sweeps and cuts. A runner who takes a pad, steps onto a wall or teleports during one calls it
-##   off. It holds its lane through a warning and its cuts, then follows; what shuts its lane ahead meanwhile (it steers,
-##   crosses or drops back) calls them off.
+##   off. It holds its lane through a warning and its cuts, then follows; meanwhile it looks ahead in its lane only as
+##   far as they last (ATTACK_STEER_MARGIN more, task S2c), and what shuts its lane within that (it steers, crosses or
+##   drops back) calls them off.
 ## - A runner on a ceiling or a wall it waits below, beside their lane, never cutting.
 ## - A teleport leaves it behind (follows_runner keeps it in play through EnemyDirector.runner_teleported): it catches up
 ##   from where the jump left it (no further back than catch_up_gap_max), its time running all along.
@@ -95,6 +96,10 @@ const SLASH_ANGLE_PAD: float = 0.08
 const JUMPABLE_ATTACKS: Array[StringName] = [&"octodog"]
 ## Seconds a stepping-out check (_out_open) stays good before it's looked at again (task S2's review: its cost).
 const OUT_OPEN_REFRESH: float = 0.25
+## Through a warning and its cuts it looks ahead in its lane only as far as they last and this much more (seconds of run:
+## a lane change's room once they're over), steering round what lies past them once they end (task S2c: never calling
+## them off for it).
+const ATTACK_STEER_MARGIN: float = 0.3
 
 var tuning: HunterTuning
 var state: State = State.WAITING
@@ -933,8 +938,12 @@ func lane_blocker(l: int, to_runner: bool = false) -> String:
 	var d: float = world.player_distance()
 	var v: float = maxf(world.player.speed, 1.0)
 	var mid: float = d - gap
+	var ahead: float = tuning.steer_ahead_seconds
+	if slash == Slash.WARNING or slash == Slash.FLURRY:
+		var left: float = tuning.attack_seconds() - _slash_t if slash == Slash.WARNING else tuning.flurry_seconds - _slash_t
+		ahead = minf(ahead, maxf(left, 0.0) + ATTACK_STEER_MARGIN)
 	var from: float = mid - tuning.blocker_length * 0.5 - 0.5
-	var to: float = maxf(mid, d if to_runner else mid) + tuning.blocker_length * 0.5 + tuning.steer_ahead_seconds * v
+	var to: float = maxf(mid, d if to_runner else mid) + tuning.blocker_length * 0.5 + ahead * v
 	if to_runner:
 		from = maxf(from, d - VIEW_GAP)
 	return blocker_in(l, from, to)
