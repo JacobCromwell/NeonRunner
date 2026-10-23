@@ -66,6 +66,12 @@ const UNUSED: PackedStringArray = ["burst_min", "burst_max", "shot_interval", "p
 ## (HeavyCyborgRules.stream_zone): a stream lands over about the last two seconds before the runner reaches it, and
 ## its clear path reaches a little further.
 @export_range(0.0, 6.0, 0.1, "suffix:s") var keep_clear_seconds: float = 2.0
+## DESIGN-TBD (docs/questions/s1.md): seconds of run either side of it that hold no other shooter of the cyborgs'
+## airspace aiming at a floor runner (a cyborg, a window cyborg: HeavyCyborgRules.RIVALS) for a Heavy Cyborg to stand
+## there. One that near engages when it does, from a little further, and its burst takes a place in the air and keeps
+## the crossfire rule: it could hold the stream's start through the whole of its window (about a second, from the
+## engage distance to where the first round would no longer warn in time).
+@export_range(0.0, 4.0, 0.1, "suffix:s") var rival_clear_seconds: float = 1.0
 
 
 func bullets_at(t: float) -> int:

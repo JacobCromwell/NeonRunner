@@ -295,7 +295,7 @@ func _test_numbers() -> void:
 	for name: String in ["engage_distance", "charge_time", "reload_late", "bolt_speed_late", "bullets_late",
 			"bullet_gap_late", "invulnerability_share", "later_round_warning_share", "min_stream_rounds", "model_scale",
 			"health_late", "score_value", "walk_speed", "obstacle_margin", "keep_clear_seconds", "share", "spacing_seconds",
-			"windup_heard_within", "crossfire_gap"]:
+			"rival_clear_seconds", "windup_heard_within", "crossfire_gap"]:
 		check(shown.has(name), "`%s` is in the F6 panel" % name)
 	check(ht.score_value == 2 * ct.score_value, "it pays twice a cyborg's score (%d, %d)" % [ht.score_value, ct.score_value])
 	# Owner: twice a cyborg's laser hits (laser tier 1); proposed: the other tiers and the missiles twice too.
@@ -898,8 +898,9 @@ func _test_generation() -> void:
 ## the feature's start; each clear of every obstacle by the cyborgs' margin; its stream's zone clear of every gap, live
 ## fence and doodad in every lane, so it gets to fire (CyborgGun.floor_clear, what its gun's path_clear asks around each
 ## round's arrival; the review's B1); its reach off every dash wall's footprint, wider gap's zone, wall-run gap's clear
-## stretch and every-lane calm stretch (HeavyCyborgRules.taken_spans); at least spacing_seconds of run after the one
-## before.
+## stretch and every-lane calm stretch (HeavyCyborgRules.taken_spans); no cyborg or window cyborg within
+## rival_clear_seconds of run of it (HeavyCyborgRules.rivals_clear: their bursts could hold its stream's start); at
+## least spacing_seconds of run after the one before.
 func _check_places(gen: LevelGenerator, tag: String) -> Array[float]:
 	var lay: LevelLayout = gen.layout
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(lay, gen.tuning, gen.zones)
@@ -922,6 +923,12 @@ func _check_places(gen: LevelGenerator, tag: String) -> Array[float]:
 			% [zone.x, zone.y, tag])
 		check(off, "its reach (%.0f-%.0f m) keeps off every dash wall, wider gap, wall-run gap and calm stretch %s"
 			% [reach.x, reach.y, tag])
+		var rivals: Array[float] = []
+		for o: Dictionary in lay.enemies:
+			if HeavyRules.RIVALS.has(String(o["type"])) and absf(float(o["at"]) - a) <= ht.rival_clear_seconds * gen.speed:
+				rivals.append(float(o["at"]))
+		check(rivals.is_empty(), "no cyborg or window cyborg within %.1f s of run of it (%.0f m: %s) %s"
+			% [ht.rival_clear_seconds, a, rivals, tag])
 	for i: int in range(1, at.size()):
 		check(at[i] - at[i - 1] >= ht.spacing_seconds * gen.speed - 0.01,
 			"at least %.1f s of run after the one before (%.0f m) %s" % [ht.spacing_seconds, at[i], tag])

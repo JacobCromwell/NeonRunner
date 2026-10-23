@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_tuning")
 enemy_types = PackedStringArray("cyborg", "screech", "window_cyborg")
-twin_tolerated_types = PackedStringArray("cyborg", "screech", "window_cyborg", "generator", "hover_truck", "tithe_collector", "heavy_cyborg")
+twin_tolerated_types = PackedStringArray("cyborg", "screech", "window_cyborg", "generator", "hover_truck", "tithe_collector")
 overlap_max = 2
 encounter_tries = 8
 spare_fill_seconds = 2.0

@@ -14,10 +14,11 @@ extends RefCounted
 ##   for the feature (LevelConfig.recency_factor: most in the level that introduces it, fewer as it gets older), the
 ##   first that fits always where the pattern's left none. The passes after the rules (the danger density pass's rows,
 ##   the fill pass, the zone doodads) keep off a Heavy Cyborg's keep-out and floor as off any enemy that isn't a cyborg,
-##   its stream's zone among them; the counted features keep only a cyborg's margin from it (the wider gaps, the dash
-##   walls past their introduction), and the danger density pass may add enemies near it as near a cyborg (a small
-##   threat). (A level without cyborgs of its own, quick play's `--features=heavy_cyborg`, drops the pattern's cyborgs
-##   that don't become Heavy Cyborgs.)
+##   its stream's zone among them, and the danger density pass adds no enemy whose attack meets its keep-out (it is
+##   none of the small threats the pass may add enemies near: one there could hold its stream's start); the counted
+##   features keep only a cyborg's margin from it (the wider gaps, the dash walls past their introduction). (A level
+##   without cyborgs of its own, quick play's `--features=heavy_cyborg`, drops the pattern's cyborgs that don't become
+##   Heavy Cyborgs.)
 ## - After the zone doodads (after_doodads), once everything that stands on the floor is placed (nothing after them
 ##   adds a gap, a fence or a doodad in its levels; the gap density pass runs in City 1 only): every Heavy Cyborg that
 ##   no longer fits is given back as a plain cyborg (_give_back); where none is left, the first of the level's own
@@ -39,13 +40,17 @@ extends RefCounted
 ##   nearer than any other enemy, its obstacle margin away (WallRunGapPlacement.floor_keeps, the Enforcer Truck's
 ##   ROOM_TYPES: their re-checks hold a Heavy Cyborg to the rest's rule; DashWallRules.enemy_spans and
 ##   WideGapPlacement.keeps_of keep a cyborg's margin from a Heavy Cyborg too, which then gives way to them);
+## - no rival stands within rival_clear_seconds of run of it (rivals_clear: a cyborg, a window cyborg): one that near
+##   engages when it does, and its burst's place in the cyborgs' airspace and the crossfire rule could hold the stream's
+##   start through the whole of its window;
 ## - at least spacing_seconds of run from every other Heavy Cyborg;
 ## - never the level's last plain cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions), nor,
 ##   in the last resort, the last of the level's own floor cyborgs before the danger density pass's first (the pass,
 ##   which comes after the rules, adds its own only past the level's first).
 ## A Heavy Cyborg keeps a cyborg's keep-out (keep_out: from two seconds of run before it, its stream's zone, to its
 ## margin after it) and its tuning's floor reach. It is never a panic variant nor a host.
-## DESIGN-TBD (docs/questions/s1.md): its pattern's weight, the top-up's share, the spacing and the stream's zone.
+## DESIGN-TBD (docs/questions/s1.md): its pattern's weight, the top-up's share, the spacing, the stream's zone and
+## the rivals' clearance.
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const TYPE: String = "heavy_cyborg"
@@ -61,6 +66,10 @@ const RUN_AFTER: Array[String] = ["cyborg", "window_cyborg", "host", "hover_truc
 	"debris_maze"]
 ## The params a plain cyborg's entry may carry (its rules' panic roll); any other is a rule's mark.
 const PLAIN_PARAMS: PackedStringArray = ["panic", "host"]
+## Its rivals (rivals_clear): the other shooters of the cyborgs' airspace (CyborgAirspace) that aim at a floor runner
+## and engage from about as far. A Barnacle Turret shares the airspace but fires only at a ceiling rider, whom a Heavy
+## Cyborg never shoots at; another Heavy Cyborg stands spacing_seconds away.
+const RIVALS: PackedStringArray = ["cyborg", "window_cyborg"]
 
 
 ## Last of the rules: the cyborg of each of its pattern's picks still standing becomes a Heavy Cyborg where one fits,
@@ -247,6 +256,8 @@ static func fits(gen: LevelGenerator, e: Dictionary, t: HeavyCyborgTuning, spans
 		return false
 	if not zone_clear(gen.layout, stream_zone(gen, at, t)):
 		return false
+	if not rivals_clear(gen.layout, e, t.rival_clear_seconds * gen.speed):
+		return false
 	var reach: Vector2 = reach_of(gen, e, t)
 	for s: Vector2 in taken:
 		if s.x <= reach.y and s.y >= reach.x:
@@ -258,6 +269,15 @@ static func fits(gen: LevelGenerator, e: Dictionary, t: HeavyCyborgTuning, spans
 ## (CyborgGun.floor_clear: what the gun's path_clear asks around each round's arrival).
 static func zone_clear(layout: LevelLayout, zone: Vector2) -> bool:
 	return CyborgGun.floor_clear(layout, zone.x, zone.y)
+
+
+## True if no rival (RIVALS) of enemy entry `e` in `layout` stands within `reach` metres of it, either side.
+static func rivals_clear(layout: LevelLayout, e: Dictionary, reach: float) -> bool:
+	var at: float = float(e["at"])
+	for o: Dictionary in layout.enemies:
+		if not is_same(o, e) and RIVALS.has(String(o.get("type", ""))) and absf(float(o["at"]) - at) <= reach:
+			return false
+	return true
 
 
 ## What a Heavy Cyborg standing where entry `e` does reaches along the track (metres): its stream's zone, its keep-out

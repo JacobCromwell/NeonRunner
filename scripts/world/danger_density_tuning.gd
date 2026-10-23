@@ -9,10 +9,9 @@ extends Resource
 ## type's rules plan their own enemies (pads, ceilings, lanes, charges), so the pass never adds them.
 @export var enemy_types: PackedStringArray = PackedStringArray(["cyborg", "screech", "window_cyborg"])
 ## Enemy types whose attack window an added enemy (twin or encounter) may overlap besides a twin's own
-## group's (never a host): small threats a pattern of the level may already put together (the Heavy
-## Cyborg's stream is a cyborg's small attack: task S1, GDD §9.16). Any other enemy's window, with the
-## clearance around the addition, stays clear.
-@export var twin_tolerated_types: PackedStringArray = PackedStringArray(["cyborg", "screech", "window_cyborg", "generator", "hover_truck", "tithe_collector", "heavy_cyborg"])
+## group's (never a host): small threats a pattern of the level may already put together. Any other
+## enemy's window, with the clearance around the addition, stays clear.
+@export var twin_tolerated_types: PackedStringArray = PackedStringArray(["cyborg", "screech", "window_cyborg", "generator", "hover_truck", "tithe_collector"])
 ## How many attack windows of other enemies (all of twin_tolerated_types, never a host; a twin's own
 ## group apart) an added enemy's window, with the clearance around it, may overlap: 0 keeps every
 ## addition on its own, as the fill pass keeps its fillers.
