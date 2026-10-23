@@ -22,7 +22,9 @@ extends RefCounted
 ##   WallRunGapPlacement.floor_keeps, the Enforcer Truck's ROOM_TYPES), and their re-checks hold a Heavy Cyborg to the
 ##   rest's rule;
 ## - at least spacing_seconds of run from the Heavy Cyborg before it;
-## - never the level's last cyborg (the `cyborg` feature keeps appearing: LevelGenerator.feature_positions).
+## - never the level's first cyborg (the danger density pass adds its own only past it) nor its last plain one (the
+##   `cyborg` feature keeps appearing: LevelGenerator.feature_positions), the pass's own left out of both: so they
+##   are the same with the pass's dial and without it.
 ## The first that fits from the start always becomes one (the introduction: the first cyborg that fits past the start).
 ## Where none fits, the first plain cyborg past the start that fits but for its stream's zone becomes the level's one
 ## (CyborgGun.path_clear holds its stream while the runner is where it can't fairly be shot, so it may not get to fire);
@@ -61,11 +63,21 @@ static func after_doodads(gen: LevelGenerator) -> void:
 	var rng: RandomNumberGenerator = gen.rng_for(TYPE)
 	var taken: Array[Vector2] = taken_spans(gen)
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(lay, gen.tuning, gen.zones)
-	var left: int = LevelGenerator.feature_positions(lay, CYBORG).size()
+	# The danger density pass's own cyborgs are none of these (it adds them only past the level's first).
 	var added: Array = gen.danger_density_result.get("added_enemies", [])
-	var candidates: Array[Dictionary] = []
+	var first: Dictionary = {}
+	var plain: Array[Dictionary] = []
 	for e: Dictionary in lay.enemies:
-		if is_plain_cyborg(e) and float(e["at"]) >= from - 0.001 and not _holds(added, e):
+		if String(e.get("type", "")) != CYBORG or _holds(added, e):
+			continue
+		if first.is_empty() or float(e["at"]) < float(first["at"]):
+			first = e
+		if is_plain_cyborg(e):
+			plain.append(e)
+	var left: int = plain.size()
+	var candidates: Array[Dictionary] = []
+	for e: Dictionary in plain:
+		if float(e["at"]) >= from - 0.001 and not is_same(e, first):
 			candidates.append(e)
 	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 	var last: float = -INF
