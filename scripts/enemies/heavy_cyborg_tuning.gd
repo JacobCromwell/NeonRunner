@@ -45,10 +45,18 @@ const UNUSED: PackedStringArray = ["burst_min", "burst_max", "shot_interval", "p
 @export_range(5.0, 90.0, 1.0, "suffix:m") var windup_heard_within: float = 24.0
 
 @export_group("Generator")
-## DESIGN-TBD (docs/questions/s1.md): seconds of run before it that the fill pass and the zone doodads keep clear
-## (HeavyCyborgRules.keep_out; the cyborg's two, LevelGenerator.FILL_ENEMY_LEAD_SECONDS): a stream lands over about
-## the last two seconds before the runner reaches it, and its clear path reaches a little further.
-@export_range(0.0, 6.0, 0.1, "suffix:s") var keep_clear_seconds: float = 2.4
+## DESIGN-TBD (docs/questions/s1.md): Heavy Cyborgs take the places of some of the level's cyborgs
+## (HeavyCyborgRules): the chance that a cyborg that fits becomes one, at the campaign recency curve's factor 1 (a
+## feature introduced long ago; LevelConfig.recency_factor scales it: four times this in the level that introduces
+## it, FeatureRecency.introduced). The first that fits from the feature's start always does.
+@export_range(0.0, 1.0, 0.01) var share: float = 0.12
+## DESIGN-TBD (docs/questions/s1.md): seconds of run at least between two Heavy Cyborgs.
+@export_range(0.0, 20.0, 0.5, "suffix:s") var spacing_seconds: float = 3.0
+## DESIGN-TBD (docs/questions/s1.md): seconds of run before it that must hold nothing that holds a stream (a doodad, a
+## falling gantryway's or a teleporter's calm stretch, a dash wall: LevelLayout.doodad_between) for a cyborg there to
+## become a Heavy Cyborg (HeavyCyborgRules.stream_zone): a stream lands over about the last two seconds before the
+## runner reaches it, and its clear path reaches a little further.
+@export_range(0.0, 6.0, 0.1, "suffix:s") var keep_clear_seconds: float = 2.0
 
 
 func bullets_at(t: float) -> int:
