@@ -10,12 +10,16 @@
 #                                     --plan only prints what would run; --paths=a,b plans for those files
 #                                     instead of the branch's changes; --base=REF diffs against REF
 #                                     (default: the merge base with main). Jobs default to half the CPUs
-#                                     (at most 3).
+#                                     (at most 3). --cap=merge keeps a raised tier at merge (plus the
+#                                     mapped suites): on a cloud container, where the full tier is owed
+#                                     but runs as shards instead (CLAUDE.md, Workflow rules)
 #   tools/godot.sh test --tier=merge  before a branch merges: everything but the slow sweeps and fight
 #                                     simulations, plus the suites for the changed files
 #   tools/godot.sh test --tier=full   every suite (the same as plain `test --jobs=N`)
 #   tools/godot.sh test --shard=K/N [--tier=full|--jobs=N]   run only share K of N of the suites (the same split on every
-#                                     container): how to spread a long tier over several cloud containers
+#                                     container): how to spread a long tier over several cloud containers.
+#                                     The split balances by tests/suite_times_baseline.json; refresh it after
+#                                     a full run with `python3 tools/suite_times.py update <times files>`
 #   tools/godot.sh test [--suite=x] [--jobs=N]   run the headless tests (exit code 0 = pass); --suite=x
 #                                     runs only the suites whose file name contains x. --jobs=N (default 1,
 #                                     unchanged behaviour) splits the suites across N Godot processes,
@@ -160,8 +164,9 @@ quiet() {
 }
 
 # T-SPEED: `tools/godot.sh test --jobs=N [--suite=x]` runs the matching suites across N separate
-# Godot processes, balanced by each suite's last measured time (tests/.suite_times.json, refreshed by
-# every run of tests/run_tests.gd; a suite with no measurement yet is weighted as 1 s). Each process
+# Godot processes, balanced by each suite's measured time (tools/suite_times.py: this machine's own
+# tests/.suite_times.json, refreshed by every run of tests/run_tests.gd, over the committed baseline
+# tests/suite_times_baseline.json, so a fresh cloud container balances too). Each process
 # gets its own XDG_DATA_HOME (so its own user:// folder: saves and the test profile never collide
 # between processes) and runs its own balanced slice (run_tests.gd's --files=, an exact file list, not
 # --suite=x's substring match). Exit code is 0 only if every process passed; a failing suite's "FAIL:"
@@ -187,36 +192,10 @@ run_tests_parallel() {
 		echo "No test suites matched '$suite_filter'." >&2
 		exit 1
 	fi
-	local times_file="$ROOT/tests/.suite_times.json"
 	if [[ -n "${SHARD:-}" ]]; then
-		# --shard=K/N: keep only this container's balanced share of the suites (the same split on every container).
-		mapfile -t suites < <(python3 - "$SHARD" "$times_file" "$ROOT/tests/suites" "${suites[@]}" <<'PYEOF'
-import json, os, sys
-k, n = (int(x) for x in sys.argv[1].split("/"))
-times = {}
-try:
-	times = json.load(open(sys.argv[2]))
-except Exception:
-	pass
-def weight(s):
-	# a measured time, else the file's size as a stand-in, so the split balances without a measurement
-	if s in times:
-		return float(times[s])
-	try:
-		return os.path.getsize(os.path.join(sys.argv[3], s)) / 20000.0 + 0.5
-	except OSError:
-		return 1.0
-order = sorted(sys.argv[4:], key=lambda s: (-weight(s), s))
-loads = [0.0] * n
-mine = []
-for s in order:
-	i = min(range(n), key=lambda j: (loads[j], j))
-	loads[i] += weight(s)
-	if i == k - 1:
-		mine.append(s)
-print("\n".join(sorted(mine)))
-PYEOF
-		)
+		# --shard=K/N: keep only this container's balanced share of the suites. The split reads only the
+		# committed baseline times (tools/suite_times.py), so it is the same on every container.
+		mapfile -t suites < <(python3 "$ROOT/tools/suite_times.py" shard "$SHARD" "${suites[@]}")
 		echo "Shard $SHARD: ${#suites[@]} suites"
 		if [[ ${#suites[@]} -eq 0 ]]; then
 			echo "This shard has no suites."
@@ -224,27 +203,7 @@ PYEOF
 		fi
 	fi
 	local groups=()
-	mapfile -t groups < <(python3 - "$jobs" "$times_file" "${suites[@]}" <<'PYEOF'
-import json, sys
-jobs = int(sys.argv[1])
-times = {}
-try:
-	times = json.load(open(sys.argv[2]))
-except Exception:
-	pass
-suites = sys.argv[3:]
-default = 1.0
-order = sorted(suites, key=lambda s: -float(times.get(s, default)))
-bins = [[] for _ in range(jobs)]
-loads = [0.0] * jobs
-for s in order:
-	i = min(range(jobs), key=lambda k: loads[k])
-	bins[i].append(s)
-	loads[i] += float(times.get(s, default))
-for b in bins:
-	print(",".join(b))
-PYEOF
-	)
+	mapfile -t groups < <(python3 "$ROOT/tools/suite_times.py" jobs "$jobs" "${suites[@]}")
 	mkdir -p "$ROOT/build"
 	local tmp_dir; tmp_dir="$(mktemp -d "$ROOT/build/test_jobs.XXXXXX")"
 	local pids=() outs=() n=0
@@ -337,7 +296,7 @@ case "$command" in
 				--shard=*) SHARD="${arg#--shard=}" ;;
 				--gate) tier="gate" ;;
 				--tier=*) tier="${arg#--tier=}" ;;
-				--base=*|--paths=*) plan_args+=("$arg") ;;
+				--base=*|--paths=*|--cap=*) plan_args+=("$arg") ;;
 				--plan) plan_only=1 ;;
 				*) rest+=("$arg") ;;
 			esac

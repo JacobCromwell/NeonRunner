@@ -877,7 +877,10 @@ shared (`docs/PERFORMANCE_AUDIT.md` §3.2):
 (`scripts/bosses/the_house/*` → `test_the_house*`, `data/enemies/octodog.tres` → `test_octodog`, a
 zone's skin folder → its skin suite); paths it doesn't list are matched by name, and a changed
 core file (generator, track builder, damage rules, run world, player, boss framework, test helpers,
-level/pattern/tuning/zone data) raises the tier to full on its own. `--plan` prints the suites
+level/pattern/tuning/zone data) raises the tier to full on its own; on a cloud container, where the
+full tier takes an hour or more, `--cap=merge` keeps it at merge (plus the mapped suites) and the full
+tier runs as shards over several containers (`--shard=K/N`, balanced by the committed
+`tests/suite_times_baseline.json`; `CLAUDE.md`, Commands). `--plan` prints the suites
 without running them; `--paths=a,b` plans for those files instead of the branch's changes. Add a
 rule when you add an enemy, boss, screen or skin whose folder name doesn't match its suite.
 
