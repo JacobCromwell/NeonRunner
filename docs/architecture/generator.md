@@ -52,8 +52,8 @@ its pad stretch and landings clear in every lane, so the band at 3 lanes has abo
 obstacles, and the suite lets it land 5% lower again there (`TELEPORTER_ROOM`; built without them it keeps the floor
 above; DESIGN-TBD, `docs/questions/q6.md` item 11). The Golden Zone's Heavy Cyborgs (task S1) take a little more: each
 keeps two seconds of clear floor before it (the rows keep off its window) and no cyborg within a second of it, so the
-band has about 21% more enemies at 3 lanes (23% without the teleporters) and 28% at 5 and 6, and the suite lets it land
-4%, 2% and 3% lower (`HEAVY_CYBORG_ROOM`; DESIGN-TBD, `docs/questions/s1.md` item 13).
+band has about 22% more enemies at 3 lanes (24% without the teleporters), 28% at 5 and 30% at 6, and the suite lets it
+land 4%, 3% and 2% lower (`HEAVY_CYBORG_ROOM`; DESIGN-TBD, `docs/questions/s1.md` item 13).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
