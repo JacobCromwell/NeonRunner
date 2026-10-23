@@ -20,8 +20,9 @@ extends RefCounted
 ## - the dash only from a stop, when it's ready (else waiting there until it is): it smashes the doodads in the lane
 ##   whose fronts it reaches (the dash's carry at its speed, less DASH_SLACK), and the runner runs on past what it
 ##   smashed, to the next doodad's front at the most; it comes back `recharge` seconds after it began;
-## - never a jump (no doodad is low enough to clear), a lane switch in the air, a pad or a ceiling, a wall; a hole is a
-##   place it never stands nor dashes over (the maze keeps holes out: LayoutChecks.check_debris_maze), and so is an
+## - never a jump over a doodad (none is low enough to clear), a lane switch in the air, a pad or a ceiling, a wall; a
+##   hole is a place it never stands nor dashes over, but a running runner may jump one just ahead (task O5: the rows
+##   between the Terminal's maze blocks; _jump_from) (the maze keeps holes out: LayoutChecks.check_debris_maze), and so is an
 ##   anti-grav pad (which would lift the runner onto its ceiling: pad_span(), wide enough that a switch out of its lane
 ##   before it never brushes it; a maze ceiling's pad stands in a cell a floor runner can pass it in).
 ## Optimistic, for the question whether any way through takes no dash (`dash_free`): running where the body fits, and a
@@ -31,8 +32,9 @@ extends RefCounted
 ##   var r: Dictionary = route.find(from, to, recharge)         {ok, seconds, waits, dashes, moves, start_lane, reason}
 ##   route.least_dashes(from, to)                               the least dashes any way takes (-1: none gets through)
 ##   route.dash_free(from, to)                                  true if a way through might take no dash at all
-## `moves` (find): [{kind: "switch" | "slide" | "dash", at, lane, to}] in order: at track distance `at` (the body's
-## middle) in `lane`, a switch or a slide into lane `to`, or a dash; the runner keeps their lane otherwise.
+## `moves` (find): [{kind: "switch" | "slide" | "dash" | "jump", at, lane, to}] in order: at track distance `at` (the
+## body's middle) in `lane`, a switch or a slide into lane `to`, a dash, or a jump (from `at`, its take-off); the runner
+## keeps their lane otherwise.
 
 ## Metres per step.
 const STEP: float = 0.5
@@ -61,7 +63,11 @@ const SWITCH_COST: float = 0.001
 ## sensor's and the pad's half widths) by the time it would reach it.
 const PAD_MARGIN: float = 0.6
 
-enum Move { START, RUN, SWITCH, SLIDE, DASH }
+## The longest hole a jump takes in find(), as a share of a full jump at the run speed (LevelConfig.max_gap_jump_fraction):
+## the take-off and the landing spread the rest either side.
+const JUMP_SHARE: float = 0.8
+
+enum Move { START, RUN, SWITCH, SLIDE, DASH, JUMP }
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -82,6 +88,8 @@ var _ends: Array = []
 var _half: float = 0.26
 var _switch_steps: int = 7
 var _carry: float = 0.0
+## A full jump at the run speed (MovementTuning.jump_distance), for find()'s jumps over a hole.
+var _jump: float = 0.0
 var _bonus: float = 8.0
 var _duration: float = 0.6
 
@@ -100,6 +108,7 @@ func _init(p_layout: LevelLayout, p_tuning: MovementTuning) -> void:
 		_duration = pt.dash_duration
 	_carry = (speed + _bonus) * _duration - DASH_SLACK
 	_half = tuning.visual_size.z * 0.5
+	_jump = tuning.jump_distance(speed)
 	_switch_steps = int(ceil(tuning.lane_switch_time * speed / STEP))
 	for lane: int in lanes:
 		pieces.append([])
@@ -237,6 +246,11 @@ func find(from: float, to: float, recharge: float, goal_lane: int = -1) -> Dicti
 						continue
 					var ts: float = t + _switch_steps * step_t + SWITCH_COST
 					_relax(labels, to_lane * size + mini(land, goal), [ts, maxf(ready, ts), key, li, Move.SWITCH, to_lane, 0.0])
+				# A hole just ahead (task O5: the rows between the Terminal's maze blocks): a jump over it, running.
+				var jump: Vector2 = _jump_from(lane, i) if blocked else Vector2(-1.0, 0.0)
+				if jump.x > i:
+					var tj: float = t + (minf(jump.x, goal) - i) * step_t
+					_relax(labels, lane * size + mini(int(jump.x), goal), [tj, maxf(ready, tj), key, li, Move.JUMP, lane, 0.0])
 				if blocked and dash.x > i:
 					var start_t: float = maxf(t, ready)
 					var run: float = minf(dash.x, goal) * STEP - i * STEP
@@ -281,6 +295,9 @@ func find(from: float, to: float, recharge: float, goal_lane: int = -1) -> Dicti
 			var from_lane: int = prev_key / size
 			moves.push_front({"kind": "switch" if move == Move.SWITCH else "slide", "at": (prev_key % size) * STEP,
 				"lane": from_lane, "to": int(l[5])})
+		elif move == Move.JUMP:
+			moves.push_front({"kind": "jump", "at": _jump_from(int(l[5]), prev_key % size).y, "lane": int(l[5]),
+				"to": int(l[5])})
 		elif move == Move.DASH:
 			moves.push_front({"kind": "dash", "at": (prev_key % size) * STEP, "lane": int(l[5]), "to": int(l[5])})
 			waits += float(l[6])
@@ -320,6 +337,28 @@ func _dash_from(lane: int, i: int) -> Vector2:
 		if v.x <= middle_to + _half and v.y >= front:
 			return Vector2(i, 0.0)
 	return Vector2(maxi(int(floor(middle_to / STEP)), i), last_end)
+
+
+## Where a jump over the hole just ahead of step `i` in `lane` (the body's front within a step of it, nothing else
+## nearer) takes the runner: Vector2(the step it lands at, the body's middle at take-off), or Vector2(-1, 0) if there's
+## no such hole, it's longer than JUMP_SHARE of a full jump, or the landing isn't clear floor. The jump is centred on the
+## hole: it takes off half the spare jump before it and lands half past it. A runner in the lane there runs straight
+## (the rows that need one keep the level's spacing clear around them in every lane: DebrisMaze.place_gaps).
+func _jump_from(lane: int, i: int) -> Vector2:
+	var front: float = i * STEP + _half
+	var hole := Vector2(INF, INF)
+	for v: Vector2 in holes[lane]:
+		if v.x >= front - 0.001 and v.x <= front + STEP + BODY_MARGIN + 0.001 and v.x < hole.x:
+			hole = v
+	if hole.x == INF or not clear(lane, front, hole.x, true) or hole.y - hole.x > _jump * JUMP_SHARE:
+		return Vector2(-1.0, 0.0)
+	var spare: float = (_jump - (hole.y - hole.x)) * 0.5
+	var take: float = hole.x - _half - spare
+	var land: float = take + _jump
+	var land_i: int = int(ceil(land / STEP))
+	if land_i >= size or not fits(lane, land_i) or not clear(lane, hole.y + 0.001, land + _half + BODY_MARGIN):
+		return Vector2(-1.0, 0.0)
+	return Vector2(land_i, take)
 
 
 ## Adds label `l` ([time, ready, prev key, prev label index, move, move lane, waited]) at `key` unless a live one there

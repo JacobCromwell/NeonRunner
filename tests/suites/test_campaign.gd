@@ -997,11 +997,15 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 	stats["levels"] = int(stats["levels"]) + 1
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 	if s.zone.id == &"terminal":
-		# GDD §5, Zone 8: "a couple of holes, not many", and no fences: its holes are its wider gaps' rows
-		# (test_terminal_levels checks the rest of its rules).
-		check(layout.fences.is_empty() and GapDensity.rows(layout).size() <= config.wide_gaps
-			and GapDensity.rows(layout).size() >= 1, "a couple of holes and no fences (%d rows) %s"
-			% [GapDensity.rows(layout).size(), tag])
+		# GDD §5, Zone 8: "a couple of holes, not many", and no fences: its holes are its wider gaps' rows and, since the
+		# owner asked for "some more gaps to jump over in the sections in between maze portions" (task O5, October 22,
+		# 2026), the rows between its maze blocks (DebrisMaze.place_gaps; test_terminal_levels checks the rest of its rules).
+		var between: int = 0
+		for row: Dictionary in GapDensity.rows(layout):
+			between += 1 if (row["lanes"] as Array).size() == layout.lane_count else 0
+		check(layout.fences.is_empty() and GapDensity.rows(layout).size() <= config.wide_gaps + between
+			and GapDensity.rows(layout).size() >= 1, "a couple of holes, the rows between maze blocks, and no fences (%d rows, %d between blocks) %s"
+			% [GapDensity.rows(layout).size(), between, tag])
 	else:
 		check(layout.gaps.size() + layout.fences.size() > 8, "has content " + tag)
 	check(layout.credits.size() > 20, "has credits " + tag + " (%d)" % layout.credits.size())

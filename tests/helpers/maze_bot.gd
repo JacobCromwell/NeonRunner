@@ -2,8 +2,8 @@ class_name MazeBot
 extends RefCounted
 ## Runs a way MazeRoute found through a layout whose doodads stop the runner (task O2: the debris maze) on real physics:
 ## a Player on the layout's track from track distance `from`, in the route's start lane, presses the route's lane
-## switches as its body's middle comes to where the route makes them, moves along a wall's face where the route does
-## when it's stopped there, and dashes at a stop where the route dashes once the dash is ready, standing and waiting for
+## switches as its body's middle comes to where the route makes them, jumps where the route does (its take-off), moves
+## along a wall's face where the route does when it's stopped there, and dashes at a stop where the route dashes once the dash is ready, standing and waiting for
 ## it otherwise: the dash comes back `recharge` seconds after each (and after the start: the route's worst case, the
 ## dash just used). Tests only.
 ##   var bot := MazeBot.new(tree, level_tuning)
@@ -78,6 +78,12 @@ func run(layout: LevelLayout, route: Dictionary, from: float, to: float, recharg
 						m += 1
 					else:
 						result["waits"] = float(result["waits"]) + dt
+			elif kind == "jump":
+				# At the route's take-off (task O5: a row of holes between the maze's blocks).
+				if player.distance >= at - EARLY and player.grounded:
+					RunSim.act(player, &"jump")
+					result["jumps"] = int(result.get("jumps", 0)) + 1
+					m += 1
 			elif player.lane == to_lane:
 				if settled:
 					m += 1

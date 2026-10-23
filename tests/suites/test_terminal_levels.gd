@@ -14,7 +14,8 @@ extends TestSuite
 ##   warnings, the campaign's fairness checks (LayoutChecks.check_layout and check_rules: the debris maze's among them,
 ##   check_debris_maze and check_centipedes), the same level on a second build, and the Terminal's rules: no enemy but its
 ##   Cybernetic Centipedes (in its maze: test_centipede_maze), no dash walls, a couple of holes (its wider gaps, rows in
-##   every lane but one) and nothing else in its floor, its debris maze, few ceilings and every one a single lane wide and
+##   every lane but one) and, since task O5, rows across every lane between maze blocks (a jump), and nothing else in its
+##   floor, its debris maze, few ceilings and every one a single lane wide and
 ##   short, nothing on its walls (check_boundary_walls);
 ## - its walls: each a row of narrow arches over the whole stretch the track draws walls along, arch_length long and
 ##   arch_spacing (give or take its jitter) apart, mostly in pairs, a missing one a broken stump opposite the other
@@ -185,13 +186,30 @@ func _test_levels() -> void:
 				check(layout.dash_walls.is_empty() and layout.fences.is_empty() and layout.cuts.is_empty()
 					and layout.speed_pads.is_empty() and layout.ceiling_fences.is_empty() and layout.stashes.is_empty(),
 					"no dash walls, fences, floor cuts, speed pads or ceiling scenarios " + tag)
-				# A couple of holes, not many (GDD §5): its wider gaps' rows, each across every lane but one.
+				# A couple of holes, not many (GDD §5): its wider gaps' rows, each across every lane but one; and since task
+				# O5 (the owner, October 22, 2026: "some more gaps to jump over in the sections in between maze portions"),
+				# rows across every lane between two maze blocks (DebrisMaze.place_gaps), each a jump the level allows.
 				var rows: Array[Dictionary] = GapDensity.rows(layout)
-				var across: bool = true
+				var wider: int = 0
+				var between: int = 0
+				var rows_ok: bool = true
+				var mt: DebrisMazeTuning = DebrisMaze.tuning_for(config)
 				for row: Dictionary in rows:
-					across = across and (row["lanes"] as Array).size() == lanes - 1
-				check(rows.size() >= 1 and rows.size() <= config.wide_gaps and across,
-					"a couple of holes: %d rows, each in every lane but one %s" % [rows.size(), tag])
+					var count: int = (row["lanes"] as Array).size()
+					if count == lanes - 1:
+						wider += 1
+						continue
+					between += 1
+					var inside: bool = false
+					for i: int in range(1, layout.maze.size()):
+						inside = inside or (float(row["start"]) >= DebrisMaze.keep_out(gen, layout.maze[i - 1], mt).y
+							and float(row["end"]) <= float(layout.maze[i]["entry"]))
+					rows_ok = rows_ok and count == lanes and inside \
+						and float(row["end"]) - float(row["start"]) <= gen.jump_distance * config.max_gap_jump_fraction + 0.01
+				check(wider >= 1 and wider <= config.wide_gaps,
+					"a couple of holes: %d wider gaps' rows, each in every lane but one %s" % [wider, tag])
+				check(rows_ok and between <= mt.gap_rows * maxi(layout.maze.size() - 1, 0) and (mt.gap_rows == 0 or between >= 1),
+					"the rows between maze blocks: %d, each across every lane between two blocks, a jump %s" % [between, tag])
 				# Few ceilings, every one a single lane wide and short (GDD §3, §5): little shortcuts.
 				var one_lane: bool = true
 				for h: Dictionary in layout.hulls:
