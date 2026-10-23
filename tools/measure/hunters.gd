@@ -1,10 +1,11 @@
 extends SceneTree
 ## Measures the Hunters' placement (task S2; scripts/enemies/hunter_rules.gd) over the campaign's levels that have them, and
 ## the weekly challenge's weeks of their zone: for each build, how many arrive of the most a level takes, where (as a share
-## of the level), their introduction's distance past the feature's start (test_campaign's introduction reach, metres at
-## the level's pace), how many falling gantryways each has in its chase, how many of the level's gantryways can be baits,
-## and what HunterRules.problems() and the re-checks of the rules that run before it (gantryways, teleporters, Octodog jars)
-## find (nothing, on every build the suites check). From the project folder:
+## of the level), which arrive not calm (no calm arrival for their bait), their introduction's distance past the feature's
+## start (test_campaign's introduction reach, metres at the level's pace), how many falling gantryways each has in its
+## chase, how many of the level's gantryways can be baits, and what HunterRules.problems() and the re-checks of the rules
+## that run before it (gantryways, teleporters, Octodog jars) find (nothing, on every build the suites check). From the
+## project folder:
 ##   godot --headless -s res://tools/measure/hunters.gd -- [--levels=ice_lab/3] [--lanes=3,5,6] [--seeds=N] [--weekly]
 ## --seeds=N builds each level on its own seed and N others (9001, 9002, ...; default 3). --weekly also builds the weekly
 ## challenge's weeks whose zone lists the feature (data/weekly/weekly_seeds.json). --why prints why a gantryway is no bait
@@ -26,7 +27,7 @@ var _weekly: bool = false
 var _gantryways: int = -1
 var _start: float = -1.0
 var _tuning: MovementTuning
-var _stats := {"builds": 0, "placed": 0, "none": 0, "late": 0, "problems": 0}
+var _stats := {"builds": 0, "placed": 0, "not_calm": 0, "none": 0, "late": 0, "problems": 0}
 
 
 func _initialize() -> void:
@@ -72,8 +73,8 @@ func _run() -> void:
 			var config: LevelConfig = def.build_config(campaign, w)
 			if config != null and config.has_feature(HunterRules.TYPE):
 				_measure(config, "week %d (%s, seed %d)" % [i, entries[i]["zone"], entries[i]["seed"]])
-	print("%d builds: %d Hunters, %d builds without one, %d introductions past the reach, %d problems" % [_stats["builds"],
-		_stats["placed"], _stats["none"], _stats["late"], _stats["problems"]])
+	print("%d builds: %d Hunters (%d not calm), %d builds without one, %d introductions past the reach, %d problems" % [
+		_stats["builds"], _stats["placed"], _stats["not_calm"], _stats["none"], _stats["late"], _stats["problems"]])
 	quit()
 
 
@@ -94,8 +95,13 @@ func _measure(config: LevelConfig, tag: String) -> void:
 	var parts: PackedStringArray = []
 	for e: Dictionary in hunters:
 		var at: float = float(e["at"])
-		var n_baits: int = ((e.get("params", {}) as Dictionary).get(HunterRules.BAITS, []) as Array).size()
-		parts.append("%.2f (%d bait%s)" % [at / layout.length, n_baits, "" if n_baits == 1 else "s"])
+		var params: Dictionary = e.get("params", {})
+		var n_baits: int = (params.get(HunterRules.BAITS, []) as Array).size()
+		var calm: bool = params.has(HunterRules.CALM)
+		if not calm:
+			_stats["not_calm"] = int(_stats["not_calm"]) + 1
+		parts.append("%.2f (%d bait%s%s)" % [at / layout.length, n_baits, "" if n_baits == 1 else "s",
+			"" if calm else ", not calm"])
 	var found: PackedStringArray = HunterRules.problems(gen)
 	found.append_array(GantrywayRules.problems(gen))
 	found.append_array(TeleporterRules.problems(gen))
