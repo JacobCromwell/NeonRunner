@@ -399,8 +399,10 @@ func _alongside(delta: float) -> void:
 		if want < 0 or want >= n:
 			side = -side
 			want = r + side
-	elif slash == Slash.WARNING or slash == Slash.FLURRY:
-		# It holds its lane through a warning and its cuts.
+	elif slash != Slash.IDLE:
+		# It holds its lane through a warning, its cuts and its recovery: its blades come down and its lunge back before
+		# it follows (task S2's review: following with them still up, beside a runner its dodge took to the edge, under
+		# the chase camera, they hid that runner's lane ahead).
 		want = target_lane
 	if want == r and not off_floor:
 		# Never into the runner's lane: it stays where it is (they came across before it followed).
@@ -424,10 +426,11 @@ func _alongside(delta: float) -> void:
 	var steer: int = want
 	if not _lane_clear_ahead(want, false):
 		# Its lane is shut ahead: the lane the runner has just left (when they stepped away from it), at once, rather than a
-		# moment later; else the lane further out; else it crosses to their other side; else it makes room.
+		# moment later (not while it recovers, its blades still up); else the lane further out; else it crosses to their
+		# other side; else it makes room.
 		var left_lane: int = r + side
 		var out: int = want + signi(want - r) if want != r else want + side
-		if not off_floor and (slash == Slash.IDLE or slash == Slash.RECOVER):
+		if not off_floor and slash == Slash.IDLE:
 			if left_lane != want and left_lane >= 0 and left_lane < n and left_lane != r and _lane_clear_ahead(left_lane, false):
 				out = left_lane
 		if out >= 0 and out < n and out != r and _lane_clear_ahead(out, false):

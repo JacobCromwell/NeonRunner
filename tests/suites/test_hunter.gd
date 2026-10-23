@@ -432,9 +432,10 @@ func _test_view() -> void:
 
 
 ## Where else it rides near the runner (task S2's review), through the chase camera's resting view as _test_view: coming
-## up or dropping back in a lane beside theirs (calm, facing ahead, from level with them to VIEW_GAP behind) and in their
-## way behind them (in their lane or crossing it, its disc rolled into the lane change, cross_gap back); it hides nothing
-## of the runner or their lane from them to 20 m ahead in either.
+## up or dropping back in a lane beside theirs (calm, facing ahead, from level with them to VIEW_GAP behind), in their way
+## behind them (in their lane or crossing it, its disc rolled into the lane change, cross_gap back) and recovering from a
+## flurry they dodged (its blades coming down and its lunge easing back, in the lane it held, two lanes from them); it
+## hides nothing of the runner or their lane from them to 20 m ahead in any of them.
 func _test_view_near() -> void:
 	var m := HunterModel.new()
 	tree.root.add_child(m)
@@ -497,9 +498,30 @@ func _test_view_near() -> void:
 						faults.append("%s: in their way %.2f m across, %.1f m back, rolled %.1f, it hides %s" % [tag,
 							x - geo.lane_x(r), t.cross_gap, roll, what2])
 			m.roll = 0.0
+			# Recovering from a flurry they dodged one lane away from it: in the lane it held (two lanes from them), its
+			# blades coming down and its lunge easing back toward the lane it cut (between them), turned that way or ahead.
+			for side: int in [-1, 1]:
+				var l: int = r + 2 * side
+				if l < 0 or l >= lanes:
+					continue
+				for k: float in [1.0, 0.6, 0.3]:
+					for turned: bool in [true, false]:
+						m.raise = k
+						m.reach = k
+						m.reach_dir = float(-side)
+						m.face_yaw = atan2(side * 2.4, -t.alongside_ahead) if turned else 0.0
+						m.hover = t.hover_height
+						m.animate(0.0)
+						var what3: String = hides.call(geo.lane_x(l), -t.alongside_ahead)
+						takes += 1
+						if what3 != "":
+							faults.append("%s: recovering in lane %d (blades %.1f up, %s) it hides %s" % [tag, l, k,
+								"turned" if turned else "ahead", what3])
+			m.raise = 0.0
+			m.reach = 0.0
 	m.free()
 	check(takes > 1000 and faults.is_empty(),
-		"coming up or dropping back beside them and in their way behind them, it hides nothing of the runner or their lane ahead (%d poses) %s"
+		"coming up or dropping back beside them, in their way behind them and recovering, it hides nothing of the runner or their lane ahead (%d poses) %s"
 		% [takes, faults])
 
 
@@ -646,6 +668,8 @@ func _test_flurry() -> void:
 		var w: RunWorld = _world(_layout(lanes), start)
 		var state: Dictionary = {}
 		var marks: Array = [0, 0]
+		# Recoveries seen beside the runner, frames of one with its target lane changed from the one it recovers in.
+		var held: Array = [0, 0, -1]
 		var bot: Callable = _dodger(state)
 		var watch := func(ww: RunWorld) -> void:
 			bot.call(ww)
@@ -653,6 +677,14 @@ func _test_flurry() -> void:
 			if hh != null and hh.slash == Hunter.Slash.WARNING:
 				marks[0] += 1
 				marks[1] += 1 if (hh.get(&"_mark") as MeshInstance3D).visible else 0
+			if hh != null and hh.slash == Hunter.Slash.RECOVER and hh.state == Hunter.State.ALONGSIDE:
+				if int(held[2]) < 0:
+					held[0] += 1
+					held[2] = hh.target_lane
+				elif hh.target_lane != int(held[2]):
+					held[1] += 1
+			elif hh != null:
+				held[2] = -1
 		var r: Dictionary = await _run(w, 22.0, [], watch, func(ww: RunWorld) -> bool:
 			var hh: Hunter = _hunter(ww)
 			return hh != null and hh.state == Hunter.State.LEAVING)
@@ -668,6 +700,9 @@ func _test_flurry() -> void:
 			gaps_ok = gaps_ok and absf(float(cuts[k][1]) - float(warns[k][1]) - t.warning_seconds) < 0.03
 		check(gaps_ok and scrapes == warns.size() and slashes == cuts.size() and marks[0] > 0 and marks[1] == marks[0],
 			"every flurry is warned (the scrape, the red mark) a whole warning (%.2f s) before its cuts %s" % [t.warning_seconds, tag])
+		check(int(held[0]) >= warns.size() and int(held[1]) == 0,
+			"it holds its lane through each recovery, following only once its blades are down (%d recoveries, %d frames moving) %s"
+			% [held[0], held[1], tag])
 		check((r["faults"] as PackedStringArray).is_empty(), "its rules held %s %s" % [r["faults"], tag])
 		await sim.free_world(w)
 	# Staying, jumping, the armor and the shield (5 lanes, the runner in the middle).
