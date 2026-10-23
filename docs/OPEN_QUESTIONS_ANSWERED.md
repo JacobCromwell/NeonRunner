@@ -1755,3 +1755,14 @@ Captain Cogs).
 1205. **A fix to the escape proof** (a note, no question). Its wake check was asked exactly at the wake distance's edge,
    where rounding could put it outside, so a wake could be counted a stretch late (found with the ambush). It now has a
    hair of tolerance: the proof is a little stricter.
+
+### Answered on October 23, 2026 (the owner's batch: armor comes back after any hit)
+
+244. **Worn armor** (GDD §4, §8). An upgraded armor takes more than one hit. When it has lost some hits
+    but isn't broken, does anything come back?
+    **Placeholder:** nothing comes back until its last hit goes; then it breaks and comes back whole
+    after its tier's wait (`DamageRules.Armor` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`).
+    The alternative: each lost hit comes back on its own after the wait.
+    **Answered** (owner, October 23, 2026, reported as a bug): any hit starts the wait, and at its end the armor is back
+    whole (armor of 3 knocked to 2 starts the timer and comes back to 3). Recorded in GDD §4 and §8; built in task S3
+    (a hit during the wait: item 1216).

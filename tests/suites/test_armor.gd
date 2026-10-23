@@ -82,7 +82,7 @@ func _test_state() -> void:
 	check(not m.tick(wait * 0.5) and is_equal_approx(m.progress(), 0.5) and m.hits == hits - 1,
 		"worn armor is halfway back after half the wait, its hits as they were")
 	check(not m.block() and m.hits == hits - 2 and is_equal_approx(m.recharge_left, wait * 0.5),
-		"another hit it survives leaves the wait running (DESIGN-TBD, docs/questions/s3.md 1): %.1f s left" % m.recharge_left)
+		"another hit it survives leaves the wait running (DESIGN-TBD, docs/OPEN_QUESTIONS_DEFERRED.md item 1216): %.1f s left" % m.recharge_left)
 	check(m.tick(wait * 0.5) and m.hits == hits and not m.is_recharging() and is_equal_approx(m.progress(), 1.0),
 		"at the wait's end it's back whole: from %d hits to %d (GDD §4's 3 from 2)" % [hits - 2, m.hits])
 	check(not m.tick(1000.0) and m.hits == hits, "whole, it stays as it is")
@@ -93,7 +93,7 @@ func _test_state() -> void:
 		m.block()
 	check(m.hits == 1 and is_equal_approx(m.recharge_left, wait * 0.25), "(worn down to its last hit, the wait running)")
 	check(m.block() and not m.is_up() and is_equal_approx(m.recharge_left, wait) and is_zero_approx(m.progress()),
-		"the hit that breaks it starts the wait again (DESIGN-TBD, docs/questions/s3.md 1): back %.1f s after it broke"
+		"the hit that breaks it starts the wait again (DESIGN-TBD, docs/OPEN_QUESTIONS_DEFERRED.md item 1216): back %.1f s after it broke"
 		% m.recharge_left)
 	check(not m.tick(wait * 0.5) and not m.is_up() and m.tick(wait * 0.5) and m.hits == hits,
 		"broken, it's back whole when that wait is over")
@@ -105,7 +105,7 @@ func _test_state() -> void:
 	check(not m.take_pickup() and m.hits == hits + rules.armor_pickup_extra_hits,
 		"up to %d over, then nothing" % rules.armor_pickup_extra_hits)
 	check(not m.block() and m.hits == hits and not m.is_recharging() and is_equal_approx(m.progress(), 1.0),
-		"the extra hit goes first and leaves the armor whole: nothing is down, so no wait (DESIGN-TBD, docs/questions/s3.md 2)")
+		"the extra hit goes first and leaves the armor whole: nothing is down, so no wait (DESIGN-TBD, docs/OPEN_QUESTIONS_DEFERRED.md item 1217)")
 	check(not m.block() and m.hits == hits - 1 and m.is_recharging(), "the next hit starts the wait")
 	check(m.tick(wait) and m.hits == hits, "and it comes back to its own count, not the extra hit")
 	for i: int in hits - 1:

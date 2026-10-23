@@ -1080,17 +1080,13 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     fades in over 0.8 s and out over 0.45 s (its data).
 
 **Free armor** (from G3; numbers in `data/tuning/game_rules.tres`, F6 "Game rules", Armor; the shop line in `data/shop/catalog.json`; review the HUD with the screens showcase `--screen=hud_armor`)
-244. **Worn armor** (GDD §4, §8). An upgraded armor takes more than one hit. When it has lost some hits
-    but isn't broken, does anything come back?
-    **Placeholder:** nothing comes back until its last hit goes; then it breaks and comes back whole
-    after its tier's wait (`DamageRules.Armor` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`).
-    The alternative: each lost hit comes back on its own after the wait.
 245. **An armor pickup when the armor is whole** (GDD §10, the standard armor rule). A pickup brings
     broken or worn armor back whole at once. Taken while the armor is already whole, what should it do?
     **Placeholder:** it adds one hit over the armor's count, up to `armor_pickup_extra_hits` = 1
     (`data/tuning/game_rules.tres`, F6 "Game rules"; `DESIGN-TBD`). The extra hit is used first and
     doesn't come back: after a break the armor returns to its own count. The alternative: it gives
-    credits.
+    credits. *(Refined by task S3, October 23, 2026: losing the extra hit starts no wait, item 1217.)*
+
 246. **Switching the armor off** (GDD §8, Rules: the equip toggle). The shop's equip toggle switches
     the armor upgrade off, down to the free armor. Should the free armor be switchable too (a challenge
     run without it)?
@@ -6870,4 +6866,47 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    stay as it was? (GDD §9.7, Origin; the Dead Zone's intro, `docs/architecture/cinematics.md`.)
    Placeholder: it does, like every host. DESIGN-TBD in `cyborg_body.gd` (`CyborgBody.build`, the `elif host:` branch
    that makes the smoke; the glow is the material's `host_rim`, set in `CyborgSuit.new_material`).
+
+### Folded on October 23, 2026 (task S3, the armor's wait from any hit; coming off a wall moves one lane; item 244 answered by the owner, `docs/OPEN_QUESTIONS_ANSWERED.md`)
+
+1216. **A hit while the armor's wait runs** (GDD §4, Free armor; §8, Armor). GDD §4 now says any hit starts the wait and
+   at its end the armor is back whole, and still says "after it breaks it comes back 30 seconds later". Placeholder: a
+   hit the armor survives while its wait runs leaves the wait running (it doesn't start again), but the hit that
+   breaks it starts the wait again, so broken armor is always back the tier's whole wait after it broke. Armor III
+   (3 hits, 25 s): hits at 0 s and 10 s, back whole at 25 s; hits at 0, 10 and 20 s (broken), back at 45 s.
+   `DamageRules.Armor.block()` in `scripts/core/damage_rules.gd`, `DESIGN-TBD`. Alternatives: (a) the wait keeps
+   running through the break too (back at 25 s in the second example: 5 s after it broke, against "after it breaks it
+   comes back 30 seconds later"); (b) every hit starts the wait again (back 25 s after the last hit). Each is a
+   one-line change.
+
+1217. **A pickup's extra hit** (GDD §10, the standard armor rule; item 245's placeholder adds one hit over the armor's
+   count to whole armor). Placeholder: the extra hit isn't part of the armor's own count. It goes first, and losing it
+   leaves the armor whole, so no wait starts; the wait brings back the armor's own count, never the extra hit
+   (`DamageRules.Armor.block()` and `tick()`, `DESIGN-TBD`). Alternative: losing it starts the wait, and the wait
+   brings it back too.
+
+1218. **The HUD's worn armor** (GDD §4; the HUD's contents are open, OPEN_QUESTIONS §5). Placeholder: from any hit the
+   armor's icon shows the ring filling in the kit's calm accent until it's back whole (then it flashes and
+   `armor_back` plays, as for broken armor). While it still has hits left the icon stays lit, with its hits left on
+   the badge and no shading over it (`CooldownIcon.lit_while_cooling`, set by `RunHud`); broken, it dims and shades as
+   before. The shop's armor texts now say "back {seconds} s after a hit" (`data/shop/catalog.json`). Review:
+   `screens_showcase.tscn -- --screen=hud_armor --tier=3 --worn`.
+
+1219. **Coming off the wall at The Hush's platforms** (GDD §3, Side walls and "Extended wall runs in The Hush"; the owner:
+   coming off the wall "must behave exactly as it does everywhere else in the game: one lane"). The cause: the notch
+   at each platform's near end (item 1050) drops every standard wall run off onto the platform just as it reaches it,
+   0.25 to 0.8 s before that wall run would have ended, and just where the move to come off the wall is due; that move,
+   a moment after the drop, was a lane switch from the outer lane into the hole beside the platform. Placeholder: the
+   notch is marked as a wall gap that sets the runner down (`LevelLayout.SETS_DOWN`, `WallRunGapPlacement.openings_of`),
+   and the runner's first move away from the wall after it is the dismount it would have been on the wall, whenever it
+   comes: it moves them no further (`Player._on_move`, `DESIGN-TBD`). It lasts until they step back onto a wall, or a
+   pull out of a pit, a teleport, a death or a revive ends it; no timer, so a late move does what an early one does. A
+   second move switches lanes; a move back toward the wall still steps back on. It can't swallow a move that would have
+   saved them: the lane beside every platform is a hole all along it (checked in The Hush's builds at 3, 5 and 6 lanes).
+   One harmless cost: on the double with both walls lit, crossing from one platform to the other wall in a jump takes
+   one move more. Nothing else changed: after a wall run's own end, a plain wall gap's drop or a repel, a move away
+   switches lanes as it always did. Alternatives: (a) the same after every drop and every wall run's end, for a moment
+   (it would swallow a quick move right after one, such as the hover truck's dodge out of its lane after a wall gap
+   drops the runner into it, which `test_hover_truck` relies on); (b) the move as a late wall jump, with its leap,
+   rather than nothing.
 

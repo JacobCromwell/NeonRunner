@@ -466,3 +466,16 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   smoke rises off it (one draw call), fading out as the runner closes in for a stomp. The smoke is kept faint because,
   denser, it recoloured the warnings behind a host (a red charge read as a fence's pink); the glow carries the read.
   Questions in items 1213-1215 (all deferred; 1213 asks whether the smoke should be denser at that cost).
+- [x] **Armor comes back after any hit** (task S3, a bug): the armor regenerates only once it is at 0. Its wait should
+  start when a hit is taken: armor of 3 knocked to 2 starts the timer, and at its end the armor is back to 3.
+  DONE (S3): any hit the armor survives starts its wait, and at its end it is back whole; the HUD keeps worn armor's icon
+  lit with its hits left while its ring fills. Questions in items 1216-1218 (deferred; item 244 answered).
+- [x] **The Hush's chasms: letting go of the wall moves two lanes** (task S3, a bug): on The Hush's long extended wall
+  runs (the owner's "chasms"), pressing left or right to come off the wall threw the runner two lanes instead of one,
+  maybe where the wall section ends right before a recharge platform. Coming off the wall should behave as it does
+  everywhere else in the game.
+  DONE (S3): the cause was the short notch cut into the wall at each recharge platform's near end: it dropped the
+  runner onto the platform just before their move to come off the wall, so that move became a lane switch from the
+  platform into the hole beside it. Now, after that drop, the first move away from the wall is the dismount (one lane in
+  all), however late it comes, until the runner steps back onto a wall. Everywhere else is unchanged. Question in item
+  1219 (deferred).
