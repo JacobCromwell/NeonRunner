@@ -484,8 +484,8 @@ prototype level at 3, 5 and 6 lanes, three difficulties and eight seeds the buil
 whose places it took, each where one fits, spaced, the same on a second build, most builds with some, none without the
 feature) and the campaign (Relay Station's start after its teleporters, none in Frost Foundry, every own-seed build as
 without it, Relay Station's introduction at the campaign's lane count, some in every level at one lane count at least,
-the counts printed); and full levels in god mode, every
-round fair and most Heavy Cyborgs passed firing a stream. About a minute.
+the counts printed); and full levels in god mode, every round fair (every later round flying half the minimum warning
+at least) and most Heavy Cyborgs passed firing a stream. About a minute.
 `test_octodog_jars` checks the Octodog jars that break open (task Q5; Octodog jars): the layout's marks (a jar and its dog
 finding each other, `copy` and `to_dict` keeping them, a held dog none of the level's standing Octodogs, a decoy holding
 no dog and never one of the feature's jars); the generator over the Ice Lab's levels at 3, 5 and 6 lanes (up to the count
