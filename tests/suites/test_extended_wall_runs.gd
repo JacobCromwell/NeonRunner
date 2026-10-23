@@ -8,8 +8,9 @@ extends TestSuite
 ##   double about two standard wall runs long and the triple about three;
 ## - the generator: The Hush at 3, 5 and 6 lanes on its own seed has its three, in order (a double with both walls,
 ##   then a double and a triple with one wall), each keeping its rules (LayoutChecks.check_wall_run_gaps), its other
-##   wall open over its crossing where it has one lit wall, a floor route across it (FloorRoute: a step onto the wall
-##   from each stretch to step on), no warnings; no other campaign level asks for any;
+##   wall open over its crossing where it has one lit wall, its notches (and no other wall gap) setting the runner down
+##   (LevelLayout.SETS_DOWN, task S3), a floor route across it (FloorRoute: a step onto the wall from each stretch to
+##   step on), no warnings; no other campaign level asks for any;
 ## - real physics at 3, 5 and 6 lanes: a runner who steps onto the lit wall in its lit stretch, lands on each platform
 ##   and steps back on from it crosses (early, midway or late in each stretch), on either wall where both are lit;
 ##   one who stays on the platform falls into the next hole, one who jumps from it too, and one who heads for the open
@@ -192,6 +193,15 @@ func _test_hush() -> void:
 		check(got == want, "its three, in order: a double with both walls, a double and a triple with one (%s) %s"
 			% [got, tag])
 		LayoutChecks.check_wall_run_gaps(self, layout, config, tag)
+		# Task S3: only the notches set the runner down; every other wall gap drops them as it always did.
+		var notches: int = 0
+		var sets_down: int = 0
+		for w: Dictionary in extended:
+			notches += WallRunGapPlacement.sides_of(w).size() * WallRunGapPlacement.platforms_of(w).size()
+		for g: Dictionary in layout.wall_gaps:
+			sets_down += 1 if bool(g.get(LevelLayout.SETS_DOWN, false)) else 0
+		check(sets_down == notches and notches == 5, "only its %d notches set the runner down (%d wall gaps do) %s"
+			% [notches, sets_down, tag])
 		var grid := FloorRoute.new(layout, config.movement_for(tuning))
 		for w: Dictionary in extended:
 			var where: String = "(%d runs at %.0f m) %s" % [WallRunGapPlacement.runs_of(w), float(w["start"]), tag]
@@ -211,6 +221,14 @@ func _test_hush() -> void:
 						whole = whole and (notch or layout.wall_supported(s, d))
 						d += 1.0
 			check(whole, "its lit walls stand where it is crossed, but for its platforms' notches " + where)
+			# Task S3: each notch sets the runner down (LevelLayout.SETS_DOWN), through the generator's wall gaps.
+			var marked: int = 0
+			for s: int in WallRunGapPlacement.sides_of(w):
+				for p: Vector2 in WallRunGapPlacement.platforms_of(w):
+					var g: Dictionary = LevelLayout.wall_gap_at(layout.wall_gaps, s, p.x + 0.01)
+					marked += 1 if bool(g.get(LevelLayout.SETS_DOWN, false)) and absf(float(g["start"]) - p.x) < 0.01 else 0
+			check(marked == WallRunGapPlacement.sides_of(w).size() * WallRunGapPlacement.platforms_of(w).size(),
+				"each of its notches sets the runner down (%d) %s" % [marked, where])
 			var route: Dictionary = grid.find(grid.clear_start(float(w["entry"])), float(w["landing"]))
 			check(bool(route["ok"]), "a way across it %s: %s" % [where, route.get("reason", "")])
 			var steps: int = 0

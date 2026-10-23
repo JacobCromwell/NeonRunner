@@ -277,7 +277,8 @@ func _process(_delta: float) -> void:
 			icon.count = int(p.get(entry[2]))
 			if entry[0] == &"armor":
 				icon.set_cooldown(1.0 - p.armor_state.progress(), 1.0)
-				# Worn but not broken it still protects: lit, with only the ring showing the wait (task S3).
+				# Worn but not broken it still protects: lit, with only the ring showing the wait (task S3). DESIGN-TBD
+				# (docs/questions/s3.md 3): the worn armor's look.
 				icon.lit_while_cooling = p.armor_state.is_up()
 	if world.powerups != null and world.powerups.has_method(&"hud_state"):
 		_update_powerups(world.powerups.call(&"hud_state"))
