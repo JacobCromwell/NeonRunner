@@ -759,6 +759,13 @@ static func _take_out(gen: LevelGenerator, going: Array, before: Dictionary) -> 
 			lay.cuts.assign(cuts)
 			lay.doodads.assign(doodads)
 			return false
+	# Task S3: an enemy the danger density pass added that goes here (the last resort after the zone doodads, in a level
+	# the pass's relaxed rules filled) is no longer one it added (its report, LevelGenerator.danger_density_result).
+	var added: Array = gen.danger_density_result.get("added_enemies", [])
+	for e: Dictionary in going:
+		for i: int in range(added.size() - 1, -1, -1):
+			if is_same(added[i], e):
+				added.remove_at(i)
 	return true
 
 
