@@ -161,9 +161,47 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
 **The Corporate zone** (`scripts/world/skins/corporate/`): `CorporateTrains` (the floor: the roofs of
 maglev trains, and the guideway trench below), `CorporatePlaza` (the paved deck of the plaza variant,
 `floor_style` PLAZA, `data/skins/corporate_plaza_skin.tres`), `CorporateTowers` (the walls, and the
-skybridges and hovering gunships over the street), `CorporateCeilings`, `CorporateShips` (the gunship
-template) and `CorporateProps` (fences and signs); its building faces use their own shader,
-`corp_facade.gdshader`.
+skybridges and hovering gunships over the street), `CorporateMilitary` and `CorporateMansions` (the backdrop's
+first and third layers, below), `CorporateCeilings`, `CorporateShips` (the gunship template) and `CorporateProps`
+(fences and signs); its building faces use their own shader, `corp_facade.gdshader`.
+- *The backdrop is three layers* (the owner's reference image, `docs/art/reference/corporate_backdrop.webp`; the
+  open questions are in `docs/questions/corporate-backdrop.md`). Every building on a wall side (a run of 1-3 lots,
+  `CorporateTowers.building()`) is built from the street up:
+  1. *The military, closest to the player* (`CorporateMilitary`). Through the calm band the wall is the military's, drawn
+     as flat paint in `corp_facade.gdshader` (styles 5-8; a face is still one quad, so it costs the build almost
+     nothing and nothing sticks out of the wall-run band): olive armour plate in framed, riveted panels over a
+     precast skirt with a jersey barrier's profile, cable runs, vertical conduits, stencilled unit codes (`MIL_PLATE`);
+     the same with steel gates every 13 m (`MIL_GATE`); stacked, chamfered precast blocks under three-tone camouflage
+     (`MIL_CAMO`) or bare (a jersey-barrier wall); a compound's blast walls (`STYLE_BLAST`, as before). Which wall a
+     building has is `CorporateMilitary.look_of()` (weights `mil_weights`). Above the band the military building goes on
+     to its own roof, `mil_min_height` to `mil_max_height` (8.4-11.6 m): upper storeys with slit windows and pipes
+     (`MIL_UPPER`) or more blocks, a sandbag or precast parapet and razor wire along the edge
+     (`wall()`), and on the roof deck behind it a prop every 5 m by hash: a dish, a mast with a white beacon, a water
+     tank, supply containers, a radar dome, and a watchtower with a searchlight aimed at the sky (`roof()`). A roof
+     that steps up over its neighbour has its end face drawn (`step_face()`). Everything stands behind the wall plane.
+  2. *The corporate towers, a little higher and slightly behind.* A tower stands `deck_setbacks` (2.5-6.5 m) behind the
+     military wall, rising from the military roof (`Building.mil_top`) to 44-170 m in the glass curtain walls and fins
+     it always had, with the cold light strips, the service crown, the cameras and the antenna. Its signs: the brand's
+     mark inside a glowing ring on the near face at the street edge (`PAT_CORP_LOGO` mode 4), and outrigger signs
+     over the street from `banner_share` of the towers, each a cloth banner, a glowing blade sign (`PAT_CORP_BLADE`:
+     ring and mark over rows of lettering) or the ring on a plate (`blade_share`, `ring_sign_share`), alongside the
+     big screens (ad or feed, `street_screen_share`) and the skybridges. Arms reach from the tower's face over the
+     military roof; everything hung over the street stays above `OVER_STREET_MIN`.
+  3. *The elites' mansions, higher up and rarer.* About one tower in five (`mansion_share`) ends not in a service crown
+     but in a mansion (`CorporateMansions`): 2-4 terraces, each a storey (3.6 m, on the facade shader's storey grid)
+     set back 2.2 m and in 1.4 m from each end behind the one below, the lowest 18-42 m up (`mansion_min_y`,
+     `mansion_max_y`). A terrace's face is one `MANSION` quad (ivory stone, paired columns, tall arched windows lit warm,
+     a balustrade, a cornice with dentils; the rooms' light is emitted after the street's shading, steady); the cheap
+     geometry is the slabs between terraces, a clipped hedge and topiary along each edge, a cornice over the top, on
+     some a domed pavilion with a lit lantern, and a soft warm halo per terrace. The light is a desaturated champagne
+     white (`mansion_light_color`), clear of the hazard hues: the suite pins it, and pins every mansion's glowing parts
+     at `mansion_min_y` or more. From the runner's low camera the walls' upper parts show only in a slice at the top of
+     the frame, so the mansions are small warm accents there; from a roof they are the elites' district.
+  The sky is the reference's moody dark grey: a thick overcast and a few columns of smoke over the far skyline (the
+  night sky shader's clouds and smoke, `cloud_amount`, `smoke_amount`; the new colours as sRGB `Vector3`s, `srgb()`).
+  Nothing in the backdrop animates (the facade shader has no `TIME`: Reduced flashing has nothing to change); a
+  chunk's cost stays in the zone's build budget (about 7,800 vertices and 26 surfaces a chunk at 5 lanes: the layers draw
+  in the existing facade, solid and glow materials, so they add no surface).
 - *The brand.* One harsh colour, `brand_color` (an electric ultramarine between the UI's azure and
   violet, clear of every hazard hue), and one mark, `corp_logo()` in `kit_logo.gdshaderinc`, which
   Gangland's corporate crates, containers and ads share. Glowing decoration keeps to cold white and the
@@ -174,8 +212,8 @@ template) and `CorporateProps` (fences and signs); its building faces use their 
   `carriage_plan()` lays out a floor piece's roofs and joints: no joint within `GAP_MARGIN` of a gap's
   edge, and a thin seam instead of a gangway where one would cross a chunk cut.
 - *Wall gaps open onto a service alley* (task L4, `CorporateTowers.recess`): the cut buildings' end faces (the
-  podium's cladding, a tower's glass and service crown, a compound's blast walls, a low building's roof line) 24 m
-  back, a tower across (60-130 m) and the trench floor, below the street in the trench's own `PAT_CORP_UNDER` shade
+  military wall and its upper storeys, a tower's glass and service crown, a compound's blast walls, a low building's
+  roof line) 24 m back, a tower across (60-130 m) and the trench floor, below the street in the trench's own `PAT_CORP_UNDER` shade
   (the trench walls at the faces still hide most of it from the street).
 - *Gaps read as holes.* Everything below the running surface (the carriages' sides and ends, the
   guideways, the trench, the plaza deck's edges) is drawn with `PAT_CORP_UNDER` in `gap_inside_color`, a
@@ -183,7 +221,8 @@ template) and `CorporateProps` (fences and signs); its building faces use their 
   that ends the run; nothing below is lit or glows but the orange strip. The suite pins it over a whole
   level, for the trains and the plaza.
 - *The calm band.* Every wall is flush through `band_top` (7.2 m): nothing glows, lights up or sticks
-  out there (partial wall fences, B5, sit in it); decorative signs and screens start at
+  out there (partial wall fences, B5, sit in it; the military's walls are paint, and the suite pins that the band
+  shows only their styles); decorative signs and screens start at
   `decor_min_height` (8 m). What hangs out over the street (banners, big screens, skybridges) stays
   above `CorporateTowers.OVER_STREET_MIN`, and nothing of a ceiling rises more than
   `CorporateCeilings.TOP_LIMIT` above its underside, so the two never meet.
@@ -193,8 +232,8 @@ template) and `CorporateProps` (fences and signs); its building faces use their 
   `mesh_for(kind, ...)` builds a given kind directly.
 - *A boss over the street.* Hostile Takeover's gunship paces the train overhead (GDD §10): an arena skin
   with `street_screen_share`, `banner_share`, `skybridge_share` and `hover_ship_share` at 0 builds
-  nothing over the lanes above the ceilings (the suite checks it). Searchlights never point at the
-  lanes (a light locking onto them is the Floating Head's warning).
+  nothing over the lanes above the ceilings (the suite checks it; the roof props and the mansions stand behind the
+  wall plane). Searchlights never point at the lanes (a light locking onto them is the Floating Head's warning).
 - *The military presence* is data: `compound_share`, `hover_ship_share`, `ship_weight` and
   `military_car_share`; the plaza variant raises them for Corporate 2's heavier presence.
 

@@ -559,7 +559,7 @@ Build a fresh material (`MeshKit.solid(params)`) or copy the parameters by name 
 
 **Pattern ids.** Ids up to 19 are the City's and Gangland's, in `kit_solid.gdshader` itself; ids 20-29
 are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 the Corporate zone's
-(30-37 in use), in `kit_corporate.gdshaderinc`, ids 40-49 the Dead Zone's (40-46 in use), in
+(30-38 in use), in `kit_corporate.gdshaderinc`, ids 40-49 the Dead Zone's (40-46 in use), in
 `kit_dead_zone.gdshaderinc`, and ids 50-59 the Golden Zone's (all in use), in
 `kit_golden.gdshaderinc` (each: one include and one dispatch line in `kit_solid`; the Golden Zone's
 and the Dead Zone's includes follow `cult_mark()`, which their emblems use).

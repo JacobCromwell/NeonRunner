@@ -19,6 +19,10 @@ extends SkinSuite
 ## - the cult: its emblem is the owner's choice, small and high, where cult_emblems() says; its feed
 ##   plays on the shared material where feed_boards() says, untinted, far above the wall-run band;
 ## - a boss arena can clear everything hung over the street;
+## - the backdrop's three layers (the owner's reference image): the military's walls at street level (never the
+##   old sterile podium), the corporate towers set back and rising from the military roof, the elites' mansions
+##   rare, high and warm (a champagne white clear of the hazard hues), nothing animated, no scenery glowing in a
+##   hazard hue over a whole level;
 ## - the still floor carries drifting grit and speed streaks.
 
 const CORP_SKIN_PATH: String = "res://data/skins/corporate_skin.tres"
@@ -70,6 +74,7 @@ func run() -> void:
 	await _cult_emblem(skin)
 	await _cult_feed(skin)
 	await _boss_arena(skin)
+	await _backdrop(skin)
 	await determinism(skin, CORP_LEVEL_PATH)
 	doodads_ok(skin, "corporate")
 	var plaza := load(PLAZA_SKIN_PATH) as CorporateSkin
@@ -87,7 +92,7 @@ func run() -> void:
 ## the brand's blue, lit surfaces desaturated, the fence pink far more saturated than any of them.
 func _palette(skin: CorporateSkin) -> void:
 	var glowing: Array[Color] = [skin.brand_color, skin.flood_color, skin.window_color, skin.ceiling_lamp_color,
-		skin.engine_color, skin.searchlight_color, skin.screen_text_color, skin.emblem_color()]
+		skin.engine_color, skin.searchlight_color, skin.screen_text_color, skin.emblem_color(), skin.mansion_light_color]
 	var bad: PackedStringArray = []
 	for c: Color in glowing:
 		if _hazard_hue(c):
@@ -95,9 +100,11 @@ func _palette(skin: CorporateSkin) -> void:
 	check(bad.is_empty(), "decorative light keeps to cold white and the brand's blue: %s" % ", ".join(bad))
 	var lit: Array[Color] = [skin.olive_color, skin.gunmetal_color, skin.pilaster_color, skin.soffit_color,
 		skin.concrete_color, skin.joint_color, skin.ledge_color, skin.livery_color, skin.brand_paint_color, skin.marking_color,
-		skin.pylon_color, skin.metal_color, skin.gap_inside_color, skin.wall_mark_color]
+		skin.pylon_color, skin.metal_color, skin.gap_inside_color, skin.wall_mark_color, skin.concrete_block_color,
+		skin.sandbag_color]
 	for list: PackedColorArray in [skin.roof_colors, skin.military_roof_colors, skin.podium_colors, skin.facade_colors,
-			skin.blast_colors, skin.paving_colors]:
+			skin.blast_colors, skin.paving_colors, skin.plate_colors, skin.camo_colors, skin.mansion_stone_colors,
+			skin.greenery_colors]:
 		lit.append_array(Array(list))
 	var loud: PackedStringArray = []
 	for c: Color in lit:
@@ -113,6 +120,17 @@ func _palette(skin: CorporateSkin) -> void:
 		if _chroma(c) > 0.08:
 			greys.append(str(c))
 	check(greys.is_empty(), "the steels are greys: %s" % ", ".join(greys))
+	# The military layer's paints keep off the hazard hues too (khaki, olive and olive black: dull, never a ramp's green or
+	# a sign's yellow), and the mansions' light is clearly less saturated than the sign yellow it could be mistaken for.
+	var paints: PackedStringArray = []
+	for c: Color in Array(skin.plate_colors) + Array(skin.camo_colors) + Array(skin.mansion_stone_colors) + [
+			skin.concrete_block_color, skin.sandbag_color]:
+		if _hazard_hue(c) or _near_colour(c, skin.sign_frame_color) or _near_colour(c, skin.ramp_color):
+			paints.append(str(c))
+	check(paints.is_empty(), "the military and mansion paints keep off the hazard hues: %s" % ", ".join(paints))
+	check(skin.mansion_light_color.s < skin.sign_frame_color.s * 0.5 and skin.mansion_light_color.s < GLOW_SATURATION_LIMIT,
+		"the mansions' champagne light (saturation %.2f) is far less saturated than the sign yellow (%.2f)" % [
+			skin.mansion_light_color.s, skin.sign_frame_color.s])
 	check(skin.olive_color.g >= skin.olive_color.b and _chroma(skin.olive_color) < 0.15
 		and _hue_distance(skin.olive_color, skin.ramp_color) > 0.08, "the olive is a dull khaki, far from the ramps' green")
 
@@ -236,6 +254,10 @@ func _surfaces(skin: CorporateSkin) -> void:
 		var c: Color = facade.get_shader_parameter(u)
 		if _hazard_hue(c):
 			lights.append("%s %s" % [u, c])
+	for u: String in ["camo_a", "camo_b", "camo_c", "mansion_light"]:
+		var v: Vector3 = facade.get_shader_parameter(u)
+		if _hazard_hue(Color(v.x, v.y, v.z)):
+			lights.append("%s %s" % [u, v])
 	check(lights.is_empty(), "the facades' lights and paints keep off the hazard hues: %s" % ", ".join(lights))
 	await free_track(track)
 
@@ -679,6 +701,115 @@ func _boss_arena(skin: CorporateSkin) -> void:
 					counts[which] += 1)
 	check(counts[0] > 0 and counts[1] == 0, "a boss arena can clear the air over the street (%d vertices over it, %d cleared)" % [
 		counts[0], counts[1]])
+
+
+## The backdrop's three layers (the owner's reference image, docs/art/reference/corporate_backdrop.webp): over 3 km of
+## walls every building stands on the military's wall at street level, with a roof between mil_min_height and
+## mil_max_height, and every kind of wall turns up (armour plate, gates, camouflaged and bare blocks, a compound's blast
+## walls); the corporate towers are set back and their faces start at the military roof; the elites' mansions are rarer
+## than the towers, start high up on the storey grid and have two to four terraces. Then over a whole level, built: the
+## walls' band below band_top is only ever the military's paint (never the old podium), a tower's faces start above the
+## military roof, a mansion's faces start at mansion_min_y or more, nothing the walls build glows in a hazard hue (the
+## mansions' light, the signs, the beacons), the mansions' glowing parts are all high up, and the facade shader never
+## animates (so nothing flickers: Reduced flashing has nothing to change).
+func _backdrop(skin: CorporateSkin) -> void:
+	var towers: CorporateTowers = skin.towers()
+	check(skin.mil_min_height > skin.band_top and skin.mil_max_height >= skin.mil_min_height,
+		"the military roof is above the calm band (%.1f to %.1f m over %.1f)" % [skin.mil_min_height, skin.mil_max_height,
+			skin.band_top])
+	var looks: Dictionary = {}
+	var tower_count: int = 0
+	var mansion_count: int = 0
+	var problems: PackedStringArray = []
+	var min_setback: float = INF
+	for v: float in skin.deck_setbacks:
+		min_setback = minf(min_setback, v)
+	for side: int in [-1, 1]:
+		var span: Vector2i = towers.building_at(side, 0)
+		while float(span.x) * skin.lot_length < 3000.0:
+			var b: CorporateTowers.Building = towers.building(side, span)
+			looks[b.look] = int(looks.get(b.look, 0)) + 1
+			if b.kind != CorporateTowers.Kind.COMPOUND and (b.mil_top < skin.mil_min_height - 0.01
+					or b.mil_top > skin.mil_max_height + 0.01):
+				problems.append("a military roof at %.2f m (building %d)" % [b.mil_top, b.id])
+			if b.kind == CorporateTowers.Kind.TOWER:
+				tower_count += 1
+				if b.setback < min_setback - 0.01:
+					problems.append("a tower only %.1f m behind the military wall (building %d)" % [b.setback, b.id])
+				if b.crown < b.mil_top + 6.0:
+					problems.append("a tower body under 6 m tall (building %d)" % b.id)
+			if b.mansion:
+				mansion_count += 1
+				if b.kind != CorporateTowers.Kind.TOWER or b.mansion_y < skin.mansion_min_y - CorporateMansions.FLOOR * 0.5 \
+						or b.mansion_y < b.mil_top + 6.9 or b.tiers < 2 or b.tiers > 4:
+					problems.append("a mansion at %.1f m with %d terraces (building %d)" % [b.mansion_y, b.tiers, b.id])
+				if b.height < b.mansion_y + CorporateMansions.FLOOR * float(b.tiers):
+					problems.append("a mansion shorter than its terraces (building %d)" % b.id)
+			span = towers.building_at(side, span.y + 1)
+			if problems.size() > 5:
+				break
+	print("  corporate backdrop: looks %s, %d mansions on %d towers over 3 km of walls" % [looks, mansion_count, tower_count])
+	check(problems.is_empty(), "every building has a military roof, towers stand back from it, mansions are high:\n  %s" % "\n  ".join(problems))
+	check(looks.size() == 5, "every look of the military wall turns up: %s" % looks)
+	var share: float = float(mansion_count) / float(maxi(tower_count, 1))
+	check(share > 0.05 and share < 0.35, "mansions are rare (%.0f%% of the towers)" % (share * 100.0))
+	var geo := TrackGeometry.new(5, tuning)
+	var wall: float = geo.wall_x()
+	var facade: Material = skin.facade_material()
+	var solid: Material = skin.solid_material()
+	var glow: Material = skin.glow_material()
+	var styles: Dictionary = {}
+	var low_towers: PackedStringArray = []
+	var low_mansions: PackedStringArray = []
+	var glowing_hues: PackedStringArray = []
+	var low_lights: PackedStringArray = []
+	# (A lambda copies the ints it captures: counters live in an array.)
+	var mansion_faces: Array[int] = [0]
+	await visit_level(level(CORP_LEVEL_PATH, 5, 0.6), skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
+		# The walls' meshes sit at the chunk's origin (ceilings, hazards and triggers are placed nodes).
+		if m.position != Vector3.ZERO or material == skin.drift_material() or (material != facade and material != solid
+				and material != glow) or _under(m, func(n: Node) -> bool: return n is Area3D) or under_hazard(m):
+			return
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+		var uv2 := PackedVector2Array()
+		if arrays[Mesh.ARRAY_TEX_UV2] != null:
+			uv2 = arrays[Mesh.ARRAY_TEX_UV2]
+		for i: int in verts.size():
+			var p: Vector3 = verts[i]
+			var c: Color = colors[i]
+			if material == facade:
+				var style: int = roundi(uv2[i].x)
+				if absf(absf(p.x) - wall) < 0.02 and p.y < skin.band_top - 0.1 and p.y >= 0.0:
+					styles[style] = int(styles.get(style, 0)) + 1
+				var behind: float = absf(p.x) - wall
+				if (style == CorporateTowers.STYLE_CURTAIN or style == CorporateTowers.STYLE_FINS) and behind > 2.0 \
+						and behind < 7.5 and p.y < skin.mil_min_height - 0.01 and low_towers.size() < 4:
+					low_towers.append("style %d at %s" % [style, p])
+				if style == CorporateTowers.STYLE_MANSION:
+					mansion_faces[0] += 1
+					if p.y < skin.mansion_min_y - CorporateMansions.FLOOR * 0.5 and low_mansions.size() < 4:
+						low_mansions.append(str(p))
+			elif material == solid or material == glow:
+				var lit: bool = material == glow or c.a > 0.0
+				if lit and _hazard_hue(c) and not _same_rgb(c, skin.gap_edge_color) and glowing_hues.size() < 4:
+					glowing_hues.append("%s at %s" % [c, p])
+				if lit and _same_rgb(c, skin.mansion_light_color) and p.y < skin.mansion_min_y - 1.0 and low_lights.size() < 4:
+					low_lights.append("%s at %s" % [c, p]))
+	print("  corporate walls at street level (5 lanes): styles %s, %d mansion vertices" % [styles, mansion_faces[0]])
+	check(int(styles.get(CorporateTowers.STYLE_PODIUM, 0)) == 0 and int(styles.get(CorporateTowers.STYLE_CURTAIN, 0)) == 0,
+		"the wall-run band is only the military's paint, never the old podium or glass: %s" % styles)
+	for style: int in [CorporateTowers.STYLE_BLAST, CorporateTowers.STYLE_MIL_PLATE, CorporateTowers.STYLE_MIL_CAMO,
+			CorporateTowers.STYLE_MIL_GATE]:
+		check(int(styles.get(style, 0)) > 0, "the band shows facade style %d over a whole level" % style)
+	check(low_towers.is_empty(), "a tower's glass starts above the military roof (%.1f m): %s" % [skin.mil_min_height,
+		", ".join(low_towers)])
+	check(mansion_faces[0] > 0 and low_mansions.is_empty(), "mansions turn up over a level and stay high up (%.0f m and over): %s" % [
+		skin.mansion_min_y, ", ".join(low_mansions)])
+	check(glowing_hues.is_empty(), "nothing the walls build glows in a hazard hue: %s" % ", ".join(glowing_hues))
+	check(low_lights.is_empty(), "the mansions' glowing parts stay high up: %s" % ", ".join(low_lights))
+	var shader_text: String = FileAccess.get_file_as_string("res://scripts/world/meshes/shaders/corp_facade.gdshader")
+	check(not shader_text.contains("TIME"), "the facade shader (every backdrop layer) never animates, so nothing flickers")
 
 
 func _has_seam(mesh: ArrayMesh, x: float, skin: CorporateSkin) -> bool:
