@@ -1,21 +1,24 @@
 class_name CorporateTowers
 extends RefCounted
-## Corporate towers for the walls (CorporateSkin, GDD §5), and what hangs over the street between them.
-## A wall side is split into lots of `lot_length` metres (MeshKit.lot_run); a building covers 1–3 lots
-## and is one of three kinds:
-## - a TOWER: a flush podium of sterile cladding through the calm band (sometimes a lobby of dark
-##   smoked glass), then a glass curtain wall or a tower of fins up to 44–170 m, often stepped back or
-##   behind an alley, with cold light strips up its corners, a service crown, the brand's glowing sign
-##   on its near face, banners on outriggers or a big screen hung out over the street (an ad, or the
-##   cult's feed), and surveillance cameras on the podium's cornice;
-## - a LOW building: the podium only, with an ad or the feed on a board on its roof or a steel sculpture
-##   of the brand's mark, and a far row of towers behind it, so the sky opens up;
-## - a military COMPOUND (the military presence, GDD §5): prefab blast walls through the band, wire on
-##   top, and behind them an armoured block, a watchtower with a searchlight aimed at the sky, stacked
+## The Corporate walls (CorporateSkin, GDD §5): the backdrop's three layers, and what hangs over the street between
+## them (the owner's reference image, docs/art/reference/corporate_backdrop.webp). A wall side is split into lots of
+## `lot_length` metres (MeshKit.lot_run); a building covers 1–3 lots, stands on the military's wall at street level
+## (CorporateMilitary: layer 1, olive armour plate, gates or camouflaged precast blocks through the calm band, then
+## the military building's own upper storeys and roof deck up to 9–13 m) and is one of three kinds:
+## - a TOWER (layer 2, the corporate one): set back by 3–8 m behind that roof, a glass curtain wall or a tower of
+##   fins up to 44–170 m, often behind an alley, with cold light strips up its corners, a service crown, the brand's
+##   glowing ring emblem on its near face, outrigger signs (cloth banners, glowing blade signs, the ring emblem on a
+##   plate) or a big screen hung out over the street (an ad, or the cult's feed), and surveillance cameras on the
+##   military cornice below. Some towers (layer 3, rarer and higher) are crowned with an elite's MANSION
+##   (CorporateMansions): terraces of ivory stone in warm light, columns, balustrades, greenery;
+## - a LOW building: the military building alone, with an ad or the feed on a board on its roof or a steel
+##   sculpture of the brand's mark, and a far row of towers behind it, so the sky opens up;
+## - a military COMPOUND (the military presence, GDD §5): prefab blast walls (or camouflaged blocks) through the band,
+##   wire on top, and behind them an armoured block, a watchtower with a searchlight aimed at the sky, stacked
 ##   supply containers stencilled with the brand's mark, radar and masts.
 ## Every building face is flush with the wall face through the wall-run band (below band_top): nothing
 ## glows, lights up or sticks out there, so a pink wall fence (task B5) never competes with a band of
-## light and a window cyborg's window sits flat on it. Floodlights on the podium's cornice wash the faces
+## light and a window cyborg's window sits flat on it. Floodlights on the military cornice wash the faces
 ## above in cold white light; everything decorative starts at decor_min_height, and what hangs out over
 ## the street (banners, screens) above OVER_STREET_MIN, higher than any ceiling reaches
 ## (CorporateCeilings.TOP_LIMIT). Nothing vent-like sits at the foot of a wall: here, wall vents are
@@ -31,12 +34,22 @@ const STYLE_FINS: int = 1
 const STYLE_PODIUM: int = 2
 const STYLE_BLAST: int = 3
 const STYLE_SERVICE: int = 4
+## The backdrop's layers (corp_facade.gdshader): the military's walls at street level and above, the mansions.
+const STYLE_MIL_PLATE: int = 5
+const STYLE_MIL_CAMO: int = 6
+const STYLE_MIL_GATE: int = 7
+const STYLE_MIL_UPPER: int = 8
+const STYLE_MANSION: int = 9
 ## How far buildings reach back from the street (their near ends show above lower neighbours).
 const DEPTH: float = 28.0
 ## How far back a wall gap's recess reaches from the wall face (recess(), task L4); more than the tallest setback.
 const RECESS_DEPTH: float = 24.0
-const SETBACKS: Array[float] = [0.0, 0.0, 0.0, 4.0, 8.0, 12.0]
 const LOW_SHARE: float = 0.16
+## The kinds of outrigger sign a tower can carry (Building.sign_kind): a cloth banner, a glowing blade, the ring emblem.
+enum Sign { CLOTH, BLADE, RING }
+## A blade sign's width and its height range, and a ring sign's side.
+const BLADE_WIDTH: float = 1.8
+const RING_SIZE: float = 5.0
 ## What hangs out over the street from the walls stays above this height, and every ceiling below it.
 const OVER_STREET_MIN: float = 14.0
 ## Banners on outriggers, facing the oncoming runner: width, the arm's reach from the wall, height.
@@ -84,14 +97,28 @@ class Building:
 	var podium: Color
 	var lit: float
 	var seed: int
+	## The military layer: the look of its street-level wall (CorporateMilitary.Look) and the height of its roof.
+	var look: int = 0
+	var mil_top: float = 0.0
+	## A tower's corporate body stands from mil_top to body_top (its service crown, if it has no mansion, is the top
+	## 4.6 m: crown is where the glass ends); height is the building's whole height, a mansion included.
+	var body_top: float = 0.0
+	var crown: float = 0.0
+	## An elite's mansion on top of the tower (layer 3): whether it has one, the height of its first floor and its
+	## number of terraces (2 to 4).
+	var mansion: bool = false
+	var mansion_y: float = 0.0
+	var tiers: int = 0
 	## A low building's roof, and what stands on it (0 a board, 1 the brand's sculpture).
 	var roof_y: float = 0.0
 	var roof_kind: int = 0
-	## A banner on an outrigger (has_banner): its distance, top and height.
+	## An outrigger sign (has_banner; a Sign kind): its distance, top, height and width.
 	var has_banner: bool = false
+	var sign_kind: int = 0
 	var banner_d: float = 0.0
 	var banner_top: float = 0.0
 	var banner_h: float = 0.0
+	var banner_w: float = 0.0
 
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
@@ -101,10 +128,26 @@ var skin: CorporateSkin:
 var _skin: WeakRef
 var _buildings: Dictionary = {}
 var _templates: Dictionary = {}
+var _military: CorporateMilitary
+var _mansions: CorporateMansions
 
 
 func _init(p_skin: CorporateSkin) -> void:
 	_skin = weakref(p_skin)
+
+
+## The military layer's builder (street-level walls, upper storeys, roof decks).
+func military() -> CorporateMilitary:
+	if _military == null:
+		_military = CorporateMilitary.new(skin, self)
+	return _military
+
+
+## The mansions' builder (the third layer).
+func mansions() -> CorporateMansions:
+	if _mansions == null:
+		_mansions = CorporateMansions.new(skin, self)
+	return _mansions
 
 
 ## Adds the buildings of one wall side between two track distances.
@@ -122,7 +165,8 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 
 ## What a wall gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the
 ## background"): the gap's part [start, end] of a service alley between the two buildings it cuts: their end faces
-## (RECESS_DEPTH deep: the podium's cladding, the tower's glass and its service crown, a low building's roof line),
+## (RECESS_DEPTH deep: the military wall and its upper storeys, the tower's glass and its service crown, a low building's
+## roof line),
 ## the face of a tower across it, and the trench floor far below, in the same deep shade as the trench's walls
 ## (CorporateTrains.below; PAT_CORP_UNDER). Everything goes in the facade and solid layers the walls draw with.
 func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
@@ -146,7 +190,9 @@ func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float
 			MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
 	var back_h: float = 60.0 + 70.0 * MeshKit.hash01(side, across.id, 26)
 	var back_seed: int = across.seed + 21
-	_face(facade, side, x_back, start, end, 0.0, band, across.podium, 0.0, STYLE_PODIUM, back_seed)
+	var mil: CorporateMilitary = military()
+	_face(facade, side, x_back, start, end, 0.0, band, mil.color_of(across.look, side, across.id), mil.lit_of(across.look),
+		mil.style_of(across.look), back_seed)
 	_face(facade, side, x_back, start, end, band, back_h - 4.6, across.wall.darkened(0.1), across.lit, across.style, back_seed)
 	_face(facade, side, x_back, start, end, back_h - 4.6, back_h, across.wall.darkened(0.1), 0.0, STYLE_SERVICE, back_seed)
 	# The two buildings' end faces: the one before the gap looks on down the street (seen only from the side), the one
@@ -157,18 +203,26 @@ func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float
 		var leading: bool = is_equal_approx(end_at, gap.x)
 		var b: Building = building(side, building_at(side, floori((end_at - 0.01 if leading else end_at + 0.01) / lot)))
 		MeshKit.end_quad(solid, x_min, x_min + RECESS_DEPTH, end_at, floor_y, 0.0, leading, shade, 0.0, MeshKit.PAT_CORP_UNDER, 5.0)
-		var band_style: int = STYLE_BLAST if b.kind == Kind.COMPOUND else STYLE_PODIUM
-		var band_color: Color = skin.blast_colors[0] if b.kind == Kind.COMPOUND else b.podium
-		var top: float = band if b.kind == Kind.TOWER else b.height
-		MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, 0.0, top, leading, band_color, 0.0, band_style, float(b.seed))
+		var band_color: Color = mil.color_of(b.look, side, b.id)
+		var plated: bool = b.look == CorporateMilitary.Look.PLATE or b.look == CorporateMilitary.Look.GATE
+		if b.kind == Kind.COMPOUND:
+			MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, 0.0, b.height, leading, band_color, mil.lit_of(b.look),
+				mil.style_of(b.look), float(b.seed))
+		else:
+			# The military building's end: the band's wall, then its upper storeys up to the roof.
+			MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, 0.0, band, leading, band_color, mil.lit_of(b.look),
+				mil.style_of(b.look), float(b.seed))
+			MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, band, b.mil_top, leading, band_color,
+				0.25 if plated else mil.lit_of(b.look), STYLE_MIL_UPPER if plated else STYLE_MIL_CAMO, float(b.seed + 1))
 		if b.kind == Kind.TOWER:
 			var tower_x: float = face_x + side * b.setback
 			var t_min: float = minf(tower_x, x_back)
 			var t_max: float = maxf(tower_x, x_back)
-			var crown: float = b.height - 4.6
-			MeshKit.end_quad(facade, t_min, t_max, end_at, band, crown, leading, b.wall, b.lit, b.style, float(b.seed + 3))
-			MeshKit.end_quad(facade, t_min, t_max, end_at, crown, b.height, leading, b.wall, 0.0, STYLE_SERVICE,
-				float(b.seed + 3))
+			var crown: float = b.crown
+			MeshKit.end_quad(facade, t_min, t_max, end_at, b.mil_top, crown, leading, b.wall, b.lit, b.style, float(b.seed + 3))
+			if not b.mansion:
+				MeshKit.end_quad(facade, t_min, t_max, end_at, crown, b.height, leading, b.wall, 0.0, STYLE_SERVICE,
+					float(b.seed + 3))
 
 
 ## The first and last lot of the building covering `lot_index` on this side.
@@ -201,21 +255,42 @@ func building(side: int, span: Vector2i) -> Building:
 	b.lit = 0.2 + 0.4 * MeshKit.hash01(side, id, 8)
 	b.style = STYLE_CURTAIN if MeshKit.hash01(side, id, 7) < 0.6 else STYLE_FINS
 	b.height = lerpf(skin.building_min_height, skin.building_max_height, pow(MeshKit.hash01(side, id, 2), 1.4))
-	b.setback = SETBACKS[MeshKit.hash_i(side, id, 3) % SETBACKS.size()]
+	# The corporate towers stand back behind the military roof deck (the layers: military first, then corporate).
+	b.setback = skin.deck_setbacks[MeshKit.hash_i(side, id, 3) % skin.deck_setbacks.size()]
 	b.alley = 0.0 if MeshKit.hash01(side, id, 4) < 0.55 else 2.0 + 4.0 * MeshKit.hash01(side, id, 5)
+	b.look = military().look_of(side, id, b.kind)
+	b.mil_top = military().roof_height(side, id)
 	if b.kind != Kind.TOWER:
 		b.setback = 0.0
 		b.alley = 0.0
-		b.roof_y = skin.band_top + 1.2 + 2.4 * MeshKit.hash01(side, id, 12)
+		b.roof_y = b.mil_top
 		b.height = b.roof_y
 		b.roof_kind = 1 if MeshKit.hash01(side, id, 13) < 0.35 else 0
 	b.split = b.kind != Kind.TOWER or b.setback > 0.0 or b.alley > 0.0
 	b.t0 = b.b0 + b.alley
-	if b.kind == Kind.TOWER and MeshKit.hash01(side, id, 30) < skin.banner_share and b.b1 - b.t0 > 9.0:
-		b.banner_d = lerpf(b.t0 + 3.0, b.b1 - 3.0 - BANNER_WIDTH, MeshKit.hash01(side, id, 31))
-		b.banner_h = BANNER_MIN_HEIGHT + 3.0 * MeshKit.hash01(side, id, 32)
-		b.banner_top = OVER_STREET_MIN + 1.0 + b.banner_h + 6.0 * MeshKit.hash01(side, id, 33)
-		b.has_banner = b.banner_top + 4.0 <= b.height and b.setback <= 0.0
+	b.body_top = b.height
+	b.crown = b.height - 4.6
+	if b.kind == Kind.TOWER and b.b1 - b.t0 >= 14.0 and MeshKit.hash01(side, id, 64) < skin.mansion_share:
+		# An elite's mansion crowns the tower: its first floor on the storey grid, 2 or 3 terraces, a cornice over them.
+		var grid: float = skin.band_top
+		var floors: int = roundi((lerpf(skin.mansion_min_y, skin.mansion_max_y, MeshKit.hash01(side, id, 14)) - grid) / 3.6)
+		b.mansion = true
+		b.mansion_y = grid + 3.6 * float(maxi(floors, ceili((b.mil_top + 7.0 - grid) / 3.6)))
+		b.tiers = 2 + MeshKit.hash_i(side, id, 15) % 3
+		b.body_top = b.mansion_y
+		b.crown = b.body_top
+		b.height = b.mansion_y + 3.6 * float(b.tiers) + CorporateMansions.CROWN_HEIGHT
+	if b.kind == Kind.TOWER and MeshKit.hash01(side, id, 30) < skin.banner_share:
+		var pick: float = MeshKit.hash01(side, id, 65)
+		b.sign_kind = Sign.BLADE if pick < skin.blade_share else (Sign.RING if pick < skin.blade_share + skin.ring_sign_share
+			else Sign.CLOTH)
+		b.banner_w = BLADE_WIDTH if b.sign_kind == Sign.BLADE else (RING_SIZE if b.sign_kind == Sign.RING else BANNER_WIDTH)
+		if b.b1 - b.t0 > b.banner_w + 7.0:
+			b.banner_h = RING_SIZE if b.sign_kind == Sign.RING else BANNER_MIN_HEIGHT + 3.0 * MeshKit.hash01(side, id, 32) \
+				+ (1.0 if b.sign_kind == Sign.BLADE else 0.0)
+			b.banner_d = lerpf(b.t0 + 3.0, b.b1 - 3.0 - b.banner_w, MeshKit.hash01(side, id, 31))
+			b.banner_top = OVER_STREET_MIN + 1.0 + b.banner_h + 6.0 * MeshKit.hash01(side, id, 33)
+			b.has_banner = b.banner_top + 4.0 <= b.body_top
 	_buildings[key] = b
 	return b
 
@@ -232,14 +307,15 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 	var band: float = skin.band_top
 	var zc: float = -(u0 + u1) * 0.5
 
-	# The calm band: sterile cladding, or the military's blast walls around a compound.
-	var band_style: int = STYLE_BLAST if b.kind == Kind.COMPOUND else STYLE_PODIUM
-	var band_color: Color = skin.blast_colors[0] if b.kind == Kind.COMPOUND else b.podium
-	_face(facade, side, face_x, u0, u1, 0.0, band, band_color, 0.0, band_style, b.seed)
-	# The cornice along its top, and the floodlights on it.
-	var trim: Color = b.podium.lightened(0.12) if b.kind != Kind.COMPOUND else skin.gunmetal_color
-	solid.box(Vector3(face_x - side * 0.1, band + 0.15, zc), Vector3(0.2, 0.3, u1 - u0), trim, 0.0, MeshKit.PAT_CORP_PLATE,
-		MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 2.0)
+	# Layer 1, the military's wall: the calm band (armour plate, gates, camouflaged or bare blocks, or a compound's
+	# blast walls), and for towers and low buildings its upper storeys and roof edge.
+	military().wall(facade, solid, b, face_x, u0, u1)
+	if b.b0 >= start and b.b0 < end and b.kind != Kind.COMPOUND:
+		var prev: Building = building(side, building_at(side, floori((b.b0 - 0.01) / skin.lot_length)))
+		military().step_face(facade, b, face_x, maxf(prev.mil_top if prev.kind != Kind.COMPOUND else band, band))
+	# The cornice along the band's top, and the floodlights on it.
+	solid.box(Vector3(face_x - side * 0.1, band + 0.15, zc), Vector3(0.2, 0.3, u1 - u0), military().trim_color(b), 0.0,
+		MeshKit.PAT_CORP_PLATE, MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 2.0)
 	_floodlights(solid, glow, side, face_x, u0, u1)
 
 	match b.kind:
@@ -251,8 +327,8 @@ func _building(batch: MeshBatch, b: Building, face_x: float, start: float, end: 
 			_tower(batch, facade, solid, glow, b, face_x, start, end)
 
 
-## A tower above the podium: its faces, near side, light strips, crown and sign, banner, screen and
-## cameras.
+## A tower above the military roof (layer 2): its faces, near side, light strips, crown and sign, outrigger sign, screen,
+## and the mansion on top of some (layer 3), the military roof's props and cameras on the cornice below.
 func _tower(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float,
 		start: float, end: float) -> void:
 	var side: int = b.side
@@ -263,30 +339,31 @@ func _tower(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: MeshLay
 	var tower_x: float = face_x + side * b.setback
 	var height: float = b.height
 	var t0: float = b.t0
-	var crown: float = height - 4.6
-	# The faces: flush from the band up, or stepped back or behind an alley.
-	var f0: float = maxf(t0, start) if b.split else u0
+	var base: float = b.mil_top
+	var crown: float = b.crown
+	# The military roof deck's props, between the wall's edge and the tower's face.
+	military().roof(solid, glow, b, face_x, start, end, b.setback, Vector2.ZERO)
+	# The faces: from the military roof up, set back behind it or behind an alley.
+	var f0: float = maxf(t0, start)
 	if u1 > f0:
-		_face(facade, side, tower_x, f0, u1, band, crown, b.wall, b.lit, b.style, b.seed)
-		_face(facade, side, tower_x, f0, u1, crown, height, b.wall, 0.0, STYLE_SERVICE, b.seed)
-	if b.split and u1 > u0 and t0 > u0:
-		# The podium's roof edge runs on past the alley.
-		_face(facade, side, face_x, u0, minf(t0, u1), band, band + 0.9, b.podium, 0.0, STYLE_PODIUM, b.seed)
+		_face(facade, side, tower_x, f0, u1, base, crown, b.wall, b.lit, b.style, b.seed)
+		if not b.mansion:
+			_face(facade, side, tower_x, f0, u1, crown, height, b.wall, 0.0, STYLE_SERVICE, b.seed)
 	# The tower's near side, seen across alleys, setbacks and lower neighbours.
 	if t0 >= start and t0 < end:
 		var x_min: float = minf(tower_x, tower_x + side * DEPTH)
-		var base: float = band if b.split else 0.0
 		facade.quad_uv(Vector3(x_min, base, -t0), Vector3(x_min, crown, -t0), Vector3(x_min + DEPTH, crown, -t0),
 			Vector3(x_min + DEPTH, base, -t0), Vector2(x_min, base), Vector2(x_min, crown), Vector2(x_min + DEPTH, crown),
 			Vector2(x_min + DEPTH, base), b.wall, b.lit, b.style, float(b.seed + 3))
-		facade.quad_uv(Vector3(x_min, crown, -t0), Vector3(x_min, height, -t0), Vector3(x_min + DEPTH, height, -t0),
-			Vector3(x_min + DEPTH, crown, -t0), Vector2(x_min, crown), Vector2(x_min, height), Vector2(x_min + DEPTH, height),
-			Vector2(x_min + DEPTH, crown), b.wall, 0.0, STYLE_SERVICE, float(b.seed + 3))
+		if not b.mansion:
+			facade.quad_uv(Vector3(x_min, crown, -t0), Vector3(x_min, height, -t0), Vector3(x_min + DEPTH, height, -t0),
+				Vector3(x_min + DEPTH, crown, -t0), Vector2(x_min, crown), Vector2(x_min, height), Vector2(x_min + DEPTH, height),
+				Vector2(x_min + DEPTH, crown), b.wall, 0.0, STYLE_SERVICE, float(b.seed + 3))
 		if MeshKit.hash01(side, id, 40) < skin.sign_share:
 			_brand_sign(solid, glow, b, tower_x, crown)
 	# Light strips up the corners (cold white, some in the brand's blue) and along the crown.
 	var strip_color: Color = skin.brand_color if MeshKit.hash01(side, id, 41) < 0.3 else skin.flood_color
-	var strip_y: float = band + 0.3
+	var strip_y: float = base + 0.3
 	if MeshKit.hash01(side, id, 42) < skin.strip_share:
 		for edge: float in [t0 + 0.1, b.b1 - 0.1]:
 			if edge >= start and edge < end:
@@ -294,17 +371,21 @@ func _tower(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: MeshLay
 					strip_color, 0.55)
 	if u1 > f0:
 		solid.box(Vector3(tower_x - side * 0.04, crown - 0.1, -(f0 + u1) * 0.5), Vector3(0.08, 0.12, u1 - f0), strip_color, 0.5)
-	# A banner on an outrigger, facing the oncoming runner, or a big screen hung out over the street.
+	# An outrigger sign facing the oncoming runner, or a big screen hung out over the street.
 	if b.has_banner and b.banner_d >= start and b.banner_d < end:
-		_banner(solid, b, face_x)
+		_banner(solid, glow, b, face_x)
 	var screen: Dictionary = street_screen(b, face_x)
 	if not screen.is_empty() and float(screen["at"]) >= start and float(screen["at"]) < end:
 		_street_screen(batch, solid, glow, b, face_x, screen)
-	# Surveillance cameras on the cornice, over the street.
+	# Surveillance cameras on the military cornice, over the street.
 	if MeshKit.hash01(side, id, 43) < skin.camera_share:
 		var cd: float = lerpf(b.b0 + 1.5, b.b1 - 1.5, MeshKit.hash01(side, id, 44))
 		if cd >= start and cd < end:
 			solid.append(_camera(side), Transform3D(Basis.IDENTITY, Vector3(face_x, band + 0.3, -cd)))
+	# Layer 3: the mansion on top (a mansion tower has no antenna).
+	if b.mansion:
+		mansions().build(facade, solid, glow, b, tower_x, start, end)
+		return
 	# An antenna on the roof with a steady white light (never a hazard's red).
 	var mid: float = (t0 + b.b1) * 0.5
 	if MeshKit.hash01(side, id, 45) < 0.45 and mid >= start and mid < end:
@@ -316,42 +397,63 @@ func _tower(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: MeshLay
 			MeshKit.SHAPE_RADIAL)
 
 
-## The brand's big sign near the top of a tower's near side (facing the oncoming runner): its mark
-## glowing in the brand's blue on a dark panel, or white on a glowing blue one.
+## The brand's big sign on a tower's near side (facing the oncoming runner), at the street edge of that face where it
+## is seen first: the mark inside a glowing ring in the brand's blue on a dark plate (the way the corporation signs
+## its buildings), or its mark glowing on a dark panel, or white on a glowing blue one.
 func _brand_sign(solid: MeshLayer, glow: MeshLayer, b: Building, tower_x: float, crown: float) -> void:
-	var size: float = clampf(b.height * 0.07, 6.0, 11.0)
-	var x_in: float = tower_x + b.side * (DEPTH * 0.5 - size * 0.5)
-	var y0: float = crown - size - 3.0
-	if y0 < skin.decor_min_height + 20.0:
+	var size: float = clampf(b.body_top * 0.12, 6.0, 9.0)
+	var x_in: float = tower_x + b.side * 1.2
+	var y0: float = b.mil_top + 4.0 + 10.0 * MeshKit.hash01(b.side, b.id, 48)
+	if y0 + size > crown - 2.0:
 		return
 	var x0: float = x_in if b.side > 0 else x_in - size
 	var z: float = -b.t0 + 0.06
+	var ring: bool = MeshKit.hash01(b.side, b.id, 49) < 0.65
 	var inverse: bool = MeshKit.hash01(b.side, b.id, 47) < 0.35
-	var m: float = 1.25
+	var m: float = 1.1 if ring else 1.25
 	solid.box(Vector3(x0 + size * 0.5, y0 + size * 0.5, z - 0.03), Vector3(size + 0.6, size + 0.6, 0.06), Color(0.04, 0.045, 0.05))
 	solid.rect(Vector3(x0, y0, z), Vector3(size, 0, 0), Vector3(0, size, 0), skin.brand_color, skin.brand_glow,
-		MeshKit.PAT_CORP_LOGO, Vector2(-m, -m), Vector2(m, m), 1.0 if inverse else 0.0)
+		MeshKit.PAT_CORP_LOGO, Vector2(-m, -m), Vector2(m, m), 4.0 if ring else (1.0 if inverse else 0.0))
 	glow.rect(Vector3(x0 - size * 0.3, y0 - size * 0.3, z + 0.3), Vector3(size * 1.6, 0, 0), Vector3(0, size * 1.6, 0),
 		skin.brand_color, 0.1, MeshKit.SHAPE_RADIAL)
 
 
-## A banner hanging from an outrigger arm over the street, facing the oncoming runner: the brand's
-## colour, its mark and a slogan (PAT_CORP_BANNER), and on some the cult's emblem small at its foot in
-## unlit bronze, like a sponsor's mark.
-func _banner(solid: MeshLayer, b: Building, face_x: float) -> void:
+## An outrigger sign hanging over the street from the tower's face, facing the oncoming runner (b.sign_kind): a cloth
+## banner, a glowing blade sign, or the brand's ring emblem on a plate. All hang above OVER_STREET_MIN, from arms that
+## reach from the tower over the military roof.
+func _banner(solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float) -> void:
 	var side: int = b.side
 	var z: float = -b.banner_d
-	var w: float = BANNER_WIDTH
+	var w: float = b.banner_w
 	var top: float = b.banner_top
 	var h: float = b.banner_h
+	var arm_x: float = face_x + side * b.setback
 	var x_in: float = face_x - side * BANNER_GAP
 	var x_out: float = x_in - side * w
 	var x0: float = minf(x_in, x_out)
 	var steel: Color = skin.gunmetal_color
-	# The arm from the wall, a brace under it, and the weighted bar at the banner's foot.
-	solid.box(Vector3((face_x + x_out) * 0.5, top + 0.12, z), Vector3(absf(face_x - x_out) + 0.2, 0.14, 0.14), steel)
-	solid.box(Vector3((face_x + x_in) * 0.5, top - 0.6, z), Vector3(absf(face_x - x_in), 0.08, 0.08), steel)
+	# The arm from the tower's face, a brace under it, and the weighted bar at the sign's foot.
+	solid.box(Vector3((arm_x + x_out) * 0.5, top + 0.12, z), Vector3(absf(arm_x - x_out) + 0.2, 0.14, 0.14), steel)
+	solid.box(Vector3((arm_x + x_in) * 0.5, top - 0.6, z), Vector3(absf(arm_x - x_in), 0.08, 0.08), steel)
 	solid.box(Vector3(x0 + w * 0.5, top - h - 0.06, z), Vector3(w + 0.12, 0.12, 0.12), steel)
+	if b.sign_kind == Sign.BLADE:
+		# A tall board: a dark casing and the glowing sign on its face (PAT_CORP_BLADE: the ring and mark over rows of lettering).
+		var aspect: float = h / w
+		solid.box(Vector3(x0 + w * 0.5, top - h * 0.5, z - 0.12), Vector3(w + 0.2, h + 0.2, 0.24), Color(0.03, 0.035, 0.04))
+		solid.rect(Vector3(x0, top - h, z + 0.02), Vector3(w, 0, 0), Vector3(0, h, 0), skin.brand_color, skin.brand_glow,
+			MeshKit.PAT_CORP_BLADE, Vector2.ZERO, Vector2(1.0, aspect), float(b.seed % 97 + 100 * roundi(aspect * 10.0)))
+		glow.rect(Vector3(x0 - 1.0, top - h - 1.0, z + 0.3), Vector3(w + 2.0, 0, 0), Vector3(0, h + 2.0, 0), skin.brand_color,
+			0.08, MeshKit.SHAPE_FLAT)
+		return
+	if b.sign_kind == Sign.RING:
+		# The ring emblem on a plate, hung out like a pub's sign.
+		var m: float = 1.1
+		solid.box(Vector3(x0 + w * 0.5, top - h * 0.5, z - 0.12), Vector3(w + 0.3, h + 0.3, 0.24), Color(0.03, 0.035, 0.04))
+		solid.rect(Vector3(x0, top - h, z + 0.02), Vector3(w, 0, 0), Vector3(0, h, 0), skin.brand_color, skin.brand_glow,
+			MeshKit.PAT_CORP_LOGO, Vector2(-m, -m), Vector2(m, m), 4.0)
+		glow.rect(Vector3(x0 - w * 0.3, top - h - w * 0.3, z + 0.3), Vector3(w * 1.6, 0, 0), Vector3(0, h + w * 0.6, 0),
+			skin.brand_color, 0.1, MeshKit.SHAPE_RADIAL)
+		return
 	# The cloth faces +z (u to the viewer's right, v up); UV x across from its left edge, y down.
 	solid.rect(Vector3(x0, top - h, z + 0.02), Vector3(w, 0, 0), Vector3(0, h, 0), skin.brand_paint_color, 0.0,
 		MeshKit.PAT_CORP_BANNER, Vector2(0.0, h), Vector2(w, 0.0), float(b.seed % 100 + 100 * roundi(w * 10.0)))
@@ -363,7 +465,7 @@ func _banner(solid: MeshLayer, b: Building, face_x: float) -> void:
 
 ## The size of the cult's emblem at the foot of a building's banner (0 if it has none).
 func banner_emblem(b: Building) -> float:
-	if not b.has_banner or not skin.carries_emblem(b.side, b.id + 7):
+	if not b.has_banner or b.sign_kind != Sign.CLOTH or not skin.carries_emblem(b.side, b.id + 7):
 		return 0.0
 	return clampf(BANNER_WIDTH * 0.5, skin.emblem_min_size, 1.4)
 
@@ -382,19 +484,19 @@ func _mark(solid: MeshLayer, c: Vector3, e: float, color: Color, glow_amount: fl
 ## (y0), width, height, inner and outer edges (x_in at the wall end, x_out over the street), and
 ## whether it plays the cult's feed (`feed`). Empty if the tower has none.
 func street_screen(b: Building, face_x: float) -> Dictionary:
-	if b.kind != Kind.TOWER or b.setback > 0.0 or MeshKit.hash01(b.side, b.id, 140) >= skin.street_screen_share:
+	if b.kind != Kind.TOWER or MeshKit.hash01(b.side, b.id, 140) >= skin.street_screen_share:
 		return {}
 	var w: float = minf(skin.street_screen_width, absf(face_x) * skin.street_screen_reach)
 	var h: float = w * 9.0 / 16.0
 	var lo: float = b.t0 + SCREEN_CLEAR
 	var hi: float = b.b1 - SCREEN_CLEAR
 	var at: float = lerpf(lo, hi, MeshKit.hash01(b.side, b.id, 142))
-	if b.has_banner and at > b.banner_d - SCREEN_CLEAR and at < b.banner_d + SCREEN_CLEAR:
-		at = b.banner_d + SCREEN_CLEAR * 1.5
+	if b.has_banner and at > b.banner_d - SCREEN_CLEAR and at < b.banner_d + b.banner_w + SCREEN_CLEAR:
+		at = b.banner_d + b.banner_w + SCREEN_CLEAR * 1.5
 	if hi < lo or at > hi:
 		return {}
 	var y0: float = maxf(skin.street_screen_bottom, OVER_STREET_MIN) + 4.0 * MeshKit.hash01(b.side, b.id, 141)
-	if y0 + h + SCREEN_TOP_CLEAR > b.height:
+	if y0 + h + SCREEN_TOP_CLEAR > b.body_top:
 		return {}
 	var x_in: float = face_x - b.side * SCREEN_GAP
 	return {"at": at, "y0": y0, "width": w, "height": h, "x_in": x_in, "x_out": x_in - b.side * w,
@@ -414,8 +516,9 @@ func _street_screen(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: Buil
 	var x0: float = minf(x_in, screen["x_out"])
 	solid.box(Vector3(x0 + w * 0.5, y0 + h * 0.5, -at - SCREEN_CASE * 0.5 - 0.03),
 		Vector3(w + SCREEN_RIM * 2.0, h + SCREEN_RIM * 2.0, SCREEN_CASE), Color(0.03, 0.035, 0.04))
+	var arm_x: float = face_x + b.side * b.setback
 	for y: float in [y0 + 0.3, y0 + h - 0.3]:
-		solid.box(Vector3((face_x + x_in) * 0.5, y, -at - SCREEN_CASE * 0.5), Vector3(SCREEN_GAP + 0.2, 0.12, 0.12),
+		solid.box(Vector3((arm_x + x_in) * 0.5, y, -at - SCREEN_CASE * 0.5), Vector3(absf(arm_x - x_in) + 0.2, 0.12, 0.12),
 			skin.gunmetal_color)
 	if screen["feed"]:
 		CultFeed.screen(batch.layer(skin.feed_material()), Vector3(x0, y0, -at), Vector3(w, 0, 0), Vector3(0, h, 0),
@@ -442,19 +545,19 @@ func screen_emblem(b: Building, screen: Dictionary) -> float:
 	return e if e <= float(screen["height"]) * SCREEN_EMBLEM_MAX else 0.0
 
 
-## A low building: its podium runs up to the roof, and on the roof a board (an ad, or the cult's feed)
-## or a steel sculpture of the brand's mark; a far row of towers stands behind.
+## A low building: the military building alone (its wall runs up to the roof: CorporateMilitary), and on the roof its
+## props and a board (an ad, or the cult's feed) or a steel sculpture of the brand's mark; a far row of towers stands
+## behind.
 func _low(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float,
 		start: float, end: float) -> void:
 	var side: int = b.side
-	var u0: float = maxf(b.b0, start)
-	var u1: float = minf(b.b1, end)
-	var band: float = skin.band_top
-	_face(facade, side, face_x, u0, u1, band + 0.3, b.roof_y, b.podium, 0.0, STYLE_PODIUM, b.seed + 1)
-	solid.box(Vector3(face_x - side * 0.08, b.roof_y + 0.12, -(u0 + u1) * 0.5), Vector3(0.16, 0.24, u1 - u0),
-		b.podium.lightened(0.12), 0.0, MeshKit.PAT_CORP_PLATE, MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 2.0)
 	_far_row(facade, b, face_x, start, end)
 	var mid: float = (b.b0 + b.b1) * 0.5
+	var taken := Vector2(mid - 4.0, mid + 4.0)
+	var held: Dictionary = roof_board(b, face_x)
+	if not held.is_empty():
+		taken = Vector2(float(held["d0"]) - 1.0, float(held["d0"]) + float(held["length"]) + 1.0)
+	military().roof(solid, glow, b, face_x, start, end, 8.0, taken)
 	if mid < start or mid >= end:
 		return
 	if b.roof_kind == 1:
@@ -591,15 +694,15 @@ func _compound(facade: MeshLayer, solid: MeshLayer, glow: MeshLayer, b: Building
 	for i: int in stacks:
 		var sd: float = lerpf(b.b0 + 4.0, b.b1 - 4.0, (float(i) + 0.5) / stacks)
 		if sd >= start and sd < end:
-			_containers(solid, side, face_x + side * 2.2, sd, band - 2.2, MeshKit.hash_i(side, id, 53 + i))
+			containers(solid, side, face_x + side * 2.2, sd, band - 2.2, MeshKit.hash_i(side, id, 53 + i))
 	# A watchtower near the compound's near end, its searchlight aimed at the sky ahead, leaning away
 	# from the street: never over the lanes (a boss that flies there keeps the air to itself).
 	var wd: float = b.b0 + 3.0
 	if wd >= start and wd < end:
-		solid.append(_watchtower(side), Transform3D(Basis.IDENTITY, Vector3(face_x + side * 3.2, band, -wd)))
+		solid.append(watchtower(side), Transform3D(Basis.IDENTITY, Vector3(face_x + side * 3.2, band, -wd)))
 		var lamp := Vector3(face_x + side * 3.2, band + 9.4, -wd)
 		var aim := Vector3(side * 0.3, 1.0, -0.55).normalized()
-		_beam(glow, lamp, aim, 34.0, 1.4)
+		beam(glow, lamp, aim, 34.0, 1.4)
 	# A radar dome and a mast on the block's roof.
 	var rd: float = lerpf(near + 3.0, far - 3.0, MeshKit.hash01(side, id, 55))
 	if rd >= start and rd < end and far - near > 8.0:
@@ -628,7 +731,7 @@ func _block_face(solid: MeshLayer, side: int, x: float, c0: float, c1: float, y0
 
 ## Stacked supply containers standing on `bottom` at distance d (their doors toward the street at x),
 ## olive and grey, with the brand's mark or a code stencilled on (PAT_STENCIL).
-func _containers(solid: MeshLayer, side: int, x: float, d: float, bottom: float, k: int) -> void:
+func containers(solid: MeshLayer, side: int, x: float, d: float, bottom: float, k: int) -> void:
 	var levels: int = 2 + k % 2
 	for i: int in levels:
 		var h: float = 2.6
@@ -645,7 +748,7 @@ func _containers(solid: MeshLayer, side: int, x: float, d: float, bottom: float,
 
 ## A watchtower standing on the wall's top (its foot at the origin, the street toward -side on x): four
 ## steel legs, a cabin with a dark glass band, a searchlight on its roof. Cached per side.
-func _watchtower(side: int) -> MeshLayer:
+func watchtower(side: int) -> MeshLayer:
 	var key := Vector3i(8, side, 0)
 	var found: MeshLayer = _templates.get(key)
 	if found != null:
@@ -668,7 +771,7 @@ func _watchtower(side: int) -> MeshLayer:
 
 ## A steady searchlight beam from `from` along `dir`, `length` metres long and `width` wide at its
 ## source: two crossed additive cards, fading along the beam. Aimed at the sky, never at the lanes.
-func _beam(glow: MeshLayer, from: Vector3, dir: Vector3, length: float, width: float) -> void:
+func beam(glow: MeshLayer, from: Vector3, dir: Vector3, length: float, width: float) -> void:
 	var side_a: Vector3 = dir.cross(Vector3.UP).normalized()
 	if side_a.length() < 0.1:
 		side_a = Vector3.RIGHT
@@ -812,7 +915,7 @@ func overhead(batch: MeshBatch, half_width: float, start: float, end: float) -> 
 		batch.append(ship, Transform3D(Basis(Vector3.UP, yaw), Vector3(x, y, -at)))
 		# Its searchlight rakes a tower's face, never the lanes below.
 		var toward: float = -1.0 if MeshKit.hash01(slot, 95) < 0.5 else 1.0
-		_beam(glow, Vector3(x, y - 1.6, -at + 6.0), Vector3(toward * 0.8, -0.35, 0.45).normalized(), 30.0, 1.2)
+		beam(glow, Vector3(x, y - 1.6, -at + 6.0), Vector3(toward * 0.8, -0.35, 0.45).normalized(), 30.0, 1.2)
 
 
 ## The skybridge in slot k (one per SKYBRIDGE_SPACING metres, skybridge_share of them), where both
@@ -861,6 +964,12 @@ func _skybridge(solid: MeshLayer, sb: Dictionary) -> void:
 
 
 # --- Helpers ------------------------------------------------------------------------------
+
+## A facade piece (CorporateMilitary and CorporateMansions draw theirs through this): see _face().
+func face(layer: MeshLayer, side: int, x: float, u0: float, u1: float, y0: float, y1: float, color: Color, lit: float,
+		style: int, seed: int) -> void:
+	_face(layer, side, x, u0, u1, y0, y1, color, lit, style, seed)
+
 
 ## A facade piece (corp_facade.gdshader) in the wall plane at x, facing the track, from distance u0 to
 ## u1 and height y0 to y1. UV is (distance, height) in metres, so windows line up across pieces.

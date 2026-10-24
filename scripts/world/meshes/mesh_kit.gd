@@ -106,14 +106,14 @@ const PAT_CORP_UNDER: int = 31
 ## A plaza's paving (world xz; UV.x -1 to 1 across the lane, param flags a steel edge strip on its left
 ## (1) and right (2) edge).
 const PAT_CORP_PAVING: int = 32
-## Plating (world position): param 0 a soffit, 1 military armour, 2 brushed steel, 3 precast concrete.
+## Plating (world position): param 0 a soffit, 1 military armour, 2 brushed steel, 3 precast concrete, 4 sandbags.
 const PAT_CORP_PLATE: int = 33
 ## A corporate screen, glowing (UV.y 0-1 up the screen, UV.x in the same units; param a whole-number
 ## seed picks the ad).
 const PAT_CORP_AD: int = 34
 ## The brand's mark (kit_logo.gdshaderinc) on a panel, UV in logo space (the mark spans about -0.78 to
 ## 0.78): param 0 the mark in COLOR on a dark panel, 1 cold white on a COLOR ground, 2 COLOR painted on
-## steel, 3 pale paint on a COLOR ground.
+## steel, 3 pale paint on a COLOR ground, 4 the mark inside a glowing ring on a dark panel.
 const PAT_CORP_LOGO: int = 35
 ## A banner hanging down a tower (UV in metres, x across from its left edge, y down from its top;
 ## param = seed + 100 * its width in decimetres).
@@ -121,6 +121,10 @@ const PAT_CORP_BANNER: int = 36
 ## A glass wall with a lit corridor behind it (UV in metres, y up from the corridor's floor; param =
 ## the corridor's height in decimetres).
 const PAT_CORP_GLASS: int = 37
+## A tall sign board hung out from a tower, glowing (UV.x 0-1 across it, UV.y in the same units up to its
+## aspect; param = seed (0-99) + 100 * the aspect in tenths): a ring with the brand's mark at the top over rows
+## of wordless lettering.
+const PAT_CORP_BLADE: int = 38
 
 ## Dead Zone surface patterns of the solid kit shader (kit_dead_zone.gdshaderinc), ids 40-49. Nothing
 ## glows but PAT_DZ_TOWER's rare embers: give the other patterns' vertices COLOR.a = 0.

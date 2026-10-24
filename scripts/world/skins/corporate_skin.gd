@@ -24,6 +24,12 @@ extends ZoneSkin
 ## Colour rule (GDD §5, proposed): only hazards glow in hazard colours. The olive is lit, never glowing;
 ## decorative light keeps to cold white and the brand's blue; hazards stay the most saturated and
 ## brightest things on screen.
+## The backdrop is three layers (the owner's reference image, docs/art/reference/corporate_backdrop.webp): at
+## street level the military's walls, bunkers and barricades (olive armour plate, gates, camouflaged precast
+## blocks, an upper storey and a roof deck with sandbags, dishes, masts and watchtowers, up to mil_max_height);
+## a little higher and set back behind them the corporate towers, with the brand's glowing ring emblem, blade
+## signs, banners and big screens; and higher still and rarer the elites' mansions, lit warm, crowning some
+## towers. Under a heavy overcast with columns of smoke. CorporateTowers builds them.
 ## Visuals only: TrackBuilder owns every collision shape and gameplay node, and all variety comes from
 ## hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
 
@@ -37,6 +43,14 @@ enum FloorStyle { MAGLEV, PLAZA }
 ## The smog lit by the towers' cold light, low over the horizon.
 @export var haze_color: Color = Color(0.3, 0.34, 0.4)
 @export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.7
+## The owner's reference is a moody dark grey sky with smoke: a thick overcast the city lights from below (a cold
+## grey, never a hazard hue) and a few columns of smoke over the far skyline, their feet lit a muted warm grey.
+@export_range(0.0, 1.0, 0.01) var cloud_amount: float = 0.7
+@export var cloud_color: Color = Color(0.07, 0.078, 0.095)
+@export var cloud_lit_color: Color = Color(0.3, 0.33, 0.38)
+@export_range(0.0, 1.0, 0.01) var smoke_amount: float = 0.6
+@export var smoke_color: Color = Color(0.068, 0.072, 0.082)
+@export var smoke_glow_color: Color = Color(0.3, 0.27, 0.23)
 @export var abyss_color: Color = Color(0.012, 0.015, 0.02)
 @export var skyline_color: Color = Color(0.05, 0.058, 0.075)
 @export var skyline_window_color: Color = Color(0.72, 0.8, 0.9)
@@ -170,6 +184,50 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export_range(0.0, 1.0, 0.01) var banner_share: float = 0.4
 @export_range(0.0, 1.0, 0.01) var camera_share: float = 0.5
 
+@export_group("Backdrop: military street layer")
+## The backdrop's first layer, closest to the player (the owner's reference image): every building stands on
+## the military's wall at street level, flush through the wall-run band and drawn as paint (corp_facade.gdshader):
+## olive armour plate (with gates in it), or stacked precast blocks, camouflaged or bare. Above it an upper
+## storey and a roof deck up to a height between these two, with a sandbag parapet, dishes, masts, tanks and
+## watchtowers. DESIGN-TBD (docs/questions/corporate-backdrop.md).
+@export var plate_colors: PackedColorArray = PackedColorArray([
+	Color(0.27, 0.28, 0.21), Color(0.24, 0.25, 0.19), Color(0.29, 0.29, 0.23)])
+## The camouflage's three tones (dark olive, khaki, olive black), and the bare precast blocks' grey.
+@export var camo_colors: PackedColorArray = PackedColorArray([
+	Color(0.27, 0.285, 0.2), Color(0.37, 0.355, 0.27), Color(0.2, 0.21, 0.165)])
+@export var concrete_block_color: Color = Color(0.4, 0.4, 0.38)
+@export var sandbag_color: Color = Color(0.33, 0.31, 0.23)
+@export_range(6.0, 16.0, 0.5, "suffix:m") var mil_min_height: float = 8.4
+@export_range(8.0, 20.0, 0.5, "suffix:m") var mil_max_height: float = 11.6
+## Relative weights of a building's street-level wall: armour plate, plate with gates, camouflaged blocks, bare
+## precast blocks.
+@export var mil_weights: Vector4 = Vector4(3.0, 2.0, 2.2, 1.2)
+## The share of a military roof's prop slots (one every 5 m) that hold a dish, mast, tank, containers or radar dome.
+@export_range(0.0, 1.0, 0.01) var roof_props_share: float = 0.6
+
+@export_group("Backdrop: corporate layer")
+## The corporate towers stand behind the military roof, set back by one of these (metres, by hash), so the
+## street shows the military first.
+@export var deck_setbacks: PackedFloat32Array = PackedFloat32Array([2.5, 2.5, 3.5, 3.5, 5.0, 6.5])
+## Of the towers' outrigger signs (banner_share of towers have one): the share that are glowing blade signs and
+## the share that are the brand's ring emblem on a plate (the rest are cloth banners).
+@export_range(0.0, 1.0, 0.01) var blade_share: float = 0.35
+@export_range(0.0, 1.0, 0.01) var ring_sign_share: float = 0.25
+
+@export_group("Backdrop: the elites' mansions")
+## The third layer, high up and rare: this share of the towers is crowned with a terraced mansion whose lowest
+## floor is between mansion_min_y and mansion_max_y metres up, in ivory stone under warm light, with columns,
+## balustrades and greenery. DESIGN-TBD (docs/questions/corporate-backdrop.md): the colour rule keeps glowing
+## light to cold white and the brand's blue, so the mansions' light is a desaturated champagne white (never a
+## hazard's yellow or orange) and stays above mansion_min_y, far from the lanes' hazards.
+@export_range(0.0, 1.0, 0.01) var mansion_share: float = 0.2
+@export_range(12.0, 60.0, 0.5, "suffix:m") var mansion_min_y: float = 18.0
+@export_range(12.0, 80.0, 0.5, "suffix:m") var mansion_max_y: float = 42.0
+@export var mansion_stone_colors: PackedColorArray = PackedColorArray([Color(0.66, 0.6, 0.5), Color(0.6, 0.55, 0.46)])
+@export var mansion_light_color: Color = Color(1.0, 0.88, 0.7)
+@export_range(0.0, 2.0, 0.05) var mansion_glow: float = 1.0
+@export var greenery_colors: PackedColorArray = PackedColorArray([Color(0.1, 0.2, 0.1), Color(0.12, 0.24, 0.13)])
+
 @export_group("Military presence")
 ## DESIGN-TBD (the owner's review: military ships and props are part of the zone's look, heavier in
 ## Corporate 2): the share of lots that are military compounds (blast walls, a watchtower, supply
@@ -228,7 +286,7 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export_range(0.0, 1.0, 0.01) var feed_share: float = 0.35
 ## The share of flush towers hanging a big screen out over the street, facing the oncoming runner
 ## (the feed or an ad). A boss arena whose boss flies over the street sets it to 0.
-@export_range(0.0, 1.0, 0.01) var street_screen_share: float = 0.35
+@export_range(0.0, 1.0, 0.01) var street_screen_share: float = 0.25
 ## Brightness of the feed (0-1) on the towers' screens and on the screens over the street.
 @export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 0.9
 @export_range(0.0, 1.0, 0.05) var feed_screen_brightness: float = 0.85
@@ -285,7 +343,9 @@ func _init() -> void:
 func make_environment() -> Environment:
 	var sky := {"zenith_color": sky_zenith_color, "horizon_color": sky_horizon_color, "haze_color": haze_color,
 		"haze_strength": haze_strength, "haze_height": 0.12, "abyss_color": abyss_color, "skyline_color": skyline_color,
-		"window_color": skyline_window_color, "moon_radius": 0.0, "star_amount": 0.0}
+		"window_color": skyline_window_color, "moon_radius": 0.0, "star_amount": 0.0, "cloud_amount": cloud_amount,
+		"cloud_color": srgb(cloud_color), "cloud_lit_color": srgb(cloud_lit_color), "cloud_lit_focus": 0.0,
+		"smoke_amount": smoke_amount, "smoke_color": srgb(smoke_color), "fire_color": srgb(smoke_glow_color)}
 	return MeshKit.night_environment(sky, ambient_color, fog_color, fog_begin, fog_end, fog_max, 0.0,
 		glow_intensity, glow_threshold)
 
@@ -476,8 +536,18 @@ func facade_material() -> ShaderMaterial:
 			"blast_a": blast_colors[0], "blast_b": blast_colors[1 % blast_colors.size()],
 			"blast_c": blast_colors[2 % blast_colors.size()], "stencil_color": marking_color,
 			"flood_color": flood_color, "flood_strength": flood_strength, "flood_height": band_top + 0.3,
-			"flood_spacing": flood_spacing, "pilaster_color": pilaster_color})
+			"flood_spacing": flood_spacing, "pilaster_color": pilaster_color,
+			"camo_a": srgb(camo_colors[0]), "camo_b": srgb(camo_colors[1 % camo_colors.size()]),
+			"camo_c": srgb(camo_colors[2 % camo_colors.size()]), "mansion_light": srgb(mansion_light_color),
+			"mansion_glow": mansion_glow})
 	return _materials[&"facade"]
+
+
+## A colour as an sRGB Vector3 for a shader uniform of its own: it arrives unconverted on both renderers and the kit's
+## shaders convert it once (docs/ARCHITECTURE.md, Zone skins, "Colours in a skin's own uniforms"). The backdrop's
+## uniforms and cloud and smoke colours use it; the older ones still differ a little between the renderers.
+static func srgb(c: Color) -> Vector3:
+	return Vector3(c.r, c.g, c.b)
 
 
 func drift_material() -> ShaderMaterial:

@@ -178,7 +178,7 @@ vec3 corp_paving(vec3 base, vec3 w, vec2 uv, float param) {
 // PAT_CORP_PLATE (33): plating. param 0 a soffit (a ceiling's underside seen from below and ridden
 // upside down: steel panels, hairline joints, flush service hatches); 1 military armour (large
 // staggered plates, heavy seams, rivet rows, scuffs); 2 brushed steel (pylons, masts, frames);
-// 3 precast concrete (a viaduct's deck and fascia: form lines, stains).
+// 3 precast concrete (a viaduct's deck and fascia: form lines, stains); 4 sandbags (a roof parapet's courses).
 vec3 corp_plate(vec3 base, vec3 w, vec3 n, float param) {
 	vec2 p = abs(n.y) > 0.5 ? w.xz : (abs(n.x) > 0.5 ? w.zy : w.xy);
 	vec2 fwp = max(fwidth(p), vec2(1e-4));
@@ -206,11 +206,21 @@ vec3 corp_plate(vec3 base, vec3 w, vec3 n, float param) {
 	} else if (mode < 2.5) {
 		col *= 0.92 + 0.1 * value_noise(vec2(p.x * 14.0, p.y * 0.6));
 		col *= 1.0 - 0.3 * filtered_pulse(p.y / 1.5, fwp.y / 1.5, 0.0, 0.015);
-	} else {
+	} else if (mode < 3.5) {
 		col *= 0.88 + 0.2 * value_noise(p * 0.45);
 		col *= 1.0 - 0.14 * filtered_pulse(p.y / 0.6, fwp.y / 0.6, 0.0, 0.03);
 		float stain = smoothstep(0.55, 0.85, value_noise(p * vec2(1.8, 0.25) + 5.0));
 		col = mix(col, col * 0.55, stain * 0.5);
+	} else {
+		// Sandbags (a parapet's courses): 0.7 x 0.3 m bags in running bond, each fat in the middle and pinched at
+		// its ends, the seams between them dark.
+		float row = floor(p.y / 0.3);
+		vec2 bq = vec2((p.x + mod(row, 2.0) * 0.35) / 0.7, p.y / 0.3);
+		vec2 fb = fwp / vec2(0.7, 0.3);
+		vec2 bf = fract(bq);
+		float lump = sin(bf.x * 3.14159) * sin(bf.y * 3.14159);
+		col *= (0.7 + 0.5 * lump) * (0.9 + 0.2 * hash12(floor(bq) + 5.0));
+		col *= 1.0 - 0.5 * max(filtered_pulse(bq.x, fb.x, 0.0, 0.06), filtered_pulse(bq.y, fb.y, 0.0, 0.1));
 	}
 	return col;
 }
@@ -279,7 +289,8 @@ vec3 corp_ad(vec3 base, vec2 uv_in, float param, float t, out float glow_mask) {
 // -0.78 to 0.78, so a wider range leaves a margin. param 0: the mark in COLOR on a dark panel (a sign:
 // only the mark glows); 1: the mark in cold white on a COLOR ground (a glowing brand panel: the ground
 // glows at a third); 2: the mark in COLOR painted on steel (never glowing); 3: the mark in cold white
-// painted on a COLOR ground (a flag, a plaque; never glowing).
+// painted on a COLOR ground (a flag, a plaque; never glowing); 4: the mark inside a ring, both in COLOR
+// glowing on a dark panel (a tower's emblem).
 vec3 corp_logo_face(vec3 base, vec2 uv, float param, vec3 dark, inout float glow) {
 	float fw = max(max(fwidth(uv.x), fwidth(uv.y)), 1e-4);
 	float mark = corp_logo(uv, fw);
@@ -292,8 +303,40 @@ vec3 corp_logo_face(vec3 base, vec2 uv, float param, vec3 dark, inout float glow
 		return mix(base, corp_text, mark);
 	} else if (mode < 2.5) {
 		return mix(vec3(0.42, 0.44, 0.47), base, mark * 0.95);
+	} else if (mode < 3.5) {
+		return mix(base, corp_marking, mark * 0.95);
 	}
-	return mix(base, corp_marking, mark * 0.95);
+	// 4: the mark inside a ring, both glowing in COLOR on a dark panel: a tower's emblem, the way the corporation
+	// signs its buildings (UV in logo space: the ring fills about -0.96 to 0.96).
+	float ring = band(length(uv), 0.82, 0.96, fw);
+	float inner = corp_logo(uv / 0.6, fw / 0.6);
+	float on = max(ring, inner);
+	glow *= on;
+	return mix(dark, base, on);
+}
+
+// PAT_CORP_BLADE (38): a tall sign board hung out from a tower, facing the oncoming runner, glowing. UV.x 0-1 across it,
+// UV.y in the same units up to its aspect (height over width); param = seed (0-99) + 100 * the aspect in tenths. A
+// thin lit border, the brand's mark in a ring at the top in cold white, under it rows of wordless lettering in COLOR,
+// on a dark panel. glow_mask shapes the glow (the art and the border; the panel stays dark).
+vec3 corp_blade(vec3 base, vec2 uv, float param, vec3 dark, out float glow_mask) {
+	float fw = max(max(fwidth(uv.x), fwidth(uv.y)), 1e-4);
+	float code = floor(param + 0.5);
+	float seed = mod(code, 100.0);
+	float aspect = max(floor(code / 100.0) * 0.1, 1.0);
+	float edge = 1.0 - band(uv.x, 0.07, 0.93, fw) * band(uv.y, 0.07, aspect - 0.07, fw);
+	vec2 mp = (uv - vec2(0.5, aspect - 0.5)) / 0.36;
+	float ring = band(length(mp), 0.82, 0.96, fw / 0.36);
+	float mark = corp_logo(mp / 0.6, fw / 0.216);
+	float ry = (aspect - 1.08 - uv.y) / 0.13;
+	float row = floor(ry);
+	float in_rows = step(0.0, ry) * step(0.12, uv.y);
+	float words = corp_words(vec2((uv.x - 0.14) / 0.06, fract(ry)), seed + row * 7.0, fw / 0.06) * band(uv.x, 0.14, 0.86, fw) * in_rows;
+	float art = max(ring, mark);
+	vec3 col = mix(dark, base * 0.9, max(edge * 0.8, words));
+	col = mix(col, corp_text, art);
+	glow_mask = max(max(art, words), edge * 0.8) * 0.9 + 0.05;
+	return col;
 }
 
 // PAT_CORP_BANNER (36): a banner hanging down a tower (UV in metres: x across from its left edge as
@@ -337,7 +380,7 @@ vec3 corp_glass(vec3 base, vec2 uv, float param, out float glow_mask) {
 	return mix(col, vec3(0.2, 0.21, 0.24), mullion);
 }
 
-// Dispatches the Corporate patterns (ids 30-39) for kit_solid.gdshader.
+// Dispatches the Corporate patterns (ids 30-38) for kit_solid.gdshader.
 vec3 corp_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec2 uv, float t, vec3 dark, inout float glow) {
 	if (pattern == 30) {
 		return corp_roof(base, w, uv, param);
@@ -359,6 +402,11 @@ vec3 corp_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec2 uv, 
 	} else if (pattern == 37) {
 		float m;
 		vec3 c = corp_glass(base, uv, param, m);
+		glow *= m;
+		return c;
+	} else if (pattern == 38) {
+		float m;
+		vec3 c = corp_blade(base, uv, param, dark, m);
 		glow *= m;
 		return c;
 	}
