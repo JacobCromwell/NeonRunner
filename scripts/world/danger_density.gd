@@ -115,11 +115,15 @@ extends RefCounted
 ## - task S3 (the owner, October 24, 2026: "relax the fairness rules in the golden zone", GDD §9.16): a level's data
 ##   may relax three of these where its own picks leave the pass too little fair room (the Golden Zone's levels; at
 ##   their defaults every other level keeps them all and builds as before): LevelConfig.danger_resonator_per_pulse (a
-##   planned Resonator's attack counts pulse by pulse, attack_windows: every pulse still waits for clear floor at run
-##   time), danger_big_attack_margin (the share of the clearance an enemy it adds keeps from a big attack's window,
-##   never overlapping it: _overlap_ok; its rows keep the whole clearance) and danger_enemy_clearance (the share of the
-##   clearance around an enemy it adds over which its open lane and overlap_max hold: _encounter_fits, _twin_fits).
-##   The open lane itself (min_free_lanes) and every attack's warning never give way.
+##   planned Resonator's attack counts pulse by pulse, attack_windows), danger_big_attack_margin (the share of the
+##   clearance an enemy it adds keeps between its attack window and a big attack's, never less than the tuning's
+##   big_attack_min_margin_seconds: _big_margin; its rows keep the whole clearance) and danger_enemy_clearance (the
+##   share of the clearance around an enemy it adds over which its open lane and overlap_max hold: _encounter_fits,
+##   _twin_fits). The open lane itself (min_free_lanes) never gives way, and in the plan no attack window it adds
+##   overlaps a big attack's. An attack window is where the attack lands (LevelGenerator.enemy_keep_out: a cyborg's
+##   from 2 s of run before it), not its warning: a cyborg starts its charge at its engage distance, about 2 s before
+##   its window, so in the Golden Zone its charge and its bolts in flight may overlap a big attack, its bolts landing
+##   about half a second or more from it (docs/questions/s3.md item 3).
 ## Pay: with the tuning's credit_added_pieces off, the credit pass gives the pieces it adds no risky
 ## credit (LevelGenerator.uncredited): the levels get harder, not richer, and the earnings curve the
 ## shop's prices were set against stays put.
@@ -359,7 +363,10 @@ static func attack_windows(gen: LevelGenerator, entry: Dictionary, hooks: Dictio
 ## its meeting stretch's end if later), with the plan's margin (resonator_rules.gd's PLAN_MARGIN) either side:
 ## a big attack, kept clear with the clearance like any. Between two pulses it only hovers (it attacks
 ## nothing; Resonator.is_major_attack_active is off), and every pulse rechecks its floor at run time and
-## waits for clear floor (Resonator.pulse_clear). [] for any other entry or a Resonator without a plan.
+## waits for clear floor (Resonator.pulse_clear: the floor only, no gap, fence or floor enemy where its wave
+## meets the player, not a window cyborg or bolts landing). A pulse that waited may come far from its planned
+## window, where the pass added something either way (docs/questions/s3.md item 8). [] for any other entry or a
+## Resonator without a plan.
 static func resonator_pulse_windows(gen: LevelGenerator, entry: Dictionary) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	if String(entry.get("type", "")) != "resonator":
@@ -920,8 +927,8 @@ static func _floor_ok(plan: Plan, probe: Dictionary, window: Vector2) -> bool:
 
 ## True if, but for `group` (a twin's), no big attack's window (a type not among the twin_tolerated_types, a host's)
 ## overlaps `big`, and the other attack windows overlapping `window` are at most the tuning's overlap_max. Both are
-## an added enemy's attack window with its clearance (task S3: in the Golden Zone the level's shares of it,
-## danger_big_attack_margin and danger_enemy_clearance; elsewhere the same, the whole clearance).
+## an added enemy's attack window with its clearance (task S3: in the Golden Zone `big` with _big_margin's,
+## `window` with the level's danger_enemy_clearance share of it; elsewhere the same, the whole clearance).
 static func _overlap_ok(plan: Plan, window: Vector2, group: Array[int], big: Vector2) -> bool:
 	for id: int in plan.attacks.owners_in(big.x, big.y):
 		var o: Dictionary = plan.gen.layout.enemies[id]
@@ -1066,7 +1073,10 @@ static func _group_has(gen: LevelGenerator, group: Array[int], field: String, va
 ## further on, the spacing after it) on the playable track and clear of every fixed stretch; but for its
 ## group's, at most overlap_max attack windows overlap it, all of tolerated types (_overlap_ok); the
 ## floor and its type's rules allow it (_floor_ok, _type_rules_ok). In a level that relaxes them (task S3) the
-## spacing after it is the level's danger_enemy_clearance share of it, danger_big_attack_margin's toward a big attack.
+## spacing after it is the level's danger_enemy_clearance share of it, _big_margin's toward a big attack; the share
+## also shortens what an offset twin keeps from the fixed stretches after it (a ramp, a landing zone, a pad, a cut),
+## where an encounter keeps only its attack window off them. A twin starts no earlier than its anchor, the
+## level's own enemy: nothing is kept before it, in any level.
 static func _twin_fits(plan: Plan, probe: Dictionary, group: Array[int], anchor_at: float) -> bool:
 	var gen: LevelGenerator = plan.gen
 	var at: float = float(probe["at"])
@@ -1075,8 +1085,17 @@ static func _twin_fits(plan: Plan, probe: Dictionary, group: Array[int], anchor_
 	var full := Vector2(k.x, k.y + after * gen.config.danger_enemy_clearance)
 	if full.x < plan.lo or full.y > plan.hi or not plan.fixed.clear(full.x, full.y) or not _calm_clear(plan, probe, k):
 		return false
-	var big := Vector2(k.x, k.y + after * gen.config.danger_big_attack_margin)
+	var big := Vector2(k.x, k.y + _big_margin(plan, after))
 	return _overlap_ok(plan, full, group, big) and _floor_ok(plan, probe, full) and _type_rules_ok(plan, probe)
+
+
+## The clear track an enemy the pass adds keeps between its attack window and a big attack's, where the clearance
+## there is `c`: the level's danger_big_attack_margin share of it (task S3), but never less than the tuning's
+## big_attack_min_margin_seconds of run, or `c` where that is less. At the whole share (every level but the Golden
+## Zone's) that is `c`, as before.
+static func _big_margin(plan: Plan, c: float) -> float:
+	var least: float = float(plan.tuning.get("big_attack_min_margin_seconds")) * plan.gen.speed
+	return maxf(c * plan.gen.config.danger_big_attack_margin, minf(c, least))
 
 
 ## True if enemy `probe` may join as an encounter of its own: its attack window with the clearance
@@ -1084,7 +1103,7 @@ static func _twin_fits(plan: Plan, probe: Dictionary, group: Array[int], anchor_
 ## pattern pass spaces patterns, not their warnings); with the clearance, at most overlap_max attack
 ## windows overlap it, all of tolerated types (_overlap_ok), and the floor and its type's rules allow
 ## it (_floor_ok, _type_rules_ok); never before the level's first of its kind. In a level that relaxes them (task
-## S3) the clearance is the level's danger_enemy_clearance share of it, danger_big_attack_margin's toward a big attack.
+## S3) the clearance is the level's danger_enemy_clearance share of it, _big_margin's toward a big attack.
 static func _encounter_fits(plan: Plan, probe: Dictionary) -> bool:
 	var at: float = float(probe["at"])
 	var k: Vector2 = attack_window(plan.gen, probe, plan.hooks)
@@ -1092,8 +1111,7 @@ static func _encounter_fits(plan: Plan, probe: Dictionary) -> bool:
 	var window := Vector2(k.x - _clear(plan, k.x) * share, k.y + _clear(plan, k.y) * share)
 	if window.x < plan.lo or window.y > plan.hi or not plan.fixed.clear(k.x, k.y) or not _calm_clear(plan, probe, k):
 		return false
-	var big_share: float = plan.gen.config.danger_big_attack_margin
-	var big := Vector2(k.x - _clear(plan, k.x) * big_share, k.y + _clear(plan, k.y) * big_share)
+	var big := Vector2(k.x - _big_margin(plan, _clear(plan, k.x)), k.y + _big_margin(plan, _clear(plan, k.y)))
 	var none: Array[int] = []
 	return _overlap_ok(plan, window, none, big) and _floor_ok(plan, probe, window) \
 		and _type_rules_ok(plan, probe) and at > _first_at(plan, probe) + EPSILON

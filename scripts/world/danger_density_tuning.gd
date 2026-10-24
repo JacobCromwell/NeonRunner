@@ -18,6 +18,13 @@ extends Resource
 ## group apart) an added enemy's window, with the clearance around it, may overlap: 0 keeps every
 ## addition on its own, as the fill pass keeps its fillers.
 @export_range(0, 4) var overlap_max: int = 2
+## The least clear track (seconds of run at the level's speed) an enemy the pass adds keeps between its attack window
+## and a big attack's where the level keeps less of the clearance from big attacks (LevelConfig.danger_big_attack_margin,
+## task S3: 0 in the Golden Zone): a big attack runs a little past its planned window in play (a Gilded Sentinel's strike
+## ended about 0.04 s past its plan in every case the task's review measured, docs/questions/s3.md item 3), so windows
+## that only touched in the plan would meet. Never more than the clearance there; at the whole margin (every other
+## level) it changes nothing.
+@export_range(0.0, 1.0, 0.01, "suffix:s") var big_attack_min_margin_seconds: float = 0.1
 ## Random spots a new encounter tries in each stretch clear of fixed stretches and big attacks, per
 ## sweep (the enemy half sweeps the level while it still adds one).
 @export_range(1, 16) var encounter_tries: int = 8

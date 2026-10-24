@@ -30,13 +30,15 @@ const FINAL_SEEDS: Array[int] = [9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008,
 ## usual enemies and only its own patterns (GDD §5, Zone 8), and its debris maze and the centipedes in it (tasks O2, O3)
 ## keep to blocks the pass keeps off, so it has nothing of theirs to add. And the Ice Lab's (task Q1), which the bands
 ## don't sample: a final zone's dial over a mix of its own (GDD §5, Zone 9: the cyborgs, the Octodogs and the heli drones,
-## none of the other earlier enemies), so the pass's fairness is checked on what it adds there.
+## none of the other earlier enemies), so the pass's fairness is checked on what it adds there. And Golden 1 (task S3's
+## review), which the bands don't sample either: every level that relaxes the pass's rules is checked.
 const BANDS: Dictionary = {
 	"early": ["city/1", "city/2", "gangland/2"],
 	"middle": ["marketplace/2", "corporate/1"],
 	"late": ["dead_zone/1", "golden/2", "golden/3"],
 }
-const FAIRNESS_ONLY: Array[String] = ["dead_zone/2", "terminal/1", "terminal/2", "ice_lab/1", "ice_lab/2", "ice_lab/3"]
+const FAIRNESS_ONLY: Array[String] = ["dead_zone/2", "terminal/1", "terminal/2", "ice_lab/1", "ice_lab/2", "ice_lab/3",
+	"golden/1"]
 ## Builds checked for fairness, as {id, lanes, seed}, where a zone doodad placed after the pass would stand
 ## right past a full row in the only lane the pass's rows leave open, so nothing gets past it: built without
 ## DangerDensity.doodad_ok (DoodadsUnchecked) the floor route through the level breaks there, and with it, it
@@ -147,27 +149,49 @@ func _test_tuning() -> void:
 		check(not type.begins_with("host") and type != "drone" and type != "resonator",
 			"no big threat's attack is tolerated: %s" % type)
 	check(Array(t.get("keep_out_exempt_features")) == ["host"], "only a host's chase keep-out is exempt")
+	check(float(t.get("big_attack_min_margin_seconds")) > 0.0,
+		"an added enemy's window keeps some track from a big attack's where a level keeps less of the clearance (task S3)")
 
 
 ## Task S3 (the owner, October 24, 2026: "relax the fairness rules in the golden zone", GDD §9.16): only the Golden
 ## Zone's levels relax any of the pass's rules (LevelConfig's danger_resonator_per_pulse, danger_big_attack_margin,
 ## danger_enemy_clearance), every other level and quick play's keep them all, and none can relax the open lane (the
-## tuning's min_free_lanes, the same for every level).
+## tuning's min_free_lanes, the same for every level). Endless mode, a copy of the furthest zone's last level, relaxes
+## them with the Golden Zone as the furthest (the Golden Palace's: endless in the Golden Zone is the Golden Zone;
+## DESIGN-TBD, docs/questions/s3.md item 7), with any earlier zone not.
 func _test_relaxed(campaign: Campaign) -> void:
 	var levels: int = 0
 	for s: CampaignStep in campaign.steps():
 		if s.is_minigame() or not s.is_level():
 			continue
 		var c: LevelConfig = s.level
-		var relaxed: bool = c.danger_resonator_per_pulse or c.danger_big_attack_margin < 1.0 or c.danger_enemy_clearance < 1.0
+		var relaxed: bool = _relaxes(c)
 		var golden: bool = String(c.id).begins_with("golden_")
 		levels += 1 if relaxed else 0
 		check(relaxed == golden, "%s relaxes the pass's rules only in the Golden Zone (relaxed: %s)" % [s.id, relaxed])
 		check(c.danger_big_attack_margin >= 0.0 and c.danger_enemy_clearance >= 0.0, "%s's shares of the clearance" % s.id)
 	check(levels == 3, "the Golden Zone's three levels relax them (%d)" % levels)
 	var quick := load(LEVEL_PATH) as LevelConfig
-	check(not quick.danger_resonator_per_pulse and quick.danger_big_attack_margin == 1.0
-		and quick.danger_enemy_clearance == 1.0, "quick play's level keeps every rule")
+	check(not _relaxes(quick), "quick play's level keeps every rule")
+	var last: ZoneDef = null
+	for zone: ZoneDef in campaign.zones:
+		if not zone.levels.is_empty():
+			last = zone
+	check(last != null and last.id == &"golden", "the Golden Zone is the campaign's last zone")
+	for zone: ZoneDef in campaign.zones:
+		if zone.levels.is_empty():
+			continue
+		# As App.start_endless makes it: a copy of the zone's last level, these left as they are.
+		var endless: LevelConfig = (zone.levels[zone.levels.size() - 1] as LevelConfig).duplicate() as LevelConfig
+		endless.id = &"endless"
+		var relaxed: bool = _relaxes(endless)
+		check(relaxed == (zone == last), "endless mode with %s as the furthest zone relaxes the pass's rules only in the Golden Zone (relaxed: %s)"
+			% [zone.id, relaxed])
+
+
+## True if `config` relaxes any of the danger density pass's rules (task S3).
+func _relaxes(config: LevelConfig) -> bool:
+	return config.danger_resonator_per_pulse or config.danger_big_attack_margin < 1.0 or config.danger_enemy_clearance < 1.0
 
 
 ## Every campaign level has a dial from 0.15 (the first) to at least 0.35 (the final), never falling

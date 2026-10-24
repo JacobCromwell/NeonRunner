@@ -256,8 +256,11 @@ var _skin: ZoneSkin
 @export_range(0.0, 1.0, 0.01) var danger_density_increase: float = 0.0
 ## Task S3 (the owner, October 24, 2026: "relax the fairness rules in the golden zone", GDD §9.16): rules of the danger
 ## density pass that give way in this level, where its own data leaves the pass too little fair room for its rise.
-## Never its open lane (DangerDensityTuning.min_free_lanes) nor an attack's warning: each attack keeps its whole
-## window, warning included, and nothing the pass adds overlaps a big attack's. At their defaults (every level but the
+## Never its open lane (DangerDensityTuning.min_free_lanes): an enemy it adds leaves one over its whole attack window,
+## where its attack lands (LevelGenerator.enemy_keep_out: a cyborg's from 2 s of run before it), and in the plan no
+## window it adds overlaps a big attack's. Not its warning: a cyborg starts charging at its engage distance, about 2 s
+## before its window, so where these give way its charge and its bolts in flight may overlap a big attack, its bolts
+## landing about half a second or more from it (docs/questions/s3.md item 3). At their defaults (every level but the
 ## Golden Zone's) the pass keeps every rule and builds the level as before.
 ## DESIGN-TBD (docs/questions/s3.md): a planned Resonator's attack counts pulse by pulse for the pass (as
 ## DangerDensityTuning.resonator_per_pulse does everywhere), so it may add between two pulses, each pulse's window
@@ -265,11 +268,13 @@ var _skin: ZoneSkin
 @export var danger_resonator_per_pulse: bool = false
 ## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) an enemy it adds keeps
 ## between its attack window and a big attack's (a type not among the tuning's twin_tolerated_types, a host's): 1 keeps
-## all of it; at 0 they may touch, never overlap. The rows it adds keep the whole clearance.
+## all of it; less, but never less than DangerDensityTuning.big_attack_min_margin_seconds of run (a Gilded Sentinel's
+## strike runs about 0.04 s past its planned window in play). The rows it adds keep the whole clearance.
 @export_range(0.0, 1.0, 0.05) var danger_big_attack_margin: float = 1.0
 ## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) around an enemy it adds,
 ## over which that enemy's open lane and the overlap limit (DangerDensityTuning.overlap_max) hold: 1 keeps all of it;
-## less, and the open lane still holds over the enemy's whole attack, warning included.
+## less, and they hold over its attack window and that share either side, so the open lane may begin later before
+## the window (a cyborg's charge begins about 2 s before it either way).
 @export_range(0.0, 1.0, 0.05) var danger_enemy_clearance: float = 1.0
 ## Wider gaps (owner, October 7, 2026, GDD §9.13 "Holes"; task G7): this many of the level's gap rows
 ## come out longer along the run (WideGapTuning.jump_fraction of a jump, data/tuning/wide_gaps.tres):
