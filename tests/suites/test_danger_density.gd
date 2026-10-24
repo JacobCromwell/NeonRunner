@@ -17,8 +17,13 @@ const DangerDensity := preload("res://scripts/world/danger_density.gd")
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const LANES: Array[int] = [3, 5, 6]
 ## Each sampled level is built on its own seed and on these (tools/measure/danger_density.gd --seeds=2
-## builds the same sample, so its output shows the numbers this suite checks).
+## builds the same sample, so its output shows the numbers this suite checks); the final band's on FINAL_SEEDS.
 const OTHER_SEEDS: Array[int] = [9001, 9002]
+## Task S3: the final band's levels are built on their own seeds and on these. They are so full (the Golden Zone's
+## Resonator visits, ceiling pads, drones, landing zones and Buzz Overdrives) that the pass's rise there swung with
+## the seeds sampled: at 5 lanes x1.33 over the three before the Heavy Cyborg (task S1) and x1.24 over these thirteen,
+## x1.27 and x1.27 with it. Over thirteen it moves by a hundredth or so where three moved it by several.
+const FINAL_SEEDS: Array[int] = [9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009, 9010, 9011, 9012]
 ## The sampled levels by band: the first levels (dials 0.15 to 0.20), the middle ones (0.26 to 0.28)
 ## and the final ones (0.37 to 0.39). The Hush (dead_zone/2) is checked for fairness only: its quiet
 ## stretches stay quiet by design, so it gains less than its dial. So are the Terminal's levels (task O1): none of the
@@ -84,14 +89,6 @@ const WALL_RUN_GAP_ROOM: Dictionary = {"late": {3: 0.04}}
 ## teleporters (TELEPORTER_FEATURES) still keeps the floor above. By band, then lane count. DESIGN-TBD
 ## (docs/questions/q6.md item 11): which request gives way at 3 lanes (as with the wall-run gaps, item 874).
 const TELEPORTER_ROOM: Dictionary = {"late": {3: 0.05}}
-## Task S1 (GDD §9.16, the owner, October 23, 2026: the Heavy Cyborg in all three of the Golden Zone's levels): Sentinel
-## Row's and the Golden Palace's Heavy Cyborgs stand in their pattern's places and some of the cyborgs', each with two
-## seconds of clear floor before it that the pass's rows keep off (as off any big attack's window), and the pass adds no
-## cyborg or window cyborg within a second of run of one (HeavyCyborgRules.rival_may_stand). The final band then lands
-## at about x1.27 for enemies over this sample at 5 lanes (against x1.30 at the least before the Heavy Cyborg; x1.26
-## at 3 lanes, x1.27 built without its teleporters, and x1.32 at 6, the floors there): its floor is this much lower at
-## 5 lanes. By band, then lane count. DESIGN-TBD (docs/questions/s1.md item 13): which request gives way.
-const HEAVY_CYBORG_ROOM: Dictionary = {"late": {5: 0.04}}
 const TELEPORTER_FEATURES: Array[String] = ["teleporter", "teleporter_blinking"]
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
 ## final ones' and above the first band and below the last (less WALL_RUN_GAP_ROOM), at every lane count, for
@@ -131,6 +128,7 @@ func run() -> void:
 	_dd_tuning = DangerDensity.tuning()
 	_test_tuning()
 	_test_dials(campaign)
+	_test_relaxed(campaign)
 	_test_density(campaign)
 	_test_zero_dial(campaign)
 	_test_deterministic(campaign)
@@ -149,6 +147,27 @@ func _test_tuning() -> void:
 		check(not type.begins_with("host") and type != "drone" and type != "resonator",
 			"no big threat's attack is tolerated: %s" % type)
 	check(Array(t.get("keep_out_exempt_features")) == ["host"], "only a host's chase keep-out is exempt")
+
+
+## Task S3 (the owner, October 24, 2026: "relax the fairness rules in the golden zone", GDD §9.16): only the Golden
+## Zone's levels relax any of the pass's rules (LevelConfig's danger_resonator_per_pulse, danger_big_attack_margin,
+## danger_enemy_clearance), every other level and quick play's keep them all, and none can relax the open lane (the
+## tuning's min_free_lanes, the same for every level).
+func _test_relaxed(campaign: Campaign) -> void:
+	var levels: int = 0
+	for s: CampaignStep in campaign.steps():
+		if s.is_minigame() or not s.is_level():
+			continue
+		var c: LevelConfig = s.level
+		var relaxed: bool = c.danger_resonator_per_pulse or c.danger_big_attack_margin < 1.0 or c.danger_enemy_clearance < 1.0
+		var golden: bool = String(c.id).begins_with("golden_")
+		levels += 1 if relaxed else 0
+		check(relaxed == golden, "%s relaxes the pass's rules only in the Golden Zone (relaxed: %s)" % [s.id, relaxed])
+		check(c.danger_big_attack_margin >= 0.0 and c.danger_enemy_clearance >= 0.0, "%s's shares of the clearance" % s.id)
+	check(levels == 3, "the Golden Zone's three levels relax them (%d)" % levels)
+	var quick := load(LEVEL_PATH) as LevelConfig
+	check(not quick.danger_resonator_per_pulse and quick.danger_big_attack_margin == 1.0
+		and quick.danger_enemy_clearance == 1.0, "quick play's level keeps every rule")
 
 
 ## Every campaign level has a dial from 0.15 (the first) to at least 0.35 (the final), never falling
@@ -186,6 +205,7 @@ func _test_density(campaign: Campaign) -> void:
 	var on_ms: int = 0
 	var ratios: Dictionary = {}
 	for band: String in BANDS:
+		var seeds: Array[int] = FINAL_SEEDS if band == "late" else OTHER_SEEDS
 		var enemies: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
 		var floors: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
 		var walls: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO]
@@ -197,10 +217,10 @@ func _test_density(campaign: Campaign) -> void:
 		var teleporter_room: Dictionary = TELEPORTER_ROOM.get(band, {})
 		for id: String in BANDS[band]:
 			for li: int in LANES.size():
-				for k: int in OTHER_SEEDS.size() + 1:
+				for k: int in seeds.size() + 1:
 					var config: LevelConfig = campaign.configure(campaign.step(id), LANES[li])
 					if k > 0:
-						config.level_seed = OTHER_SEEDS[k - 1]
+						config.level_seed = seeds[k - 1]
 					var built: Dictionary = _build_pair(config)
 					off_ms += int(built["off_ms"])
 					on_ms += int(built["on_ms"])
@@ -242,7 +262,6 @@ func _test_density(campaign: Campaign) -> void:
 				lo = float(TARGET_RATIO[band]) - TOLERANCE
 				hi = float(TARGET_RATIO[band]) + TOLERANCE
 			lo -= float((WALL_RUN_GAP_ROOM.get(band, {}) as Dictionary).get(LANES[li], 0.0))
-			lo -= float((HEAVY_CYBORG_ROOM.get(band, {}) as Dictionary).get(LANES[li], 0.0))
 			var room: float = float(teleporter_room.get(LANES[li], 0.0))
 			check(e >= lo - room - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, lo - room, hi])
 			check(o >= lo - room - 0.0005 and o <= hi + 0.0005, "%s: obstacles x%.3f, within x%.2f..x%.2f" % [tag, o, lo - room,
@@ -262,11 +281,10 @@ func _test_density(campaign: Campaign) -> void:
 		var early: Vector2 = ratios["early"][li]
 		var middle: Vector2 = ratios["middle"][li]
 		var late: Vector2 = ratios["late"][li]
-		# Where the final band's floor is lower (WALL_RUN_GAP_ROOM, TELEPORTER_ROOM, HEAVY_CYBORG_ROOM), its rise past the
-		# middle band may fall short by as much.
+		# Where the final band's floor is lower (WALL_RUN_GAP_ROOM, TELEPORTER_ROOM), its rise past the middle band may
+		# fall short by as much.
 		var room: float = float((WALL_RUN_GAP_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0)) \
-			+ float((TELEPORTER_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0)) \
-			+ float((HEAVY_CYBORG_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0))
+			+ float((TELEPORTER_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0))
 		check(early.x < middle.x and middle.x < late.x + room, "lanes=%d: enemies rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
 			LANES[li], early.x, middle.x, late.x])
 		check(early.y < middle.y and middle.y < late.y + room, "lanes=%d: obstacles rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
@@ -372,6 +390,13 @@ func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag
 	check(types_after.keys().all(func(t: String) -> bool: return types_before.has(t)),
 		"no enemy type the level lacks without the pass %s" % tag)
 	var added: Array = result.get("added_enemies", [])
+	# The enemies the pass found: not its own, nor those placed after it (planted in a charge's path, a Buzz
+	# Overdrive's company).
+	var planted: Array[Dictionary] = ChargePathPlacement.planted_in(layout)
+	var before_pass: Array[Dictionary] = []
+	for o: Dictionary in layout.enemies:
+		if not added.has(o) and not planted.has(o) and not BuzzCompanyPlacement.is_company(o):
+			before_pass.append(o)
 	var types: PackedStringArray = (_dd_tuning.get("enemy_types") as PackedStringArray).duplicate()
 	if bool(_dd_tuning.get("ceiling_turrets")):
 		types.append(DangerDensity.TURRET)
@@ -387,6 +412,9 @@ func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag
 		check(float(e["at"]) > first, "never before the level's first %s %s" % [type, where])
 		var k: Vector2 = DangerDensity.attack_window(gen, e)
 		check(quiet.all(func(q: Vector2) -> bool: return k.y <= q.x or k.x >= q.y), "nothing added in a quiet stretch " + where)
+		if type != DangerDensity.TURRET:
+			var big: String = _big_attack_on(gen, k, before_pass)
+			check(big.is_empty(), "its attack never overlaps a big attack's (%s) %s" % [big, where])
 		if not LevelGenerator.enemy_uses_floor(e):
 			continue
 		var x: float = k.x
@@ -423,6 +451,20 @@ func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag
 				check(b - a <= gen.jump_distance * config.max_gap_jump_fraction + 0.01, "a full row of holes is jumped " + where)
 				continue
 			check(free >= min_free, "%d open lane(s) at a row the pass made or widened (needs %d) %s" % [free, min_free, where])
+
+
+## A big attack (a type not among the tuning's twin_tolerated_types, or a host's) of `enemies` whose attack window
+## (DangerDensity.attack_windows: a Resonator's pulse by pulse where the level counts them so) overlaps `k`, as
+## "type at x"; "" if none. The pass never adds an enemy into one, in any level, its relaxed rules included (task S3).
+func _big_attack_on(gen: LevelGenerator, k: Vector2, enemies: Array[Dictionary]) -> String:
+	var tolerated: PackedStringArray = _dd_tuning.get("twin_tolerated_types")
+	for o: Dictionary in enemies:
+		if tolerated.has(String(o.get("type", ""))) and not bool((o.get("params", {}) as Dictionary).get("host", false)):
+			continue
+		for w: Vector2 in DangerDensity.attack_windows(gen, o):
+			if w.y >= w.x and w.x < k.y and w.y > k.x:
+				return "%s at %.1f" % [o["type"], float(o["at"])]
+	return ""
 
 
 ## The lanes of `layout` with a hole over exactly `a`..`b`.
