@@ -58,16 +58,24 @@ the pass ran out of fair room before its dial's target: over each level's own se
 about 25-27% more enemies at every lane count, with the Heavy Cyborg and without it (24% at 5 lanes), and a higher
 dial added nothing. Golden 1-3 relax three of its rules through their data (`LevelConfig`; at the defaults every other
 level builds byte for byte as before): `danger_resonator_per_pulse` (a planned Resonator's attack counts pulse by pulse,
-so the pass adds between two pulses, each pulse's window kept; at run time every pulse still waits for clear floor,
-`Resonator.pulse_clear`, so its wave never meets an enemy, a gap or a fence where it reaches the runner),
-`danger_big_attack_margin` 0 (an enemy the pass adds keeps none of the clearance from a big attack's window, but never
-overlaps it: two attacks never come at once; its rows keep the whole clearance, so a Heavy Cyborg keeps its margin
-and stream) and `danger_enemy_clearance` 0.25 (an added enemy's open lane and overlap limit hold over its attack
-window, warning included, and a quarter of the clearance either side). Never the open lane itself (the tuning's
-`min_free_lanes`, the same everywhere) nor a warning. The final band then has 33%, 32% and 34% more enemies and 27%,
-34% and 38% more obstacles at 3, 5 and 6 lanes over those seeds (25%, 27% and 26%, and 26%, 33% and 37% before);
-`test_danger_density` samples the final band on them (`FINAL_SEEDS`) and no longer lowers its floor for the Heavy
-Cyborg (DESIGN-TBD each, `docs/questions/s3.md`).
+so the pass adds between two pulses, each pulse's planned window kept), `danger_big_attack_margin` 0 (an enemy the
+pass adds keeps only the tuning's `big_attack_min_margin_seconds`, 0.1 s of run, between its attack window and a big
+attack's, not the clearance; its rows keep the whole clearance, so a Heavy Cyborg keeps its margin and stream) and
+`danger_enemy_clearance` 0.25 (an added enemy's open lane and overlap limit hold over its attack window and a quarter
+of the clearance either side). Never the open lane itself (the tuning's `min_free_lanes`, the same everywhere). What
+holds is the plan: an attack window is where the attack lands (a cyborg's from 2 s of run before it), and no window
+the pass adds overlaps a big attack's (none of 884 added in the final band's Golden builds came within 2.5 m of one;
+the 0.1 s keeps that in play too, where a Gilded Sentinel's strike ended about 0.04 s past its plan). Not the
+warnings: a cyborg starts charging at its engage distance, about 2 s before its window, so its charge and its bolts
+in flight may overlap a big attack; at 25 m/s its bolts land about half a second or more from the big attack's
+window (measured in play: window cyborgs began charging 1.1 s before a Gilded Sentinel's warning, fired during its
+strike and landed 0.48 s after it, 0.86 s and 0.76 s with the 0.1 s; the dodges compatible). In play a
+Resonator's pulse that waited for clear floor (`Resonator.pulse_clear` checks the floor only) may come far from its
+plan and meet what the pass added, under the old rules as under these (`docs/questions/s3.md` item 8). The final band
+then has 32%, 31% and 33% more enemies and 26%, 34% and 38% more obstacles at 3, 5 and 6 lanes over those seeds (25%,
+27% and 26%, and 26%, 33% and 37% before); `test_danger_density` samples the final band on them (`FINAL_SEEDS`),
+checks Golden 1 for fairness too and no longer lowers its floor for the Heavy Cyborg. Endless mode with the Golden
+Zone as the furthest keeps the Golden Palace's relaxed rules (DESIGN-TBD each, `docs/questions/s3.md`).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -99,7 +107,7 @@ The regression suite asserts requirement-based bands of 10-20%, 15-35% and 30-40
 for both categories at every supported lane count, plus route safety, determinism, economy and
 build-time guards. All 225 saved dial-0 layouts match the pre-change baseline. Since task S3 the suite samples the
 final band on each level's own seed and 9001-9012 (`FINAL_SEEDS`; three seeds swung it by several hundredths), the
-others still on 9001/9002, and checks that no enemy the pass adds overlaps a big attack's window in any level.
+others still on 9001/9002, and checks that no enemy the pass adds overlaps a big attack's planned window in any level.
 
 **Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
 that fades away the same way a speed pad's does (both share `boost_decay_per_second`;
