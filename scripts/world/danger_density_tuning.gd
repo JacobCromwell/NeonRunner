@@ -71,7 +71,9 @@ extends Resource
 ## the floor between two pulses taking what the pattern pass may put there; off, its whole visit (from
 ## its first pulse to its last wave). The data has it off: at run time a Resonator's pulses shift with
 ## the turns and floor waits it makes (tests/suites/test_resonator.gd), so a piece or enemy added
-## between two planned pulses could meet a pulse; the bands still reach their targets without that room.
+## between two planned pulses could meet a pulse; the bands still reach their targets without that room. The Golden
+## Zone's levels turn it on for their own builds (LevelConfig.danger_resonator_per_pulse, task S3: they are too full
+## for the pass otherwise).
 @export var resonator_per_pulse: bool = true
 ## Whether the holes and fences the pass adds get the credit pass's risky credits (a gap's edge credit
 ## and jump arc, a fence's): off, the pass adds danger, not pay, and the campaign's earnings curve

@@ -263,8 +263,9 @@ var _skin: ZoneSkin
 ## DangerDensityTuning.resonator_per_pulse does everywhere), so it may add between two pulses, each pulse's window
 ## with its margin kept clear.
 @export var danger_resonator_per_pulse: bool = false
-## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) kept between what it adds
-## and a big attack's window (a type not among the tuning's twin_tolerated_types, a host's): 1 keeps all of it.
+## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) an enemy it adds keeps
+## between its attack window and a big attack's (a type not among the tuning's twin_tolerated_types, a host's): 1 keeps
+## all of it; at 0 they may touch, never overlap. The rows it adds keep the whole clearance.
 @export_range(0.0, 1.0, 0.05) var danger_big_attack_margin: float = 1.0
 ## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) around an enemy it adds,
 ## over which that enemy's open lane and the overlap limit (DangerDensityTuning.overlap_max) hold: 1 keeps all of it;

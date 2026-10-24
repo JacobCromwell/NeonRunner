@@ -112,6 +112,14 @@ extends RefCounted
 ##   beside in their lane: near a row the pass touched, a doodad keeps off a lane the ground route
 ##   leaves the player no way around it in (doodad_ok: say a full row jumped in the only lane a new row
 ##   left open, landing past the doodad's front), so the floor route through the level holds.
+## - task S3 (the owner, October 24, 2026: "relax the fairness rules in the golden zone", GDD §9.16): a level's data
+##   may relax three of these where its own picks leave the pass too little fair room (the Golden Zone's levels; at
+##   their defaults every other level keeps them all and builds as before): LevelConfig.danger_resonator_per_pulse (a
+##   planned Resonator's attack counts pulse by pulse, attack_windows: every pulse still waits for clear floor at run
+##   time), danger_big_attack_margin (the share of the clearance an enemy it adds keeps from a big attack's window,
+##   never overlapping it: _overlap_ok; its rows keep the whole clearance) and danger_enemy_clearance (the share of the
+##   clearance around an enemy it adds over which its open lane and overlap_max hold: _encounter_fits, _twin_fits).
+##   The open lane itself (min_free_lanes) and every attack's warning never give way.
 ## Pay: with the tuning's credit_added_pieces off, the credit pass gives the pieces it adds no risky
 ## credit (LevelGenerator.uncredited): the levels get harder, not richer, and the earnings curve the
 ## shop's prices were set against stays put.
@@ -1057,7 +1065,8 @@ static func _group_has(gen: LevelGenerator, group: Array[int], field: String, va
 ## True if twin `probe` of the enemies at `group` (at `anchor_at`) may join: its attack window (and, one
 ## further on, the spacing after it) on the playable track and clear of every fixed stretch; but for its
 ## group's, at most overlap_max attack windows overlap it, all of tolerated types (_overlap_ok); the
-## floor and its type's rules allow it (_floor_ok, _type_rules_ok).
+## floor and its type's rules allow it (_floor_ok, _type_rules_ok). In a level that relaxes them (task S3) the
+## spacing after it is the level's danger_enemy_clearance share of it, danger_big_attack_margin's toward a big attack.
 static func _twin_fits(plan: Plan, probe: Dictionary, group: Array[int], anchor_at: float) -> bool:
 	var gen: LevelGenerator = plan.gen
 	var at: float = float(probe["at"])
@@ -1074,7 +1083,8 @@ static func _twin_fits(plan: Plan, probe: Dictionary, group: Array[int], anchor_
 ## before and after it on the playable track, its attack window clear of every fixed stretch (as the
 ## pattern pass spaces patterns, not their warnings); with the clearance, at most overlap_max attack
 ## windows overlap it, all of tolerated types (_overlap_ok), and the floor and its type's rules allow
-## it (_floor_ok, _type_rules_ok); never before the level's first of its kind.
+## it (_floor_ok, _type_rules_ok); never before the level's first of its kind. In a level that relaxes them (task
+## S3) the clearance is the level's danger_enemy_clearance share of it, danger_big_attack_margin's toward a big attack.
 static func _encounter_fits(plan: Plan, probe: Dictionary) -> bool:
 	var at: float = float(probe["at"])
 	var k: Vector2 = attack_window(plan.gen, probe, plan.hooks)
