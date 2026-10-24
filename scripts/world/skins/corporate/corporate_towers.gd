@@ -4,8 +4,8 @@ extends RefCounted
 ## them (the owner's reference image, docs/art/reference/corporate_backdrop.webp). A wall side is split into lots of
 ## `lot_length` metres (MeshKit.lot_run); a building covers 1–3 lots, stands on the military's wall at street level
 ## (CorporateMilitary: layer 1, olive armour plate, gates or camouflaged precast blocks through the calm band, then
-## the military building's own upper storeys and roof deck up to 9–13 m) and is one of three kinds:
-## - a TOWER (layer 2, the corporate one): set back by 3–8 m behind that roof, a glass curtain wall or a tower of
+## the military building's own upper storeys and roof deck, 8.4–11.6 m up) and is one of three kinds:
+## - a TOWER (layer 2, the corporate one): set back by 2.5–6.5 m behind that roof, a glass curtain wall or a tower of
 ##   fins up to 44–170 m, often behind an alley, with cold light strips up its corners, a service crown, the brand's
 ##   glowing ring emblem on its near face, outrigger signs (cloth banners, glowing blade signs, the ring emblem on a
 ##   plate) or a big screen hung out over the street (an ad, or the cult's feed), and surveillance cameras on the
@@ -47,7 +47,7 @@ const RECESS_DEPTH: float = 24.0
 const LOW_SHARE: float = 0.16
 ## The kinds of outrigger sign a tower can carry (Building.sign_kind): a cloth banner, a glowing blade, the ring emblem.
 enum Sign { CLOTH, BLADE, RING }
-## A blade sign's width and its height range, and a ring sign's side.
+## A blade sign's width (its height is BANNER_MIN_HEIGHT plus a few metres), and a ring sign's side.
 const BLADE_WIDTH: float = 1.8
 const RING_SIZE: float = 5.0
 ## What hangs out over the street from the walls stays above this height, and every ceiling below it.
@@ -100,8 +100,8 @@ class Building:
 	## The military layer: the look of its street-level wall (CorporateMilitary.Look) and the height of its roof.
 	var look: int = 0
 	var mil_top: float = 0.0
-	## A tower's corporate body stands from mil_top to body_top (its service crown, if it has no mansion, is the top
-	## 4.6 m: crown is where the glass ends); height is the building's whole height, a mansion included.
+	## A tower's corporate body stands from mil_top to body_top; its glass ends at crown (4.6 m under the top, where the
+	## service floors start, or at body_top under a mansion); height is the building's whole height, a mansion included.
 	var body_top: float = 0.0
 	var crown: float = 0.0
 	## An elite's mansion on top of the tower (layer 3): whether it has one, the height of its first floor and its
@@ -427,6 +427,10 @@ func _banner(solid: MeshLayer, glow: MeshLayer, b: Building, face_x: float) -> v
 	var w: float = b.banner_w
 	var top: float = b.banner_top
 	var h: float = b.banner_h
+	if b.sign_kind == Sign.RING:
+		# A ring plate stays a square that fits over its half of the street (on three lanes it is smaller).
+		w = minf(w, absf(face_x) * 0.85)
+		h = w
 	var arm_x: float = face_x + side * b.setback
 	var x_in: float = face_x - side * BANNER_GAP
 	var x_out: float = x_in - side * w
