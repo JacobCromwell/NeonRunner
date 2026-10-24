@@ -32,11 +32,14 @@ const BOARD_MOBILE: String = "mobile"
 ##   (`narrow_ceiling_share` and `one_lane_ceiling_share`, which every other zone's level has as Sentinel Row does, so
 ##   their weeks are as before), and its debris maze (task O2): debris that stops the runner (`doodads_stop`), lower
 ##   than other zones' (`doodad_height`), and the maze's numbers (`debris_maze_tuning`), which every other zone's level
-##   leaves off, as Sentinel Row does.
+##   leaves off, as Sentinel Row does. So are the danger density pass's relaxed rules (task S3: `danger_resonator_per_pulse`,
+##   `danger_big_attack_margin`, `danger_enemy_clearance`): the owner relaxed them in the Golden Zone, whose levels are
+##   too full for the pass otherwise, so only its week has them and every other zone's week builds as before
+##   (DESIGN-TBD, docs/questions/s3.md 6).
 const ZONE_FIELDS: PackedStringArray = [
 	"features", "feature_weights", "patterns_path", "skin", "skin_path", "sky", "darkness", "wall_gap_tuning", "doodad_wall_lane_share",
 	"wall_hop_lines", "wall_running", "narrow_ceiling_share", "one_lane_ceiling_share", "doodads_stop", "doodad_height",
-	"debris_maze_tuning",
+	"debris_maze_tuning", "danger_resonator_per_pulse", "danger_big_attack_margin", "danger_enemy_clearance",
 ]
 ## - The WEEK's: what a week sets itself: which level it is (id, name, seed, lanes), that it is no level of the campaign's
 ##   curve or a mini-game, that every feature is there from the start (no `feature_starts`, as in endless mode) with no
@@ -246,7 +249,7 @@ static func field_owner(field: String) -> StringName:
 ##   health), run speed, length and every pacing, density, gap and credit dial.
 ## - *The zone's, from its level in `source_levels`* (ZONE_FIELDS): its features and their pick weights, its skin
 ##   (the zone's own where the level has none), sky and darkness, its open walls or arches, whether its walls can be
-##   run on, and its ceilings' widths.
+##   run on, its ceilings' widths, and the danger density pass's relaxed rules (the Golden Zone's, task S3).
 ## - *The week's own* (WEEK_FIELDS): the week's seed, `lanes` lanes, every feature from the start (as endless mode does: a
 ##   campaign level's introductions, `feature_starts`, would hold features back in a level the player meets on its own),
 ##   and no recency curve (the campaign's newest-first picks mean nothing for a level outside it).
