@@ -254,6 +254,21 @@ var _skin: ZoneSkin
 ## build places, where it's fair: an open lane and the level's spacing around everything it adds.
 ## 0 turns it off: the level is built exactly as before (quick play, the tests, boss arenas).
 @export_range(0.0, 1.0, 0.01) var danger_density_increase: float = 0.0
+## Task S3 (the owner, October 24, 2026: "relax the fairness rules in the golden zone", GDD §9.16): rules of the danger
+## density pass that give way in this level, where its own data leaves the pass too little fair room for its rise.
+## Never its open lane (DangerDensityTuning.min_free_lanes) nor an attack's warning: each attack keeps its whole
+## window, warning included, and nothing the pass adds overlaps a big attack's. At their defaults (every level but the
+## Golden Zone's) the pass keeps every rule and builds the level as before.
+## DESIGN-TBD (docs/questions/s3.md): a planned Resonator's attack counts pulse by pulse for the pass (as
+## DangerDensityTuning.resonator_per_pulse does everywhere), so it may add between two pulses, each pulse's window
+## with its margin kept clear.
+@export var danger_resonator_per_pulse: bool = false
+## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) kept between what it adds
+## and a big attack's window (a type not among the tuning's twin_tolerated_types, a host's): 1 keeps all of it.
+@export_range(0.0, 1.0, 0.05) var danger_big_attack_margin: float = 1.0
+## DESIGN-TBD (docs/questions/s3.md): the pass's clearance (DangerDensity.clearance: the level's spacing between two
+## patterns) times this, for every margin it keeps; 1 keeps the level's spacing.
+@export_range(0.5, 1.0, 0.05) var danger_clearance_scale: float = 1.0
 ## Wider gaps (owner, October 7, 2026, GDD §9.13 "Holes"; task G7): this many of the level's gap rows
 ## come out longer along the run (WideGapTuning.jump_fraction of a jump, data/tuning/wide_gaps.tres):
 ## still jumpable, too wide for an Enforcer Truck to hop, so one that follows the runner into one is

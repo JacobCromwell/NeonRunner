@@ -316,10 +316,11 @@ static func obstacle_count(layout: LevelLayout) -> int:
 
 
 ## The clear track kept around an addition at track distance `at`: the level's spacing between two
-## patterns there (LevelGenerator.doodad_after), times the tuning's clearance_spacing_scale.
+## patterns there (LevelGenerator.doodad_after), times the tuning's clearance_spacing_scale and the level's
+## danger_clearance_scale (task S3: below 1 in the Golden Zone only).
 static func clearance(gen: LevelGenerator, at: float, p_tuning: Resource = null) -> float:
 	var t: Resource = p_tuning if p_tuning != null else tuning()
-	return gen.doodad_after(at) * float(t.get("clearance_spacing_scale"))
+	return gen.doodad_after(at) * float(t.get("clearance_spacing_scale")) * gen.config.danger_clearance_scale
 
 
 ## An enemy entry's attack window: its keep-out (LevelGenerator.enemy_keep_out) and the floor it uses.
@@ -332,12 +333,13 @@ static func attack_window(gen: LevelGenerator, entry: Dictionary, hooks: Diction
 
 
 ## The stretches enemy entry `entry` attacks over, as the pass keeps clear of them: its attack window
-## (attack_window), but with the tuning's resonator_per_pulse a planned Resonator's pulses one by one
-## (resonator_pulse_windows), as the wall fences keep off them (WallFencePlacement.resonator_pulses).
+## (attack_window), but with the tuning's resonator_per_pulse or the level's danger_resonator_per_pulse (task S3:
+## the Golden Zone) a planned Resonator's pulses one by one (resonator_pulse_windows), as the wall fences keep off
+## them (WallFencePlacement.resonator_pulses).
 static func attack_windows(gen: LevelGenerator, entry: Dictionary, hooks: Dictionary = {},
 		p_tuning: Resource = null) -> Array[Vector2]:
 	var t: Resource = p_tuning if p_tuning != null else tuning()
-	if bool(t.get("resonator_per_pulse")):
+	if bool(t.get("resonator_per_pulse")) or gen.config.danger_resonator_per_pulse:
 		var pulses: Array[Vector2] = resonator_pulse_windows(gen, entry)
 		if not pulses.is_empty():
 			return pulses
@@ -910,16 +912,23 @@ static func _floor_ok(plan: Plan, probe: Dictionary, window: Vector2) -> bool:
 
 
 ## True if, but for `group` (a twin's), the attack windows overlapping `window` are at most the tuning's
-## overlap_max, every one of the twin_tolerated_types and none a host's.
-static func _overlap_ok(plan: Plan, window: Vector2, group: Array[int]) -> bool:
+## overlap_max, every one of the twin_tolerated_types and none a host's. `window` is attack window `core` with its
+## clearance: a big attack's window (any other) keeps only the level's danger_big_attack_margin of that clearance
+## (task S3: below 1 in the Golden Zone only), and one further off doesn't count.
+static func _overlap_ok(plan: Plan, window: Vector2, group: Array[int], core: Vector2) -> bool:
+	var share: float = plan.gen.config.danger_big_attack_margin
+	var big := Vector2(core.x - (core.x - window.x) * share, core.y + (window.y - core.y) * share)
+	var near_big: PackedInt32Array = plan.attacks.owners_in(big.x, big.y) if share < 1.0 else PackedInt32Array()
 	var count: int = 0
 	for id: int in plan.attacks.owners_in(window.x, window.y):
 		if group.has(id):
 			continue
 		var o: Dictionary = plan.gen.layout.enemies[id]
-		count += 1
 		if not plan.tolerated.has(String(o.get("type", ""))) or _host(o):
-			return false
+			if share >= 1.0 or near_big.has(id):
+				return false
+			continue
+		count += 1
 		if count > plan.overlap_max:
 			return false
 	return true
@@ -1061,7 +1070,7 @@ static func _twin_fits(plan: Plan, probe: Dictionary, group: Array[int], anchor_
 	var full := Vector2(k.x, k.y + after)
 	if full.x < plan.lo or full.y > plan.hi or not plan.fixed.clear(full.x, full.y) or not _calm_clear(plan, probe, k):
 		return false
-	return _overlap_ok(plan, full, group) and _floor_ok(plan, probe, full) and _type_rules_ok(plan, probe)
+	return _overlap_ok(plan, full, group, k) and _floor_ok(plan, probe, full) and _type_rules_ok(plan, probe)
 
 
 ## True if enemy `probe` may join as an encounter of its own: its attack window with the clearance
@@ -1076,7 +1085,7 @@ static func _encounter_fits(plan: Plan, probe: Dictionary) -> bool:
 	if window.x < plan.lo or window.y > plan.hi or not plan.fixed.clear(k.x, k.y) or not _calm_clear(plan, probe, k):
 		return false
 	var none: Array[int] = []
-	return _overlap_ok(plan, window, none) and _floor_ok(plan, probe, window) \
+	return _overlap_ok(plan, window, none, k) and _floor_ok(plan, probe, window) \
 		and _type_rules_ok(plan, probe) and at > _first_at(plan, probe) + EPSILON
 
 
@@ -1297,6 +1306,13 @@ static func _margined(plan: Plan, span: Vector2) -> Vector2:
 	return Vector2(span.x - _clear(plan, span.x), span.y + _clear(plan, span.y))
 
 
+## A big attack's window `span` widened by the level's danger_big_attack_margin of the clearance either side (task
+## S3: all of it but in the Golden Zone).
+static func _big_margined(plan: Plan, span: Vector2) -> Vector2:
+	var share: float = plan.gen.config.danger_big_attack_margin
+	return Vector2(span.x - _clear(plan, span.x) * share, span.y + _clear(plan, span.y) * share)
+
+
 ## Indexes the layout after the fill pass for the obstacle half: the rooms and row rooms, the kept lanes
 ## (pads', floor enemies', the rules'), every attack window and every row of holes or fences.
 static func _index_obstacles(plan: Plan) -> void:
@@ -1336,7 +1352,7 @@ static func _index_obstacles(plan: Plan) -> void:
 				continue
 			plan.attacks.add(w.x, w.y, i)
 			if not tolerated.has(String(e["type"])) or _host(e):
-				protections.append(_margined(plan, w))
+				protections.append(_big_margined(plan, w))
 			for lane: int in _floor_lanes(plan, e):
 				plan.kept[lane].add(w.x, w.y)
 	_keep_rule_lanes(plan)
