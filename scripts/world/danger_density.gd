@@ -1306,13 +1306,6 @@ static func _margined(plan: Plan, span: Vector2) -> Vector2:
 	return Vector2(span.x - _clear(plan, span.x), span.y + _clear(plan, span.y))
 
 
-## A big attack's window `span` widened by the level's danger_big_attack_margin of the clearance either side (task
-## S3: all of it but in the Golden Zone).
-static func _big_margined(plan: Plan, span: Vector2) -> Vector2:
-	var share: float = plan.gen.config.danger_big_attack_margin
-	return Vector2(span.x - _clear(plan, span.x) * share, span.y + _clear(plan, span.y) * share)
-
-
 ## Indexes the layout after the fill pass for the obstacle half: the rooms and row rooms, the kept lanes
 ## (pads', floor enemies', the rules'), every attack window and every row of holes or fences.
 static func _index_obstacles(plan: Plan) -> void:
@@ -1352,7 +1345,7 @@ static func _index_obstacles(plan: Plan) -> void:
 				continue
 			plan.attacks.add(w.x, w.y, i)
 			if not tolerated.has(String(e["type"])) or _host(e):
-				protections.append(_big_margined(plan, w))
+				protections.append(_margined(plan, w))
 			for lane: int in _floor_lanes(plan, e):
 				plan.kept[lane].add(w.x, w.y)
 	_keep_rule_lanes(plan)
