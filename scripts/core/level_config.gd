@@ -266,9 +266,10 @@ var _skin: ZoneSkin
 ## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) kept between what it adds
 ## and a big attack's window (a type not among the tuning's twin_tolerated_types, a host's): 1 keeps all of it.
 @export_range(0.0, 1.0, 0.05) var danger_big_attack_margin: float = 1.0
-## DESIGN-TBD (docs/questions/s3.md): the pass's clearance (DangerDensity.clearance: the level's spacing between two
-## patterns) times this, for every margin it keeps; 1 keeps the level's spacing.
-@export_range(0.5, 1.0, 0.05) var danger_clearance_scale: float = 1.0
+## DESIGN-TBD (docs/questions/s3.md): the share of the pass's clearance (the level's spacing) around an enemy it adds,
+## over which that enemy's open lane and the overlap limit (DangerDensityTuning.overlap_max) hold: 1 keeps all of it;
+## less, and the open lane still holds over the enemy's whole attack, warning included.
+@export_range(0.0, 1.0, 0.05) var danger_enemy_clearance: float = 1.0
 ## Wider gaps (owner, October 7, 2026, GDD §9.13 "Holes"; task G7): this many of the level's gap rows
 ## come out longer along the run (WideGapTuning.jump_fraction of a jump, data/tuning/wide_gaps.tres):
 ## still jumpable, too wide for an Enforcer Truck to hop, so one that follows the runner into one is
