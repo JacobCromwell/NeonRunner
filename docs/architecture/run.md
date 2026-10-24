@@ -73,7 +73,7 @@ still share one mesh surface/material, including credits placed during a run.
 task Q4), the HUD (`RunHud`) and, in debug builds, the debug HUD and the F6 tuning panel. A teleport (task Q4) moves the
 runner along the track in one step (`Player.teleported`); `RunWorld._on_teleported` settles what lay in between (the
 enemies, the shots in the air, the credits and the stars' best score, the track built ahead) and `RunWorld.teleported`
-cuts the camera and shows the flash: Teleporters (`docs/architecture/teleporters.md`). Quick play (`--quick`, or any of `--god
+starts the camera's sweep after the runner (`RunCamera`, task U2) and shows the flash: Teleporters (`docs/architecture/teleporters.md`). Quick play (`--quick`, or any of `--god
 --seed=N --lanes=N --difficulty=X --features=a,b --full-loadout --nofall --skin=<name> --speed=N
 --thief`) restarts on death like the grey box did.
 A campaign level runs at its zone's speed (Pace, under The generator): `App` gives the run the level's

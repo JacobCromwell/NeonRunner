@@ -5,7 +5,8 @@ extends Resource
 ## teleporters have a left and a right output pad. A light on the antenna, on its left or its right side, shows which one
 ## the runner lands on"; "some antennas' light stays on one side ... others blink left and right, and the side lit when the
 ## runner touches the pad decides where they land"): where the generator may stand one (scripts/enemies/teleporter_rules.gd),
-## how its antenna shows its light (Teleporter, scripts/world/teleporter.gd) and how the jump looks (TeleportFlash). How
+## how its antenna shows its light (Teleporter, scripts/world/teleporter.gd) and how the jump looks (TeleportFlash, and
+## the camera's sweep after the runner, RunCamera). How
 ## many a level asks for is its own LevelConfig.teleporters (and blinking_teleporters). Edit data/tuning/teleporters.tres
 ## (F6: "Teleporters", in a level that has them; Restart level rebuilds where they stand). Times are seconds of run at the
 ## level's run speed, or at the fastest a runner comes onto a pad where they say so (the run speed plus
@@ -77,6 +78,27 @@ const PATH: String = "res://data/tuning/teleporters.tres"
 @export_range(0.05, 1.0, 0.01, "suffix:s") var flash_seconds: float = 0.28
 @export_range(0.0, 0.6, 0.01) var reduced_flash_alpha: float = 0.18
 @export_range(0.1, 1.5, 0.01, "suffix:s") var reduced_flash_seconds: float = 0.45
+
+@export_group("The camera's sweep")
+## The camera's sweep across the jump (the owner, October 24, 2026: "when the player touches the teleporter, the camera
+## should zoom in to where the teleporter's output is. Even though the player character teleports instantly, the camera
+## catches up, showing the user what happened through its movement"): the runner is moved at once, but the camera stays
+## where it was (the input pad's view, the output pad and the runner on it far ahead) and rushes after them, easing out, so
+## the jump reads. Camera only: the runner's position, speed, hitbox and control are the teleport's, whatever this says. Real
+## seconds (slow time doesn't stretch it), from the touch to the camera back on its usual framing; the share of the way
+## still to go follows `(1 - t / sweep_seconds) ^ sweep_ease_power`, so most of the way is covered in the first half. 0 is
+## the old clean cut. DESIGN-TBD (docs/questions/u2-teleport-camera.md 1 and 2): kept short, since the runner has the
+## landing's reaction time (landing_seconds) from the arrival, and the view ahead of the landing is in frame throughout.
+@export_range(0.0, 1.0, 0.01, "suffix:s") var sweep_seconds: float = 0.35
+## How sharply the sweep eases out: 1 is a steady rush that stops dead, higher covers most of the way at once and settles
+## slowly.
+@export_range(1.0, 5.0, 0.1) var sweep_ease_power: float = 2.0
+## Degrees the field of view widens at the touch and eases back from over the sweep (the zoom's punch; negative narrows it).
+## No punch with Reduced flashing, nor with Screen shake off (no kick in the view). DESIGN-TBD (u2-teleport-camera.md 3).
+@export_range(-15.0, 20.0, 0.5, "suffix:°") var sweep_fov_punch: float = 6.0
+## The flash's share of flash_alpha while the camera sweeps (sweep_seconds above 0): the sweep itself shows the jump, and
+## the full flash would wash it out. Reduced flashing's tint is its own. DESIGN-TBD (u2-teleport-camera.md 4).
+@export_range(0.0, 1.0, 0.05) var sweep_flash_share: float = 0.5
 
 @export_group("Placement")
 ## Seconds of run between two teleporters' pads at the least (and nothing of one within another's stretch).

@@ -457,8 +457,8 @@ one of two each way, on the side a blinking light shows at the touch (both, half
 sound once, running through the landing; the way around, a switch out at the approach and a jump over it passing it; the
 dash, a slide and the protection carried through; what a teleport skips (the enemies between leaving play, a heli drone
 coming along with its wind-up called off and one waiting between never coming, a cyborg's charge-up called off, the shots
-gone, the credits passed and the stars' best score leaving them out, the track built ahead, the camera's cut, the flash;
-the director's entries behind the landing never spawning); the flash (and Reduced flashing's soft tint); every teleporter
+gone, the credits passed and the stars' best score leaving them out, the track built ahead, the camera starting from the view it had, the flash;
+the director's entries behind the landing never spawning); the flash (and Reduced flashing's soft tint); the camera's sweep (task U2: its curve, the lag at the touch and its end within `sweep_seconds`, the punch, the cut at 0, a second teleport mid-sweep, the runner the same with and without it); every teleporter
 of the campaign (the Ice Lab's and the Golden Zone's) at 3, 5 and 6 lanes on real physics on a cut of its level at the
 level's speed, landed on each output pad
 (its light set each way) and run through, and passed in the lane beside it and by a switch out at its approach; every

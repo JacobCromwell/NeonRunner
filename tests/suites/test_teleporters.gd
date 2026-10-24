@@ -32,8 +32,14 @@ extends TestSuite
 ## - What it skips: the enemies behind the landing leave play (a heli drone's place comes along, one waiting there never
 ##   comes, the entries still to come there never spawn), those ahead stay, a cyborg's charge-up and a heli drone's wind-up
 ##   are called off, every shot in the air goes, the credits between are passed and the stars' best score leaves them out,
-##   the track is built ahead of the landing at once, the camera cuts across and the flash shows (Reduced flashing: a soft
-##   tint), the sound plays (the `teleport` event).
+##   the track is built ahead of the landing at once, the camera starts from the view it had and the flash shows (Reduced
+##   flashing: a soft tint), the sound plays (the `teleport` event).
+## - The camera's sweep (task U2; the owner, October 24, 2026: "the camera should zoom in to where the teleporter's output
+##   is ... the camera catches up, showing the user what happened through its movement"): at the touch the camera is where
+##   it was, the runner a hop ahead of it; its lag eases away (RunCamera.sweep_remaining) within sweep_seconds, to the
+##   usual framing, with the field of view's punch (none with Reduced flashing or Screen shake off); sweep_seconds 0 is
+##   the clean cut; a second teleport mid-sweep starts where the camera is; and it is the camera's alone: the runner's
+##   distance, lane, speed and state come out the same with and without it.
 ## - Every teleporter of the campaign at 3, 5 and 6 lanes, at the level's speed, on a cut of its level: run onto, the runner
 ##   lands on each output pad (its light set each way) and runs through the landing alive; the way around and a switch out
 ##   at its approach pass it alive.
@@ -88,6 +94,7 @@ func run() -> void:
 	await _test_physics()
 	await _test_skipped()
 	await _test_flash()
+	await _test_camera_sweep()
 	await _test_campaign()
 	_test_skins()
 	_test_tuning()
@@ -990,10 +997,11 @@ func _test_skipped() -> void:
 	var max_before: int = world.score.max_credit_score
 	var r := {"cut": false, "retired_between": false, "ahead": false, "follower": false, "waiting_gone": false,
 		"drone_on": false, "drone_state": -1, "drone_before": -1, "shots": -1, "cyborg_state": -1, "cyborg_why": &"",
-		"cyborg_before": -1, "built": 0.0, "camera": false, "flash": 0.0, "skipped": 0, "max_after": 0}
+		"cyborg_before": -1, "built": 0.0, "camera": false, "camera_x": 0.0, "flash": 0.0, "skipped": 0, "max_after": 0}
 	var cyborg: Array[Enemy] = []
 	# At the touch, ahead of RunWorld's handler: a cyborg ahead charging up, the drone winding up, a shot in the air.
 	var at_touch := func(_from: float, _to: float, _entry: Dictionary, _output: Dictionary) -> void:
+		r["camera_x"] = camera.position.x
 		world.projectiles.fire_enemy(world.lane_point(2, PAD + 15.0, 1.0), Vector3(0.0, 0.0, 5.0))
 		var c: Enemy = d.spawn({"type": "cyborg", "lane": 3, "at": land + 45.0, "seed": 5, "params": {"panic": false}})
 		cyborg.append(c)
@@ -1019,7 +1027,9 @@ func _test_skipped() -> void:
 			r["cyborg_state"] = gun.state
 			r["cyborg_why"] = gun.events[-1].get("why", &"") if not gun.events.is_empty() else &""
 		r["built"] = int(world.track.get(&"_next_chunk")) * TrackBuilder.CHUNK_LENGTH
-		r["camera"] = absf(camera.position.x - p.position.x * world.tuning.camera_follow_x) < 0.01
+		# The camera keeps the view it had (task U2), the runner's new lane followed from there.
+		r["camera"] = camera.sweeping() and absf(camera.position.x - float(r["camera_x"])) < 0.01 \
+			and absf(camera.position.x - p.position.x * world.tuning.camera_follow_x) > 0.5
 		r["flash"] = flash.alpha()
 		r["skipped"] = world.score.credits_skipped
 		r["max_after"] = world.score.max_credit_score
@@ -1042,8 +1052,8 @@ func _test_skipped() -> void:
 		% [int(r["skipped"]), int(r["max_after"]), max_before])
 	check(float(r["built"]) >= float(r.get("to", 0.0)) + TrackBuilder.BUILD_AHEAD - TrackBuilder.CHUNK_LENGTH,
 		"the track is built ahead of the landing at once (to %.0f m)" % float(r["built"]))
-	check(bool(r["camera"]), "the camera cuts across to the runner's new lane")
-	check(absf(float(r["flash"]) - tt.flash_alpha) < 0.01, "the flash shows (%.2f)" % float(r["flash"]))
+	check(bool(r["camera"]), "the camera starts from the view it had, the runner's new lane followed from there")
+	check(absf(float(r["flash"]) - TeleportFlash.peak(tt)) < 0.01, "the flash shows (%.2f)" % float(r["flash"]))
 	check(world.score.credits >= 5 and world.score.stats().get("credits_skipped", -1) == 30,
 		"the credit past the landing is still there to collect, and the run's stats name the skipped ones")
 	await sim.free_world(world)
@@ -1066,13 +1076,20 @@ func _test_skipped() -> void:
 ## easing in and out, never above reduced_flash_alpha; it shows on a teleport and clears.
 func _test_flash() -> void:
 	var a0: float = TeleportFlash.alpha_at(tt, 0.0, false)
-	var fades: bool = absf(a0 - tt.flash_alpha) < 0.001 and TeleportFlash.alpha_at(tt, tt.flash_seconds, false) == 0.0
+	var fades: bool = absf(a0 - TeleportFlash.peak(tt)) < 0.001 and TeleportFlash.alpha_at(tt, tt.flash_seconds, false) == 0.0
 	var last: float = a0
 	for k: int in 20:
 		var a: float = TeleportFlash.alpha_at(tt, k * tt.flash_seconds / 20.0, false)
 		fades = fades and a <= last + 0.0001
 		last = a
-	check(fades, "the flash: from %.2f down to none over %.2f s" % [tt.flash_alpha, tt.flash_seconds])
+	check(fades, "the flash: from %.2f down to none over %.2f s" % [TeleportFlash.peak(tt), tt.flash_seconds])
+	# While the camera sweeps (task U2) the flash is a share of flash_alpha; with the sweep off, flash_alpha itself.
+	var cut: TeleporterTuning = tt.duplicate() as TeleporterTuning
+	cut.sweep_seconds = 0.0
+	check(absf(TeleportFlash.peak(tt) - tt.flash_alpha * tt.sweep_flash_share) < 0.0001 and tt.sweep_seconds > 0.0
+		and absf(TeleportFlash.alpha_at(cut, 0.0, false) - cut.flash_alpha) < 0.0001,
+		"the flash is %.2f of flash_alpha while the camera sweeps (%.2f), flash_alpha itself with no sweep (%.2f)"
+		% [tt.sweep_flash_share, TeleportFlash.peak(tt), cut.flash_alpha])
 	var soft: bool = TeleportFlash.alpha_at(tt, 0.0, true) == 0.0 and TeleportFlash.alpha_at(tt, tt.reduced_flash_seconds, true) == 0.0
 	var top: float = 0.0
 	for k: int in 40:
@@ -1091,7 +1108,7 @@ func _test_flash() -> void:
 		for i: int in 60:
 			await tree.process_frame
 			most = maxf(most, flash.alpha())
-		check(flash.alpha() == 0.0 and most > 0.0 and most <= (tt.reduced_flash_alpha if reduced else tt.flash_alpha) + 0.001,
+		check(flash.alpha() == 0.0 and most > 0.0 and most <= (tt.reduced_flash_alpha if reduced else TeleportFlash.peak(tt)) + 0.001,
 			"it shows on a teleport and clears (at most %.2f, Reduced flashing %s)" % [most, "on" if reduced else "off"])
 	check(flash.shown == 2, "it counts the teleports it showed")
 	# A restart right after a jump (LevelRun.restart: a fresh RunWorld, the same overlay): the tint goes with the old run.
@@ -1106,6 +1123,196 @@ func _test_flash() -> void:
 				"on" if reduced else "off"])
 	Settings.flashing_reduced = false
 	await sim.free_world(world)
+
+
+# --- The camera's sweep ------------------------------------------------------------------------
+
+## The camera's sweep (task U2): at the touch the camera is where it was and the runner a hop ahead; the lag eases away
+## along RunCamera.sweep_remaining, within sweep_seconds, to the usual framing (a fresh camera's), with the field of view's
+## punch (none with Reduced flashing or Screen shake off); no sweep at sweep_seconds 0 (the clean cut); a second teleport
+## mid-sweep starts from where the camera is; and the runner is the same with and without it.
+func _test_camera_sweep() -> void:
+	# The curve: all of the way to go at the touch, none from sweep_seconds on, easing out (over half the way by half the time),
+	# and short enough to leave the landing's reaction time (landing_seconds) its better half.
+	var last: float = 2.0
+	var steady: bool = is_equal_approx(RunCamera.sweep_remaining(tt, 0.0), 1.0)
+	for k: int in 21:
+		var left: float = RunCamera.sweep_remaining(tt, k * tt.sweep_seconds / 20.0)
+		steady = steady and left <= last + 0.000001 and left >= 0.0
+		last = left
+	check(steady and RunCamera.sweep_remaining(tt, tt.sweep_seconds) == 0.0 and RunCamera.sweep_remaining(tt, 3.0 * tt.sweep_seconds) == 0.0
+		and RunCamera.sweep_remaining(tt, 0.5 * tt.sweep_seconds) < 0.5,
+		"the sweep's way left: 1 at the touch, easing out to 0 at %.2f s (%.2f at half of it)" % [tt.sweep_seconds,
+			RunCamera.sweep_remaining(tt, 0.5 * tt.sweep_seconds)])
+	check(tt.sweep_seconds > 0.0 and tt.sweep_seconds <= tt.landing_seconds * 0.5,
+		"the sweep is short: %.2f s of the landing's %.2f s" % [tt.sweep_seconds, tt.landing_seconds])
+	var cut: TeleporterTuning = tt.duplicate() as TeleporterTuning
+	cut.sweep_seconds = 0.0
+	check(RunCamera.sweep_remaining(cut, 0.0) == 0.0, "with sweep_seconds 0 there is no way to go")
+
+	var sim := RunSim.new(tree, tuning)
+	var dt: float = 1.0 / 60.0
+	# A real teleport, the camera driven by hand from the touch (the world stands still, so the lag is the sweep's alone).
+	var layout: LevelLayout = _layout(5, 1, 1, [3])
+	var world: RunWorld = sim.build_world(layout)
+	world.player.setup(world.tuning, world.geo, 1)
+	var p: Player = world.player
+	var camera := RunCamera.new()
+	camera.teleport_tuning = tt
+	world.add_child(camera)
+	camera.follow(world)
+	camera.set_process(false)
+	var ref := RunCamera.new()
+	ref.teleport_tuning = tt
+	world.add_child(ref)
+	ref.set_process(false)
+	var before := {"pos": camera.position, "fov": camera.fov}
+	var keep_up := func() -> void:
+		camera.snap()
+		before["pos"] = camera.position
+		before["fov"] = camera.fov
+	tree.physics_frame.connect(keep_up)
+	var at := {}
+	var touch := func(from: float, to: float, _entry: Dictionary, _output: Dictionary) -> void:
+		if at.has("pos"):
+			return  # The first touch only (the emits below are by hand).
+		tree.physics_frame.disconnect(keep_up)
+		at["from"] = from
+		at["to"] = to
+		at["pos"] = camera.position
+		at["fov"] = camera.fov
+		at["sweeping"] = camera.sweeping()
+		at["z"] = p.position.z
+		at["x"] = p.position.x
+	world.teleported.connect(touch)
+	await sim.step_world(world, (PAD - 4.0) / tuning.run_speed)
+	for i: int in 60:
+		if p.teleports > 0:
+			break
+		await sim.step_world(world, 1.5 / float(Engine.physics_ticks_per_second))
+	check(p.teleports == 1 and at.has("pos"), "the runner touched the pad and was teleported (%d)" % p.teleports)
+	if not at.has("pos"):
+		await sim.free_world(world)
+		return
+	var dist: float = world.tuning.camera_distance
+	var step: float = tuning.run_speed / float(Engine.physics_ticks_per_second)
+	var old_pos: Vector3 = before["pos"]
+	var at_pos: Vector3 = at["pos"]
+	var hop: float = float(at["to"]) - float(at["from"])
+	var lag0: float = at_pos.z - (float(at["z"]) + dist)
+	var follow_x: float = float(at["x"]) * world.tuning.camera_follow_x
+	check(bool(at["sweeping"]) and at_pos.distance_to(old_pos) < 0.001,
+		"at the touch the camera is where it was (%s, was %s)" % [at_pos, old_pos])
+	check(absf(lag0 - hop) < step + 0.01 and absf(at_pos.x - follow_x) > 0.5,
+		"the runner is a hop ahead of it (%.1f m of the %.1f m hop, a step is %.2f m), in the new lane (the camera %.1f m across from it)"
+		% [lag0, hop, step, at_pos.x - follow_x])
+	var punch_on: bool = not Settings.flashing_reduced and world.effects.shake_scale > 0.0
+	check(absf(float(at["fov"]) - float(before["fov"]) - (tt.sweep_fov_punch if punch_on else 0.0)) < 0.01,
+		"the field of view punches %.1f degrees at the touch (%.2f to %.2f)" % [tt.sweep_fov_punch, float(before["fov"]), float(at["fov"])])
+	# Frame by frame: the lag follows the curve, and is gone, the framing the usual one, once sweep_seconds are up.
+	var on_curve: bool = true
+	var frames: int = 0
+	var worst: float = 0.0
+	var fov_max: float = 0.0
+	while camera.sweeping() and frames < 200:
+		camera.call(&"_process", dt)
+		frames += 1
+		var want: float = lag0 * RunCamera.sweep_remaining(tt, frames * dt)
+		var lag: float = camera.position.z - (p.position.z + dist)
+		if camera.sweeping():
+			worst = maxf(worst, absf(lag - want))
+		else:
+			worst = maxf(worst, absf(lag))
+		on_curve = on_curve and lag <= lag0 + 0.001 and lag >= -0.001
+		fov_max = maxf(fov_max, camera.fov - float(before["fov"]))
+	ref.follow(world)
+	check(on_curve and worst < 0.02 and not camera.sweeping() and float(frames) * dt <= tt.sweep_seconds + 2.0 * dt,
+		"the camera's lag follows the curve (off by %.3f m at most) and is gone after %d frames (%.2f s of %.2f s)"
+		% [worst, frames, frames * dt, tt.sweep_seconds])
+	check(camera.position.distance_to(ref.position) < 0.05 and absf(camera.fov - ref.fov) < 0.05,
+		"then the camera is in the usual framing (%s, a fresh camera's %s; field of view %.2f, %.2f)" % [camera.position,
+			ref.position, camera.fov, ref.fov])
+	check(fov_max <= tt.sweep_fov_punch + 0.01, "the punch eases back with it (%.2f degrees at most)" % fov_max)
+	check(absf(float(at["z"]) - p.position.z) < 0.0001 and p.alive and p.lane == 3,
+		"the camera moved nothing of the runner (lane %d, alive %s)" % [p.lane, p.alive])
+	# A second teleport mid-sweep starts from where the camera is: its lag adds the second hop.
+	var geo: TrackGeometry = world.geo
+	camera.snap()
+	p.position.z -= 57.0
+	p.position.x = geo.lane_x(0)
+	world.teleported.emit(0.0, 57.0, {}, {"lane": 0})
+	var lag_a: float = camera.position.z - (p.position.z + dist)
+	for i: int in 5:
+		camera.call(&"_process", dt)
+	var mid: float = camera.position.z - (p.position.z + dist)
+	p.position.z -= 40.0
+	p.position.x = geo.lane_x(4)
+	world.teleported.emit(57.0, 97.0, {}, {"lane": 4})
+	var lag_b: float = camera.position.z - (p.position.z + dist)
+	check(absf(lag_a - 57.0) < 0.01 and absf(mid - 57.0 * RunCamera.sweep_remaining(tt, 5.0 * dt)) < 0.02 and absf(lag_b - (mid + 40.0)) < 0.01
+		and camera.sweeping(), "a second teleport mid-sweep starts from where the camera is (%.1f m, then %.1f + 40 = %.1f m)"
+		% [lag_a, mid, lag_b])
+	for i: int in 60:
+		camera.call(&"_process", dt)
+	ref.snap()
+	check(not camera.sweeping() and absf(camera.position.z - ref.position.z) < 0.05 and absf(camera.position.x - ref.position.x) < 0.05,
+		"and it settles on the runner (%.3f m off)" % absf(camera.position.z - ref.position.z))
+	# Without a punch: Reduced flashing, Screen shake off. The sweep itself stays.
+	camera.snap()
+	p.position.z -= 50.0
+	world.teleported.emit(0.0, 50.0, {}, {"lane": 4})
+	var punch: float = camera.sweep_fov()
+	Settings.flashing_reduced = true
+	var reduced_punch: float = camera.sweep_fov()
+	var reduced_sweeps: bool = camera.sweeping() and camera.sweep_offset().y > 1.0
+	Settings.flashing_reduced = false
+	world.effects.shake_scale = 0.0
+	var still_punch: float = camera.sweep_fov()
+	world.effects.shake_scale = 1.0
+	check(absf(punch - tt.sweep_fov_punch) < 0.01 and reduced_punch == 0.0 and still_punch == 0.0 and reduced_sweeps,
+		"no punch with Reduced flashing (%.1f) or Screen shake off (%.1f), the sweep stays (%.1f degrees otherwise)"
+		% [reduced_punch, still_punch, punch])
+	# The clean cut with sweep_seconds 0.
+	var cutter := RunCamera.new()
+	cutter.teleport_tuning = cut
+	world.add_child(cutter)
+	cutter.follow(world)
+	cutter.set_process(false)
+	p.position.z -= 50.0
+	p.position.x = geo.lane_x(1)
+	world.teleported.emit(50.0, 100.0, {}, {"lane": 1})
+	var cut_at := Vector3(p.position.x * world.tuning.camera_follow_x, cutter.position.y, p.position.z + dist)
+	check(not cutter.sweeping() and cutter.position.distance_to(cut_at) < 0.01,
+		"with sweep_seconds 0 the camera cuts across to the runner at once, as it did (%s)" % [cutter.position])
+	await sim.free_world(world)
+
+	# The runner is the same with the camera and without it: the same take twice, only the first with a RunCamera running
+	# live; in it, the sweep is over and the camera is on the runner by the run's end.
+	var runs: Array[Dictionary] = []
+	for with_camera: bool in [true, false]:
+		var w: RunWorld = sim.build_world(_layout(5, 1, 1, [3]))
+		w.player.setup(w.tuning, w.geo, 1)
+		var live: RunCamera = null
+		if with_camera:
+			live = RunCamera.new()
+			w.add_child(live)
+			live.follow(w)
+		var res: Dictionary = await sim.step_world(w, (PAD + _hop() + 40.0) / tuning.run_speed)
+		var wp: Player = w.player
+		var run := {"distance": wp.distance, "lane": wp.lane, "speed": wp.speed, "teleports": wp.teleports, "alive": wp.alive,
+			"x": wp.position.x, "y": wp.position.y, "z": wp.position.z, "h": wp.h, "elapsed": wp.elapsed, "result": res["distance"]}
+		if live != null:
+			run["settled"] = not live.sweeping() and absf(live.position.z - (wp.position.z + w.tuning.camera_distance)) < 0.8
+		runs.append(run)
+		await sim.free_world(w)
+	var same: bool = true
+	for key: String in ["distance", "lane", "speed", "teleports", "alive", "x", "y", "z", "h", "elapsed", "result"]:
+		same = same and runs[0][key] == runs[1][key]
+	check(same and int(runs[0]["teleports"]) == 1 and bool(runs[0]["alive"]),
+		"the runner comes out the same with the camera and without it (distance %.3f, %.3f; lane %d; speed %.2f, %.2f; %d teleport)"
+		% [float(runs[0]["distance"]), float(runs[1]["distance"]), int(runs[0]["lane"]), float(runs[0]["speed"]),
+			float(runs[1]["speed"]), int(runs[0]["teleports"])])
+	check(bool(runs[0].get("settled", false)), "and the live camera's sweep is over and it is on the runner at the run's end")
 
 
 # --- The campaign's own, on real physics --------------------------------------------------------

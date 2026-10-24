@@ -27,6 +27,15 @@ extends Camera3D
 ## for one ahead (camera_climb_lead), so it never sits inside the higher roof a ceiling rider will drop onto.
 ## Every target is eased as ever, so a landing on a higher roof or a ride up to a ceiling never snaps the
 ## view; ceiling_limit holds as always, and wins over the roof's clearance where both can't be kept.
+##
+## The teleport's sweep (task U2; the owner, October 24, 2026: "when the player touches the teleporter, the camera should
+## zoom in to where the teleporter's output is ... the camera catches up, showing the user what happened through its
+## movement"): the runner is moved at once (Player._teleport), but the camera keeps the view it had, a lag behind where it
+## follows the runner (`_sweep_from`: across and along the track), and that lag is eased away over
+## TeleporterTuning.sweep_seconds of real time, fastest at first (`sweep_remaining`), with a punch of
+## sweep_fov_punch degrees of field of view that eases back with it. It is the camera's alone: the lag rides on top of the
+## usual follow (the runner's own position, hitboxes, speed and control are untouched), and the ceiling and doodad checks
+## run where the camera really is. A second teleport mid-sweep starts from wherever the camera is.
 
 ## A ceiling within this far to either side of the camera, this far ahead of it or this far behind it
 ## holds it down too (ceiling_limit): one beside it (a narrow ceiling) as well as one over it, one just
@@ -64,6 +73,12 @@ var _focus: Vector3 = Vector3.ZERO
 var _look_y: float = 1.0
 var _fov: float = 70.0
 var _lean_deg: float = 0.0
+## TeleporterTuning for the teleport's sweep (the shared data/tuning/teleporters.tres; tests and tools may set their own).
+var teleport_tuning: TeleporterTuning
+## The sweep's start: how far the camera was from where it follows the runner at the touch, Vector2(across, along the
+## track: z), and the real seconds since (INF: no sweep under way).
+var _sweep_from := Vector2.ZERO
+var _sweep_t: float = INF
 var _shake: float = 0.0
 var _shake_time: float = 0.0
 var _shake_left: float = 0.0
@@ -79,20 +94,71 @@ func follow(p_world: RunWorld) -> void:
 	speed_fx = world.effects.tuning if world.effects.tuning != null else SpeedFxTuning.new()
 	world.effects.shake_requested.connect(_on_shake)
 	world.teleported.connect(_on_teleported)
+	if teleport_tuning == null:
+		teleport_tuning = TeleporterTuning.load_default()
 	snap()
 
 
-## A teleport (task Q4; RunWorld.teleported): a clean cut, with the flash over it (TeleportFlash). The camera always keeps
-## level with the runner along the track, so it's there already; across, it jumps to where it follows the runner in their
-## new lane instead of easing over (no sweep across the lanes in the cut), and the lean into a lane switch is let go. Its
-## height, look and field of view carry on as they were (the runner keeps their speed and arrives running on the floor).
-## DESIGN-TBD (docs/questions/q4.md 4): a cut rather than a quick move.
+## A teleport (task Q4; RunWorld.teleported; the sweep is task U2): the runner is already at the output pad, and the
+## camera stays where it was. What it follows of the runner is moved at once, across to their new lane (`_focus.x`; along
+## the track it follows them in the same step), and the distance it is left behind (the input pad's view, across and
+## along) becomes the sweep's start (`_sweep_from`), which `_update` eases away over TeleporterTuning.sweep_seconds. The
+## camera is where it was this frame, so a second teleport mid-sweep starts from where the sweep had got to. The lean into
+## a lane switch is let go; the height, the look and the field of view carry on (the runner arrives running on the floor).
+## With sweep_seconds 0 it's the clean cut it was in task Q4 (the flash over it: TeleportFlash). DESIGN-TBD
+## (docs/questions/u2-teleport-camera.md 1).
 func _on_teleported(_from: float, _to: float, _entry: Dictionary, _output: Dictionary) -> void:
 	if world == null or world.player == null:
 		return
-	_focus.x = world.player.position.x * world.tuning.camera_follow_x
+	var t: MovementTuning = world.tuning
+	var here := Vector2(_focus.x + sweep_offset().x, position.z)
+	_focus.x = world.player.position.x * t.camera_follow_x
 	_lean_deg = 0.0
+	if teleport_tuning != null and teleport_tuning.sweep_seconds > 0.0:
+		_sweep_from = here - Vector2(_focus.x, world.player.position.z + t.camera_distance)
+		_sweep_t = 0.0
+	else:
+		_sweep_t = INF
 	_update(0.0, false)
+
+
+## The share of the sweep's way still to go `t` seconds after the touch: 1 at the touch, 0 from sweep_seconds on, easing
+## out (`(1 - t / sweep_seconds) ^ sweep_ease_power`: most of the way is covered at once, the rest settles). 0 with no sweep.
+static func sweep_remaining(tt: TeleporterTuning, t: float) -> float:
+	if tt.sweep_seconds <= 0.0 or t >= tt.sweep_seconds:
+		return 0.0
+	return pow(clampf(1.0 - maxf(t, 0.0) / tt.sweep_seconds, 0.0, 1.0), tt.sweep_ease_power)
+
+
+## True while a teleport's sweep is under way.
+func sweeping() -> bool:
+	return not is_inf(_sweep_t)
+
+
+## How far the sweep still holds the camera from where it follows the runner: Vector2(across, along the track), zero with
+## no sweep. Positive along is back toward the input pad.
+func sweep_offset() -> Vector2:
+	if is_inf(_sweep_t) or teleport_tuning == null:
+		return Vector2.ZERO
+	return _sweep_from * sweep_remaining(teleport_tuning, _sweep_t)
+
+
+## The sweep's punch on the field of view, degrees: sweep_fov_punch eased back with the sweep. None with Reduced flashing
+## (Settings.flashing_reduced) or Screen shake off (RunEffects.shake_scale 0): no kick in the view for a player who asked
+## for none.
+func sweep_fov() -> float:
+	if is_inf(_sweep_t) or teleport_tuning == null or Settings.flashing_reduced or world.effects.shake_scale <= 0.0:
+		return 0.0
+	return teleport_tuning.sweep_fov_punch * sweep_remaining(teleport_tuning, _sweep_t)
+
+
+## Lets the sweep run `delta` seconds of game time on: real seconds (slow time, Engine.time_scale, doesn't stretch it).
+func _advance_sweep(delta: float) -> void:
+	if is_inf(_sweep_t):
+		return
+	_sweep_t += delta / maxf(Engine.time_scale, 0.001)
+	if teleport_tuning == null or _sweep_t >= teleport_tuning.sweep_seconds:
+		_sweep_t = INF
 
 
 ## Jumps straight to the resting position (level start, restart).
@@ -104,6 +170,7 @@ func snap() -> void:
 	_look_y = 1.0
 	_fov = t.camera_fov
 	_lean_deg = 0.0
+	_sweep_t = INF
 	_update(1.0, true)
 
 
@@ -112,6 +179,7 @@ func _process(delta: float) -> void:
 		return
 	if world.effects.freeze_left > 0.0:
 		return  # Hit-stop: hold the camera's transform and fov exactly as they are.
+	_advance_sweep(delta)
 	_update(delta, false)
 
 
@@ -133,7 +201,9 @@ func _update(delta: float, instant: bool) -> void:
 			cam_y = t.camera_ceiling_height
 			look_y = t.ceiling_height - 1.2
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
-	var here := Vector3(_focus.x, _focus.y, p.z + t.camera_distance)
+	# The teleport's sweep (zero with none) rides on top of the follow; the checks below run where the camera really is.
+	var sweep: Vector2 = sweep_offset()
+	var here := Vector3(_focus.x + sweep.x, _focus.y, p.z + t.camera_distance + sweep.y)
 	var limit: float = ceiling_limit(space, here, t)
 	# Never into a zone doodad below: the camera riding below a ceiling is lower than a doodad's top, and a treasure
 	# stash's stand under one (task I4). It rises toward one ahead, and stays above one it's over. With none near,
@@ -152,7 +222,7 @@ func _update(delta: float, instant: bool) -> void:
 	if climbing:
 		_focus.y = minf(maxf(_focus.y, floor_now), limit)
 	_look_y = lerpf(_look_y, look_y, k)
-	fov = _fov_kick(t.camera_fov, world.player.speed, delta, instant)
+	fov = _fov_kick(t.camera_fov, world.player.speed, delta, instant) + sweep_fov()
 	var lean_rad: float = deg_to_rad(_lane_lean(delta, instant))
 	var up := Vector3(sin(lean_rad), cos(lean_rad), 0.0)
 	var offset := Vector3.ZERO
@@ -161,8 +231,8 @@ func _update(delta: float, instant: bool) -> void:
 		_noise_t += delta * 40.0
 		var fade: float = clampf(_shake_left / maxf(_shake_time, 0.001), 0.0, 1.0)
 		offset = Vector3(sin(_noise_t * 1.3), cos(_noise_t * 1.7), 0.0) * _shake * fade
-	position = Vector3(_focus.x, _focus.y, p.z + t.camera_distance) + offset
-	look_at(Vector3(_focus.x, _look_y, p.z - t.camera_look_ahead) + offset * 0.5, up)
+	position = Vector3(_focus.x + sweep.x, _focus.y, here.z) + offset
+	look_at(Vector3(_focus.x + sweep.x, _look_y, p.z - t.camera_look_ahead + sweep.y) + offset * 0.5, up)
 
 
 ## The climbing view's aim (RunWorld.camera_climbs): Vector2(camera height, look height). The usual

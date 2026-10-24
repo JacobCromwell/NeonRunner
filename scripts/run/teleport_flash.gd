@@ -3,7 +3,9 @@ extends CanvasLayer
 ## The teleport's flash (task Q4; GDD §5, Zone 9, proposed: the runner "arrives running in the output pad's lane, with a
 ## short flash and a sound (honouring Reduced flashing)"): the whole screen tinted the teleporter's green-white as the runner
 ## arrives (RunWorld.teleported), fading to nothing over TeleporterTuning.flash_seconds from flash_alpha, so the camera's
-## cut (RunCamera) reads as a jump and the view past the landing is there to read at once. With Reduced flashing
+## cut (RunCamera) reads as a jump and the view past the landing is there to read at once. While the camera sweeps after
+## the runner instead (task U2: TeleporterTuning.sweep_seconds above 0), the sweep shows the jump and the flash is a pop
+## at the touch, flash_alpha times sweep_flash_share, so it doesn't wash the sweep out. With Reduced flashing
 ## (Settings.flashing_reduced) it's no flash: a soft tint, reduced_flash_alpha at most, easing in over the first fifth of
 ## reduced_flash_seconds and out over the rest. One ColorRect, the default canvas shader: nothing to compile, the same on
 ## the Compatibility renderer. Under the HUD and the attack markers (LAYER), over the speed lines. Its clock is real
@@ -43,21 +45,27 @@ func setup(p_world: RunWorld, p_tuning: TeleporterTuning = null) -> void:
 	world.teleported.connect(_on_teleported)
 
 
-## The tint's alpha `t` seconds after a teleport: flash_alpha fading out linearly over flash_seconds; with Reduced
-## flashing (`reduced`) reduced_flash_alpha at most, easing in over the first fifth of reduced_flash_seconds and out over
-## the rest. 0 before and after. DESIGN-TBD (docs/questions/q4.md 10): the soft tint that stands in for the flash with
+## The tint's alpha `t` seconds after a teleport: flash_alpha (times sweep_flash_share while the camera sweeps) fading out
+## linearly over flash_seconds; with Reduced flashing (`reduced`) reduced_flash_alpha at most, easing in over the first
+## fifth of reduced_flash_seconds and out over the rest. 0 before and after. DESIGN-TBD (docs/questions/q4.md 10): the soft tint that stands in for the flash with
 ## Reduced flashing (and the flash itself, q4.md 1 and 4).
 static func alpha_at(tt: TeleporterTuning, t: float, reduced: bool) -> float:
 	if t < 0.0:
 		return 0.0
 	if not reduced:
-		return tt.flash_alpha * clampf(1.0 - t / maxf(tt.flash_seconds, 0.001), 0.0, 1.0)
+		return peak(tt) * clampf(1.0 - t / maxf(tt.flash_seconds, 0.001), 0.0, 1.0)
 	var whole: float = maxf(tt.reduced_flash_seconds, 0.001)
 	if t >= whole:
 		return 0.0
 	var rise: float = whole * 0.2
 	var k: float = smoothstep(0.0, rise, t) if t < rise else 1.0 - smoothstep(rise, whole, t)
 	return tt.reduced_flash_alpha * k
+
+
+## The flash's strongest alpha (at the touch, without Reduced flashing): flash_alpha, or its sweep_flash_share while the
+## camera sweeps (RunCamera, task U2).
+static func peak(tt: TeleporterTuning) -> float:
+	return tt.flash_alpha * (tt.sweep_flash_share if tt.sweep_seconds > 0.0 else 1.0)
 
 
 ## The tint's alpha now.

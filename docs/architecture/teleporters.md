@@ -35,6 +35,7 @@ adds, `TeleporterRules.fastest`, so a faster zone keeps every window).
 - `scripts/world/skins/teleporter_kit.gd` (`TeleporterKit`): the default look, built from the mesh kit (works on the
   Compatibility renderer).
 - `scripts/run/teleport_flash.gd` (`TeleportFlash`): the flash on arrival.
+- `scripts/run/run_camera.gd` (`RunCamera`): the camera's sweep across the jump (task U2, below).
 - The jump itself: `Player._teleport` (signal `teleported`, event `teleport`) and `RunWorld._on_teleported` (signal
   `teleported`).
 - The data: `LevelLayout.teleporters`, `{id, lane, at, end, side, outputs: [{lane, at, end}, ...] (the left first), light
@@ -147,11 +148,32 @@ still waiting to swoop in where the runner skipped past never comes); every shot
 (`ProjectilePool.clear_shots`); the credits between are passed for good and the stars' best score leaves them out
 (`CreditField.skip`, `ScoreKeeper.skip_credits`: taking a teleporter never costs a star nor earns one; the ones the magnet
 was pulling are collected); the track is built ahead of the landing at once (`TrackBuilder.update`); the output pad gives
-off a sparkle; then `RunWorld.teleported`: the camera cuts across to the runner's new lane (`RunCamera._on_teleported`; along
-the track it's level with the runner already) and the flash shows (TeleportFlash: flash_alpha fading over flash_seconds; with
-Reduced flashing a soft tint easing in and out, reduced_flash_alpha at most; real time, one ColorRect, cleared when a
-restart rebinds it). Distance, progress
-and the HUD follow the runner's distance; the level clock runs on.
+off a sparkle; then `RunWorld.teleported`: the camera starts its sweep (below, `RunCamera._on_teleported`) and the flash shows
+(TeleportFlash: flash_alpha times sweep_flash_share while the camera sweeps, fading over flash_seconds; with Reduced flashing a
+soft tint easing in and out, reduced_flash_alpha at most; real time, one ColorRect, cleared when a restart rebinds it).
+Distance, progress and the HUD follow the runner's distance; the level clock runs on.
+
+**The camera's sweep** (task U2; the owner, October 24, 2026: "when the player touches the teleporter, the camera should zoom
+in to where the teleporter's output is ... the camera catches up, showing the user what happened through its movement").
+The runner is moved at once and the camera is the only thing that takes time: `RunCamera._on_teleported` keeps the view it
+had (the input pad's, the output pads and the runner far ahead in frame) as a lag behind where it follows the runner,
+`_sweep_from` (across, and along the track), and `_update` eases that lag away over `sweep_seconds` of real time (slow time
+doesn't stretch it; hit-stop holds it): the share still to go is `RunCamera.sweep_remaining` = `(1 - t / sweep_seconds) ^
+sweep_ease_power`, fastest at first, exactly 0 from `sweep_seconds` on, so the camera is on its usual framing (a fresh
+camera's) by then. The lag rides on top of the usual follow, so the runner's own position, hitboxes, speed and control are
+untouched (no core file changed: the camera already listened to `RunWorld.teleported`), and the ceiling and doodad checks
+(`ceiling_limit`, `doodad_floor`, the climbing view's `floor_limits`) run where the camera really is, so it stays under a ceiling
+it flies through. A field-of-view punch (`sweep_fov_punch` degrees, widening; negative narrows) eases back with it, left out
+with Reduced flashing (`Settings.flashing_reduced`) and with Screen shake off (`RunEffects.shake_scale` 0); there is no separate
+reduced-motion setting, so the sweep itself stays. A second teleport mid-sweep starts from where the camera is (the lags add);
+`snap()` (level start, restart) ends a sweep; `sweep_seconds` 0 is the old clean cut. Short on purpose (0.35 s, at most half
+of `landing_seconds`, the landing's guaranteed reaction time): the view ahead of the landing is in frame throughout. The three
+numbers and `sweep_flash_share` are `TeleporterTuning`'s "The camera's sweep" group (`data/tuning/teleporters.tres`, F6
+"Teleporters"). DESIGN-TBD: `docs/questions/u2-teleport-camera.md`. Risk: the track
+between the pads is still there for the camera to fly over only because `TrackBuilder` keeps the pad's own chunk until the
+landing is behind and every chunk until it is `KEEP_BEHIND` (30 m) behind the landing; a hop of more than about 70 m (a
+`hop_seconds_max` above about 2.8 s at the fastest zone's 25 m/s; today 2.6 s, 65 m) would show the camera crossing freed
+track, and then the builder, a core file, must hold the chunks a sweep crosses.
 
 **Its look.** ZoneSkin's hooks, TeleporterKit's look by default in `teleporter_colors()` (`teleporter_palette`; the Ice Lab
 gives its plate and rim the hall's steel): `teleporter_pad` (a steel plate flush with the floor, a raised rim, an inset green
@@ -186,7 +208,11 @@ every campaign teleporter on real physics on a cut of its level, the skins, the 
 Lab build stands its counts, each fair), `test_generator`'s `_test_teleporters` (quick play's level with the feature over
 lane counts, seeds, difficulties and both run speeds), `test_campaign`, `test_hints`, `test_audio`, the weekly suites;
 `test_ice_lab_skin` leaves a teleporter's parts out of its whole-level scenery checks, and so do `test_golden_skin` and
-`test_golden_palace_skin` (task Q6). Task Q6's in `test_teleporters`: the Golden Zone's own builds (`_test_golden`: their
+`test_golden_palace_skin` (task Q6). Task U2's in `test_teleporters` (`_test_camera_sweep`, beside `_test_flash`): the curve, a real teleport with the camera driven
+by hand (at the touch it is where it was and the runner a hop ahead; its lag follows the curve and is gone within
+`sweep_seconds`, then it matches a fresh camera's framing; the punch and its absence with Reduced flashing and Screen shake off;
+a second teleport mid-sweep; the clean cut at 0) and the same take with and without a live camera (the runner's distance, lane,
+speed and state come out identical). Task Q6's in `test_teleporters`: the Golden Zone's own builds (`_test_golden`: their
 counts, no introduction, each fair, the Resonators', the Sentinels', the Enforcer Trucks' and the dash walls' re-checks
 beside them, their wider gaps and dash walls), giving way and the blinking fallbacks (`_test_give_way`), endless mode in the
 Golden Zone, the Golden enemies' holds by a calm stretch and AttackWatch's runner going around (`_test_golden_enemies`),
