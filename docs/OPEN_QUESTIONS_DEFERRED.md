@@ -7042,3 +7042,66 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     from it, and the walkway lands on it. Teleporters and ceilings shake it off until it tires."
 
 (1208, 1227 and 1228 are in `docs/OPEN_QUESTIONS.md`.)
+
+### Folded on October 24, 2026 (task S3, the Golden Zone's danger)
+
+**S3, the Golden Zone's danger** (task S3, October 24, 2026; from `docs/questions/s3.md`, whose item n is 1228 + n here; GDD §9.16; numbers in `data/tuning/danger_density.tres` and the Golden levels' data)
+1230. **A Resonator pulse by pulse** (item 1's answer). Placeholder (`danger_resonator_per_pulse`, on in Golden 1-3,
+   DESIGN-TBD): the pass counts a planned Resonator's attack pulse by pulse there (each pulse from its warning until
+   its last wave has passed the runner, with its plan's margin; `DangerDensity.resonator_pulse_windows`), so it may add
+   between two pulses, where the Resonator only hovers, as `DangerDensityTuning.resonator_per_pulse` would everywhere
+   (off there since its pulses shift at run time with the turns and floor waits it makes). Every pulse still waits for
+   clear floor at run time (`Resonator.pulse_clear`: no gap, fence, floor enemy or doodad where its wave meets the
+   runner), so each wave meets clear floor where it is jumped; it checks the floor only, not a window cyborg or bolts
+   landing. A pulse that waited may come far from its plan, onto what the pass added, as one past a whole visit could
+   under the old rules (item 8). Should the pass keep off a whole visit after all, in the Golden Zone too?
+
+1231. **Almost no margin from a big attack** (item 1's answer). Placeholder (`danger_big_attack_margin` 0 in Golden 1-3,
+   DESIGN-TBD; 1 elsewhere): an enemy the pass adds there keeps only `DangerDensityTuning.big_attack_min_margin_seconds`
+   (0.1 s of run, 2.5 m at the zone's 25 m/s), not the clearance (the level's spacing between two patterns, about
+   0.9 s), between its attack window and a big attack's (a drone's barrage, a Resonator's pulse, a Buzz Overdrive's
+   charge, a Gilded Sentinel's strike, a host's attack). An Enforcer Truck's volley has no attack window (its showing
+   windows are calm stretches, where the pass adds nothing) and a host's chase is exempt everywhere (the tuning's
+   `keep_out_exempt_features`), so neither is kept clear here or elsewhere. Its rows keep the whole clearance (a row
+   at a Heavy Cyborg's keep-out made Sentinel Row give two of its Heavy Cyborgs back). What holds is the plan: an
+   attack window is where the attack lands (a cyborg's from 2 s of run before it to its margin past it), and no window
+   the pass adds overlaps a big attack's (`test_danger_density` checks every build): an encounter keeps the 0.1 s on
+   both sides, an offset twin after itself (it starts no earlier than its anchor, the level's own enemy), and over
+   the final band's Golden builds (each level's own seed and 9001-9012 at 3, 5 and 6 lanes) none of the 884 enemies
+   the pass added came within it of a big attack's planned window (the least 2.50 m before one, 2.55 m after). The
+   0.1 s (the task's review) keeps that in play too where a big attack runs a little late: a Gilded Sentinel's strike
+   ended about 0.04 s past its plan in all 102 cases the review measured. Not the warnings: a cyborg starts charging
+   at its engage distance, about 2 s before its window, so its charge and its bolts in flight may overlap a big
+   attack, and at 25 m/s its bolts land about half a second or more from the big attack's window. Measured in play
+   (Golden 3 at 6 lanes on its own seed): before the 0.1 s two window cyborgs at 2365.9 and 2368.0 m began charging
+   1.1 s before a Gilded Sentinel's warning and fired during its strike, their bolts landing 0.48 s after it ended
+   (the review); with it one at 2372.5 m begins charging 0.86 s before the warning and fires during the strike, its
+   bolts landing 0.76 s after it. The two dodges don't conflict. Should a small threat keep more time after a big
+   attack, or its warning off one?
+
+1232. **A quarter of the clearance around an added enemy** (item 1's answer). Placeholder (`danger_enemy_clearance` 0.25
+   in Golden 1-3, DESIGN-TBD; 1 elsewhere): an added enemy's open lane (the tuning's `min_free_lanes`) and the limit on
+   the small attacks near it (`overlap_max`) hold over its whole attack window (where its bolts land; its charge begins
+   about 2 s before it) and a quarter of the clearance either side, where elsewhere the whole clearance: the open lane
+   is there from a quarter of the clearance before its window (about 0.2 s), not a whole one (about 0.9 s), so a
+   runner may find it blocked until later in the charge. For an offset twin the quarter is also what it keeps from the
+   fixed stretches after it (a ramp, a landing zone, a pad, a floor cut). Is a quarter the right share?
+
+1233. **The suite's wider sample** (task S3). Placeholder (`test_danger_density`'s `FINAL_SEEDS`): the final band is built
+   on each level's own seed and 9001-9012 (thirteen builds a level and lane count), the other bands still on 9001-9002;
+   over three seeds the final band had swung by several hundredths (x1.33 against x1.24 at 5 lanes). It nearly triples
+   the suite's time: 339.5 s at the task's first head against 119.2 s at its base, run side by side (x2.85, the task's
+   review), and Golden 1's fairness builds (the review) add a little; it runs in the full tier only, and the times
+   baseline is refreshed from a full run. Should the other bands get the wider sample too?
+
+1234. **The weekly challenge** (GDD §6, task N5: every week plays at Sentinel Row's density). Placeholder
+   (`WeeklyChallenge.ZONE_FIELDS`, DESIGN-TBD): the relaxed rules (items 2 to 4) are the week's zone's own, as its
+   features are, so only the Golden Zone's week has them and every other zone's week builds as before (at the
+   Golden Zone's dial, with every rule). Should every week relax them, as it takes the Golden Zone's density?
+
+1235. **Endless mode in the Golden Zone** (the task's review). Placeholder (DESIGN-TBD): endless mode plays a copy of the
+   furthest zone's last level (`App.start_endless`), so with the Golden Zone as the furthest it keeps the Golden
+   Palace's relaxed rules (items 2 to 4: endless in the Golden Zone is the Golden Zone), and with any earlier zone
+   every rule (`test_danger_density` checks both). Should endless mode keep every rule instead?
+
+(1229 is answered; 1236 is in `docs/OPEN_QUESTIONS.md`.)

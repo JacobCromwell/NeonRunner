@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**1229** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, the Terminal's O1–O4 and F2k, and the Ice Lab's Q1–Q6, S1 and S2, so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**1237** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1, N5 and O1, the Terminal's O1–O4 and F2k, and the Ice Lab's Q1–Q6, S1, S2 and S3, so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -35,6 +35,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
 | 1061 | The Terminal pays about half of what its neighbours do, yet the Heavy missile (line 15,800) now first fits at Terminal 1, a level earlier than the Golden Zone it was placed for, so Golden 1 gets easier for buyers. Raise the missile's price (8,000 puts it back), or let the Terminal pay like its neighbours? |
 | 1072 | A bot taking the quickest way through Rubble Line's maze finishes in 140 to 159 s (4 to 23 s of it waiting for the dash) on 138 s of track, so a run can outlast the level by up to 21 s. Are 1 or 2 breaks a block right, or should they scale with depth, difficulty or lane count? |
+| 1236 | In play a Resonator's pulses drift far from their plan (a third of them, under the old rules and S3's alike), so the level's cyborg bolts can land during a pulse; dodgeable in the probes. Leave it, or make cyborg guns hold a burst whose bolts would land during a live pulse? |
 
 ## The items in full
 
@@ -144,3 +145,18 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    quickest way with that dash (test_debris_maze) runs Rubble Line's 138 s of track in 140, 151 and 159 s at 3, 5 and 6
    lanes (4, 15 and 23 s of it waiting for the dash), and Last Stop's 143 s in about 141 s (its dashes make up for its
    stops). Should blocks need more breaks further into a level, or with the difficulty, or fewer at 6 lanes?
+
+**S3, the Golden Zone's danger** (task S3, October 24, 2026; from `docs/questions/s3.md`, whose item n is 1228 + n here; GDD §9.16; numbers in `data/tuning/danger_density.tres` and the Golden levels' data)
+1236. **A Resonator's pulses drift far from their plan in play** (the task's review; not this task's, under the old rules
+   and the new alike). The pass keeps what it adds off a Resonator's planned pulses (the Golden Zone, item 2) or its
+   whole planned visit (everywhere else), but at run time a pulse a turn held waits for clear floor
+   (`Resonator.pulse_clear`) and may then come far from its plan: in 36 Golden builds (Golden 1-3 at 3, 5 and 6 lanes
+   on their own seeds and 9001-9003, played through), 59 of 160 pulses fell outside their planned windows with these
+   rules and 57 of 162 with the old ones, so the pass's keep-out doesn't keep an added cyborg's bolts from landing
+   during a pulse: with these rules (and item 3's 0.1 s) 8 bolts landed during one and 5 within half a second after
+   it (6 and 5 with the old rules), every one beside a pulse outside its plan, and none within half a second of a
+   Gilded Sentinel's strike or a Buzz Overdrive's charge. Each was dodgeable in the probes (a jump over the wave and
+   a lane switch away from the bolts). The play-throughs showed the same for a drone's barrage far from its planned
+   window (one that came in at 64 m still firing at 2,318 m in the Golden Palace at 6 lanes), under both rules.
+   Options: leave it, or make a cyborg's gun (`CyborgGun`) hold a burst whose bolts would land during a live pulse.
+   Which?

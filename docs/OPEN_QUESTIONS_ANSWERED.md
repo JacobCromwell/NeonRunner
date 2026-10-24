@@ -1862,3 +1862,24 @@ Captain Cogs).
    it down slowly; (c) a smaller `target_ahead` (it's picked while it rides a little ahead, as it does while it warns
    and cuts)?
    **Answered (owner, October 23, 2026):** "that is fine": auto-fire keeps skipping the Hunter beside the runner; the gantryway is the way to kill it. Recorded in GDD §9.17.
+
+**S3, the Golden Zone's danger** (task S3, October 24, 2026; from `docs/questions/s3.md`, whose item n is 1228 + n here; GDD §9.16; numbers in `data/tuning/danger_density.tres` and the Golden levels' data)
+1229. **The danger density pass is short of fair room in the Golden Zone, not short of its dial** (GDD §3: about 35%
+   more by the final zones). Before this task, at 5 lanes the pass added half of what Sentinel Row's dial asked for
+   and stopped where no fair spot was left, so a higher dial added nothing (Golden 1-3 at 0.40, the suite's MAX_DIAL,
+   built the same band); 65% to 80% of a Golden build's playable track was closed to its encounters (a Resonator's
+   whole visit, ceiling pads, drones, landing zones, a Buzz Overdrive, wall-run gaps, teleporters, the ends of the fill
+   pass's stretches), and in what was left an added enemy's open lane over its window and clearance turned most spots
+   away. The final band had x1.248, x1.267 and x1.259 for enemies at 3, 5 and 6 lanes (x1.242 at 5 lanes built
+   without the Heavy Cyborg; three seeds had shown x1.33 before task S1, by luck). **Answered (owner, October 24,
+   2026):** "relax the fairness rules in the golden zone" (GDD §9.16), never the open lane, and no attack loses its
+   warning. Built as items 2 to 4, in Golden 1-3's data only (`LevelConfig`; every other level's layout is byte for
+   byte as before): the band then has x1.317, x1.309 and x1.332 for enemies (x1.263, x1.339 and x1.376 for
+   obstacles, from x1.261, x1.331 and x1.374), and its 5-lane floor needs no allowance for the Heavy Cyborg
+   (`HEAVY_CYBORG_ROOM` is gone). Any one of items 2 to 4 alone moves the 5-lane band little (x1.264 to x1.274); all
+   three get it there, and less of any falls short or lands at the floor's edge (measured before the rows kept their
+   whole margin and before item 3's 0.1 s: item 4 at half the clearance x1.303, at a quarter x1.317, at none x1.337;
+   without item 2, or with item 3 at half, x1.294). Every counted feature keeps its count on the levels' own seeds
+   but one, accepted in the task's review: Sentinel Row at 3 lanes has one Heavy Cyborg where it had two (a zone
+   doodad reaches into the second one's stream zone, which gives it back), and the suite's minimum of one holds.
+   **Answered (owner, October 24, 2026):** relax the danger density pass's fairness rules in the Golden Zone (option a), never the open lane; built as items 1230-1232. Recorded in GDD §9.16.

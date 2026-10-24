@@ -457,3 +457,13 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   makes room for other enemies' shots; hovers over gaps and fences; gives up after 25 s; auto-fire skips it beside the
   runner. After the owner's playtest it attacks more often (2.7x for a bait runner, 1.4x for a dodger, held by the
   edge lanes). Questions in items 1208-1228 (1208 in the open list; 1227 and 1228 answered by the owner the same day).
+
+## October 23, 2026 (evening)
+
+- [x] **Raise the Golden Zone's difficulty** (the owner, answering item 1207): with the Heavy Cyborgs in, its final stretch
+  fell to about 27% more danger at 5 lanes, below the approved 30-40%. Task S3 in `docs/TASK_PLAN.md`.
+  DONE (S3, October 24, 2026): the owner chose to relax the danger density pass's fairness rules in the Golden Zone
+  only (never the open lane, every warning kept): a Resonator's visit counted pulse by pulse, almost no margin from a
+  big attack (0.1 s), a quarter of the clearance around added enemies. The final band (own seed + 9001-9012) is now
+  x1.317 / x1.309 / x1.332 enemies at 3/5/6 lanes (x1.248 / x1.267 / x1.259 before); every counted feature kept but
+  Golden 2 at 3 lanes (2 Heavy Cyborgs to 1); other levels unchanged. Questions in items 1229-1236 (1236 open).
