@@ -51,9 +51,23 @@ x1.265; item 976 in `docs/OPEN_QUESTIONS*.md`). The Golden Zone's teleporters (t
 its pad stretch and landings clear in every lane, so the band at 3 lanes has about 27% more enemies and 23% more
 obstacles, and the suite lets it land 5% lower again there (`TELEPORTER_ROOM`; built without them it keeps the floor
 above; DESIGN-TBD, `docs/questions/q6.md` item 11). The Golden Zone's Heavy Cyborgs (task S1) take a little more: each
-keeps two seconds of clear floor before it (the rows keep off its window) and no cyborg within a second of it, so the
-band has about 27% more enemies at 5 lanes (26% at 3, 32% at 6), and the suite lets it land 4% lower there
-(`HEAVY_CYBORG_ROOM`; DESIGN-TBD, `docs/questions/s1.md` item 13).
+keeps two seconds of clear floor before it (the rows keep off its window) and no cyborg within a second of it.
+**The Golden Zone's relaxed rules** (task S3; the owner, October 24, 2026: "relax the fairness rules in the golden
+zone", GDD §9.16). Its levels are so full (Resonator visits, ceiling pads, drones, landing zones, Buzz Overdrives) that
+the pass ran out of fair room before its dial's target: over each level's own seed and 9001-9012 its final band had
+about 25-27% more enemies at every lane count, with the Heavy Cyborg and without it (24% at 5 lanes), and a higher
+dial added nothing. Golden 1-3 relax three of its rules through their data (`LevelConfig`; at the defaults every other
+level builds byte for byte as before): `danger_resonator_per_pulse` (a planned Resonator's attack counts pulse by pulse,
+so the pass adds between two pulses, each pulse's window kept; at run time every pulse still waits for clear floor,
+`Resonator.pulse_clear`, so its wave never meets an enemy, a gap or a fence where it reaches the runner),
+`danger_big_attack_margin` 0 (an enemy the pass adds keeps none of the clearance from a big attack's window, but never
+overlaps it: two attacks never come at once; its rows keep the whole clearance, so a Heavy Cyborg keeps its margin
+and stream) and `danger_enemy_clearance` 0.25 (an added enemy's open lane and overlap limit hold over its attack
+window, warning included, and a quarter of the clearance either side). Never the open lane itself (the tuning's
+`min_free_lanes`, the same everywhere) nor a warning. The final band then has 33%, 32% and 34% more enemies and 27%,
+34% and 38% more obstacles at 3, 5 and 6 lanes over those seeds (25%, 27% and 26%, and 26%, 33% and 37% before);
+`test_danger_density` samples the final band on them (`FINAL_SEEDS`) and no longer lowers its floor for the Heavy
+Cyborg (DESIGN-TBD each, `docs/questions/s3.md`).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -61,7 +75,8 @@ Small enemy encounters stay within existing feature introductions and warning ru
 also add fair ceiling turrets where that feature exists. Obstacle rows use spare lane width where
 possible, or additional longitudinal opportunities when a row already leaves only one lane open.
 The pass checks the reachable route through successive rows, not just a permanently empty lane.
-Wall fences retain their placement rules, Resonators keep their whole visit clear, a window cyborg or a
+Wall fences retain their placement rules, Resonators keep their whole visit clear (each pulse's window in the Golden
+Zone, task S3, above), a window cyborg or a
 vent's screech it adds keeps off what the rules keep wall enemies off (`LevelGenerator.wall_section_rules`:
 the rules scripts that declare `on_wall_section`, a Gilded Sentinel's wall section; task K4, after a build
 on one of the curves it tried put one there; `test_gilded_sentinel` pins a build that shows it), a cyborg or
@@ -82,7 +97,9 @@ dial-0 layouts with a saved before-change dump. Representative measurements (nat
 
 The regression suite asserts requirement-based bands of 10-20%, 15-35% and 30-40%, respectively,
 for both categories at every supported lane count, plus route safety, determinism, economy and
-build-time guards. All 225 saved dial-0 layouts match the pre-change baseline.
+build-time guards. All 225 saved dial-0 layouts match the pre-change baseline. Since task S3 the suite samples the
+final band on each level's own seed and 9001-9012 (`FINAL_SEEDS`; three seeds swung it by several hundredths), the
+others still on 9001/9002, and checks that no enemy the pass adds overlaps a big attack's window in any level.
 
 **Ramps** (GDD §3) launch the player onto the wall higher than a free entry and add a speed boost
 that fades away the same way a speed pad's does (both share `boost_decay_per_second`;

@@ -480,8 +480,10 @@ behaviour unchanged), and `CyborgSuit.heavy_set()` (every look gets an armour se
     Golden 2 at 6 (2 to 1) and Golden 3 at 3 (3 to 1), which come by frequency, are fewer. The generator takes about as long as
     before. Any change that moves the levels' picks (a new
     pattern, the Hunter's) calls for the weights to be checked again. The Golden Zone dates it from the Ice Lab (a
-    level old in Golden 1), as the teleporters. The danger density pass adds a little less in the Golden Zone at 5
-    lanes (`test_danger_density`'s HEAVY_CYBORG_ROOM); Golden 2's weight is one where its band holds at 3 and 6.
+    level old in Golden 1), as the teleporters. The danger density pass adds a little less around them; the Golden
+    levels relax some of its rules so its final band keeps the approved rise (task S3, `generator.md`'s Progressive
+    danger density), and with them Golden 2 at 3 lanes keeps one Heavy Cyborg on its own seed (a zone doodad reaches
+    into its second one's stream zone, which gives that one back after the zone doodads).
 - **Sounds.** `tools/asset_gen/sfx_bank_heavy_cyborg.gd`: `heavy_cyborg_windup` (the warning: a motor grinding up
   under a ratchet speeding into a rattle and the red charge's hum, lasting the wind-up and 30 ms into the first round;
   lower and heavier than the drone's) and `heavy_cyborg_shot` (a low double crack, 0.2 s).
